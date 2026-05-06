@@ -9,22 +9,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Copy, ExternalLink, Trash2, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
+import { ProductPicker } from "@/components/ProductPicker";
 
 const CatalogueDetail = () => {
   const { id } = useParams();
   const nav = useNavigate();
   const [c, setC] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
   const [linked, setLinked] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
 
   const load = async () => {
-    const [cat, prods, links] = await Promise.all([
+    const [cat, links] = await Promise.all([
       supabase.from("catalogues").select("*").eq("id", id).single(),
-      supabase.from("products").select("id,product_name,sku,category,hero_image_url"),
       supabase.from("catalogue_products").select("*, products(id,product_name,sku,hero_image_url)").eq("catalogue_id", id).order("sort_order"),
     ]);
-    setC(cat.data); setProducts(prods.data ?? []); setLinked(links.data ?? []);
+    setC(cat.data); setLinked(links.data ?? []);
   };
   useEffect(() => { load(); }, [id]);
 
