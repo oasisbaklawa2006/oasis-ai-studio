@@ -15,6 +15,7 @@ import Media from "./pages/Media";
 import Tags from "./pages/Tags";
 import Catalogues from "./pages/Catalogues";
 import CatalogueDetail from "./pages/CatalogueDetail";
+import CatalogueProposal from "./pages/CatalogueProposal";
 import PublicCatalogue from "./pages/PublicCatalogue";
 import Hampers from "./pages/Hampers";
 import Ingredients from "./pages/Ingredients";
