@@ -39,13 +39,15 @@ const Auth = () => {
     else toast.success("Account created. You can sign in.");
   };
 
-  const handleGoogle = async () => {
+  const handleOAuth = async (provider: "google" | "apple") => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (result.error) { toast.error(result.error.message ?? "Google sign-in failed"); setLoading(false); return; }
+    const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
+    if (result.error) { toast.error(result.error.message ?? "Sign-in failed"); setLoading(false); return; }
     if (result.redirected) return;
     navigate("/");
   };
+  const handleGoogle = () => handleOAuth("google");
+  const handleApple = () => handleOAuth("apple");
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
