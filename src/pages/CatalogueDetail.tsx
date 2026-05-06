@@ -67,6 +67,7 @@ const CatalogueDetail = () => {
           <span className={`badge-soft ${STATUS_TONES[status]} capitalize`}>{status.replace(/_/g, " ")}</span>
           <Button variant="outline" onClick={() => nav("/catalogues")}>Back</Button>
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print / PDF</Button>
+          <Button variant="outline" onClick={() => nav(`/catalogues/${id}/proposal`)}><FileText className="h-4 w-4 mr-1" />Proposal / PDF</Button>
           <Button asChild><a href={`/c/${c.public_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" />Public</a></Button>
         </>} />
 
