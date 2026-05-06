@@ -1,33 +1,36 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu } from "lucide-react";
+import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { canAccessPage, type PageKey } from "@/lib/permissions";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/products", label: "Products", icon: Package },
-  { to: "/media", label: "Media Library", icon: Image },
-  { to: "/tags", label: "Tags", icon: Tags },
-  { to: "/catalogues", label: "Catalogues", icon: BookOpen },
-  { to: "/hampers", label: "Hampers & BOM", icon: Gift },
-  { to: "/ingredients", label: "Ingredients", icon: Leaf },
-  { to: "/labels", label: "Label Studio", icon: Tag },
-  { to: "/ai-studio", label: "AI Studio", icon: Sparkles },
-  { to: "/settings", label: "Settings", icon: Settings },
+const nav: { to: string; label: string; icon: any; page: PageKey }[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, page: "dashboard" },
+  { to: "/products", label: "Products", icon: Package, page: "products" },
+  { to: "/media", label: "Media Library", icon: Image, page: "media" },
+  { to: "/tags", label: "Tags", icon: Tags, page: "tags" },
+  { to: "/catalogues", label: "Catalogues", icon: BookOpen, page: "catalogues" },
+  { to: "/hampers", label: "Hampers & BOM", icon: Gift, page: "hampers" },
+  { to: "/ingredients", label: "Ingredients", icon: Leaf, page: "ingredients" },
+  { to: "/labels", label: "Label Studio", icon: Tag, page: "labels" },
+  { to: "/label-queue", label: "Label Queue", icon: ShieldCheck, page: "labels" },
+  { to: "/ai-studio", label: "AI Studio", icon: Sparkles, page: "ai_studio" },
+  { to: "/testing", label: "Testing Checklist", icon: ClipboardCheck, page: "testing" },
+  { to: "/settings", label: "Integration Center", icon: Settings, page: "settings" },
 ];
 
 export const AppLayout = () => {
   const { user, roles, signOut } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const items = nav.filter((n) => canAccessPage(roles as any, n.page));
 
   return (
     <div className="min-h-screen flex bg-background">
-      {/* Sidebar */}
       <aside className={cn(
-        "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground transition-transform lg:translate-x-0",
+        "fixed lg:static inset-y-0 left-0 z-40 w-64 bg-sidebar text-sidebar-foreground transition-transform lg:translate-x-0 no-print flex flex-col",
         open ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="px-6 py-6 border-b border-sidebar-border">
@@ -39,8 +42,8 @@ export const AppLayout = () => {
             </div>
           </div>
         </div>
-        <nav className="px-3 py-4 space-y-1">
-          {nav.map(({ to, label, icon: Icon }) => (
+        <nav className="px-3 py-4 space-y-1 flex-1 overflow-y-auto">
+          {items.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -58,7 +61,7 @@ export const AppLayout = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="absolute bottom-0 inset-x-0 p-4 border-t border-sidebar-border text-xs">
+        <div className="p-4 border-t border-sidebar-border text-xs">
           <div className="px-2 mb-2">
             <div className="truncate text-sidebar-foreground/90">{user?.email}</div>
             <div className="text-sidebar-foreground/60 capitalize">{roles[0] ?? "no role"}</div>
@@ -70,9 +73,8 @@ export const AppLayout = () => {
         </div>
       </aside>
 
-      {/* Main */}
       <div className="flex-1 min-w-0 flex flex-col">
-        <header className="lg:hidden sticky top-0 z-30 bg-background/80 backdrop-blur border-b px-4 h-14 flex items-center justify-between">
+        <header className="lg:hidden sticky top-0 z-30 bg-background/80 backdrop-blur border-b px-4 h-14 flex items-center justify-between no-print">
           <button onClick={() => setOpen(!open)} className="p-2"><Menu className="h-5 w-5" /></button>
           <div className="font-display text-lg">Oasis Studio</div>
           <div className="w-9" />
@@ -81,7 +83,7 @@ export const AppLayout = () => {
           <Outlet />
         </main>
       </div>
-      {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setOpen(false)} />}
+      {open && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden no-print" onClick={() => setOpen(false)} />}
     </div>
   );
 };
