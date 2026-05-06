@@ -56,9 +56,16 @@ const Labels = () => {
   return (
     <>
       <PageHeader title="Label Studio" subtitle="Prepare label data and a draft preview for sticker printing."
-        actions={<select className="h-10 px-3 rounded border bg-background text-sm" value={pid} onChange={(e)=>setPid(e.target.value)}>
-          {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
-        </select>} />
+        actions={
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline">{product?.product_name ?? "Pick product…"}</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-3" align="end">
+              <ProductPicker onPick={(p) => { setPid(p.id); setPickerOpen(false); }} />
+            </PopoverContent>
+          </Popover>
+        } />
 
       <div className="flex items-start gap-2 bg-warning/10 text-warning text-sm p-3 rounded mb-6">
         <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
