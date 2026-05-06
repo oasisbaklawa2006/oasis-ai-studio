@@ -873,6 +873,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bootstrap_current_user: {
+        Args: never
+        Returns: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "user_roles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       generate_oasis_sku: {
         Args: {
           _category_code: string
