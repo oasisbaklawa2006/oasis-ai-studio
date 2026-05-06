@@ -450,6 +450,13 @@ const ProductEdit = () => {
               </TabsContent>
             )}
 
+            {/* BOM */}
+            {showBom && (
+              <TabsContent value="bom" className="space-y-6">
+                <BomBuilder parentId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
+              </TabsContent>
+            )}
+
             {/* COMPLIANCE */}
             <TabsContent value="compliance" className="space-y-6">
               <div className="card-elevated p-6">
