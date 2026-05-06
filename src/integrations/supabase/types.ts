@@ -108,8 +108,13 @@ export type Database = {
           price_visibility: string | null
           public_slug: string | null
           published_at: string | null
+          show_discount: boolean | null
+          show_mrp: boolean | null
+          show_price: boolean | null
+          show_price_label: string | null
           status: string
           subtitle: string | null
+          target_customer_channel: string | null
           theme: string | null
           title: string
           unpublished_at: string | null
@@ -131,8 +136,13 @@ export type Database = {
           price_visibility?: string | null
           public_slug?: string | null
           published_at?: string | null
+          show_discount?: boolean | null
+          show_mrp?: boolean | null
+          show_price?: boolean | null
+          show_price_label?: string | null
           status?: string
           subtitle?: string | null
+          target_customer_channel?: string | null
           theme?: string | null
           title: string
           unpublished_at?: string | null
@@ -154,8 +164,13 @@ export type Database = {
           price_visibility?: string | null
           public_slug?: string | null
           published_at?: string | null
+          show_discount?: boolean | null
+          show_mrp?: boolean | null
+          show_price?: boolean | null
+          show_price_label?: string | null
           status?: string
           subtitle?: string | null
+          target_customer_channel?: string | null
           theme?: string | null
           title?: string
           unpublished_at?: string | null
@@ -668,6 +683,148 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "product_media_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_moq_rules: {
+        Row: {
+          allow_override: boolean
+          carton_logic: string | null
+          channel: string
+          created_at: string
+          customer_type: string | null
+          id: string
+          increment_uom: string | null
+          increment_value: number | null
+          min_carton_qty: number | null
+          moq_applicable: boolean
+          moq_uom: string | null
+          moq_value: number | null
+          notes: string | null
+          override_requires_approval: boolean
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          allow_override?: boolean
+          carton_logic?: string | null
+          channel: string
+          created_at?: string
+          customer_type?: string | null
+          id?: string
+          increment_uom?: string | null
+          increment_value?: number | null
+          min_carton_qty?: number | null
+          moq_applicable?: boolean
+          moq_uom?: string | null
+          moq_value?: number | null
+          notes?: string | null
+          override_requires_approval?: boolean
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          allow_override?: boolean
+          carton_logic?: string | null
+          channel?: string
+          created_at?: string
+          customer_type?: string | null
+          id?: string
+          increment_uom?: string | null
+          increment_value?: number | null
+          min_carton_qty?: number | null
+          moq_applicable?: boolean
+          moq_uom?: string | null
+          moq_value?: number | null
+          notes?: string | null
+          override_requires_approval?: boolean
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_moq_rules_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_pricing_rules: {
+        Row: {
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          base_price: number | null
+          calculated_price: number | null
+          created_at: string
+          currency: string
+          discount_percent: number | null
+          gst_rate: number | null
+          id: string
+          notes: string | null
+          price_channel: string
+          price_type: string
+          product_id: string
+          source: string
+          tax_inclusive: boolean
+          uom: string | null
+          updated_at: string
+          valid_from: string | null
+          valid_until: string | null
+        }
+        Insert: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          base_price?: number | null
+          calculated_price?: number | null
+          created_at?: string
+          currency?: string
+          discount_percent?: number | null
+          gst_rate?: number | null
+          id?: string
+          notes?: string | null
+          price_channel: string
+          price_type?: string
+          product_id: string
+          source?: string
+          tax_inclusive?: boolean
+          uom?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Update: {
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          base_price?: number | null
+          calculated_price?: number | null
+          created_at?: string
+          currency?: string
+          discount_percent?: number | null
+          gst_rate?: number | null
+          id?: string
+          notes?: string | null
+          price_channel?: string
+          price_type?: string
+          product_id?: string
+          source?: string
+          tax_inclusive?: boolean
+          uom?: string | null
+          updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_pricing_rules_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
