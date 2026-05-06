@@ -21,7 +21,7 @@ const Dashboard = () => {
     (async () => {
       const [p, c, m, l, r] = await Promise.all([
         supabase.from("products").select("*", { count: "exact", head: true }),
-        supabase.from("catalogues").select("*", { count: "exact", head: true }).eq("is_published", true),
+        supabase.from("catalogues").select("*", { count: "exact", head: true }).eq("status", "published"),
         supabase.from("product_media").select("*", { count: "exact", head: true }),
         supabase.from("products").select("*", { count: "exact", head: true }).neq("label_status", "approved"),
         supabase.from("catalogues").select("id,title,public_slug,is_published").order("created_at",{ascending:false}).limit(5),
@@ -73,7 +73,7 @@ const Dashboard = () => {
               <div key={c.id} className="p-4 flex items-center justify-between">
                 <div>
                   <div className="font-medium">{c.title}</div>
-                  <div className="text-xs text-muted-foreground">{c.is_published ? "Published" : "Draft"}{c.public_slug ? ` · /c/${c.public_slug}` : ""}</div>
+                  <div className="text-xs text-muted-foreground capitalize">{(c.status ?? (c.is_published ? "published" : "draft")).replace(/_/g," ")}{c.public_slug ? ` · /c/${c.public_slug}` : ""}</div>
                 </div>
                 <Button asChild variant="ghost" size="sm"><Link to={`/catalogues/${c.id}`}>Open</Link></Button>
               </div>

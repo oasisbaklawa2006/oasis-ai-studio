@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Image as ImageIcon, Tag as TagIcon, BookOpen, Copy } from "lucide-react";
+import { Plus, Search, Image as ImageIcon, Tag as TagIcon, Copy } from "lucide-react";
 import { searchProductsWithAliases, type ProductSearchResult } from "@/lib/productSearch";
 import { toast } from "sonner";
+import { ReadinessBadge } from "@/components/ReadinessBadge";
 
 const Badge = ({ tone, children }: { tone: "ok" | "warn" | "muted"; children: React.ReactNode }) => {
   const map = {
@@ -105,9 +106,9 @@ const Products = () => {
               {matched && <div className="text-[11px] text-accent-foreground/80 mb-2">Matched by alias: <span className="font-medium">{matched}</span></div>}
               <div className="text-xs text-muted-foreground mb-3">{p.pack_size || "—"} · {p.shelf_life_days ? `${p.shelf_life_days}d shelf` : "—"}</div>
               <div className="flex flex-wrap gap-1.5">
-                <Badge tone={p.media_status === "approved" ? "ok" : "warn"}><ImageIcon className="h-3 w-3" />{p.media_status}</Badge>
-                <Badge tone={p.label_status === "approved" ? "ok" : "warn"}><TagIcon className="h-3 w-3" />{p.label_status}</Badge>
-                <Badge tone={p.is_catalogue_ready ? "ok" : "muted"}><BookOpen className="h-3 w-3" />{p.is_catalogue_ready ? "ready" : "not ready"}</Badge>
+                <Badge tone={p.media_status === "approved" || p.hero_image_url ? "ok" : "warn"}><ImageIcon className="h-3 w-3" />{p.hero_image_url ? "image" : p.media_status}</Badge>
+                <Badge tone={p.label_status === "approved" || p.label_status === "locked" ? "ok" : "warn"}><TagIcon className="h-3 w-3" />{p.label_status}</Badge>
+                <ReadinessBadge product={p} compact />
               </div>
             </Link>
           );
