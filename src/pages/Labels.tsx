@@ -6,19 +6,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ProductPicker } from "@/components/ProductPicker";
 
 const STATUSES = ["draft","needs_review","approved","locked"];
 
 const Labels = () => {
-  const [products, setProducts] = useState<any[]>([]);
   const [pid, setPid] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const [label, setLabel] = useState<any>({});
   const [ings, setIngs] = useState<any[]>([]);
   const [nutri, setNutri] = useState<any>(null);
 
   useEffect(() => {
-    supabase.from("products").select("id,product_name").then(({data}) => { setProducts(data ?? []); if (data?.[0]) setPid(data[0].id); });
+    supabase.from("products").select("id").order("created_at").limit(1).maybeSingle().then(({ data }) => {
+      if (data && !pid) setPid(data.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -51,9 +56,16 @@ const Labels = () => {
   return (
     <>
       <PageHeader title="Label Studio" subtitle="Prepare label data and a draft preview for sticker printing."
-        actions={<select className="h-10 px-3 rounded border bg-background text-sm" value={pid} onChange={(e)=>setPid(e.target.value)}>
-          {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
-        </select>} />
+        actions={
+          <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline">{product?.product_name ?? "Pick product…"}</Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-3" align="end">
+              <ProductPicker onPick={(p) => { setPid(p.id); setPickerOpen(false); }} />
+            </PopoverContent>
+          </Popover>
+        } />
 
       <div className="flex items-start gap-2 bg-warning/10 text-warning text-sm p-3 rounded mb-6">
         <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />

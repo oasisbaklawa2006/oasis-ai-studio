@@ -5,28 +5,26 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Gift, Trash2 } from "lucide-react";
+import { Plus, Gift, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { ProductPicker } from "@/components/ProductPicker";
 
 const Hampers = () => {
   const [hampers, setHampers] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
   const [items, setItems] = useState<Record<string, any[]>>({});
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [active, setActive] = useState<string | null>(null);
-  const [item, setItem] = useState({ child_product_id: "", component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
+  const [item, setItem] = useState({ component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
 
   const load = async () => {
-    const [h, p] = await Promise.all([
-      supabase.from("hampers").select("*").order("created_at",{ascending:false}),
-      supabase.from("products").select("id,product_name"),
-    ]);
-    setHampers(h.data ?? []); setProducts(p.data ?? []);
-    if (h.data) {
+    const { data: h } = await supabase.from("hampers").select("*").order("created_at", { ascending: false });
+    setHampers(h ?? []);
+    if (h) {
       const all: Record<string, any[]> = {};
-      for (const hp of h.data) {
-        const { data } = await supabase.from("hamper_items").select("*, products(product_name)").eq("hamper_id", hp.id);
+      for (const hp of h) {
+        const { data } = await supabase.from("hamper_items").select("*, products(product_name,sku)").eq("hamper_id", hp.id);
         all[hp.id] = data ?? [];
       }
       setItems(all);
@@ -41,8 +39,9 @@ const Hampers = () => {
     setName(""); setOpen(false); setActive(data.id); load();
   };
   const addItem = async (hamperId: string) => {
-    await supabase.from("hamper_items").insert({ ...item, hamper_id: hamperId, child_product_id: item.child_product_id || null });
-    setItem({ child_product_id: "", component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
+    await supabase.from("hamper_items").insert({ ...item, hamper_id: hamperId, child_product_id: picked?.id ?? null });
+    setItem({ component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
+    setPicked(null);
     load();
   };
   const delItem = async (id: string) => { await supabase.from("hamper_items").delete().eq("id", id); load(); };
@@ -84,11 +83,17 @@ const Hampers = () => {
             </div>
             {active === h.id ? (
               <div className="border-t pt-3 space-y-2">
-                <select className="w-full h-9 px-2 rounded border bg-background text-sm" value={item.child_product_id} onChange={(e)=>setItem({...item,child_product_id:e.target.value})}>
-                  <option value="">— Custom component —</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
-                </select>
-                {!item.child_product_id && <Input placeholder="Component name (e.g. Silk ribbon)" value={item.component_name} onChange={(e)=>setItem({...item,component_name:e.target.value})} />}
+                {picked ? (
+                  <div className="flex items-center gap-2 p-2 rounded border bg-muted/30 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{picked.name}</div>
+                    </div>
+                    <button onClick={() => setPicked(null)} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
+                  </div>
+                ) : (
+                  <ProductPicker placeholder="Search product or leave blank for custom…" onPick={(p) => setPicked({ id: p.id, name: p.product_name })} />
+                )}
+                {!picked && <Input placeholder="Custom component name (e.g. Silk ribbon)" value={item.component_name} onChange={(e) => setItem({ ...item, component_name: e.target.value })} />}
                 <div className="grid grid-cols-2 gap-2">
                   <Input type="number" placeholder="Qty" value={item.quantity} onChange={(e)=>setItem({...item,quantity:Number(e.target.value)})} />
                   <Input placeholder="Unit" value={item.unit} onChange={(e)=>setItem({...item,unit:e.target.value})} />
