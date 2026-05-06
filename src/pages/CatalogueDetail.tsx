@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ExternalLink, Trash2, Printer, Send, CheckCircle2, Archive, Undo2 } from "lucide-react";
+import { ExternalLink, Trash2, Printer, Send, CheckCircle2, Archive, Undo2, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { ProductPicker } from "@/components/ProductPicker";
 import { SharePanel } from "@/components/SharePanel";
@@ -67,6 +67,7 @@ const CatalogueDetail = () => {
           <span className={`badge-soft ${STATUS_TONES[status]} capitalize`}>{status.replace(/_/g, " ")}</span>
           <Button variant="outline" onClick={() => nav("/catalogues")}>Back</Button>
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print / PDF</Button>
+          <Button variant="outline" onClick={() => nav(`/catalogues/${id}/proposal`)}><FileText className="h-4 w-4 mr-1" />Proposal / PDF</Button>
           <Button asChild><a href={`/c/${c.public_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" />Public</a></Button>
         </>} />
 
@@ -127,6 +128,26 @@ const CatalogueDetail = () => {
                 <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show MRP</Label><input type="checkbox" checked={!!c.show_mrp} onChange={(e) => { setC({ ...c, show_mrp: e.target.checked }); update({ show_mrp: e.target.checked }); }} /></div>
                 <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show discount %</Label><input type="checkbox" checked={!!c.show_discount} onChange={(e) => { setC({ ...c, show_discount: e.target.checked }); update({ show_discount: e.target.checked }); }} /></div>
               </div>
+            </div>
+          )}
+
+          {canWrite && (
+            <div className="card-elevated p-5 space-y-3 no-print">
+              <h3 className="font-display text-xl">Proposal notes & WhatsApp message</h3>
+              <p className="text-xs text-muted-foreground">These appear in the Proposal / PDF preview. Leave blank to use defaults.</p>
+              {[
+                ["proposal_validity_note", "Validity note"],
+                ["proposal_tax_note", "Tax / GST note"],
+                ["proposal_transport_note", "Transport note"],
+                ["proposal_customization_note", "Customization note"],
+                ["proposal_footer_note", "Footer note"],
+                ["proposal_whatsapp_message", "WhatsApp proposal message"],
+              ].map(([k, label]) => (
+                <div key={k}>
+                  <Label className="text-xs">{label}</Label>
+                  <Textarea rows={2} value={c[k] ?? ""} onChange={(e) => setC({ ...c, [k]: e.target.value })} onBlur={(e) => update({ [k]: e.target.value || null })} />
+                </div>
+              ))}
             </div>
           )}
 

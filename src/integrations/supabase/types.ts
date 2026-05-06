@@ -106,6 +106,12 @@ export type Database = {
           language: string | null
           last_previewed_at: string | null
           price_visibility: string | null
+          proposal_customization_note: string | null
+          proposal_footer_note: string | null
+          proposal_tax_note: string | null
+          proposal_transport_note: string | null
+          proposal_validity_note: string | null
+          proposal_whatsapp_message: string | null
           public_slug: string | null
           published_at: string | null
           show_discount: boolean | null
@@ -134,6 +140,12 @@ export type Database = {
           language?: string | null
           last_previewed_at?: string | null
           price_visibility?: string | null
+          proposal_customization_note?: string | null
+          proposal_footer_note?: string | null
+          proposal_tax_note?: string | null
+          proposal_transport_note?: string | null
+          proposal_validity_note?: string | null
+          proposal_whatsapp_message?: string | null
           public_slug?: string | null
           published_at?: string | null
           show_discount?: boolean | null
@@ -162,6 +174,12 @@ export type Database = {
           language?: string | null
           last_previewed_at?: string | null
           price_visibility?: string | null
+          proposal_customization_note?: string | null
+          proposal_footer_note?: string | null
+          proposal_tax_note?: string | null
+          proposal_transport_note?: string | null
+          proposal_validity_note?: string | null
+          proposal_whatsapp_message?: string | null
           public_slug?: string | null
           published_at?: string | null
           show_discount?: boolean | null
