@@ -78,11 +78,10 @@ const Media = () => {
           <DialogContent>
             <DialogHeader><DialogTitle>Add media asset</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Image / Video URL</Label><Input value={form.file_url} onChange={(e)=>setForm({...form,file_url:e.target.value})} placeholder="https://…" /></div>
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Type</Label>
                   <select className="w-full h-10 px-3 rounded-md border bg-background text-sm" value={form.type} onChange={(e)=>setForm({...form,type:e.target.value})}>
-                    {["raw","edited","hero","white_bg","lifestyle","video","label"].map(t => <option key={t}>{t}</option>)}
+                    {["raw_photo","hero_image","white_background","lifestyle","closeup","side_angle","top_angle","45_angle","hamper_open","hamper_closed","video","label_image"].map(t => <option key={t}>{t}</option>)}
                   </select>
                 </div>
                 <div><Label>Angle</Label>
@@ -97,8 +96,27 @@ const Media = () => {
                   {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
                 </select>
               </div>
-              <div><Label>Alt text</Label><Input value={form.alt_text} onChange={(e)=>setForm({...form,alt_text:e.target.value})} /></div>
-              <Button className="w-full" onClick={add}>Save</Button>
+              <div><Label>Alt text</Label><Input value={form.alt_text} onChange={(e)=>setForm({...form,alt_text:e.target.value})} placeholder="Describe the photo" /></div>
+
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <Button type="button" variant="outline" disabled={uploading} onClick={() => galleryRef.current?.click()}>
+                  {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                  From gallery
+                </Button>
+                <Button type="button" variant="outline" disabled={uploading} onClick={() => cameraRef.current?.click()}>
+                  <Camera className="h-4 w-4 mr-2" />Take photo
+                </Button>
+              </div>
+              <input ref={galleryRef} type="file" accept="image/*,video/*" multiple hidden onChange={(e)=>handleFiles(e.target.files)} />
+              <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e)=>handleFiles(e.target.files)} />
+
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground">Advanced: paste URL instead</summary>
+                <div className="mt-2 space-y-2">
+                  <Input value={form.file_url} onChange={(e)=>setForm({...form,file_url:e.target.value})} placeholder="https://…" />
+                  <Button size="sm" className="w-full" onClick={add}>Save URL</Button>
+                </div>
+              </details>
             </div>
           </DialogContent>
         </Dialog>} />
