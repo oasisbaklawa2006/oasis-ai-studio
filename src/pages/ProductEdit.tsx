@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { SkuBuilder } from "@/components/SkuBuilder";
 import { AliasManager } from "@/components/AliasManager";
+import { ProductMediaUploader } from "@/components/ProductMediaUploader";
 
 const empty = {
   product_name: "", short_name: "", category: "", subcategory: "",
@@ -82,6 +83,15 @@ const ProductEdit = () => {
           <SkuBuilder value={form} canOverride={canOverride} onChange={patch} />
 
           {!isNew && <AliasManager productId={id!} productName={form.product_name ?? ""} />}
+
+          {!isNew && (
+            <ProductMediaUploader
+              productId={id!}
+              productSku={form.sku}
+              currentHero={form.hero_image_url}
+              onHeroChange={(url) => set("hero_image_url", url)}
+            />
+          )}
 
           <div className="card-elevated p-6">
             <h3 className="font-display text-xl mb-4">Pack & weight</h3>
