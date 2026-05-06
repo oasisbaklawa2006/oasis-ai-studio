@@ -14,6 +14,8 @@ import { SkuBuilder } from "@/components/SkuBuilder";
 import { AliasManager } from "@/components/AliasManager";
 import { ProductMediaUploader } from "@/components/ProductMediaUploader";
 import { BomBuilder } from "@/components/BomBuilder";
+import { ChannelMoqRules } from "@/components/ChannelMoqRules";
+import { ChannelPricingRules } from "@/components/ChannelPricingRules";
 import { AlertTriangle } from "lucide-react";
 
 const PRODUCT_CLASSES = [
@@ -220,6 +222,7 @@ const ProductEdit = () => {
               {showDimensions && <TabsTrigger value="dimensions">Dimensions</TabsTrigger>}
               {showFrozen && <TabsTrigger value="frozen">Frozen</TabsTrigger>}
               {showBom && <TabsTrigger value="bom">BOM</TabsTrigger>}
+              {!isNew && <TabsTrigger value="channels">Channels</TabsTrigger>}
               <TabsTrigger value="compliance">Compliance</TabsTrigger>
               <TabsTrigger value="ops">Ops Notes</TabsTrigger>
             </TabsList>
@@ -454,6 +457,14 @@ const ProductEdit = () => {
             {showBom && (
               <TabsContent value="bom" className="space-y-6">
                 <BomBuilder parentId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
+              </TabsContent>
+            )}
+
+            {/* CHANNELS - MOQ + Pricing */}
+            {!isNew && (
+              <TabsContent value="channels" className="space-y-6">
+                <ChannelMoqRules productId={id!} product={form} />
+                <ChannelPricingRules productId={id!} product={form} />
               </TabsContent>
             )}
 
