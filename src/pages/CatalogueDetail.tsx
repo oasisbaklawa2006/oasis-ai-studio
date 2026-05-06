@@ -96,17 +96,10 @@ const CatalogueDetail = () => {
 
           <div className="card-elevated p-5">
             <h3 className="font-display text-lg mb-2">Add products</h3>
-            <Input placeholder="Search…" value={search} onChange={(e)=>setSearch(e.target.value)} className="mb-3" />
-            <div className="max-h-96 overflow-auto space-y-1">
-              {products.filter(p => !linked.find(l=>l.product_id===p.id) && p.product_name.toLowerCase().includes(search.toLowerCase())).map(p => (
-                <button key={p.id} onClick={()=>addProduct(p.id)} className="w-full text-left p-2 rounded hover:bg-muted flex items-center gap-2 text-sm">
-                  <div className="h-8 w-8 bg-muted rounded overflow-hidden flex-shrink-0">
-                    {p.hero_image_url && <img src={p.hero_image_url} className="w-full h-full object-cover" />}
-                  </div>
-                  <div className="min-w-0 flex-1 truncate">{p.product_name}</div>
-                </button>
-              ))}
-            </div>
+            <ProductPicker
+              excludeIds={linked.map((l) => l.product_id)}
+              onPick={(p) => addProduct(p.id)}
+            />
           </div>
         </div>
       </div>
