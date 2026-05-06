@@ -104,9 +104,26 @@ const Products = () => {
   const [sort, setSort] = useState("recent");
   const [showFilters, setShowFilters] = useState(false);
 
+  const [moqCounts, setMoqCounts] = useState<Record<string, number>>({});
+  const [priceCounts, setPriceCounts] = useState<Record<string, { total: number; approved: number }>>({});
+
   useEffect(() => {
     supabase.from("products").select("*").order("created_at", { ascending: false }).then(({ data }) => setItems(data ?? []));
     supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order").then(({ data }) => setRules(data ?? []));
+    supabase.from("product_moq_rules").select("product_id").then(({ data }) => {
+      const m: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => { m[r.product_id] = (m[r.product_id] || 0) + 1; });
+      setMoqCounts(m);
+    });
+    supabase.from("product_pricing_rules").select("product_id, approval_status").then(({ data }) => {
+      const m: Record<string, { total: number; approved: number }> = {};
+      (data ?? []).forEach((r: any) => {
+        if (!m[r.product_id]) m[r.product_id] = { total: 0, approved: 0 };
+        m[r.product_id].total += 1;
+        if (r.approval_status === "approved") m[r.product_id].approved += 1;
+      });
+      setPriceCounts(m);
+    });
   }, []);
 
   useEffect(() => {
@@ -302,6 +319,12 @@ const Products = () => {
                 {p.private_label_allowed && <Badge tone="accent"><Tag className="h-3 w-3" />Private label</Badge>}
                 {p.bom_required && <Badge tone="accent"><Boxes className="h-3 w-3" />BOM</Badge>}
                 {p.fixed_carton_required && <Badge tone="muted"><Package className="h-3 w-3" />Closed carton</Badge>}
+                {moqCounts[p.id] > 0 && <Badge tone="primary" title={`${moqCounts[p.id]} channel MOQ rules`}>MOQ rules · {moqCounts[p.id]}</Badge>}
+                {priceCounts[p.id]?.total > 0 && (
+                  <Badge tone={priceCounts[p.id].approved > 0 ? "ok" : "warn"} title={`${priceCounts[p.id].approved}/${priceCounts[p.id].total} approved`}>
+                    {priceCounts[p.id].approved > 0 ? "Approved price" : "Draft price"} · {priceCounts[p.id].total}
+                  </Badge>
+                )}
                 <Badge tone={p.media_status === "approved" || p.hero_image_url ? "ok" : "warn"}>
                   <ImageIcon className="h-3 w-3" />{p.hero_image_url ? "image" : (p.media_status || "missing")}
                 </Badge>
