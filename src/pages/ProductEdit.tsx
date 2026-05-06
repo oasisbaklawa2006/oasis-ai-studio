@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SkuBuilder } from "@/components/SkuBuilder";
 import { AliasManager } from "@/components/AliasManager";
 import { ProductMediaUploader } from "@/components/ProductMediaUploader";
+import { BomBuilder } from "@/components/BomBuilder";
 import { AlertTriangle } from "lucide-react";
 
 const PRODUCT_CLASSES = [
@@ -151,6 +152,9 @@ const ProductEdit = () => {
   const showCustomization = cls === "gift_hamper" || cls === "ready_pack" || cls === "service_or_customization";
   const showDimensions = cls === "packaging_decoration_material" || form.fixed_carton_required;
   const showFrozen = cls === "semi_prepared_frozen";
+  const canManageBom = roles.includes("owner") || roles.includes("admin") || roles.includes("product_manager");
+  const bomRelevant = cls === "ready_pack" || cls === "gift_hamper" || cls === "packaging_decoration_material" || !!form.bom_required;
+  const showBom = !isNew && (bomRelevant || canManageBom);
 
   const missing = useMemo(() => {
     const m: string[] = [];
@@ -215,6 +219,7 @@ const ProductEdit = () => {
               {showCustomization && <TabsTrigger value="customisation">Customisation</TabsTrigger>}
               {showDimensions && <TabsTrigger value="dimensions">Dimensions</TabsTrigger>}
               {showFrozen && <TabsTrigger value="frozen">Frozen</TabsTrigger>}
+              {showBom && <TabsTrigger value="bom">BOM</TabsTrigger>}
               <TabsTrigger value="compliance">Compliance</TabsTrigger>
               <TabsTrigger value="ops">Ops Notes</TabsTrigger>
             </TabsList>
@@ -445,6 +450,13 @@ const ProductEdit = () => {
               </TabsContent>
             )}
 
+            {/* BOM */}
+            {showBom && (
+              <TabsContent value="bom" className="space-y-6">
+                <BomBuilder parentId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
+              </TabsContent>
+            )}
+
             {/* COMPLIANCE */}
             <TabsContent value="compliance" className="space-y-6">
               <div className="card-elevated p-6">
@@ -488,7 +500,7 @@ const ProductEdit = () => {
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
                     <Label>BOM required</Label>
-                    <div className="text-[11px] text-muted-foreground">Auto-on for gift hampers. BOM builder ships in the next batch.</div>
+                    <div className="text-[11px] text-muted-foreground">Auto-on for gift hampers. Use the BOM tab to add components.</div>
                   </div>
                   <Switch checked={!!form.bom_required} onCheckedChange={(v) => set("bom_required", v)} />
                 </div>
