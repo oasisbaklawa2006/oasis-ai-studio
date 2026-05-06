@@ -403,6 +403,59 @@ export type Database = {
           },
         ]
       }
+      product_aliases: {
+        Row: {
+          alias: string
+          alias_type: string
+          confidence_score: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          language: string | null
+          normalized_alias: string | null
+          product_id: string
+          script: string | null
+          source: string
+        }
+        Insert: {
+          alias: string
+          alias_type?: string
+          confidence_score?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          normalized_alias?: string | null
+          product_id: string
+          script?: string | null
+          source?: string
+        }
+        Update: {
+          alias?: string
+          alias_type?: string
+          confidence_score?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          language?: string | null
+          normalized_alias?: string | null
+          product_id?: string
+          script?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_aliases_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_ingredients: {
         Row: {
           display_order: number | null
@@ -518,10 +571,13 @@ export type Database = {
           b2b_price: number | null
           carton_logic: string | null
           category: string | null
+          category_code: string | null
           created_at: string | null
           currency: string | null
           description: string | null
+          division_code: string | null
           export_price: number | null
+          external_reference_code: string | null
           gross_weight_g: number | null
           gst_rate: number | null
           hero_image_url: string | null
@@ -531,29 +587,39 @@ export type Database = {
           is_catalogue_ready: boolean | null
           is_sample: boolean | null
           label_status: string | null
+          legacy_sku: string | null
           media_status: string | null
           moq_text: string | null
           mrp: number | null
           net_weight_g: number | null
           pack_size: string | null
+          packaging_code: string | null
           product_name: string
           product_type: string | null
+          serial_no: number | null
           shelf_life_days: number | null
           short_description: string | null
           short_name: string | null
           sku: string
+          sku_generated_at: string | null
+          sku_locked: boolean
+          sku_version: number
           storage_instructions: string | null
           subcategory: string | null
+          subcategory_code: string | null
           updated_at: string | null
         }
         Insert: {
           b2b_price?: number | null
           carton_logic?: string | null
           category?: string | null
+          category_code?: string | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
+          division_code?: string | null
           export_price?: number | null
+          external_reference_code?: string | null
           gross_weight_g?: number | null
           gst_rate?: number | null
           hero_image_url?: string | null
@@ -563,29 +629,39 @@ export type Database = {
           is_catalogue_ready?: boolean | null
           is_sample?: boolean | null
           label_status?: string | null
+          legacy_sku?: string | null
           media_status?: string | null
           moq_text?: string | null
           mrp?: number | null
           net_weight_g?: number | null
           pack_size?: string | null
+          packaging_code?: string | null
           product_name: string
           product_type?: string | null
+          serial_no?: number | null
           shelf_life_days?: number | null
           short_description?: string | null
           short_name?: string | null
           sku: string
+          sku_generated_at?: string | null
+          sku_locked?: boolean
+          sku_version?: number
           storage_instructions?: string | null
           subcategory?: string | null
+          subcategory_code?: string | null
           updated_at?: string | null
         }
         Update: {
           b2b_price?: number | null
           carton_logic?: string | null
           category?: string | null
+          category_code?: string | null
           created_at?: string | null
           currency?: string | null
           description?: string | null
+          division_code?: string | null
           export_price?: number | null
+          external_reference_code?: string | null
           gross_weight_g?: number | null
           gst_rate?: number | null
           hero_image_url?: string | null
@@ -595,19 +671,26 @@ export type Database = {
           is_catalogue_ready?: boolean | null
           is_sample?: boolean | null
           label_status?: string | null
+          legacy_sku?: string | null
           media_status?: string | null
           moq_text?: string | null
           mrp?: number | null
           net_weight_g?: number | null
           pack_size?: string | null
+          packaging_code?: string | null
           product_name?: string
           product_type?: string | null
+          serial_no?: number | null
           shelf_life_days?: number | null
           short_description?: string | null
           short_name?: string | null
           sku?: string
+          sku_generated_at?: string | null
+          sku_locked?: boolean
+          sku_version?: number
           storage_instructions?: string | null
           subcategory?: string | null
+          subcategory_code?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -668,6 +751,66 @@ export type Database = {
           },
         ]
       }
+      sku_code_rules: {
+        Row: {
+          code: string
+          code_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          label: string
+          sort_order: number
+        }
+        Insert: {
+          code: string
+          code_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          sort_order?: number
+        }
+        Update: {
+          code?: string
+          code_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
+      sku_sequences: {
+        Row: {
+          category_code: string
+          division_code: string
+          id: string
+          last_serial: number
+          packaging_code: string
+          subcategory_code: string
+        }
+        Insert: {
+          category_code: string
+          division_code: string
+          id?: string
+          last_serial?: number
+          packaging_code: string
+          subcategory_code: string
+        }
+        Update: {
+          category_code?: string
+          division_code?: string
+          id?: string
+          last_serial?: number
+          packaging_code?: string
+          subcategory_code?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           group_name: string
@@ -709,6 +852,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_oasis_sku: {
+        Args: {
+          _category_code: string
+          _division_code: string
+          _packaging_code: string
+          _subcategory_code: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -717,6 +869,22 @@ export type Database = {
         Returns: boolean
       }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
+      normalize_alias: { Args: { _text: string }; Returns: string }
+      search_products_with_aliases: {
+        Args: { _q: string }
+        Returns: {
+          category: string
+          hero_image_url: string
+          id: string
+          match_score: number
+          matched_alias: string
+          product_name: string
+          short_name: string
+          sku: string
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       app_role:
