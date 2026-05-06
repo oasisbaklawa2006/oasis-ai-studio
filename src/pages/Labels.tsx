@@ -12,15 +12,18 @@ import { ProductPicker } from "@/components/ProductPicker";
 const STATUSES = ["draft","needs_review","approved","locked"];
 
 const Labels = () => {
-  const [products, setProducts] = useState<any[]>([]);
   const [pid, setPid] = useState("");
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [product, setProduct] = useState<any>(null);
   const [label, setLabel] = useState<any>({});
   const [ings, setIngs] = useState<any[]>([]);
   const [nutri, setNutri] = useState<any>(null);
 
   useEffect(() => {
-    supabase.from("products").select("id,product_name").then(({data}) => { setProducts(data ?? []); if (data?.[0]) setPid(data[0].id); });
+    supabase.from("products").select("id").order("created_at").limit(1).maybeSingle().then(({ data }) => {
+      if (data && !pid) setPid(data.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
