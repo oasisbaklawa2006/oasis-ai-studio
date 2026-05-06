@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { SkuBuilder } from "@/components/SkuBuilder";
 import { AliasManager } from "@/components/AliasManager";
+import { ProductMediaUploader } from "@/components/ProductMediaUploader";
 
 const empty = {
   product_name: "", short_name: "", category: "", subcategory: "",
