@@ -8,14 +8,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { SkuBuilder } from "@/components/SkuBuilder";
+import { AliasManager } from "@/components/AliasManager";
 
 const empty = {
-  sku: "", product_name: "", short_name: "", category: "", subcategory: "",
+  product_name: "", short_name: "", category: "", subcategory: "",
   product_type: "", description: "", short_description: "", pack_size: "",
   net_weight_g: "", gross_weight_g: "", shelf_life_days: "", storage_instructions: "",
   hsn_code: "", gst_rate: "", mrp: "", b2b_price: "", export_price: "",
   currency: "INR", moq_text: "", carton_logic: "", hero_image_url: "",
   is_active: true, is_catalogue_ready: false,
+  sku: null, sku_locked: true,
+  division_code: null, category_code: null, subcategory_code: null, packaging_code: null,
+  legacy_sku: null,
 };
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
@@ -26,6 +32,8 @@ const ProductEdit = () => {
   const { id } = useParams();
   const isNew = !id || id === "new";
   const nav = useNavigate();
+  const { roles } = useAuth();
+  const canOverride = roles.includes("owner") || roles.includes("admin");
   const [form, setForm] = useState<any>(empty);
   const [loading, setLoading] = useState(false);
 
@@ -34,10 +42,13 @@ const ProductEdit = () => {
   }, [id, isNew]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
+  const patch = (p: any) => setForm((f: any) => ({ ...f, ...p }));
 
   const save = async () => {
+    if (!form.sku) return toast.error("Generate a SKU before saving.");
+    if (!form.product_name) return toast.error("Product name is required.");
     setLoading(true);
-    const payload = { ...form };
+    const payload: any = { ...form };
     ["net_weight_g","gross_weight_g","shelf_life_days","gst_rate","mrp","b2b_price","export_price"].forEach((k) => {
       payload[k] = payload[k] === "" || payload[k] == null ? null : Number(payload[k]);
     });
@@ -58,16 +69,19 @@ const ProductEdit = () => {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <div className="card-elevated p-6 grid sm:grid-cols-2 gap-4">
-            <Field label="SKU *"><Input value={form.sku} onChange={(e) => set("sku", e.target.value)} /></Field>
             <Field label="Product Name *"><Input value={form.product_name} onChange={(e) => set("product_name", e.target.value)} /></Field>
             <Field label="Short Name"><Input value={form.short_name ?? ""} onChange={(e) => set("short_name", e.target.value)} /></Field>
             <Field label="Product Type"><Input value={form.product_type ?? ""} onChange={(e) => set("product_type", e.target.value)} /></Field>
-            <Field label="Category"><Input value={form.category ?? ""} onChange={(e) => set("category", e.target.value)} /></Field>
-            <Field label="Subcategory"><Input value={form.subcategory ?? ""} onChange={(e) => set("subcategory", e.target.value)} /></Field>
-            <Field label="Short description"><Input value={form.short_description ?? ""} onChange={(e) => set("short_description", e.target.value)} /></Field>
+            <Field label="Display Category"><Input value={form.category ?? ""} onChange={(e) => set("category", e.target.value)} /></Field>
+            <Field label="Display Subcategory"><Input value={form.subcategory ?? ""} onChange={(e) => set("subcategory", e.target.value)} /></Field>
             <Field label="Hero image URL"><Input value={form.hero_image_url ?? ""} onChange={(e) => set("hero_image_url", e.target.value)} placeholder="https://…" /></Field>
+            <div className="sm:col-span-2"><Field label="Short description"><Input value={form.short_description ?? ""} onChange={(e) => set("short_description", e.target.value)} /></Field></div>
             <div className="sm:col-span-2"><Field label="Description"><Textarea rows={4} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} /></Field></div>
           </div>
+
+          <SkuBuilder value={form} canOverride={canOverride} onChange={patch} />
+
+          {!isNew && <AliasManager productId={id!} productName={form.product_name ?? ""} />}
 
           <div className="card-elevated p-6">
             <h3 className="font-display text-xl mb-4">Pack & weight</h3>
@@ -113,8 +127,8 @@ const ProductEdit = () => {
           </div>
 
           <div className="card-elevated p-6 bg-accent-soft/40">
-            <div className="text-xs uppercase tracking-wider text-accent-foreground/80 mb-2">AI Studio · coming next</div>
-            <p className="text-sm">Auto-fill description, ingredients, tags and label data from a single hero photo. Reviewed by you before publish.</p>
+            <div className="text-xs uppercase tracking-wider text-accent-foreground/80 mb-2">API integration note</div>
+            <p className="text-sm">SKU is the permanent system identity used by Oasis Central, B2B Portal, label & barcode tools, and all future APIs. Aliases are search helpers only — never use alias text as an external reference.</p>
           </div>
         </div>
       </div>
