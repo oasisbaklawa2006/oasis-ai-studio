@@ -477,6 +477,124 @@ export type Database = {
           },
         ]
       }
+      product_bom_items: {
+        Row: {
+          child_product_id: string | null
+          component_name: string | null
+          component_type: string
+          cost_per_unit: number | null
+          created_at: string
+          id: string
+          internal_component_only: boolean
+          is_individually_saleable: boolean
+          is_packaging_component: boolean
+          is_private_label_component: boolean
+          issue_to_department: string | null
+          lead_time_days: number | null
+          notes: string | null
+          parent_product_id: string
+          production_department: string | null
+          quantity: number
+          required_before_assembly: boolean
+          saleable_product_id: string | null
+          show_in_pdf_catalogue: boolean
+          show_in_public_catalogue: boolean
+          show_on_label: boolean
+          show_to_customer: boolean
+          sort_order: number
+          source_department: string | null
+          stock_check_required: boolean
+          total_cost: number | null
+          unit: string
+          updated_at: string
+          visibility_scope: string
+        }
+        Insert: {
+          child_product_id?: string | null
+          component_name?: string | null
+          component_type?: string
+          cost_per_unit?: number | null
+          created_at?: string
+          id?: string
+          internal_component_only?: boolean
+          is_individually_saleable?: boolean
+          is_packaging_component?: boolean
+          is_private_label_component?: boolean
+          issue_to_department?: string | null
+          lead_time_days?: number | null
+          notes?: string | null
+          parent_product_id: string
+          production_department?: string | null
+          quantity?: number
+          required_before_assembly?: boolean
+          saleable_product_id?: string | null
+          show_in_pdf_catalogue?: boolean
+          show_in_public_catalogue?: boolean
+          show_on_label?: boolean
+          show_to_customer?: boolean
+          sort_order?: number
+          source_department?: string | null
+          stock_check_required?: boolean
+          total_cost?: number | null
+          unit?: string
+          updated_at?: string
+          visibility_scope?: string
+        }
+        Update: {
+          child_product_id?: string | null
+          component_name?: string | null
+          component_type?: string
+          cost_per_unit?: number | null
+          created_at?: string
+          id?: string
+          internal_component_only?: boolean
+          is_individually_saleable?: boolean
+          is_packaging_component?: boolean
+          is_private_label_component?: boolean
+          issue_to_department?: string | null
+          lead_time_days?: number | null
+          notes?: string | null
+          parent_product_id?: string
+          production_department?: string | null
+          quantity?: number
+          required_before_assembly?: boolean
+          saleable_product_id?: string | null
+          show_in_pdf_catalogue?: boolean
+          show_in_public_catalogue?: boolean
+          show_on_label?: boolean
+          show_to_customer?: boolean
+          sort_order?: number
+          source_department?: string | null
+          stock_check_required?: boolean
+          total_cost?: number | null
+          unit?: string
+          updated_at?: string
+          visibility_scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_bom_items_child_product_id_fkey"
+            columns: ["child_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_bom_items_parent_product_id_fkey"
+            columns: ["parent_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_bom_items_saleable_product_id_fkey"
+            columns: ["saleable_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_ingredients: {
         Row: {
           display_order: number | null
