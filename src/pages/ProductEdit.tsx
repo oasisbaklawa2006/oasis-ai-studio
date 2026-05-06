@@ -13,6 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { SkuBuilder } from "@/components/SkuBuilder";
 import { AliasManager } from "@/components/AliasManager";
 import { ProductMediaUploader } from "@/components/ProductMediaUploader";
+import { BomBuilder } from "@/components/BomBuilder";
 import { AlertTriangle } from "lucide-react";
 
 const PRODUCT_CLASSES = [
