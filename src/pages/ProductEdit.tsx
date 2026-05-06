@@ -84,6 +84,15 @@ const ProductEdit = () => {
 
           {!isNew && <AliasManager productId={id!} productName={form.product_name ?? ""} />}
 
+          {!isNew && (
+            <ProductMediaUploader
+              productId={id!}
+              productSku={form.sku}
+              currentHero={form.hero_image_url}
+              onHeroChange={(url) => set("hero_image_url", url)}
+            />
+          )}
+
           <div className="card-elevated p-6">
             <h3 className="font-display text-xl mb-4">Pack & weight</h3>
             <div className="grid sm:grid-cols-3 gap-4">
