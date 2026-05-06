@@ -90,3 +90,13 @@
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
   }
 }
+
+@media print {
+  .no-print, aside, header.lg\:hidden, nav { display: none !important; }
+  body, .min-h-screen { background: white !important; }
+  main { padding: 0 !important; max-width: 100% !important; }
+  .card-elevated { box-shadow: none !important; border: 1px solid #ddd !important; break-inside: avoid; }
+  .print-page { padding: 24px; }
+  .print-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
+  a[href]:after { content: ""; }
+}

@@ -93,6 +93,7 @@ export type Database = {
       }
       catalogues: {
         Row: {
+          archived_at: string | null
           catalogue_type: string | null
           client_name: string | null
           cover_image_url: string | null
@@ -103,14 +104,19 @@ export type Database = {
           intro_text: string | null
           is_published: boolean | null
           language: string | null
+          last_previewed_at: string | null
           price_visibility: string | null
           public_slug: string | null
+          published_at: string | null
+          status: string
           subtitle: string | null
           theme: string | null
           title: string
+          unpublished_at: string | null
           updated_at: string | null
         }
         Insert: {
+          archived_at?: string | null
           catalogue_type?: string | null
           client_name?: string | null
           cover_image_url?: string | null
@@ -121,14 +127,19 @@ export type Database = {
           intro_text?: string | null
           is_published?: boolean | null
           language?: string | null
+          last_previewed_at?: string | null
           price_visibility?: string | null
           public_slug?: string | null
+          published_at?: string | null
+          status?: string
           subtitle?: string | null
           theme?: string | null
           title: string
+          unpublished_at?: string | null
           updated_at?: string | null
         }
         Update: {
+          archived_at?: string | null
           catalogue_type?: string | null
           client_name?: string | null
           cover_image_url?: string | null
@@ -139,11 +150,15 @@ export type Database = {
           intro_text?: string | null
           is_published?: boolean | null
           language?: string | null
+          last_previewed_at?: string | null
           price_visibility?: string | null
           public_slug?: string | null
+          published_at?: string | null
+          status?: string
           subtitle?: string | null
           theme?: string | null
           title?: string
+          unpublished_at?: string | null
           updated_at?: string | null
         }
         Relationships: []
@@ -294,6 +309,8 @@ export type Database = {
           customer_care: string | null
           fssai_license: string | null
           id: string
+          locked_at: string | null
+          locked_by: string | null
           manufacturer: string | null
           mfg_date: string | null
           mrp: number | null
@@ -310,6 +327,8 @@ export type Database = {
           customer_care?: string | null
           fssai_license?: string | null
           id?: string
+          locked_at?: string | null
+          locked_by?: string | null
           manufacturer?: string | null
           mfg_date?: string | null
           mrp?: number | null
@@ -326,6 +345,8 @@ export type Database = {
           customer_care?: string | null
           fssai_license?: string | null
           id?: string
+          locked_at?: string | null
+          locked_by?: string | null
           manufacturer?: string | null
           mfg_date?: string | null
           mrp?: number | null

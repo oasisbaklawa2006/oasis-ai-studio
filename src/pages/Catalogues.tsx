@@ -62,23 +62,31 @@ const Catalogues = () => {
         </Dialog>} />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((c) => (
-          <div key={c.id} className="card-elevated p-5">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
-                <div className="font-display text-xl">{c.title}</div>
-                <div className="text-xs text-muted-foreground">{c.subtitle}</div>
+        {items.map((c) => {
+          const status = c.status ?? (c.is_published ? "published" : "draft");
+          const tone =
+            status === "published" ? "bg-success/10 text-success" :
+            status === "internal_review" ? "bg-warning/10 text-warning" :
+            status === "archived" ? "bg-destructive/10 text-destructive" :
+            "bg-muted text-muted-foreground";
+          return (
+            <div key={c.id} className="card-elevated p-5">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="min-w-0">
+                  <div className="font-display text-xl truncate">{c.title}</div>
+                  <div className="text-xs text-muted-foreground truncate">{c.subtitle}</div>
+                </div>
+                <span className={`badge-soft capitalize ${tone}`}>{status.replace(/_/g, " ")}</span>
               </div>
-              <span className={`badge-soft ${c.is_published ? "bg-success/10 text-success" : "bg-muted text-muted-foreground"}`}>{c.is_published ? "Live" : "Draft"}</span>
+              {c.client_name && <div className="text-xs mb-2">For: <span className="font-medium">{c.client_name}</span></div>}
+              <div className="text-xs text-muted-foreground capitalize mb-4">{c.catalogue_type?.replace(/_/g, " ")} · {c.theme?.replace(/_/g, " ")}</div>
+              <div className="flex gap-2">
+                <Button asChild size="sm" variant="outline" className="flex-1"><Link to={`/catalogues/${c.id}`}>Manage</Link></Button>
+                {c.public_slug && status === "published" && <Button asChild size="sm" variant="ghost"><a href={`/c/${c.public_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}
+              </div>
             </div>
-            {c.client_name && <div className="text-xs mb-2">For: <span className="font-medium">{c.client_name}</span></div>}
-            <div className="text-xs text-muted-foreground capitalize mb-4">{c.catalogue_type.replace(/_/g," ")} · {c.theme.replace(/_/g," ")}</div>
-            <div className="flex gap-2">
-              <Button asChild size="sm" variant="outline" className="flex-1"><Link to={`/catalogues/${c.id}`}>Manage</Link></Button>
-              {c.public_slug && <Button asChild size="sm" variant="ghost"><a href={`/c/${c.public_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" /></a></Button>}
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {items.length === 0 && <div className="col-span-full text-center text-sm text-muted-foreground py-12">No catalogues yet.</div>}
       </div>
     </>
