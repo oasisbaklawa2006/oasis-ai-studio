@@ -1301,6 +1301,23 @@ export type Database = {
         Returns: string
       }
       get_current_user_roles: { Args: never; Returns: string[] }
+      get_public_catalogue_channel_data: {
+        Args: { _slug: string }
+        Returns: {
+          catalogue_id: string
+          currency: string
+          discount_percent: number
+          moq_display_text: string
+          mrp: number
+          price_display_text: string
+          price_label: string
+          product_id: string
+          public_price: number
+          sku: string
+          target_customer_channel: string
+          uom: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

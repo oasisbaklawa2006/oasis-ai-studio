@@ -8,8 +8,7 @@ const PublicCatalogue = () => {
   const { slug } = useParams();
   const [cat, setCat] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
-  const [pricingByProduct, setPricingByProduct] = useState<Record<string, any>>({});
-  const [moqByProduct, setMoqByProduct] = useState<Record<string, any>>({});
+  const [channelByProduct, setChannelByProduct] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,33 +17,12 @@ const PublicCatalogue = () => {
       if (!data) { setLoading(false); return; }
       setCat(data);
       const { data: cp } = await supabase.from("catalogue_products").select("*, products(*)").eq("catalogue_id", data.id).order("sort_order");
-      const list = cp ?? [];
-      setProducts(list);
+      setProducts(cp ?? []);
 
-      const channel = data.target_customer_channel ?? "price_hidden";
-      const productIds = list.map((x: any) => x.products?.id).filter(Boolean);
-
-      // Public catalogue may show approved channel pricing only — skip internal channels.
-      const SAFE = new Set(["retail","b2c","bulk","wholesale","horeca","b2b","distributor","export","private_label","corporate_gifting","wedding"]);
-      if (productIds.length && SAFE.has(channel) && data.show_price) {
-        const { data: prs } = await supabase.from("product_pricing_rules")
-          .select("product_id, price_channel, calculated_price, discount_percent, currency, uom, approval_status")
-          .in("product_id", productIds)
-          .eq("price_channel", channel)
-          .eq("approval_status", "approved");
-        const map: Record<string, any> = {};
-        (prs ?? []).forEach((r) => { map[r.product_id] = r; });
-        setPricingByProduct(map);
-      }
-      if (productIds.length && SAFE.has(channel)) {
-        const { data: mrs } = await supabase.from("product_moq_rules")
-          .select("product_id, channel, moq_applicable, moq_value, moq_uom, min_carton_qty, carton_logic")
-          .in("product_id", productIds)
-          .eq("channel", channel);
-        const map: Record<string, any> = {};
-        (mrs ?? []).forEach((r) => { map[r.product_id] = r; });
-        setMoqByProduct(map);
-      }
+      const { data: rpc } = await supabase.rpc("get_public_catalogue_channel_data", { _slug: slug as string });
+      const map: Record<string, any> = {};
+      (rpc ?? []).forEach((r: any) => { map[r.product_id] = r; });
+      setChannelByProduct(map);
       setLoading(false);
     })();
   }, [slug]);
@@ -65,23 +43,19 @@ const PublicCatalogue = () => {
   const waText = encodeURIComponent(`Hello! I'd like to inquire about the ${cat.title} catalogue: ${url}`);
 
   const renderPrice = (p: any) => {
-    const rule = pricingByProduct[p.id];
-    if (showPrice && rule?.calculated_price != null) {
-      return <div className="mt-3 font-display text-lg gold-text">{rule.currency || "₹"} {rule.calculated_price} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">{priceLabel}</span></div>;
+    const r = channelByProduct[p.id];
+    if (showPrice && r?.public_price != null) {
+      return <div className="mt-3 font-display text-lg gold-text">{r.currency || "₹"} {r.public_price} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">{r.price_label || priceLabel}</span>{showDiscount && r.discount_percent ? <span className="text-[10px] text-success ml-1">-{r.discount_percent}%</span> : null}</div>;
     }
-    if (showMrp && p.mrp) {
-      return <div className="mt-3 font-display text-lg gold-text">₹ {p.mrp} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">MRP</span>{showDiscount && rule?.discount_percent ? <span className="text-[10px] text-success ml-1">-{rule.discount_percent}%</span> : null}</div>;
+    if (showMrp && (r?.mrp ?? p.mrp)) {
+      return <div className="mt-3 font-display text-lg gold-text">₹ {r?.mrp ?? p.mrp} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">MRP</span></div>;
     }
-    return <div className="mt-3 text-sm text-muted-foreground italic">Price on request</div>;
+    return <div className="mt-3 text-sm text-muted-foreground italic">{r?.price_display_text || "Price on request"}</div>;
   };
 
   const renderMoq = (p: any) => {
-    const rule = moqByProduct[p.id];
-    if (rule) {
-      if (rule.moq_applicable === false) return "MOQ not applicable";
-      if (rule.moq_value) return `MOQ: ${rule.moq_value} ${rule.moq_uom || ""}`.trim();
-    }
-    return "MOQ depends on order type. Contact sales for details.";
+    const r = channelByProduct[p.id];
+    return r?.moq_display_text || "MOQ depends on order type. Contact sales for details.";
   };
 
   return (
