@@ -285,6 +285,45 @@ export type Database = {
           },
         ]
       }
+      import_logs: {
+        Row: {
+          created_at: string
+          id: string
+          import_status: string | null
+          pack_size: string | null
+          product_id: string | null
+          product_name: string | null
+          source_document: string | null
+          source_page: number | null
+          source_pdf_sku: string | null
+          warning_notes: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          import_status?: string | null
+          pack_size?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          source_document?: string | null
+          source_page?: number | null
+          source_pdf_sku?: string | null
+          warning_notes?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          import_status?: string | null
+          pack_size?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          source_document?: string | null
+          source_page?: number | null
+          source_pdf_sku?: string | null
+          warning_notes?: string | null
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           allergen_group: string | null
@@ -883,15 +922,19 @@ export type Database = {
       products: {
         Row: {
           approximate_piece_weight_g: number | null
+          avg_qty_per_tray_g: number | null
           b2b_price: number | null
           b2b_price_basis: string | null
+          b2b_price_inr: number | null
           b2b_uom: string | null
           bom_required: boolean | null
+          carton_dimensions_cm: string | null
           carton_logic: string | null
           carton_qty: number | null
           carton_uom: string | null
           category: string | null
           category_code: string | null
+          cbm: number | null
           color_finish_notes: string | null
           created_at: string | null
           currency: string | null
@@ -904,14 +947,18 @@ export type Database = {
           dimension_w_cm: number | null
           division_code: string | null
           export_price: number | null
+          export_price_usd: number | null
           external_reference_code: string | null
           fixed_carton_required: boolean | null
           frozen_shelf_life_days: number | null
+          grammage_g: number | null
           gross_weight_g: number | null
+          gross_weight_kg: number | null
           gst_rate: number | null
           hero_image_url: string | null
           hsn_code: string | null
           id: string
+          import_confidence: string | null
           increment_uom: string | null
           increment_value: number | null
           is_active: boolean | null
@@ -933,7 +980,13 @@ export type Database = {
           operational_notes: string | null
           pack_size: string | null
           packaging_code: string | null
+          pcs_per_carton: number | null
           pcs_per_pack: number | null
+          pdf_primary_packaging: string | null
+          pdf_secondary_packaging: string | null
+          pdf_shelf_life: string | null
+          pdf_status: string | null
+          pdf_storage_condition: string | null
           pieces_per_kg: number | null
           post_processing_shelf_life_days: number | null
           price_basis: string | null
@@ -945,9 +998,11 @@ export type Database = {
           private_label_moq_uom: string | null
           private_label_upfront_cost: number | null
           product_class: string | null
+          product_dimensions_cm: string | null
           product_name: string
           product_type: string | null
           production_department: string | null
+          qty_per_carton_kg: number | null
           retail_price_basis: string | null
           retail_uom: string | null
           serial_no: number | null
@@ -958,6 +1013,11 @@ export type Database = {
           sku_generated_at: string | null
           sku_locked: boolean
           sku_version: number
+          source_collection: string | null
+          source_document: string | null
+          source_notes: string | null
+          source_page: number | null
+          source_pdf_sku: string | null
           storage_instructions: string | null
           subcategory: string | null
           subcategory_code: string | null
@@ -968,15 +1028,19 @@ export type Database = {
         }
         Insert: {
           approximate_piece_weight_g?: number | null
+          avg_qty_per_tray_g?: number | null
           b2b_price?: number | null
           b2b_price_basis?: string | null
+          b2b_price_inr?: number | null
           b2b_uom?: string | null
           bom_required?: boolean | null
+          carton_dimensions_cm?: string | null
           carton_logic?: string | null
           carton_qty?: number | null
           carton_uom?: string | null
           category?: string | null
           category_code?: string | null
+          cbm?: number | null
           color_finish_notes?: string | null
           created_at?: string | null
           currency?: string | null
@@ -989,14 +1053,18 @@ export type Database = {
           dimension_w_cm?: number | null
           division_code?: string | null
           export_price?: number | null
+          export_price_usd?: number | null
           external_reference_code?: string | null
           fixed_carton_required?: boolean | null
           frozen_shelf_life_days?: number | null
+          grammage_g?: number | null
           gross_weight_g?: number | null
+          gross_weight_kg?: number | null
           gst_rate?: number | null
           hero_image_url?: string | null
           hsn_code?: string | null
           id?: string
+          import_confidence?: string | null
           increment_uom?: string | null
           increment_value?: number | null
           is_active?: boolean | null
@@ -1018,7 +1086,13 @@ export type Database = {
           operational_notes?: string | null
           pack_size?: string | null
           packaging_code?: string | null
+          pcs_per_carton?: number | null
           pcs_per_pack?: number | null
+          pdf_primary_packaging?: string | null
+          pdf_secondary_packaging?: string | null
+          pdf_shelf_life?: string | null
+          pdf_status?: string | null
+          pdf_storage_condition?: string | null
           pieces_per_kg?: number | null
           post_processing_shelf_life_days?: number | null
           price_basis?: string | null
@@ -1030,9 +1104,11 @@ export type Database = {
           private_label_moq_uom?: string | null
           private_label_upfront_cost?: number | null
           product_class?: string | null
+          product_dimensions_cm?: string | null
           product_name: string
           product_type?: string | null
           production_department?: string | null
+          qty_per_carton_kg?: number | null
           retail_price_basis?: string | null
           retail_uom?: string | null
           serial_no?: number | null
@@ -1043,6 +1119,11 @@ export type Database = {
           sku_generated_at?: string | null
           sku_locked?: boolean
           sku_version?: number
+          source_collection?: string | null
+          source_document?: string | null
+          source_notes?: string | null
+          source_page?: number | null
+          source_pdf_sku?: string | null
           storage_instructions?: string | null
           subcategory?: string | null
           subcategory_code?: string | null
@@ -1053,15 +1134,19 @@ export type Database = {
         }
         Update: {
           approximate_piece_weight_g?: number | null
+          avg_qty_per_tray_g?: number | null
           b2b_price?: number | null
           b2b_price_basis?: string | null
+          b2b_price_inr?: number | null
           b2b_uom?: string | null
           bom_required?: boolean | null
+          carton_dimensions_cm?: string | null
           carton_logic?: string | null
           carton_qty?: number | null
           carton_uom?: string | null
           category?: string | null
           category_code?: string | null
+          cbm?: number | null
           color_finish_notes?: string | null
           created_at?: string | null
           currency?: string | null
@@ -1074,14 +1159,18 @@ export type Database = {
           dimension_w_cm?: number | null
           division_code?: string | null
           export_price?: number | null
+          export_price_usd?: number | null
           external_reference_code?: string | null
           fixed_carton_required?: boolean | null
           frozen_shelf_life_days?: number | null
+          grammage_g?: number | null
           gross_weight_g?: number | null
+          gross_weight_kg?: number | null
           gst_rate?: number | null
           hero_image_url?: string | null
           hsn_code?: string | null
           id?: string
+          import_confidence?: string | null
           increment_uom?: string | null
           increment_value?: number | null
           is_active?: boolean | null
@@ -1103,7 +1192,13 @@ export type Database = {
           operational_notes?: string | null
           pack_size?: string | null
           packaging_code?: string | null
+          pcs_per_carton?: number | null
           pcs_per_pack?: number | null
+          pdf_primary_packaging?: string | null
+          pdf_secondary_packaging?: string | null
+          pdf_shelf_life?: string | null
+          pdf_status?: string | null
+          pdf_storage_condition?: string | null
           pieces_per_kg?: number | null
           post_processing_shelf_life_days?: number | null
           price_basis?: string | null
@@ -1115,9 +1210,11 @@ export type Database = {
           private_label_moq_uom?: string | null
           private_label_upfront_cost?: number | null
           product_class?: string | null
+          product_dimensions_cm?: string | null
           product_name?: string
           product_type?: string | null
           production_department?: string | null
+          qty_per_carton_kg?: number | null
           retail_price_basis?: string | null
           retail_uom?: string | null
           serial_no?: number | null
@@ -1128,6 +1225,11 @@ export type Database = {
           sku_generated_at?: string | null
           sku_locked?: boolean
           sku_version?: number
+          source_collection?: string | null
+          source_document?: string | null
+          source_notes?: string | null
+          source_page?: number | null
+          source_pdf_sku?: string | null
           storage_instructions?: string | null
           subcategory?: string | null
           subcategory_code?: string | null
