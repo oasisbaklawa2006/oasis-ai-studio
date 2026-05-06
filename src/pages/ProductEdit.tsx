@@ -152,6 +152,9 @@ const ProductEdit = () => {
   const showCustomization = cls === "gift_hamper" || cls === "ready_pack" || cls === "service_or_customization";
   const showDimensions = cls === "packaging_decoration_material" || form.fixed_carton_required;
   const showFrozen = cls === "semi_prepared_frozen";
+  const canManageBom = roles.includes("owner") || roles.includes("admin") || roles.includes("product_manager");
+  const bomRelevant = cls === "ready_pack" || cls === "gift_hamper" || cls === "packaging_decoration_material" || !!form.bom_required;
+  const showBom = !isNew && (bomRelevant || canManageBom);
 
   const missing = useMemo(() => {
     const m: string[] = [];
