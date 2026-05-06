@@ -219,6 +219,7 @@ const ProductEdit = () => {
               {showCustomization && <TabsTrigger value="customisation">Customisation</TabsTrigger>}
               {showDimensions && <TabsTrigger value="dimensions">Dimensions</TabsTrigger>}
               {showFrozen && <TabsTrigger value="frozen">Frozen</TabsTrigger>}
+              {showBom && <TabsTrigger value="bom">BOM</TabsTrigger>}
               <TabsTrigger value="compliance">Compliance</TabsTrigger>
               <TabsTrigger value="ops">Ops Notes</TabsTrigger>
             </TabsList>
