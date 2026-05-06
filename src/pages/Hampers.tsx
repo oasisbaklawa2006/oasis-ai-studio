@@ -83,11 +83,17 @@ const Hampers = () => {
             </div>
             {active === h.id ? (
               <div className="border-t pt-3 space-y-2">
-                <select className="w-full h-9 px-2 rounded border bg-background text-sm" value={item.child_product_id} onChange={(e)=>setItem({...item,child_product_id:e.target.value})}>
-                  <option value="">— Custom component —</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.product_name}</option>)}
-                </select>
-                {!item.child_product_id && <Input placeholder="Component name (e.g. Silk ribbon)" value={item.component_name} onChange={(e)=>setItem({...item,component_name:e.target.value})} />}
+                {picked ? (
+                  <div className="flex items-center gap-2 p-2 rounded border bg-muted/30 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <div className="truncate font-medium">{picked.name}</div>
+                    </div>
+                    <button onClick={() => setPicked(null)} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
+                  </div>
+                ) : (
+                  <ProductPicker placeholder="Search product or leave blank for custom…" onPick={(p) => setPicked({ id: p.id, name: p.product_name })} />
+                )}
+                {!picked && <Input placeholder="Custom component name (e.g. Silk ribbon)" value={item.component_name} onChange={(e) => setItem({ ...item, component_name: e.target.value })} />}
                 <div className="grid grid-cols-2 gap-2">
                   <Input type="number" placeholder="Qty" value={item.quantity} onChange={(e)=>setItem({...item,quantity:Number(e.target.value)})} />
                   <Input placeholder="Unit" value={item.unit} onChange={(e)=>setItem({...item,unit:e.target.value})} />
