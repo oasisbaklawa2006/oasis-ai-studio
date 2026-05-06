@@ -111,6 +111,25 @@ const CatalogueDetail = () => {
             </div>
           )}
 
+          {canWrite && (
+            <div className="card-elevated p-5 space-y-4 no-print">
+              <h3 className="font-display text-xl">Customer channel & price display</h3>
+              <p className="text-xs text-muted-foreground">Catalogue shows only the selected customer channel's price. Internal/franchisee/own-outlet prices must never be shown publicly.</p>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Target customer channel</Label>
+                  <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={c.target_customer_channel ?? "price_hidden"} onChange={(e) => { setC({ ...c, target_customer_channel: e.target.value }); update({ target_customer_channel: e.target.value }); }}>
+                    {["retail","b2c","bulk","wholesale","horeca","b2b","distributor","franchisee","own_outlet","export","private_label","corporate_gifting","wedding","price_hidden"].map((ch) => <option key={ch} value={ch}>{ch.replace(/_/g," ")}</option>)}
+                  </select>
+                </div>
+                <div><Label className="text-xs">Price label (e.g. "B2B price")</Label><Input value={c.show_price_label ?? ""} onChange={(e) => setC({ ...c, show_price_label: e.target.value })} onBlur={(e) => update({ show_price_label: e.target.value || null })} /></div>
+                <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show price</Label><input type="checkbox" checked={!!c.show_price} onChange={(e) => { setC({ ...c, show_price: e.target.checked }); update({ show_price: e.target.checked }); }} /></div>
+                <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show MRP</Label><input type="checkbox" checked={!!c.show_mrp} onChange={(e) => { setC({ ...c, show_mrp: e.target.checked }); update({ show_mrp: e.target.checked }); }} /></div>
+                <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show discount %</Label><input type="checkbox" checked={!!c.show_discount} onChange={(e) => { setC({ ...c, show_discount: e.target.checked }); update({ show_discount: e.target.checked }); }} /></div>
+              </div>
+            </div>
+          )}
+
           {/* Print view */}
           <div className="hidden print:block print-page">
             <div className="text-center mb-6">
