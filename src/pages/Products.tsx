@@ -1,31 +1,108 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, Image as ImageIcon, Tag as TagIcon, Copy } from "lucide-react";
+import {
+  Plus, Search, Image as ImageIcon, Tag as TagIcon, Copy,
+  Filter, X, Package, Layers, Tag, Boxes,
+} from "lucide-react";
 import { searchProductsWithAliases, type ProductSearchResult } from "@/lib/productSearch";
 import { toast } from "sonner";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 
-const Badge = ({ tone, children }: { tone: "ok" | "warn" | "muted"; children: React.ReactNode }) => {
+const PRODUCT_CLASSES = [
+  { v: "bulk_loose_product", label: "Bulk / Loose" },
+  { v: "ready_pack", label: "Ready pack" },
+  { v: "gift_hamper", label: "Gift / Hamper" },
+  { v: "packaging_decoration_material", label: "Packaging / Deco" },
+  { v: "semi_prepared_frozen", label: "Frozen / Semi-prep" },
+  { v: "service_or_customization", label: "Service / Custom" },
+];
+const MAIN_DEPTS = [
+  { v: "packing_assembly", label: "Packing & Assembly" },
+  { v: "third_party_goods_store", label: "3rd Party Goods Store" },
+  { v: "ready_goods_store", label: "Ready Goods Store" },
+];
+const PROD_DEPTS = [
+  { v: "arabic_sweets", label: "Arabic Sweets" },
+  { v: "fusion_sweets", label: "Fusion Sweets" },
+  { v: "chocolates_confectionery", label: "Chocolates & Confectionery" },
+  { v: "dragees", label: "Dragees" },
+  { v: "seasoned_nuts_mixes", label: "Seasoned Nuts & Mixes" },
+  { v: "bakery", label: "Bakery" },
+];
+const UOMS = ["kg", "pcs", "grams", "box", "tray", "carton"];
+const LABEL_STATUSES = ["draft", "needs_review", "approved", "locked", "rejected"];
+const SORTS = [
+  { v: "recent", label: "Recently created" },
+  { v: "name", label: "Name A–Z" },
+  { v: "class", label: "Product class" },
+  { v: "dept", label: "Department" },
+  { v: "ready", label: "Catalogue-ready first" },
+  { v: "label_ok", label: "Label approved first" },
+];
+
+const labelOf = (list: { v: string; label: string }[], v?: string | null) =>
+  list.find((x) => x.v === v)?.label ?? v ?? "";
+
+const Badge = ({ tone = "muted", children, title }: { tone?: "ok" | "warn" | "muted" | "accent" | "primary"; children: React.ReactNode; title?: string }) => {
   const map = {
     ok: "bg-success/10 text-success",
     warn: "bg-warning/10 text-warning",
     muted: "bg-muted text-muted-foreground",
+    accent: "bg-accent-soft text-accent-foreground",
+    primary: "bg-primary/10 text-primary",
   } as const;
-  return <span className={`badge-soft ${map[tone]}`}>{children}</span>;
+  return <span title={title} className={`badge-soft ${map[tone]}`}>{children}</span>;
+};
+
+const moqSummary = (p: any): string | null => {
+  if (p.moq_rule_type === "not_applicable") return "MOQ: not applicable";
+  if (p.private_label_allowed && p.private_label_moq) return `MOQ: ${p.private_label_moq} ${p.private_label_moq_uom || "pcs"} private label`;
+  if (p.fixed_carton_required && p.carton_qty) return `MOQ: closed carton ${p.carton_qty} ${p.carton_uom || "pcs"}`;
+  if (p.moq_value) return `MOQ: ${p.moq_value} ${p.moq_uom || ""}`.trim();
+  if (p.moq_text) return `MOQ: ${p.moq_text}`;
+  return null;
+};
+
+const uomSummary = (p: any): string | null => {
+  if (p.b2b_uom && p.retail_uom) return `B2B: ${p.b2b_uom} · Retail: ${p.retail_uom}`;
+  if (p.primary_uom) return `UOM: ${p.primary_uom}`;
+  return null;
+};
+
+const deptSummary = (p: any): string | null => {
+  const main = labelOf(MAIN_DEPTS, p.main_department);
+  const prod = labelOf(PROD_DEPTS, p.production_department);
+  if (main && prod) return `${main} · ${prod}`;
+  return main || null;
 };
 
 const Products = () => {
   const [items, setItems] = useState<any[]>([]);
   const [results, setResults] = useState<ProductSearchResult[] | null>(null);
   const [q, setQ] = useState("");
+  const [rules, setRules] = useState<any[]>([]);
+
+  // SKU code filters (existing)
   const [div, setDiv] = useState("");
   const [cat, setCat] = useState("");
   const [pack, setPack] = useState("");
-  const [rules, setRules] = useState<any[]>([]);
+
+  // New Batch D filters
+  const [pclass, setPclass] = useState("");
+  const [mainDept, setMainDept] = useState("");
+  const [prodDept, setProdDept] = useState("");
+  const [uom, setUom] = useState("");
+  const [pl, setPl] = useState(""); // "yes" | "no" | ""
+  const [bom, setBom] = useState("");
+  const [carton, setCarton] = useState("");
+  const [ready, setReady] = useState(""); // "yes" | "no"
+  const [labelStatus, setLabelStatus] = useState("");
+  const [sort, setSort] = useState("recent");
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     supabase.from("products").select("*").order("created_at", { ascending: false }).then(({ data }) => setItems(data ?? []));
@@ -46,46 +123,146 @@ const Products = () => {
   if (results) results.forEach((r) => { if (r.matched_alias && !aliasById.has(r.id)) aliasById.set(r.id, r.matched_alias); });
   const ids = results ? new Set(results.map((r) => r.id)) : null;
 
-  const filtered = items.filter((p) => {
-    if (ids && !ids.has(p.id)) return false;
-    if (div && p.division_code !== div) return false;
-    if (cat && p.category_code !== cat) return false;
-    if (pack && p.packaging_code !== pack) return false;
-    return true;
-  });
+  const filtered = useMemo(() => {
+    let arr = items.filter((p) => {
+      if (ids && !ids.has(p.id)) return false;
+      if (div && p.division_code !== div) return false;
+      if (cat && p.category_code !== cat) return false;
+      if (pack && p.packaging_code !== pack) return false;
+      if (pclass && p.product_class !== pclass) return false;
+      if (mainDept && p.main_department !== mainDept) return false;
+      if (prodDept && p.production_department !== prodDept) return false;
+      if (uom && p.primary_uom !== uom) return false;
+      if (pl === "yes" && !p.private_label_allowed) return false;
+      if (pl === "no" && p.private_label_allowed) return false;
+      if (bom === "yes" && !p.bom_required) return false;
+      if (bom === "no" && p.bom_required) return false;
+      if (carton === "yes" && !p.fixed_carton_required) return false;
+      if (carton === "no" && p.fixed_carton_required) return false;
+      if (ready === "yes" && !p.is_catalogue_ready) return false;
+      if (ready === "no" && p.is_catalogue_ready) return false;
+      if (labelStatus && p.label_status !== labelStatus) return false;
+      return true;
+    });
+    switch (sort) {
+      case "name": arr = [...arr].sort((a, b) => (a.product_name || "").localeCompare(b.product_name || "")); break;
+      case "class": arr = [...arr].sort((a, b) => (a.product_class || "").localeCompare(b.product_class || "")); break;
+      case "dept": arr = [...arr].sort((a, b) => (a.main_department || "").localeCompare(b.main_department || "")); break;
+      case "ready": arr = [...arr].sort((a, b) => Number(!!b.is_catalogue_ready) - Number(!!a.is_catalogue_ready)); break;
+      case "label_ok": arr = [...arr].sort((a, b) => Number(b.label_status === "approved" || b.label_status === "locked") - Number(a.label_status === "approved" || a.label_status === "locked")); break;
+    }
+    return arr;
+  }, [items, ids, div, cat, pack, pclass, mainDept, prodDept, uom, pl, bom, carton, ready, labelStatus, sort]);
 
   const by = (t: string) => rules.filter((r) => r.code_type === t);
   const copy = (e: React.MouseEvent, sku: string) => { e.preventDefault(); navigator.clipboard.writeText(sku); toast.success("SKU copied"); };
 
+  const activeFilterCount = [div, cat, pack, pclass, mainDept, prodDept, uom, pl, bom, carton, ready, labelStatus].filter(Boolean).length;
+  const clearAll = () => {
+    setDiv(""); setCat(""); setPack("");
+    setPclass(""); setMainDept(""); setProdDept(""); setUom("");
+    setPl(""); setBom(""); setCarton(""); setReady(""); setLabelStatus("");
+  };
+
+  const sel = "h-9 px-2 rounded border bg-background text-xs";
+
   return (
     <>
-      <PageHeader title="Product Master" subtitle="The single source of truth for every Oasis product."
-        actions={<Button asChild><Link to="/products/new"><Plus className="h-4 w-4 mr-1" />New Product</Link></Button>} />
+      <PageHeader
+        title="Product Master"
+        subtitle="The single source of truth for every Oasis product."
+        actions={<Button asChild><Link to="/products/new"><Plus className="h-4 w-4 mr-1" />New Product</Link></Button>}
+      />
 
       <div className="card-elevated p-4 mb-6 space-y-3">
         <div className="flex items-center gap-3">
           <Search className="h-4 w-4 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, SKU, alias, misspelling, local name…" className="border-0 focus-visible:ring-0 px-0" />
-        </div>
-        <div className="grid grid-cols-3 gap-2">
-          <select className="h-9 px-2 rounded border bg-background text-xs" value={div} onChange={(e) => setDiv(e.target.value)}>
-            <option value="">All divisions</option>
-            {by("division").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
-          </select>
-          <select className="h-9 px-2 rounded border bg-background text-xs" value={cat} onChange={(e) => setCat(e.target.value)}>
-            <option value="">All categories</option>
-            {by("category").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
-          </select>
-          <select className="h-9 px-2 rounded border bg-background text-xs" value={pack} onChange={(e) => setPack(e.target.value)}>
-            <option value="">All packaging</option>
-            {by("packaging").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search by name, SKU, alias, misspelling, local name…"
+            className="border-0 focus-visible:ring-0 px-0"
+          />
+          <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)}>
+            <Filter className="h-3.5 w-3.5 mr-1" />
+            Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
+          </Button>
+          <select className={sel} value={sort} onChange={(e) => setSort(e.target.value)}>
+            {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
           </select>
         </div>
+
+        {showFilters && (
+          <div className="space-y-3 pt-2 border-t">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+              <select className={sel} value={pclass} onChange={(e) => setPclass(e.target.value)}>
+                <option value="">All product classes</option>
+                {PRODUCT_CLASSES.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
+              </select>
+              <select className={sel} value={mainDept} onChange={(e) => { setMainDept(e.target.value); if (e.target.value !== "ready_goods_store") setProdDept(""); }}>
+                <option value="">All main departments</option>
+                {MAIN_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+              </select>
+              <select className={sel} value={prodDept} onChange={(e) => setProdDept(e.target.value)}>
+                <option value="">All production depts</option>
+                {PROD_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+              </select>
+              <select className={sel} value={uom} onChange={(e) => setUom(e.target.value)}>
+                <option value="">All UOM</option>
+                {UOMS.map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
+              <select className={sel} value={pl} onChange={(e) => setPl(e.target.value)}>
+                <option value="">Private label: all</option>
+                <option value="yes">Private label: yes</option>
+                <option value="no">Private label: no</option>
+              </select>
+              <select className={sel} value={bom} onChange={(e) => setBom(e.target.value)}>
+                <option value="">BOM: all</option>
+                <option value="yes">BOM required</option>
+                <option value="no">No BOM</option>
+              </select>
+              <select className={sel} value={carton} onChange={(e) => setCarton(e.target.value)}>
+                <option value="">Carton: all</option>
+                <option value="yes">Fixed carton</option>
+                <option value="no">No fixed carton</option>
+              </select>
+              <select className={sel} value={ready} onChange={(e) => setReady(e.target.value)}>
+                <option value="">Catalogue: all</option>
+                <option value="yes">Catalogue ready</option>
+                <option value="no">Not ready</option>
+              </select>
+              <select className={sel} value={labelStatus} onChange={(e) => setLabelStatus(e.target.value)}>
+                <option value="">Label: all</option>
+                {LABEL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select className={sel} value={div} onChange={(e) => setDiv(e.target.value)}>
+                <option value="">All divisions</option>
+                {by("division").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+              </select>
+              <select className={sel} value={cat} onChange={(e) => setCat(e.target.value)}>
+                <option value="">All SKU categories</option>
+                {by("category").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+              </select>
+              <select className={sel} value={pack} onChange={(e) => setPack(e.target.value)}>
+                <option value="">All packaging</option>
+                {by("packaging").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+              </select>
+            </div>
+            {activeFilterCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearAll}>
+                <X className="h-3.5 w-3.5 mr-1" />Clear filters
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.map((p) => {
           const matched = aliasById.get(p.id);
+          const dept = deptSummary(p);
+          const uomS = uomSummary(p);
+          const moqS = moqSummary(p);
           return (
             <Link to={`/products/${p.id}`} key={p.id} className="card-elevated p-5 group">
               <div className="aspect-[4/3] rounded-lg bg-muted mb-4 flex items-center justify-center overflow-hidden">
@@ -93,6 +270,7 @@ const Products = () => {
                   ? <img src={p.hero_image_url} alt={p.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   : <ImageIcon className="h-10 w-10 text-muted-foreground/40" />}
               </div>
+
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="min-w-0">
                   <div className="font-display text-xl leading-tight truncate">{p.product_name}</div>
@@ -103,17 +281,53 @@ const Products = () => {
                 </div>
                 {p.is_sample && <span className="badge-soft bg-accent-soft text-accent-foreground">Sample</span>}
               </div>
+
               {matched && <div className="text-[11px] text-accent-foreground/80 mb-2">Matched by alias: <span className="font-medium">{matched}</span></div>}
-              <div className="text-xs text-muted-foreground mb-3">{p.pack_size || "—"} · {p.shelf_life_days ? `${p.shelf_life_days}d shelf` : "—"}</div>
+
+              {/* Identity + ops badges */}
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {p.product_class && <Badge tone="primary"><Layers className="h-3 w-3" />{labelOf(PRODUCT_CLASSES, p.product_class)}</Badge>}
+                {dept && <Badge tone="muted"><Package className="h-3 w-3" />{dept}</Badge>}
+              </div>
+
+              {/* Commercial line */}
+              <div className="text-xs text-muted-foreground space-y-0.5 mb-3">
+                {uomS && <div>{uomS}</div>}
+                {moqS && <div>{moqS}</div>}
+                {!uomS && !moqS && <div>{p.pack_size || "—"} · {p.shelf_life_days ? `${p.shelf_life_days}d shelf` : "—"}</div>}
+              </div>
+
+              {/* Flags + readiness */}
               <div className="flex flex-wrap gap-1.5">
-                <Badge tone={p.media_status === "approved" || p.hero_image_url ? "ok" : "warn"}><ImageIcon className="h-3 w-3" />{p.hero_image_url ? "image" : p.media_status}</Badge>
-                <Badge tone={p.label_status === "approved" || p.label_status === "locked" ? "ok" : "warn"}><TagIcon className="h-3 w-3" />{p.label_status}</Badge>
+                {p.private_label_allowed && <Badge tone="accent"><Tag className="h-3 w-3" />Private label</Badge>}
+                {p.bom_required && <Badge tone="accent"><Boxes className="h-3 w-3" />BOM</Badge>}
+                {p.fixed_carton_required && <Badge tone="muted"><Package className="h-3 w-3" />Closed carton</Badge>}
+                <Badge tone={p.media_status === "approved" || p.hero_image_url ? "ok" : "warn"}>
+                  <ImageIcon className="h-3 w-3" />{p.hero_image_url ? "image" : (p.media_status || "missing")}
+                </Badge>
+                <Badge tone={p.label_status === "approved" || p.label_status === "locked" ? "ok" : "warn"}>
+                  <TagIcon className="h-3 w-3" />{p.label_status || "draft"}
+                </Badge>
                 <ReadinessBadge product={p} compact />
               </div>
             </Link>
           );
         })}
-        {filtered.length === 0 && <div className="col-span-full text-muted-foreground text-sm py-12 text-center">No products match.</div>}
+
+        {filtered.length === 0 && (
+          <div className="col-span-full text-center py-12 space-y-3">
+            <div className="text-muted-foreground text-sm">
+              {q.trim()
+                ? "No products found by this name, SKU, or alias. Try another spelling."
+                : "No products match these filters."}
+            </div>
+            {activeFilterCount > 0 && (
+              <Button variant="outline" size="sm" onClick={clearAll}>
+                <X className="h-3.5 w-3.5 mr-1" />Clear filters
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     </>
   );
