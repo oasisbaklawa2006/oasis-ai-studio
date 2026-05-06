@@ -131,6 +131,26 @@ const CatalogueDetail = () => {
             </div>
           )}
 
+          {canWrite && (
+            <div className="card-elevated p-5 space-y-3 no-print">
+              <h3 className="font-display text-xl">Proposal notes & WhatsApp message</h3>
+              <p className="text-xs text-muted-foreground">These appear in the Proposal / PDF preview. Leave blank to use defaults.</p>
+              {[
+                ["proposal_validity_note", "Validity note"],
+                ["proposal_tax_note", "Tax / GST note"],
+                ["proposal_transport_note", "Transport note"],
+                ["proposal_customization_note", "Customization note"],
+                ["proposal_footer_note", "Footer note"],
+                ["proposal_whatsapp_message", "WhatsApp proposal message"],
+              ].map(([k, label]) => (
+                <div key={k}>
+                  <Label className="text-xs">{label}</Label>
+                  <Textarea rows={2} value={c[k] ?? ""} onChange={(e) => setC({ ...c, [k]: e.target.value })} onBlur={(e) => update({ [k]: e.target.value || null })} />
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Print view */}
           <div className="hidden print:block print-page">
             <div className="text-center mb-6">
