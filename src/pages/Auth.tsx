@@ -39,13 +39,15 @@ const Auth = () => {
     else toast.success("Account created. You can sign in.");
   };
 
-  const handleGoogle = async () => {
+  const handleOAuth = async (provider: "google" | "apple") => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
-    if (result.error) { toast.error(result.error.message ?? "Google sign-in failed"); setLoading(false); return; }
+    const result = await lovable.auth.signInWithOAuth(provider, { redirect_uri: window.location.origin });
+    if (result.error) { toast.error(result.error.message ?? "Sign-in failed"); setLoading(false); return; }
     if (result.redirected) return;
     navigate("/");
   };
+  const handleGoogle = () => handleOAuth("google");
+  const handleApple = () => handleOAuth("apple");
 
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
@@ -109,10 +111,16 @@ const Auth = () => {
             </div>
           </div>
 
-          <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={handleGoogle}>
-            <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12s4.2 9.5 9.4 9.5c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.2-1.6H12z"/></svg>
-            Continue with Google
-          </Button>
+          <div className="space-y-2">
+            <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={handleGoogle}>
+              <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.4 14.6 2.5 12 2.5 6.8 2.5 2.6 6.7 2.6 12s4.2 9.5 9.4 9.5c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.2-1.6H12z"/></svg>
+              Continue with Google
+            </Button>
+            <Button type="button" variant="outline" className="w-full" disabled={loading} onClick={handleApple}>
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M16.365 1.43c0 1.14-.42 2.23-1.18 3.04-.81.86-2.13 1.52-3.21 1.43-.13-1.13.42-2.31 1.16-3.06.83-.85 2.24-1.49 3.23-1.41zM20.5 17.36c-.55 1.27-.81 1.84-1.52 2.96-.99 1.56-2.39 3.5-4.13 3.52-1.54.02-1.94-1-4.04-.99-2.1.01-2.54 1.01-4.08.99-1.74-.02-3.06-1.78-4.05-3.34C-.05 16.16-.34 11.07 1.4 8.32c1.24-1.96 3.2-3.11 5.04-3.11 1.88 0 3.06 1.03 4.61 1.03 1.5 0 2.42-1.03 4.59-1.03 1.65 0 3.4.9 4.64 2.46-4.08 2.24-3.42 8.07.22 9.69z"/></svg>
+              Continue with Apple
+            </Button>
+          </div>
         </div>
       </div>
     </div>
