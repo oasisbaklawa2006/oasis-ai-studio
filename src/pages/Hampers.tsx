@@ -19,15 +19,12 @@ const Hampers = () => {
   const [item, setItem] = useState({ component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
 
   const load = async () => {
-    const [h, p] = await Promise.all([
-      supabase.from("hampers").select("*").order("created_at",{ascending:false}),
-      supabase.from("products").select("id,product_name"),
-    ]);
-    setHampers(h.data ?? []); setProducts(p.data ?? []);
-    if (h.data) {
+    const { data: h } = await supabase.from("hampers").select("*").order("created_at", { ascending: false });
+    setHampers(h ?? []);
+    if (h) {
       const all: Record<string, any[]> = {};
-      for (const hp of h.data) {
-        const { data } = await supabase.from("hamper_items").select("*, products(product_name)").eq("hamper_id", hp.id);
+      for (const hp of h) {
+        const { data } = await supabase.from("hamper_items").select("*, products(product_name,sku)").eq("hamper_id", hp.id);
         all[hp.id] = data ?? [];
       }
       setItems(all);
@@ -42,8 +39,9 @@ const Hampers = () => {
     setName(""); setOpen(false); setActive(data.id); load();
   };
   const addItem = async (hamperId: string) => {
-    await supabase.from("hamper_items").insert({ ...item, hamper_id: hamperId, child_product_id: item.child_product_id || null });
-    setItem({ child_product_id: "", component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
+    await supabase.from("hamper_items").insert({ ...item, hamper_id: hamperId, child_product_id: picked?.id ?? null });
+    setItem({ component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
+    setPicked(null);
     load();
   };
   const delItem = async (id: string) => { await supabase.from("hamper_items").delete().eq("id", id); load(); };
