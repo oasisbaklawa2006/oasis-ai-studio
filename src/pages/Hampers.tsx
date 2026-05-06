@@ -11,12 +11,12 @@ import { ProductPicker } from "@/components/ProductPicker";
 
 const Hampers = () => {
   const [hampers, setHampers] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
   const [items, setItems] = useState<Record<string, any[]>>({});
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [active, setActive] = useState<string | null>(null);
-  const [item, setItem] = useState({ child_product_id: "", component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
+  const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
+  const [item, setItem] = useState({ component_name: "", quantity: 1, unit: "pc", is_packaging_component: false, is_customer_visible: true });
 
   const load = async () => {
     const [h, p] = await Promise.all([
