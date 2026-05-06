@@ -22,10 +22,12 @@ const nav: { to: string; label: string; icon: any; page: PageKey }[] = [
 ];
 
 export const AppLayout = () => {
-  const { user, roles, signOut } = useAuth();
+  const { user, roles, signOut, loading, rolesLoading } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const items = nav.filter((n) => canAccessPage(roles as any, n.page));
+  const rolesReady = !loading && !rolesLoading;
+  const items = rolesReady ? nav.filter((n) => canAccessPage(roles as any, n.page)) : [];
+  const roleLabel = !rolesReady ? "Loading account role…" : (roles[0] ?? "Role missing");
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -64,7 +66,7 @@ export const AppLayout = () => {
         <div className="p-4 border-t border-sidebar-border text-xs">
           <div className="px-2 mb-2">
             <div className="truncate text-sidebar-foreground/90">{user?.email}</div>
-            <div className="text-sidebar-foreground/60 capitalize">{roles[0] ?? "no role"}</div>
+            <div className="text-sidebar-foreground/60 capitalize">{roleLabel}</div>
           </div>
           <Button variant="ghost" size="sm" className="w-full justify-start text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent"
             onClick={async () => { await signOut(); navigate("/auth"); }}>

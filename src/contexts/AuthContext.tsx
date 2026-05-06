@@ -28,61 +28,60 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [rolesLoading, setRolesLoading] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
 
-  const loadRolesFor = useCallback(async (uid: string): Promise<Role[]> => {
-    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", uid);
-    if (error) { console.warn("[Auth] roles fetch error:", error.message); return []; }
-    return (data ?? []).map((r: any) => r.role as Role);
-  }, []);
-
-  const ensureRoles = useCallback(async (uid: string) => {
+  const loadRolesViaRpc = useCallback(async () => {
     setRolesLoading(true);
     setBootstrapError(null);
     try {
-      let current = await loadRolesFor(uid);
-      console.log("[Auth] roles found:", current);
-      if (current.length === 0) {
-        console.log("[Auth] bootstrap_current_user called");
-        const { error } = await supabase.rpc("bootstrap_current_user");
-        if (error) throw error;
-        current = await loadRolesFor(uid);
-        console.log("[Auth] roles after bootstrap:", current);
-      }
-      setRoles(current);
-      console.log("[Auth] final role loaded:", current);
+      const { data, error } = await supabase.rpc("get_current_user_roles");
+      if (error) throw error;
+      const arr = (Array.isArray(data) ? data : []) as Role[];
+      console.log("[Auth] rpc roles:", arr);
+      setRoles(arr);
+      if (arr.length === 0) setBootstrapError("No role assigned. Please contact admin.");
     } catch (e: any) {
-      console.error("[Auth] bootstrap failed:", e);
+      console.error("[Auth] get_current_user_roles failed:", e);
       setBootstrapError(e?.message ?? "Role setup failed");
       setRoles([]);
     } finally {
       setRolesLoading(false);
     }
-  }, [loadRolesFor]);
+  }, []);
 
   useEffect(() => {
+    let mounted = true;
+
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       console.log("[Auth] state change:", event, !!s);
       setSession(s);
       setUser(s?.user ?? null);
       if (s?.user) {
-        setTimeout(() => { ensureRoles(s.user.id); }, 0);
+        setTimeout(() => { if (mounted) loadRolesViaRpc(); }, 0);
       } else {
         setRoles([]);
         setBootstrapError(null);
+        setRolesLoading(false);
       }
     });
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("[Auth] session found:", !!session);
-      setSession(session);
-      setUser(session?.user ?? null);
-      setLoading(false);
-      if (session?.user) ensureRoles(session.user.id);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, [ensureRoles]);
+
+    (async () => {
+      const { data: { session: s } } = await supabase.auth.getSession();
+      console.log("[Auth] session found:", !!s);
+      if (!mounted) return;
+      setSession(s);
+      setUser(s?.user ?? null);
+      if (s?.user) {
+        setRolesLoading(true);
+        await loadRolesViaRpc();
+      }
+      if (mounted) setLoading(false);
+    })();
+
+    return () => { mounted = false; sub.subscription.unsubscribe(); };
+  }, [loadRolesViaRpc]);
 
   const retryBootstrap = useCallback(async () => {
-    if (user) await ensureRoles(user.id);
-  }, [user, ensureRoles]);
+    if (user) await loadRolesViaRpc();
+  }, [user, loadRolesViaRpc]);
 
   return (
     <Ctx.Provider value={{
