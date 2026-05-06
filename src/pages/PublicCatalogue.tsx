@@ -43,23 +43,19 @@ const PublicCatalogue = () => {
   const waText = encodeURIComponent(`Hello! I'd like to inquire about the ${cat.title} catalogue: ${url}`);
 
   const renderPrice = (p: any) => {
-    const rule = pricingByProduct[p.id];
-    if (showPrice && rule?.calculated_price != null) {
-      return <div className="mt-3 font-display text-lg gold-text">{rule.currency || "₹"} {rule.calculated_price} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">{priceLabel}</span></div>;
+    const r = channelByProduct[p.id];
+    if (showPrice && r?.public_price != null) {
+      return <div className="mt-3 font-display text-lg gold-text">{r.currency || "₹"} {r.public_price} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">{r.price_label || priceLabel}</span>{showDiscount && r.discount_percent ? <span className="text-[10px] text-success ml-1">-{r.discount_percent}%</span> : null}</div>;
     }
-    if (showMrp && p.mrp) {
-      return <div className="mt-3 font-display text-lg gold-text">₹ {p.mrp} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">MRP</span>{showDiscount && rule?.discount_percent ? <span className="text-[10px] text-success ml-1">-{rule.discount_percent}%</span> : null}</div>;
+    if (showMrp && (r?.mrp ?? p.mrp)) {
+      return <div className="mt-3 font-display text-lg gold-text">₹ {r?.mrp ?? p.mrp} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">MRP</span></div>;
     }
-    return <div className="mt-3 text-sm text-muted-foreground italic">Price on request</div>;
+    return <div className="mt-3 text-sm text-muted-foreground italic">{r?.price_display_text || "Price on request"}</div>;
   };
 
   const renderMoq = (p: any) => {
-    const rule = moqByProduct[p.id];
-    if (rule) {
-      if (rule.moq_applicable === false) return "MOQ not applicable";
-      if (rule.moq_value) return `MOQ: ${rule.moq_value} ${rule.moq_uom || ""}`.trim();
-    }
-    return "MOQ depends on order type. Contact sales for details.";
+    const r = channelByProduct[p.id];
+    return r?.moq_display_text || "MOQ depends on order type. Contact sales for details.";
   };
 
   return (
