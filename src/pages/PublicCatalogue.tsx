@@ -8,8 +8,7 @@ const PublicCatalogue = () => {
   const { slug } = useParams();
   const [cat, setCat] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
-  const [pricingByProduct, setPricingByProduct] = useState<Record<string, any>>({});
-  const [moqByProduct, setMoqByProduct] = useState<Record<string, any>>({});
+  const [channelByProduct, setChannelByProduct] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,33 +17,12 @@ const PublicCatalogue = () => {
       if (!data) { setLoading(false); return; }
       setCat(data);
       const { data: cp } = await supabase.from("catalogue_products").select("*, products(*)").eq("catalogue_id", data.id).order("sort_order");
-      const list = cp ?? [];
-      setProducts(list);
+      setProducts(cp ?? []);
 
-      const channel = data.target_customer_channel ?? "price_hidden";
-      const productIds = list.map((x: any) => x.products?.id).filter(Boolean);
-
-      // Public catalogue may show approved channel pricing only — skip internal channels.
-      const SAFE = new Set(["retail","b2c","bulk","wholesale","horeca","b2b","distributor","export","private_label","corporate_gifting","wedding"]);
-      if (productIds.length && SAFE.has(channel) && data.show_price) {
-        const { data: prs } = await supabase.from("product_pricing_rules")
-          .select("product_id, price_channel, calculated_price, discount_percent, currency, uom, approval_status")
-          .in("product_id", productIds)
-          .eq("price_channel", channel)
-          .eq("approval_status", "approved");
-        const map: Record<string, any> = {};
-        (prs ?? []).forEach((r) => { map[r.product_id] = r; });
-        setPricingByProduct(map);
-      }
-      if (productIds.length && SAFE.has(channel)) {
-        const { data: mrs } = await supabase.from("product_moq_rules")
-          .select("product_id, channel, moq_applicable, moq_value, moq_uom, min_carton_qty, carton_logic")
-          .in("product_id", productIds)
-          .eq("channel", channel);
-        const map: Record<string, any> = {};
-        (mrs ?? []).forEach((r) => { map[r.product_id] = r; });
-        setMoqByProduct(map);
-      }
+      const { data: rpc } = await supabase.rpc("get_public_catalogue_channel_data", { _slug: slug as string });
+      const map: Record<string, any> = {};
+      (rpc ?? []).forEach((r: any) => { map[r.product_id] = r; });
+      setChannelByProduct(map);
       setLoading(false);
     })();
   }, [slug]);
