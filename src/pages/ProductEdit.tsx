@@ -500,7 +500,7 @@ const ProductEdit = () => {
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
                     <Label>BOM required</Label>
-                    <div className="text-[11px] text-muted-foreground">Auto-on for gift hampers. BOM builder ships in the next batch.</div>
+                    <div className="text-[11px] text-muted-foreground">Auto-on for gift hampers. Use the BOM tab to add components.</div>
                   </div>
                   <Switch checked={!!form.bom_required} onCheckedChange={(v) => set("bom_required", v)} />
                 </div>
