@@ -1,33 +1,72 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Sparkles, Image as ImageIcon } from "lucide-react";
+import { Plus, Sparkles, Image as ImageIcon, Upload, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 const Media = () => {
   const [media, setMedia] = useState<any[]>([]);
   const [products, setProducts] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ file_url: "", type: "raw", angle: "front", alt_text: "", product_id: "", status: "raw" });
+  const [uploading, setUploading] = useState(false);
+  const [form, setForm] = useState({ file_url: "", type: "raw_photo", angle: "front", alt_text: "", product_id: "", status: "raw" });
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
-    const { data } = await supabase.from("product_media").select("*, products(product_name)").order("created_at",{ascending:false});
+    const { data } = await supabase.from("product_media").select("*, products(product_name, sku)").order("created_at",{ascending:false});
     setMedia(data ?? []);
   };
-  useEffect(() => { load(); supabase.from("products").select("id,product_name").then(({data}) => setProducts(data ?? [])); }, []);
+  useEffect(() => { load(); supabase.from("products").select("id,product_name,sku").then(({data}) => setProducts(data ?? [])); }, []);
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const product = products.find((p) => p.id === form.product_id);
+      const folder = product?.sku || form.product_id || "unassigned";
+      for (const file of Array.from(files)) {
+        const ts = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `products/${folder}/raw/${ts}-${safeName}`;
+        const { error: upErr } = await supabase.storage.from("product-media").upload(path, file, { cacheControl: "3600", upsert: false });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("product-media").getPublicUrl(path);
+        const { error: insErr } = await supabase.from("product_media").insert({
+          file_url: pub.publicUrl,
+          type: form.type,
+          angle: form.angle,
+          alt_text: form.alt_text || file.name,
+          product_id: form.product_id || null,
+          status: "raw",
+        });
+        if (insErr) throw insErr;
+      }
+      toast.success(`${files.length} file(s) uploaded`);
+      setOpen(false);
+      setForm({ file_url: "", type: "raw_photo", angle: "front", alt_text: "", product_id: "", status: "raw" });
+      load();
+    } catch (e: any) {
+      toast.error(e.message || "Upload failed");
+    } finally {
+      setUploading(false);
+      if (galleryRef.current) galleryRef.current.value = "";
+      if (cameraRef.current) cameraRef.current.value = "";
+    }
+  };
 
   const add = async () => {
-    if (!form.file_url) return toast.error("URL required");
+    if (!form.file_url) return toast.error("URL required (or use upload buttons above)");
     const payload = { ...form, product_id: form.product_id || null };
     const { error } = await supabase.from("product_media").insert(payload);
     if (error) return toast.error(error.message);
     toast.success("Media added");
     setOpen(false);
-    setForm({ file_url: "", type: "raw", angle: "front", alt_text: "", product_id: "", status: "raw" });
+    setForm({ file_url: "", type: "raw_photo", angle: "front", alt_text: "", product_id: "", status: "raw" });
     load();
   };
 
