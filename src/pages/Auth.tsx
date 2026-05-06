@@ -39,6 +39,14 @@ const Auth = () => {
     else toast.success("Account created. You can sign in.");
   };
 
+  const handleGoogle = async () => {
+    setLoading(true);
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    if (result.error) { toast.error(result.error.message ?? "Google sign-in failed"); setLoading(false); return; }
+    if (result.redirected) return;
+    navigate("/");
+  };
+
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex gradient-hero text-primary-foreground p-12 flex-col justify-between relative overflow-hidden">
