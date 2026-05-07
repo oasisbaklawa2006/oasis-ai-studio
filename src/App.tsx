@@ -24,6 +24,7 @@ import LabelQueue from "./pages/LabelQueue";
 import AIStudio from "./pages/AIStudio";
 import Settings from "./pages/Settings";
 import Testing from "./pages/Testing";
+import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
