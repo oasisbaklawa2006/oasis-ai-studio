@@ -39,15 +39,16 @@ Deno.serve(async (req) => {
       return json({ ok: false, message: "integration_key is required", details: {} }, 400);
     }
 
-    // AuthN: must be owner/admin
+    // AuthN: must be owner/admin (use RPC to bypass RLS pitfalls)
     const authHeader = req.headers.get("Authorization") ?? "";
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY")!;
     const userClient = createClient(supabaseUrl, anon, { global: { headers: { Authorization: authHeader } } });
     const { data: userData } = await userClient.auth.getUser();
     if (!userData?.user) return json({ ok: false, message: "Not authenticated", details: {} }, 401);
-    const { data: roles } = await userClient.from("user_roles").select("role").eq("user_id", userData.user.id);
-    const roleSet = new Set((roles ?? []).map((r: any) => r.role));
+    const { data: rpcRoles, error: rpcErr } = await userClient.rpc("get_current_user_roles");
+    if (rpcErr) return json({ ok: false, message: "Role check failed: " + rpcErr.message, details: {} }, 500);
+    const roleSet = new Set<string>((rpcRoles ?? []) as string[]);
     if (!roleSet.has("owner") && !roleSet.has("admin")) {
       return json({ ok: false, message: "Owner or admin role required", details: {} }, 403);
     }
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
     const featureKey = FEATURE_FOR_INTEGRATION[integration_key];
-    const newStatus = result.ok ? "test_passed" : "failed";
+    const newStatus = result.ok ? "test_passed" : "error";
     await admin
       .from("integration_settings")
       .update({ status: newStatus, last_tested_at: new Date().toISOString(), last_test_result: result, secret_status: missing.length ? "missing" : "configured" })

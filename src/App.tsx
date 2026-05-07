@@ -24,6 +24,7 @@ import LabelQueue from "./pages/LabelQueue";
 import AIStudio from "./pages/AIStudio";
 import Settings from "./pages/Settings";
 import Testing from "./pages/Testing";
+import AuditLog from "./pages/AuditLog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ const App = () => (
                 <Route path="/ai-studio" element={<RoleGate page="ai_studio"><AIStudio /></RoleGate>} />
                 <Route path="/testing" element={<RoleGate page="testing"><Testing /></RoleGate>} />
                 <Route path="/settings" element={<RoleGate page="settings"><Settings /></RoleGate>} />
+                <Route path="/audit-log" element={<RoleGate page="audit_log"><AuditLog /></RoleGate>} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
