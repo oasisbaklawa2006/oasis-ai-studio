@@ -56,6 +56,7 @@ const App = () => (
                 <Route path="/ai-studio" element={<RoleGate page="ai_studio"><AIStudio /></RoleGate>} />
                 <Route path="/testing" element={<RoleGate page="testing"><Testing /></RoleGate>} />
                 <Route path="/settings" element={<RoleGate page="settings"><Settings /></RoleGate>} />
+                <Route path="/audit-log" element={<RoleGate page="audit_log"><AuditLog /></RoleGate>} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
