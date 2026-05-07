@@ -115,6 +115,8 @@ const LabelQueue = () => {
             if (!r.has_fssai) warns.push("FSSAI");
             if (!r.has_mrp) warns.push("MRP");
             if (!r.has_net_qty) warns.push("net qty");
+            if (!r.has_storage) warns.push("storage instructions");
+            if (!r.has_shelf_life) warns.push("shelf life");
             const ready = warns.length === 0;
             const locked = r.status === "locked";
             return (
