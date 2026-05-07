@@ -72,7 +72,7 @@ const CatalogueDetail = () => {
         </>} />
 
       {canWrite && (
-        <div className="card-elevated p-4 mb-6 flex flex-wrap gap-2 no-print">
+        <div className="luxe-panel mb-6 flex flex-wrap gap-2 no-print">
           <Button size="sm" variant="outline" onClick={() => setStatus("draft")}><Undo2 className="h-4 w-4 mr-1" />Save Draft</Button>
           <Button size="sm" variant="outline" onClick={() => setStatus("internal_review")}><Send className="h-4 w-4 mr-1" />Send to Internal Review</Button>
           <Button size="sm" onClick={() => setStatus("published")}><CheckCircle2 className="h-4 w-4 mr-1" />Publish</Button>
@@ -81,16 +81,16 @@ const CatalogueDetail = () => {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <div className="card-elevated p-5 no-print">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-display text-xl">Products in catalogue ({linked.length})</h3>
+      <div className="grid lg:grid-cols-3 gap-6 min-w-0">
+        <div className="lg:col-span-2 space-y-6 min-w-0">
+          <div className="luxe-panel no-print">
+            <div className="flex items-center justify-between mb-4 gap-2">
+              <h3 className="luxe-section-title">Products in catalogue ({linked.length})</h3>
             </div>
             <div className="space-y-2">
               {linked.map((l) => (
-                <div key={l.id} className="flex items-center gap-3 p-2 rounded-lg border">
-                  <div className="h-12 w-12 bg-muted rounded overflow-hidden flex-shrink-0">
+                <div key={l.id} className="flex items-center gap-3 p-2 rounded-lg border border-border/60 bg-background/40 min-w-0">
+                  <div className="h-12 w-12 bg-secondary rounded-lg overflow-hidden flex-shrink-0">
                     {l.products?.hero_image_url && <img src={l.products.hero_image_url} className="w-full h-full object-cover" />}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -105,35 +105,35 @@ const CatalogueDetail = () => {
           </div>
 
           {canWrite && (
-            <div className="card-elevated p-5 space-y-4 no-print">
-              <h3 className="font-display text-xl">Cover & intro</h3>
+            <div className="luxe-panel space-y-4 no-print">
+              <h3 className="luxe-section-title">Cover & intro</h3>
               <div><Label>Cover image URL</Label><Input value={c.cover_image_url ?? ""} onChange={(e) => setC({ ...c, cover_image_url: e.target.value })} onBlur={(e) => update({ cover_image_url: e.target.value })} /></div>
               <div><Label>Intro text</Label><Textarea rows={3} value={c.intro_text ?? ""} onChange={(e) => setC({ ...c, intro_text: e.target.value })} onBlur={(e) => update({ intro_text: e.target.value })} /></div>
             </div>
           )}
 
           {canWrite && (
-            <div className="card-elevated p-5 space-y-4 no-print">
-              <h3 className="font-display text-xl">Customer channel & price display</h3>
+            <div className="luxe-panel space-y-4 no-print">
+              <h3 className="luxe-section-title">Customer channel & price display</h3>
               <p className="text-xs text-muted-foreground">Catalogue shows only the selected customer channel's price. Internal/franchisee/own-outlet prices must never be shown publicly.</p>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
+              <div className="grid sm:grid-cols-2 gap-3 min-w-0">
+                <div className="min-w-0">
                   <Label className="text-xs">Target customer channel</Label>
                   <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={c.target_customer_channel ?? "price_hidden"} onChange={(e) => { setC({ ...c, target_customer_channel: e.target.value }); update({ target_customer_channel: e.target.value }); }}>
                     {["retail","b2c","bulk","wholesale","horeca","b2b","distributor","franchisee","own_outlet","export","private_label","corporate_gifting","wedding","price_hidden"].map((ch) => <option key={ch} value={ch}>{ch.replace(/_/g," ")}</option>)}
                   </select>
                 </div>
-                <div><Label className="text-xs">Price label (e.g. "B2B price")</Label><Input value={c.show_price_label ?? ""} onChange={(e) => setC({ ...c, show_price_label: e.target.value })} onBlur={(e) => update({ show_price_label: e.target.value || null })} /></div>
-                <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show price</Label><input type="checkbox" checked={!!c.show_price} onChange={(e) => { setC({ ...c, show_price: e.target.checked }); update({ show_price: e.target.checked }); }} /></div>
-                <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show MRP</Label><input type="checkbox" checked={!!c.show_mrp} onChange={(e) => { setC({ ...c, show_mrp: e.target.checked }); update({ show_mrp: e.target.checked }); }} /></div>
-                <div className="flex items-center justify-between border rounded p-2"><Label className="text-xs">Show discount %</Label><input type="checkbox" checked={!!c.show_discount} onChange={(e) => { setC({ ...c, show_discount: e.target.checked }); update({ show_discount: e.target.checked }); }} /></div>
+                <div className="min-w-0"><Label className="text-xs">Price label (e.g. "B2B price")</Label><Input value={c.show_price_label ?? ""} onChange={(e) => setC({ ...c, show_price_label: e.target.value })} onBlur={(e) => update({ show_price_label: e.target.value || null })} /></div>
+                <div className="flex items-center justify-between border border-border/60 rounded-lg p-3"><Label className="text-xs">Show price</Label><input type="checkbox" checked={!!c.show_price} onChange={(e) => { setC({ ...c, show_price: e.target.checked }); update({ show_price: e.target.checked }); }} /></div>
+                <div className="flex items-center justify-between border border-border/60 rounded-lg p-3"><Label className="text-xs">Show MRP</Label><input type="checkbox" checked={!!c.show_mrp} onChange={(e) => { setC({ ...c, show_mrp: e.target.checked }); update({ show_mrp: e.target.checked }); }} /></div>
+                <div className="flex items-center justify-between border border-border/60 rounded-lg p-3"><Label className="text-xs">Show discount %</Label><input type="checkbox" checked={!!c.show_discount} onChange={(e) => { setC({ ...c, show_discount: e.target.checked }); update({ show_discount: e.target.checked }); }} /></div>
               </div>
             </div>
           )}
 
           {canWrite && (
-            <div className="card-elevated p-5 space-y-3 no-print">
-              <h3 className="font-display text-xl">Proposal notes & WhatsApp message</h3>
+            <div className="luxe-panel space-y-3 no-print">
+              <h3 className="luxe-section-title">Proposal notes & WhatsApp message</h3>
               <p className="text-xs text-muted-foreground">These appear in the Proposal / PDF preview. Leave blank to use defaults.</p>
               {[
                 ["proposal_validity_note", "Validity note"],
@@ -191,20 +191,20 @@ const CatalogueDetail = () => {
           </div>
         </div>
 
-        <div className="space-y-6 no-print">
+        <div className="space-y-6 no-print min-w-0">
           <SharePanel url={publicUrl} title={c.title} />
           {canWrite && (
-            <div className="card-elevated p-5">
-              <h3 className="font-display text-lg mb-2">Add products</h3>
+            <div className="luxe-panel">
+              <h3 className="luxe-section-title mb-3">Add products</h3>
               <ProductPicker excludeIds={linked.map((l) => l.product_id)} onPick={(p) => addProduct(p.id)} />
             </div>
           )}
-          <div className="card-elevated p-5 text-xs text-muted-foreground space-y-1">
-            <div>Slug: <code className="font-mono text-foreground">{c.public_slug}</code></div>
+          <div className="luxe-panel text-xs text-muted-foreground space-y-1 break-words">
+            <div>Slug: <code className="font-mono text-foreground break-all">{c.public_slug}</code></div>
             <div className="capitalize">Type: {c.catalogue_type?.replace(/_/g, " ")}</div>
             <div className="capitalize">Theme: {c.theme?.replace(/_/g, " ")}</div>
             <div className="capitalize">Price: {c.price_visibility}</div>
-            {status !== "published" && <div className="text-warning mt-2">Public link will return “Catalogue not available” until status is published.</div>}
+            {status !== "published" && <div className="text-warning mt-2">Public link will return "Catalogue not available" until status is published.</div>}
           </div>
         </div>
       </div>
