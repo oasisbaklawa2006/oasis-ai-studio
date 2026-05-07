@@ -275,11 +275,27 @@ export function ProductMediaUploader({ productId, productSku, currentHero, onHer
             const pdf = isPdfPage(m.file_url) || m.type === "source_pdf_page" || m.status === "reference_only";
             return (
               <div key={m.id} className="relative group rounded-lg overflow-hidden border bg-muted">
-                <div className="aspect-square">
+                <div className="aspect-square relative bg-muted">
                   {m.type === "video" ? (
                     <video src={m.file_url} className="w-full h-full object-cover" controls />
                   ) : (
-                    <img src={m.file_url} alt={m.alt_text || ""} className={`w-full h-full object-cover ${pdf && !isHero ? "opacity-70" : ""}`} />
+                    <img
+                      src={m.file_url}
+                      alt={m.alt_text || ""}
+                      className={`w-full h-full object-cover ${pdf && !isHero ? "opacity-70" : ""}`}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        img.style.display = "none";
+                        const parent = img.parentElement;
+                        if (parent && !parent.querySelector(".broken-fallback")) {
+                          const div = document.createElement("div");
+                          div.className = "broken-fallback absolute inset-0 flex flex-col items-center justify-center text-[10px] text-muted-foreground p-2 text-center";
+                          div.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15l-5-5L5 21"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg><div class="mt-1">Image failed to load</div>';
+                          parent.appendChild(div);
+                        }
+                        if (import.meta.env.DEV) console.warn("[media-load-fail]", m.file_url);
+                      }}
+                    />
                   )}
                 </div>
                 <div className="absolute top-1 left-1 right-1 flex flex-wrap gap-1">
