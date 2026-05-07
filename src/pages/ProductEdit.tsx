@@ -210,22 +210,24 @@ const ProductEdit = () => {
         </div>
       )}
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid lg:grid-cols-3 gap-6 min-w-0">
+        <div className="lg:col-span-2 space-y-6 min-w-0">
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="flex flex-wrap h-auto w-full justify-start gap-1">
-              <TabsTrigger value="identity">Identity</TabsTrigger>
-              <TabsTrigger value="uom">UOM / MOQ</TabsTrigger>
-              {!isNew && <TabsTrigger value="media">Media</TabsTrigger>}
-              {showPrivateLabel && <TabsTrigger value="private_label">Private Label</TabsTrigger>}
-              {showCustomization && <TabsTrigger value="customisation">Customisation</TabsTrigger>}
-              {showDimensions && <TabsTrigger value="dimensions">Dimensions</TabsTrigger>}
-              {showFrozen && <TabsTrigger value="frozen">Frozen</TabsTrigger>}
-              {showBom && <TabsTrigger value="bom">BOM</TabsTrigger>}
-              {!isNew && <TabsTrigger value="channels">Channels</TabsTrigger>}
-              <TabsTrigger value="compliance">Compliance</TabsTrigger>
-              <TabsTrigger value="ops">Ops Notes</TabsTrigger>
-            </TabsList>
+            <div className="-mx-3 sm:mx-0 overflow-x-auto">
+              <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 px-3 sm:px-0">
+                <TabsTrigger value="identity">Identity</TabsTrigger>
+                <TabsTrigger value="uom">UOM / MOQ</TabsTrigger>
+                {!isNew && <TabsTrigger value="media">Media</TabsTrigger>}
+                {showPrivateLabel && <TabsTrigger value="private_label">Private Label</TabsTrigger>}
+                {showCustomization && <TabsTrigger value="customisation">Customisation</TabsTrigger>}
+                {showDimensions && <TabsTrigger value="dimensions">Dimensions</TabsTrigger>}
+                {showFrozen && <TabsTrigger value="frozen">Frozen</TabsTrigger>}
+                {showBom && <TabsTrigger value="bom">BOM</TabsTrigger>}
+                {!isNew && <TabsTrigger value="channels">Channels</TabsTrigger>}
+                <TabsTrigger value="compliance">Compliance</TabsTrigger>
+                <TabsTrigger value="ops">Ops Notes</TabsTrigger>
+              </TabsList>
+            </div>
 
             {/* IDENTITY */}
             <TabsContent value="identity" className="space-y-6">

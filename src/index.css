@@ -61,10 +61,18 @@
 
 @layer base {
   * { @apply border-border; }
+  html, body, #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  img, video, canvas, svg { max-width: 100%; height: auto; }
   body {
     @apply bg-background text-foreground;
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: "ss01","cv11";
+    overflow-wrap: break-word;
+    word-wrap: break-word;
   }
   h1,h2,h3,.font-display {
     font-family: 'Cormorant Garamond', Georgia, serif;
