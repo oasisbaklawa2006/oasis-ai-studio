@@ -21,6 +21,7 @@ const nav: NavItem[] = [
   { to: "/ai-studio", label: "AI Studio", icon: Sparkles, page: "ai_studio", featureKey: "ai_image_studio" },
   { to: "/testing", label: "Testing Checklist", icon: ClipboardCheck, page: "testing" },
   { to: "/settings", label: "Activation Center", icon: Settings, page: "settings" },
+  { to: "/audit-log", label: "Audit Log", icon: History, page: "audit_log" },
 ];
 
 export const AppLayout = () => {
