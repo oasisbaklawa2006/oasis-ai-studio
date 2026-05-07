@@ -72,7 +72,7 @@ const CatalogueDetail = () => {
         </>} />
 
       {canWrite && (
-        <div className="card-elevated p-4 mb-6 flex flex-wrap gap-2 no-print">
+        <div className="luxe-panel mb-6 flex flex-wrap gap-2 no-print">
           <Button size="sm" variant="outline" onClick={() => setStatus("draft")}><Undo2 className="h-4 w-4 mr-1" />Save Draft</Button>
           <Button size="sm" variant="outline" onClick={() => setStatus("internal_review")}><Send className="h-4 w-4 mr-1" />Send to Internal Review</Button>
           <Button size="sm" onClick={() => setStatus("published")}><CheckCircle2 className="h-4 w-4 mr-1" />Publish</Button>
