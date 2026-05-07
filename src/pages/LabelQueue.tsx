@@ -37,7 +37,7 @@ const LabelQueue = () => {
   const load = async () => {
     setLoading(true);
     const [{ data: prods }, { data: labels }, { data: ings }, { data: nutri }] = await Promise.all([
-      supabase.from("products").select("id,product_name,sku,label_status").eq("is_active", true).order("product_name"),
+      supabase.from("products").select("id,product_name,sku,label_status,storage_instructions,shelf_life_days").eq("is_active", true).order("product_name"),
       supabase.from("labels").select("*"),
       supabase.from("product_ingredients").select("product_id"),
       supabase.from("nutrition_panels").select("product_id"),
@@ -59,6 +59,8 @@ const LabelQueue = () => {
         has_fssai: !!l?.fssai_license,
         has_mrp: l?.mrp != null,
         has_net_qty: !!l?.net_quantity,
+        has_storage: !!p.storage_instructions,
+        has_shelf_life: p.shelf_life_days != null,
         locked_at: l?.locked_at,
       };
     });
