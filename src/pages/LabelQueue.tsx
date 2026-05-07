@@ -72,7 +72,7 @@ const LabelQueue = () => {
   const filtered = useMemo(() => rows.filter((r) => {
     switch (filter) {
       case "all": return true;
-      case "missing_data": return !r.has_ingredients || !r.has_nutrition || !r.has_fssai || !r.has_mrp || !r.has_net_qty;
+      case "missing_data": return !r.has_ingredients || !r.has_nutrition || !r.has_fssai || !r.has_mrp || !r.has_net_qty || !r.has_storage || !r.has_shelf_life;
       default: return r.status === filter;
     }
   }), [rows, filter]);
