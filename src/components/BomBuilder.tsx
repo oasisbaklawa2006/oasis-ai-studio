@@ -181,23 +181,51 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setPickChild(false);
     const { data: full } = await supabase
       .from("products")
-      .select("sku,product_name,main_department,production_department,b2b_price_inr,b2b_price,mrp,primary_uom,b2b_uom")
+      .select("sku,product_name,main_department,production_department,b2b_price_inr,b2b_price,mrp,primary_uom,b2b_uom,approximate_piece_weight_g,pieces_per_kg,grammage_g,pcs_per_pack,net_weight_g")
       .eq("id", p.id)
       .maybeSingle();
-    const cost = full?.b2b_price_inr ?? full?.b2b_price ?? full?.mrp ?? null;
-    const unit = full?.b2b_uom ?? full?.primary_uom ?? "pc";
-    setDraft((d) => ({
-      ...d,
-      child_product_id: p.id,
-      component_name: full?.product_name || p.product_name,
-      cost_per_unit: cost != null ? String(cost) : d.cost_per_unit,
-      unit: unit || d.unit,
-      source_department: d.source_department || full?.main_department || "",
-      production_department: d.production_department || full?.production_department || "",
-    }));
-    if (cost == null) toast.warning("No cost/price found for this linked product. Enter cost manually.");
-    else toast.success(`Cost auto-filled: ₹${cost}/${unit}`);
+    const basePrice = full?.b2b_price_inr ?? full?.b2b_price ?? full?.mrp ?? null;
+    const baseUnit = normUnit(full?.b2b_uom ?? full?.primary_uom ?? "pc");
+    setLinkedMeta(basePrice != null ? { basePrice: Number(basePrice), baseUnit, product: full } : null);
+    setDraft((d) => {
+      const targetUnit = normUnit(d.unit) || baseUnit;
+      let cost: any = d.cost_per_unit;
+      let note = "";
+      if (basePrice != null) {
+        const conv = convertCost(Number(basePrice), baseUnit, targetUnit, full);
+        if (conv) { cost = conv.cost.toFixed(2); note = conv.note; }
+        else {
+          cost = String(basePrice);
+          note = `⚠ Cannot auto-convert ₹${basePrice}/${baseUnit} → /${targetUnit}. Add piece weight on linked product or override manually.`;
+        }
+      }
+      setConvNote(note);
+      return {
+        ...d,
+        child_product_id: p.id,
+        component_name: full?.product_name || p.product_name,
+        cost_per_unit: cost,
+        unit: targetUnit,
+        source_department: d.source_department || full?.main_department || "",
+        production_department: d.production_department || full?.production_department || "",
+      };
+    });
+    if (basePrice == null) toast.warning("No cost/price found for this linked product. Enter cost manually.");
   };
+
+  // Recalculate cost when unit changes for a linked product
+  useEffect(() => {
+    if (!linkedMeta || !draft.child_product_id) return;
+    const conv = convertCost(linkedMeta.basePrice, linkedMeta.baseUnit, normUnit(draft.unit), linkedMeta.product);
+    if (conv) {
+      setConvNote(conv.note);
+      setDraft((d) => ({ ...d, cost_per_unit: conv.cost.toFixed(2) }));
+    } else {
+      setConvNote(`⚠ Cannot auto-convert ₹${linkedMeta.basePrice}/${linkedMeta.baseUnit} → /${normUnit(draft.unit)}. Add piece weight on linked product or override manually.`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.unit]);
+
 
   const validateDraft = (): string | null => {
     if (!draft.child_product_id && !draft.component_name?.trim()) return "Component name or product is required";
