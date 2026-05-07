@@ -174,9 +174,9 @@ const Settings = () => {
   const integByKey = useMemo(() => Object.fromEntries(integs.map((i) => [i.integration_key, i])), [integs]);
 
   const ready = flags.filter((f) => f.is_enabled || f.status === "test_passed");
-  const setup = flags.filter((f) => !f.is_enabled && f.status !== "test_passed" && f.is_visible || (!f.is_enabled && (f.status === "configured" || f.status === "planned" || f.status === "error")));
-  const setupSet = new Set(setup.map((f) => f.feature_key));
   const readySet = new Set(ready.map((f) => f.feature_key));
+  const setup = flags.filter((f) => !readySet.has(f.feature_key) && (f.status === "configured" || f.status === "planned" || f.status === "error"));
+  const setupSet = new Set(setup.map((f) => f.feature_key));
   const hidden = flags.filter((f) => !readySet.has(f.feature_key) && !setupSet.has(f.feature_key));
 
   const refreshAll = async () => { await refresh(); await loadIntegs(); };
