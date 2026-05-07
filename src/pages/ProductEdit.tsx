@@ -222,19 +222,19 @@ const ProductEdit = () => {
       <div className="grid lg:grid-cols-3 gap-6 min-w-0">
         <div className="lg:col-span-2 space-y-6 min-w-0">
           <Tabs value={tab} onValueChange={setTab}>
-            <div className="-mx-3 sm:mx-0 overflow-x-auto">
-              <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 px-3 sm:px-0">
-                <TabsTrigger value="identity">Identity</TabsTrigger>
-                <TabsTrigger value="uom">UOM / MOQ</TabsTrigger>
-                {!isNew && <TabsTrigger value="media">Media</TabsTrigger>}
-                {showPrivateLabel && <TabsTrigger value="private_label">Private Label</TabsTrigger>}
-                {showCustomization && <TabsTrigger value="customisation">Customisation</TabsTrigger>}
-                {showDimensions && <TabsTrigger value="dimensions">Dimensions</TabsTrigger>}
-                {showFrozen && <TabsTrigger value="frozen">Frozen</TabsTrigger>}
-                {showBom && <TabsTrigger value="bom">BOM</TabsTrigger>}
-                {!isNew && <TabsTrigger value="channels">Channels</TabsTrigger>}
-                <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                <TabsTrigger value="ops">Ops Notes</TabsTrigger>
+            <div className="-mx-3 sm:mx-0 overflow-x-auto border-b border-border/60 mb-4">
+              <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 bg-transparent px-3 sm:px-0 py-0">
+                <TabsTrigger value="identity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Identity</TabsTrigger>
+                <TabsTrigger value="uom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">UOM / MOQ</TabsTrigger>
+                {!isNew && <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Media</TabsTrigger>}
+                {showPrivateLabel && <TabsTrigger value="private_label" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Private Label</TabsTrigger>}
+                {showCustomization && <TabsTrigger value="customisation" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Customisation</TabsTrigger>}
+                {showDimensions && <TabsTrigger value="dimensions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Dimensions</TabsTrigger>}
+                {showFrozen && <TabsTrigger value="frozen" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Frozen</TabsTrigger>}
+                {showBom && <TabsTrigger value="bom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">BOM</TabsTrigger>}
+                {!isNew && <TabsTrigger value="channels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Channels</TabsTrigger>}
+                <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Compliance</TabsTrigger>
+                <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Ops Notes</TabsTrigger>
               </TabsList>
             </div>
 

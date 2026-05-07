@@ -164,19 +164,22 @@ const CatalogueDetail = () => {
               {linked.map((l) => {
                 const p = l.products; if (!p) return null;
                 return (
-                  <div key={l.id} className="card-elevated overflow-hidden">
-                    <div className="aspect-[4/3] bg-muted">
-                      {p.hero_image_url && <img src={p.hero_image_url} className="w-full h-full object-cover" />}
+                  <div key={l.id} className="luxe-card flex flex-col">
+                    <div className="luxe-media relative">
+                      {p.hero_image_url
+                        ? <img src={p.hero_image_url} alt={p.product_name} />
+                        : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><span className="font-display text-3xl text-accent/30">{p.product_name?.[0] ?? "·"}</span></div>}
                     </div>
-                    <div className="p-4">
-                      <div className="font-display text-lg">{p.product_name}</div>
-                      <div className="text-[10px] font-mono text-muted-foreground">{p.sku}</div>
-                      {p.short_description && <p className="text-xs mt-1">{p.short_description}</p>}
+                    <div className="p-4 text-center">
+                      <div className="luxe-sub mb-1 truncate">{p.category || "Oasis Baklawa"}</div>
+                      <div className="luxe-title break-words">{p.product_name}</div>
+                      <div className="text-[10px] font-mono text-muted-foreground mt-1">{p.sku}</div>
+                      {p.short_description && <p className="text-xs mt-2 text-muted-foreground">{p.short_description}</p>}
                       <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
                         {p.pack_size && <div>Pack · {p.pack_size}</div>}
                         {p.shelf_life_days && <div>Shelf life · {p.shelf_life_days} days</div>}
                       </div>
-                      {showPrice && p.mrp && <div className="font-display text-base mt-2">₹ {p.mrp}</div>}
+                      {showPrice && p.mrp && <div className="font-display text-lg text-accent mt-2">₹ {p.mrp}</div>}
                     </div>
                   </div>
                 );

@@ -120,20 +120,23 @@ const CatalogueProposal = () => {
         {/* Products */}
         <section className="proposal-grid">
           {items.map(({ products: p }) => p && (
-            <article key={p.id} className="proposal-card border rounded-lg overflow-hidden bg-card">
-              <div className="aspect-[4/3] bg-muted">
-                {p.hero_image_url && <img src={p.hero_image_url} alt={p.product_name} className="w-full h-full object-cover" />}
+            <article key={p.id} className="proposal-card luxe-card flex flex-col">
+              <div className="luxe-media relative">
+                {p.hero_image_url && !p.hero_image_url.includes("/_pdf_pages/")
+                  ? <img src={p.hero_image_url} alt={p.product_name} loading="lazy" />
+                  : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><span className="font-display text-4xl text-accent/30">{p.product_name?.[0] ?? "·"}</span></div>}
               </div>
-              <div className="p-4">
-                <h3 className="font-display text-lg leading-tight" style={{ color: "hsl(var(--primary))" }}>{p.product_name}</h3>
-                <div className="text-[10px] font-mono text-muted-foreground mt-0.5">{p.sku}</div>
-                {p.short_description && <p className="text-xs mt-2 text-muted-foreground">{p.short_description}</p>}
-                <div className="text-[11px] mt-2 space-y-0.5 text-muted-foreground">
+              <div className="p-5 flex-1 flex flex-col text-center">
+                <div className="luxe-sub mb-2 truncate">{p.category || "Oasis Baklawa"}</div>
+                <h3 className="luxe-title mb-2 break-words">{p.product_name}</h3>
+                <div className="text-[10px] font-mono text-muted-foreground">{p.sku}</div>
+                {p.short_description && <p className="text-xs mt-3 text-muted-foreground line-clamp-2">{p.short_description}</p>}
+                <div className="text-[11px] mt-3 space-y-0.5 text-muted-foreground mt-auto">
                   {p.pack_size && <div>Pack · {p.pack_size}</div>}
                   {p.shelf_life_days && <div>Shelf life · {p.shelf_life_days} days</div>}
                   <div>{renderMoq(p)}</div>
                 </div>
-                {renderPrice(p)}
+                <div className="mt-3 pt-3 border-t border-border/60">{renderPrice(p)}</div>
               </div>
             </article>
           ))}
