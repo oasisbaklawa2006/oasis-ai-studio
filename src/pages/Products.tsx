@@ -282,10 +282,13 @@ const Products = () => {
           const moqS = moqSummary(p);
           return (
             <Link to={`/products/${p.id}`} key={p.id} className="card-elevated p-5 group">
-              <div className="aspect-[4/3] rounded-lg bg-muted mb-4 flex items-center justify-center overflow-hidden">
+              <div className="aspect-[4/3] rounded-lg bg-muted mb-4 flex items-center justify-center overflow-hidden relative">
                 {p.hero_image_url
-                  ? <img src={p.hero_image_url} alt={p.product_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                  ? <img src={p.hero_image_url} alt={p.product_name} className={`w-full h-full object-cover group-hover:scale-105 transition-transform ${p.hero_image_url.includes("/_pdf_pages/") ? "opacity-60 blur-[1px]" : ""}`} />
                   : <ImageIcon className="h-10 w-10 text-muted-foreground/40" />}
+                {p.hero_image_url?.includes("/_pdf_pages/") && (
+                  <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-1 rounded-full font-medium">Photo needs replacement</span>
+                )}
               </div>
 
               <div className="flex items-start justify-between gap-2 mb-1">
