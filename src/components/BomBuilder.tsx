@@ -440,7 +440,9 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
               <Label className="text-xs">Cost per unit (₹)</Label>
               <Input type="number" value={draft.cost_per_unit ?? ""} onChange={(e) => setD("cost_per_unit", e.target.value)} />
               {draft.child_product_id && (
-                <div className="text-[10px] text-muted-foreground mt-1">Auto-filled from linked product B2B price. You can override manually.</div>
+                <div className={`text-[10px] mt-1 ${convNote.startsWith("⚠") ? "text-destructive" : "text-muted-foreground"}`}>
+                  {convNote || "Auto-filled from linked product B2B price. You can override manually."}
+                </div>
               )}
             </div>
             <div>
