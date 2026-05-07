@@ -196,6 +196,87 @@ export type Database = {
         }
         Relationships: []
       }
+      feature_activation_audit: {
+        Row: {
+          action: string | null
+          created_at: string
+          feature_key: string | null
+          id: string
+          new_status: string | null
+          notes: string | null
+          old_status: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action?: string | null
+          created_at?: string
+          feature_key?: string | null
+          id?: string
+          new_status?: string | null
+          notes?: string | null
+          old_status?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string | null
+          created_at?: string
+          feature_key?: string | null
+          id?: string
+          new_status?: string | null
+          notes?: string | null
+          old_status?: string | null
+          performed_by?: string | null
+        }
+        Relationships: []
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          description: string | null
+          feature_key: string
+          feature_name: string
+          id: string
+          is_enabled: boolean
+          is_visible: boolean
+          last_test_result: string | null
+          last_tested_at: string | null
+          required_role: string[]
+          setup_notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          feature_key: string
+          feature_name: string
+          id?: string
+          is_enabled?: boolean
+          is_visible?: boolean
+          last_test_result?: string | null
+          last_tested_at?: string | null
+          required_role?: string[]
+          setup_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          feature_key?: string
+          feature_name?: string
+          id?: string
+          is_enabled?: boolean
+          is_visible?: boolean
+          last_test_result?: string | null
+          last_tested_at?: string | null
+          required_role?: string[]
+          setup_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       hamper_items: {
         Row: {
           child_product_id: string | null
@@ -350,25 +431,52 @@ export type Database = {
       }
       integration_settings: {
         Row: {
+          created_at: string
+          display_name: string
           id: string
-          key: string
-          label: string | null
+          integration_key: string
+          last_test_result: Json | null
+          last_tested_at: string | null
           notes: string | null
+          provider: string | null
+          public_config: Json
+          secret_required: boolean
+          secret_status: string
           status: string | null
+          test_endpoint: string | null
+          updated_at: string
         }
         Insert: {
+          created_at?: string
+          display_name: string
           id?: string
-          key: string
-          label?: string | null
+          integration_key: string
+          last_test_result?: Json | null
+          last_tested_at?: string | null
           notes?: string | null
+          provider?: string | null
+          public_config?: Json
+          secret_required?: boolean
+          secret_status?: string
           status?: string | null
+          test_endpoint?: string | null
+          updated_at?: string
         }
         Update: {
+          created_at?: string
+          display_name?: string
           id?: string
-          key?: string
-          label?: string | null
+          integration_key?: string
+          last_test_result?: Json | null
+          last_tested_at?: string | null
           notes?: string | null
+          provider?: string | null
+          public_config?: Json
+          secret_required?: boolean
+          secret_status?: string
           status?: string | null
+          test_endpoint?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
