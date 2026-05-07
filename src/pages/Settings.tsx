@@ -104,19 +104,21 @@ const Settings = () => (
     <div className="grid sm:grid-cols-2 gap-4">
       <Card icon={Cloud} title="Oasis Central API" status="planned"
         fields={["Base URL", "API status", "Last sync", "Sync products (placeholder)", "Push catalogue link (placeholder)"]}
-        note="Future sync MUST use product_id + SKU as the primary key. Aliases are search-only and never an external identifier." />
+        note="SKU and product_id are permanent identities. Alias names are search helpers only and must never be used as external references." />
       <Card icon={ImageIcon} title="AI Image API" status="planned"
-        fields={["Provider (OpenAI / Gemini / Runway / Adobe Firefly / Other)", "Status", "Test connection (placeholder)"]} />
+        fields={["Provider (OpenAI / Gemini / Runway / Adobe Firefly / Other)", "Status", "Test connection (placeholder)"]}
+        note="SKU and product_id are permanent identities. Alias names are search helpers only and must never be used as external references." />
       <Card icon={Video} title="AI Video API" status="planned"
         fields={["Provider (Runway / Pika / Other)", "Status", "Test connection (placeholder)"]} />
       <Card icon={MessageCircle} title="WhatsApp Business API" status="planned"
         fields={["Phone Number ID (placeholder)", "Template status (placeholder)", "Test share (placeholder)"]}
-        note="MVP supports wa.me share links only. Business API will replace this later." />
+        note="SKU and product_id are permanent identities. Alias names are search helpers only and must never be used as external references." />
       <Card icon={Tag} title="Barcode / Label App" status="planned"
         fields={["Barcode app endpoint", "TSC printer bridge endpoint", "Test label print (placeholder)"]}
-        note="Labels and barcodes must reference SKU and product_id — never alias text." />
+        note="SKU and product_id are permanent identities. Alias names are search helpers only and must never be used as external references." />
       <Card icon={HardDrive} title="Storage" status="connected"
-        fields={["Backend storage status", "media bucket (planned)", "generated-assets bucket (planned)"]} />
+        fields={["Backend storage status", "media bucket (planned)", "generated-assets bucket (planned)"]}
+        note="SKU and product_id are permanent identities. Alias names are search helpers only and must never be used as external references." />
     </div>
   </>
 );
