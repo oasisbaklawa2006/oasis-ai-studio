@@ -1,5 +1,73 @@
 import { PageHeader } from "@/components/PageHeader";
-import { Lock, Cloud, Image as ImageIcon, Video, MessageCircle, Tag, HardDrive } from "lucide-react";
+import { Lock, Cloud, Image as ImageIcon, Video, MessageCircle, Tag, HardDrive, Trash2, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
+
+const PdfHeroCleanup = () => {
+  const { roles } = useAuth();
+  const allowed = roles.includes("owner") || roles.includes("admin");
+  const [count, setCount] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const refresh = async () => {
+    const { count: c } = await supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .ilike("hero_image_url", "%/_pdf_pages/%");
+    setCount(c ?? 0);
+  };
+
+  useEffect(() => { if (allowed) refresh(); }, [allowed]);
+
+  if (!allowed) return null;
+
+  const run = async () => {
+    if (!confirm(`Clear PDF page hero images on ${count} products? Media stays in the gallery as reference only.`)) return;
+    setBusy(true);
+    try {
+      const { data: products } = await supabase
+        .from("products")
+        .select("id, hero_image_url")
+        .ilike("hero_image_url", "%/_pdf_pages/%");
+      const urls = (products ?? []).map((p: any) => p.hero_image_url).filter(Boolean) as string[];
+      const ids = (products ?? []).map((p: any) => p.id);
+
+      if (urls.length) {
+        await supabase.from("product_media")
+          .update({ type: "source_pdf_page", status: "reference_only" })
+          .in("file_url", urls);
+      }
+      if (ids.length) {
+        await supabase.from("products").update({ hero_image_url: null }).in("id", ids);
+      }
+      toast.success(`Cleared hero on ${ids.length} products`);
+      await refresh();
+    } catch (e: any) {
+      toast.error(e.message || "Cleanup failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="card-elevated p-5 space-y-3 mb-6 border-warning/40">
+      <div className="flex items-center gap-2">
+        <Trash2 className="h-5 w-5 text-warning" />
+        <h3 className="font-display text-lg">Clear imported PDF page hero images</h3>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        {count === null ? "Counting…" : `${count} products currently use a PDF page screenshot as their hero photo.`}
+      </p>
+      <Button onClick={run} disabled={busy || !count} variant="destructive" size="sm">
+        {busy ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+        Clear hero on {count ?? 0} products
+      </Button>
+    </div>
+  );
+};
 
 const Card = ({ icon: Icon, title, status, fields, note }: any) => (
   <div className="card-elevated p-5 space-y-3">
