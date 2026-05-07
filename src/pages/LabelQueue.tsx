@@ -20,6 +20,8 @@ type Row = {
   has_mrp: boolean;
   has_net_qty: boolean;
   locked_at?: string | null;
+  has_storage: boolean;
+  has_shelf_life: boolean;
 };
 
 const FILTERS = ["all", "missing_data", "needs_review", "approved", "locked", "rejected"] as const;
