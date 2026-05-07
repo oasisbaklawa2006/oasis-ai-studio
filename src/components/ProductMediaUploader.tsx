@@ -147,12 +147,14 @@ export function ProductMediaUploader({ productId, productSku, currentHero, onHer
     // Google Drive: convert /file/d/<id>/... or open?id=<id> to direct view
     const driveFile = u.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
     const driveOpen = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (u.includes("drive.google.com") && (driveFile || driveOpen)) {
+    if (u.includes("drive.google.com") || u.includes("googleusercontent.com")) {
       const id = driveFile?.[1] || driveOpen?.[1];
-      return {
-        url: `https://drive.google.com/uc?export=view&id=${id}`,
-        warning: "Google Drive links may not render directly. If the image stays blank, download and upload it instead.",
-      };
+      if (id) {
+        return {
+          url: `https://lh3.googleusercontent.com/d/${id}=w1600`,
+          warning: "Google Drive links can be unreliable. If the image fails to load, please upload the file directly instead.",
+        };
+      }
     }
     return { url: u };
   };
