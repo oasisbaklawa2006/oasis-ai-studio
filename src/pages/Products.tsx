@@ -295,20 +295,20 @@ const Products = () => {
                   <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-0.5 rounded-full font-medium">Photo needed</span>
                 )}
               </div>
-              <div className="p-4 sm:p-5 flex-1 flex flex-col min-w-0">
-
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <div className="min-w-0">
-                  <div className="font-display text-xl leading-tight truncate">{p.product_name}</div>
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5 font-mono">
-                    <span className="truncate">{p.sku}</span>
-                    <button onClick={(e) => copy(e, p.sku)} className="hover:text-foreground"><Copy className="h-3 w-3" /></button>
+              <div className="p-4 sm:p-5 flex-1 flex flex-col min-w-0 space-y-3">
+                <div className="flex items-start justify-between gap-2 min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <div className="luxe-sub mb-1 truncate">{p.category || p.product_type || "—"}</div>
+                    <div className="font-display text-lg leading-tight truncate">{p.product_name}</div>
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 font-mono min-w-0">
+                      <span className="truncate">{p.sku}</span>
+                      <button onClick={(e) => copy(e, p.sku)} className="hover:text-foreground shrink-0"><Copy className="h-3 w-3" /></button>
+                    </div>
                   </div>
+                  {p.is_sample && <span className="badge-soft bg-accent-soft text-accent-foreground shrink-0">Sample</span>}
                 </div>
-                {p.is_sample && <span className="badge-soft bg-accent-soft text-accent-foreground">Sample</span>}
-              </div>
 
-              {matched && <div className="text-[11px] text-accent-foreground/80 mb-2">Matched by alias: <span className="font-medium">{matched}</span></div>}
+                {matched && <div className="text-[11px] text-accent">Matched by alias: <span className="font-medium">{matched}</span></div>}
 
               {/* Identity + ops badges */}
               <div className="flex flex-wrap gap-1.5 mb-2">
