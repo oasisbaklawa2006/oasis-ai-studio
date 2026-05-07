@@ -337,6 +337,7 @@ const Products = () => {
                 </Badge>
                 <ReadinessBadge product={p} compact />
               </div>
+              </div>
             </Link>
           );
         })}
