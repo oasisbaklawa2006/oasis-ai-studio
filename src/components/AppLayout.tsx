@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { canAccessPage, type PageKey } from "@/lib/permissions";
+import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 
-const nav: { to: string; label: string; icon: any; page: PageKey }[] = [
+type NavItem = { to: string; label: string; icon: any; page: PageKey; featureKey?: string };
+const nav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, page: "dashboard" },
   { to: "/products", label: "Products", icon: Package, page: "products" },
   { to: "/media", label: "Media Library", icon: Image, page: "media" },
@@ -14,11 +16,11 @@ const nav: { to: string; label: string; icon: any; page: PageKey }[] = [
   { to: "/catalogues", label: "Catalogues", icon: BookOpen, page: "catalogues" },
   { to: "/hampers", label: "Hampers & BOM", icon: Gift, page: "hampers" },
   { to: "/ingredients", label: "Ingredients", icon: Leaf, page: "ingredients" },
-  { to: "/labels", label: "Label Studio", icon: Tag, page: "labels" },
-  { to: "/label-queue", label: "Label Queue", icon: ShieldCheck, page: "labels" },
-  { to: "/ai-studio", label: "AI Studio", icon: Sparkles, page: "ai_studio" },
+  { to: "/labels", label: "Label Studio", icon: Tag, page: "labels", featureKey: "barcode_label_app" },
+  { to: "/label-queue", label: "Label Queue", icon: ShieldCheck, page: "labels", featureKey: "barcode_label_app" },
+  { to: "/ai-studio", label: "AI Studio", icon: Sparkles, page: "ai_studio", featureKey: "ai_image_studio" },
   { to: "/testing", label: "Testing Checklist", icon: ClipboardCheck, page: "testing" },
-  { to: "/settings", label: "Integration Center", icon: Settings, page: "settings" },
+  { to: "/settings", label: "Activation Center", icon: Settings, page: "settings" },
 ];
 
 export const AppLayout = () => {
