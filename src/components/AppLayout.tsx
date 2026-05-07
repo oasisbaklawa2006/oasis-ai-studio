@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
