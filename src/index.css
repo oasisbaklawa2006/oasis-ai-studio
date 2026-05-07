@@ -6,56 +6,57 @@
 
 @layer base {
   :root {
-    --background: 40 33% 98%;
-    --foreground: 185 60% 10%;
+    /* Warm ivory background, Bateel-style */
+    --background: 38 38% 97%;
+    --foreground: 185 40% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 185 60% 10%;
+    --card-foreground: 185 40% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 185 60% 10%;
+    --popover-foreground: 185 40% 12%;
 
     /* Deep teal */
-    --primary: 184 65% 18%;
-    --primary-foreground: 40 33% 98%;
-    --primary-glow: 184 55% 30%;
+    --primary: 184 60% 18%;
+    --primary-foreground: 38 38% 97%;
+    --primary-glow: 184 50% 30%;
 
-    --secondary: 40 25% 94%;
-    --secondary-foreground: 185 60% 14%;
+    --secondary: 38 28% 93%;
+    --secondary-foreground: 185 50% 14%;
 
-    --muted: 40 20% 95%;
-    --muted-foreground: 185 12% 38%;
+    --muted: 38 22% 94%;
+    --muted-foreground: 185 10% 40%;
 
-    /* Antique gold */
-    --accent: 40 55% 52%;
-    --accent-foreground: 185 60% 10%;
-    --accent-soft: 40 55% 92%;
+    /* Muted antique gold */
+    --accent: 38 42% 48%;
+    --accent-foreground: 185 50% 10%;
+    --accent-soft: 38 50% 92%;
 
-    --destructive: 0 70% 45%;
+    --destructive: 0 65% 45%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 150 55% 32%;
-    --warning: 35 85% 50%;
+    --success: 150 45% 32%;
+    --warning: 35 75% 48%;
 
-    --border: 40 18% 88%;
-    --input: 40 18% 90%;
-    --ring: 184 65% 25%;
+    --border: 38 22% 88%;
+    --input: 38 22% 90%;
+    --ring: 184 60% 25%;
 
-    --radius: 0.75rem;
+    --radius: 0.875rem;
 
-    --gradient-hero: linear-gradient(135deg, hsl(184 65% 14%), hsl(184 55% 28%));
-    --gradient-gold: linear-gradient(135deg, hsl(40 55% 52%), hsl(38 70% 62%));
-    --shadow-soft: 0 1px 2px hsl(185 30% 15% / 0.04), 0 8px 24px -8px hsl(185 40% 18% / 0.08);
-    --shadow-elevated: 0 2px 4px hsl(185 30% 15% / 0.05), 0 20px 40px -12px hsl(185 50% 18% / 0.18);
+    --gradient-hero: linear-gradient(135deg, hsl(184 60% 14%), hsl(184 50% 28%));
+    --gradient-gold: linear-gradient(135deg, hsl(38 42% 48%), hsl(38 55% 60%));
+    --shadow-soft: 0 1px 2px hsl(38 30% 20% / 0.04), 0 12px 32px -16px hsl(38 30% 20% / 0.10);
+    --shadow-elevated: 0 2px 4px hsl(38 30% 20% / 0.05), 0 24px 48px -16px hsl(38 30% 20% / 0.16);
 
-    --sidebar-background: 184 65% 12%;
-    --sidebar-foreground: 40 25% 92%;
-    --sidebar-primary: 40 55% 52%;
-    --sidebar-primary-foreground: 184 65% 12%;
-    --sidebar-accent: 184 50% 18%;
-    --sidebar-accent-foreground: 40 33% 98%;
-    --sidebar-border: 184 40% 20%;
-    --sidebar-ring: 40 55% 52%;
+    --sidebar-background: 184 60% 12%;
+    --sidebar-foreground: 38 28% 92%;
+    --sidebar-primary: 38 42% 52%;
+    --sidebar-primary-foreground: 184 60% 12%;
+    --sidebar-accent: 184 45% 18%;
+    --sidebar-accent-foreground: 38 38% 97%;
+    --sidebar-border: 184 35% 20%;
+    --sidebar-ring: 38 42% 52%;
   }
 }
 
@@ -99,6 +100,21 @@
   .badge-soft {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
   }
+  /* Bateel-style luxury catalogue product card */
+  .luxe-card {
+    @apply bg-card rounded-2xl overflow-hidden border border-border/60 transition-all;
+    box-shadow: 0 1px 2px hsl(38 30% 20% / 0.03);
+  }
+  .luxe-card:hover {
+    box-shadow: 0 8px 32px -12px hsl(38 30% 20% / 0.18);
+    transform: translateY(-2px);
+  }
+  .luxe-media { @apply aspect-square bg-secondary/50 overflow-hidden; }
+  .luxe-media img { @apply w-full h-full object-cover transition-transform duration-500; }
+  .luxe-card:hover .luxe-media img { transform: scale(1.04); }
+  .luxe-title { @apply font-display text-lg leading-tight text-foreground; }
+  .luxe-sub { @apply text-[11px] uppercase tracking-[0.18em] text-muted-foreground; }
+  .luxe-price { @apply text-base font-medium text-foreground; }
 }
 
 @media print {

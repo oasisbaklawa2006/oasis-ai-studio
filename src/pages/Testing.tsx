@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, Circle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Circle, Upload, FileText, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
 
 type Item = { id: string; label: string; hint: string };
 type Section = { id: string; title: string; items: Item[] };
@@ -68,17 +72,49 @@ const SECTIONS: Section[] = [
 ];
 
 const KEY = "oasis_testing_checklist_v1";
+const PDF_KEY = "oasis_testing_pdfs_v1";
+
+type Attachment = { name: string; url: string; uploadedAt: string };
 
 const Testing = () => {
   const [state, setState] = useState<Record<string, { done: boolean; notes: string }>>({});
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     try { setState(JSON.parse(localStorage.getItem(KEY) ?? "{}")); } catch { /* ignore */ }
+    try { setAttachments(JSON.parse(localStorage.getItem(PDF_KEY) ?? "[]")); } catch { /* ignore */ }
   }, []);
 
   const persist = (next: typeof state) => { setState(next); localStorage.setItem(KEY, JSON.stringify(next)); };
   const toggle = (id: string) => persist({ ...state, [id]: { done: !state[id]?.done, notes: state[id]?.notes ?? "" } });
   const setNote = (id: string, notes: string) => persist({ ...state, [id]: { done: state[id]?.done ?? false, notes } });
+
+  const persistPdfs = (next: Attachment[]) => { setAttachments(next); localStorage.setItem(PDF_KEY, JSON.stringify(next)); };
+
+  const uploadPdf = async (files: FileList | null) => {
+    if (!files || !files[0]) return;
+    const f = files[0];
+    if (!f.type.includes("pdf")) return toast.error("Only PDF files are accepted");
+    setUploading(true);
+    try {
+      const path = `testing-results/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
+      const { error } = await supabase.storage.from("product-media").upload(path, f, { upsert: false });
+      if (error) { toast.error(error.message); return; }
+      const { data: pub } = supabase.storage.from("product-media").getPublicUrl(path);
+      persistPdfs([{ name: f.name, url: pub.publicUrl, uploadedAt: new Date().toISOString() }, ...attachments]);
+      toast.success("Test result uploaded");
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const removePdf = (i: number) => {
+    if (!confirm("Remove this attachment from the list?")) return;
+    persistPdfs(attachments.filter((_, idx) => idx !== i));
+  };
 
   const total = SECTIONS.flatMap((s) => s.items).length;
   const done = Object.values(state).filter((v) => v.done).length;
@@ -86,6 +122,30 @@ const Testing = () => {
   return (
     <>
       <PageHeader title="Testing Checklist" subtitle={`Walk through every flow — ${done}/${total} complete. State is saved locally on this device.`} />
+
+      <div className="card-elevated p-4 sm:p-5 mb-6 space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="font-display text-lg">Test Result Attachments</h3>
+          <Button size="sm" variant="outline" onClick={() => fileRef.current?.click()} disabled={uploading}>
+            <Upload className="h-4 w-4 mr-2" />{uploading ? "Uploading…" : "Attach PDF"}
+          </Button>
+          <input ref={fileRef} type="file" accept="application/pdf" hidden onChange={(e) => uploadPdf(e.target.files)} />
+        </div>
+        {attachments.length === 0 ? (
+          <div className="text-xs text-muted-foreground">No test result PDFs attached yet.</div>
+        ) : (
+          <ul className="divide-y">
+            {attachments.map((a, i) => (
+              <li key={i} className="flex items-center gap-2 py-2 text-sm">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                <a href={a.url} target="_blank" rel="noreferrer" className="flex-1 min-w-0 truncate hover:underline">{a.name}</a>
+                <span className="text-[11px] text-muted-foreground hidden sm:inline">{new Date(a.uploadedAt).toLocaleDateString()}</span>
+                <Button size="icon" variant="ghost" onClick={() => removePdf(i)}><Trash2 className="h-4 w-4" /></Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div className="space-y-6">
         {SECTIONS.map((s) => (

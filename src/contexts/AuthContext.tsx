@@ -54,9 +54,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("[Auth] state change:", event, !!s);
       setSession(s);
       setUser(s?.user ?? null);
-      if (s?.user) {
+      // Do NOT reload roles on TOKEN_REFRESHED / USER_UPDATED — those fire on tab focus
+      // and would cause sidebar/route flicker. Only load on real sign-in.
+      if (event === "SIGNED_IN" && s?.user) {
         setTimeout(() => { if (mounted) loadRolesViaRpc(); }, 0);
-      } else {
+      } else if (event === "SIGNED_OUT") {
         setRoles([]);
         setBootstrapError(null);
         setRolesLoading(false);

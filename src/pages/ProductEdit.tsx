@@ -126,13 +126,22 @@ const ProductEdit = () => {
   const canOverride = roles.includes("owner") || roles.includes("admin");
   const [form, setForm] = useState<any>(empty);
   const [loading, setLoading] = useState(false);
-  const [tab, setTab] = useState("identity");
+  const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
+  const [tab, setTab] = useState<string>(() => {
+    try { return localStorage.getItem(tabKey) || "identity"; } catch { return "identity"; }
+  });
+  const [loadedId, setLoadedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isNew) supabase.from("products").select("*").eq("id", id).single().then(({ data }) => {
-      if (data) setForm({ ...empty, ...data });
+    try { localStorage.setItem(tabKey, tab); } catch {}
+  }, [tab, tabKey]);
+
+  useEffect(() => {
+    if (isNew || !id || loadedId === id) return;
+    supabase.from("products").select("*").eq("id", id).single().then(({ data }) => {
+      if (data) { setForm({ ...empty, ...data }); setLoadedId(id); }
     });
-  }, [id, isNew]);
+  }, [id, isNew, loadedId]);
 
   const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
   const patch = (p: any) => setForm((f: any) => ({ ...f, ...p }));
