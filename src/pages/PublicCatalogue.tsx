@@ -102,7 +102,8 @@ const PublicCatalogue = () => {
                 {renderPrice(p)}
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
         {products.length === 0 && <div className="text-center text-muted-foreground py-12">No products yet in this catalogue.</div>}
       </section>
