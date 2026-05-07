@@ -76,12 +76,19 @@ const PublicCatalogue = () => {
         </div>
       </header>
 
-      <section className="max-w-5xl mx-auto px-6 py-12">
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 print-grid">
-          {products.map(({ products: p }) => (
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 print-grid">
+          {products.map(({ products: p }) => {
+            const isPdf = p.hero_image_url?.includes("/_pdf_pages/");
+            return (
             <article key={p.id} className="card-elevated overflow-hidden">
-              <div className="aspect-[4/5] bg-muted">
-                {p.hero_image_url && <img src={p.hero_image_url} alt={p.product_name} className="w-full h-full object-cover" />}
+              <div className="aspect-[4/5] bg-muted relative">
+                {p.hero_image_url && !isPdf && <img src={p.hero_image_url} alt={p.product_name} className="w-full h-full object-cover" />}
+                {isPdf && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-muted to-accent-soft/40 flex items-center justify-center">
+                    <span className="font-display text-4xl text-muted-foreground/40">{p.product_name?.[0] ?? "·"}</span>
+                  </div>
+                )}
               </div>
               <div className="p-5">
                 <h2 className="font-display text-xl mb-1">{p.product_name}</h2>
