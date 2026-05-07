@@ -181,7 +181,7 @@ const Products = () => {
     setPl(""); setBom(""); setCarton(""); setReady(""); setLabelStatus("");
   };
 
-  const sel = "h-9 px-2 rounded border bg-background text-xs";
+  const sel = "h-9 px-2 rounded-lg border border-border/60 bg-background text-xs w-full min-w-0 truncate";
 
   return (
     <>
@@ -191,87 +191,92 @@ const Products = () => {
         actions={<Button asChild><Link to="/products/new"><Plus className="h-4 w-4 mr-1" />New Product</Link></Button>}
       />
 
-      <div className="card-elevated p-4 mb-6 space-y-3">
-        <div className="flex items-center gap-3">
-          <Search className="h-4 w-4 text-muted-foreground" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by name, SKU, alias, misspelling, local name…"
-            className="border-0 focus-visible:ring-0 px-0"
-          />
-          <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)}>
-            <Filter className="h-3.5 w-3.5 mr-1" />
-            Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
-          </Button>
-          <select className={sel} value={sort} onChange={(e) => setSort(e.target.value)}>
-            {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-          </select>
-        </div>
-
-        {showFilters && (
-          <div className="space-y-3 pt-2 border-t">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              <select className={sel} value={pclass} onChange={(e) => setPclass(e.target.value)}>
-                <option value="">All product classes</option>
-                {PRODUCT_CLASSES.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
-              </select>
-              <select className={sel} value={mainDept} onChange={(e) => { setMainDept(e.target.value); if (e.target.value !== "ready_goods_store") setProdDept(""); }}>
-                <option value="">All main departments</option>
-                {MAIN_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
-              </select>
-              <select className={sel} value={prodDept} onChange={(e) => setProdDept(e.target.value)}>
-                <option value="">All production depts</option>
-                {PROD_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
-              </select>
-              <select className={sel} value={uom} onChange={(e) => setUom(e.target.value)}>
-                <option value="">All UOM</option>
-                {UOMS.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
-              <select className={sel} value={pl} onChange={(e) => setPl(e.target.value)}>
-                <option value="">Private label: all</option>
-                <option value="yes">Private label: yes</option>
-                <option value="no">Private label: no</option>
-              </select>
-              <select className={sel} value={bom} onChange={(e) => setBom(e.target.value)}>
-                <option value="">BOM: all</option>
-                <option value="yes">BOM required</option>
-                <option value="no">No BOM</option>
-              </select>
-              <select className={sel} value={carton} onChange={(e) => setCarton(e.target.value)}>
-                <option value="">Carton: all</option>
-                <option value="yes">Fixed carton</option>
-                <option value="no">No fixed carton</option>
-              </select>
-              <select className={sel} value={ready} onChange={(e) => setReady(e.target.value)}>
-                <option value="">Catalogue: all</option>
-                <option value="yes">Catalogue ready</option>
-                <option value="no">Not ready</option>
-              </select>
-              <select className={sel} value={labelStatus} onChange={(e) => setLabelStatus(e.target.value)}>
-                <option value="">Label: all</option>
-                {LABEL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select className={sel} value={div} onChange={(e) => setDiv(e.target.value)}>
-                <option value="">All divisions</option>
-                {by("division").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
-              </select>
-              <select className={sel} value={cat} onChange={(e) => setCat(e.target.value)}>
-                <option value="">All SKU categories</option>
-                {by("category").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
-              </select>
-              <select className={sel} value={pack} onChange={(e) => setPack(e.target.value)}>
-                <option value="">All packaging</option>
-                {by("packaging").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
-              </select>
-            </div>
-            {activeFilterCount > 0 && (
-              <Button variant="ghost" size="sm" onClick={clearAll}>
-                <X className="h-3.5 w-3.5 mr-1" />Clear filters
-              </Button>
-            )}
+      <div className="sticky top-0 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 mb-6 bg-background/85 backdrop-blur-md py-3">
+        <div className="luxe-panel space-y-3 min-w-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Search className="h-4 w-4 text-accent shrink-0" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search by name, SKU, alias…"
+              className="border-0 focus-visible:ring-0 px-0 bg-transparent text-sm min-w-0 flex-1"
+            />
+            <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)} className="shrink-0 rounded-full">
+              <Filter className="h-3.5 w-3.5 mr-1" />
+              <span className="hidden sm:inline">Filters</span>{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
+            </Button>
+            <select className="h-9 px-2 rounded-full border border-border/60 bg-background text-xs hidden sm:block max-w-[160px] truncate" value={sort} onChange={(e) => setSort(e.target.value)}>
+              {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+            </select>
           </div>
-        )}
+
+          {showFilters && (
+            <div className="space-y-3 pt-3 border-t border-border/60 min-w-0">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 min-w-0">
+                <select className={sel} value={pclass} onChange={(e) => setPclass(e.target.value)}>
+                  <option value="">All product classes</option>
+                  {PRODUCT_CLASSES.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
+                </select>
+                <select className={sel} value={mainDept} onChange={(e) => { setMainDept(e.target.value); if (e.target.value !== "ready_goods_store") setProdDept(""); }}>
+                  <option value="">All main departments</option>
+                  {MAIN_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                </select>
+                <select className={sel} value={prodDept} onChange={(e) => setProdDept(e.target.value)}>
+                  <option value="">All production depts</option>
+                  {PROD_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                </select>
+                <select className={sel} value={uom} onChange={(e) => setUom(e.target.value)}>
+                  <option value="">All UOM</option>
+                  {UOMS.map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+                <select className={sel} value={pl} onChange={(e) => setPl(e.target.value)}>
+                  <option value="">Private label: all</option>
+                  <option value="yes">Private label: yes</option>
+                  <option value="no">Private label: no</option>
+                </select>
+                <select className={sel} value={bom} onChange={(e) => setBom(e.target.value)}>
+                  <option value="">BOM: all</option>
+                  <option value="yes">BOM required</option>
+                  <option value="no">No BOM</option>
+                </select>
+                <select className={sel} value={carton} onChange={(e) => setCarton(e.target.value)}>
+                  <option value="">Carton: all</option>
+                  <option value="yes">Fixed carton</option>
+                  <option value="no">No fixed carton</option>
+                </select>
+                <select className={sel} value={ready} onChange={(e) => setReady(e.target.value)}>
+                  <option value="">Catalogue: all</option>
+                  <option value="yes">Catalogue ready</option>
+                  <option value="no">Not ready</option>
+                </select>
+                <select className={sel} value={labelStatus} onChange={(e) => setLabelStatus(e.target.value)}>
+                  <option value="">Label: all</option>
+                  {LABEL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select className={sel} value={div} onChange={(e) => setDiv(e.target.value)}>
+                  <option value="">All divisions</option>
+                  {by("division").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+                </select>
+                <select className={sel} value={cat} onChange={(e) => setCat(e.target.value)}>
+                  <option value="">All SKU categories</option>
+                  {by("category").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+                </select>
+                <select className={sel} value={pack} onChange={(e) => setPack(e.target.value)}>
+                  <option value="">All packaging</option>
+                  {by("packaging").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+                </select>
+                <select className={`${sel} sm:hidden`} value={sort} onChange={(e) => setSort(e.target.value)}>
+                  {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+                </select>
+              </div>
+              {activeFilterCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={clearAll}>
+                  <X className="h-3.5 w-3.5 mr-1" />Clear filters
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
