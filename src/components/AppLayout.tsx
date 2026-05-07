@@ -75,13 +75,13 @@ export const AppLayout = () => {
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 flex flex-col">
-        <header className="lg:hidden sticky top-0 z-30 bg-background/80 backdrop-blur border-b px-4 h-14 flex items-center justify-between no-print">
+      <div className="flex-1 min-w-0 flex flex-col w-full max-w-full">
+        <header className="lg:hidden sticky top-0 z-30 bg-background/80 backdrop-blur border-b px-3 h-14 flex items-center justify-between no-print">
           <button onClick={() => setOpen(!open)} className="p-2"><Menu className="h-5 w-5" /></button>
-          <div className="font-display text-lg">Oasis Studio</div>
+          <div className="font-display text-lg truncate">Oasis Studio</div>
           <div className="w-9" />
         </header>
-        <main className="flex-1 px-4 sm:px-8 py-6 lg:py-10 max-w-[1400px] w-full mx-auto">
+        <main className="flex-1 px-3 sm:px-6 lg:px-8 py-5 lg:py-10 max-w-[1400px] w-full mx-auto min-w-0">
           <Outlet />
         </main>
       </div>
