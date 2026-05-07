@@ -45,12 +45,12 @@ const PublicCatalogue = () => {
   const renderPrice = (p: any) => {
     const r = channelByProduct[p.id];
     if (showPrice && r?.public_price != null) {
-      return <div className="mt-3 font-display text-lg gold-text">{r.currency || "₹"} {r.public_price} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">{r.price_label || priceLabel}</span>{showDiscount && r.discount_percent ? <span className="text-[10px] text-success ml-1">-{r.discount_percent}%</span> : null}</div>;
+      return <div className="font-display text-xl text-accent">{r.currency || "₹"} {r.public_price} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1 normal-case">{r.price_label || priceLabel}</span>{showDiscount && r.discount_percent ? <span className="text-[10px] text-success ml-1">-{r.discount_percent}%</span> : null}</div>;
     }
     if (showMrp && (r?.mrp ?? p.mrp)) {
-      return <div className="mt-3 font-display text-lg gold-text">₹ {r?.mrp ?? p.mrp} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">MRP</span></div>;
+      return <div className="font-display text-xl text-accent">₹ {r?.mrp ?? p.mrp} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1">MRP</span></div>;
     }
-    return <div className="mt-3 text-sm text-muted-foreground italic">{r?.price_display_text || "Price on request"}</div>;
+    return <div className="text-sm text-muted-foreground italic">{r?.price_display_text || "Price on request"}</div>;
   };
 
   const renderMoq = (p: any) => {
