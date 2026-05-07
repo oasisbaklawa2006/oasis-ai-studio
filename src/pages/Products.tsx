@@ -281,15 +281,16 @@ const Products = () => {
           const uomS = uomSummary(p);
           const moqS = moqSummary(p);
           return (
-            <Link to={`/products/${p.id}`} key={p.id} className="card-elevated p-5 group">
-              <div className="aspect-[4/3] rounded-lg bg-muted mb-4 flex items-center justify-center overflow-hidden relative">
+            <Link to={`/products/${p.id}`} key={p.id} className="luxe-card flex flex-col">
+              <div className="luxe-media relative">
                 {p.hero_image_url
-                  ? <img src={p.hero_image_url} alt={p.product_name} className={`w-full h-full object-cover group-hover:scale-105 transition-transform ${p.hero_image_url.includes("/_pdf_pages/") ? "opacity-60 blur-[1px]" : ""}`} />
-                  : <ImageIcon className="h-10 w-10 text-muted-foreground/40" />}
-                {p.hero_image_url?.includes("/_pdf_pages/") && (
-                  <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-1 rounded-full font-medium">Photo needs replacement</span>
+                  ? <img src={p.hero_image_url} alt={p.product_name} loading="lazy" className={p.hero_image_url.includes("/_pdf_pages/") ? "opacity-60" : ""} />
+                  : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><ImageIcon className="h-10 w-10 text-accent/30" /></div>}
+                {(p.hero_image_url?.includes("/_pdf_pages/") || !p.hero_image_url) && (
+                  <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-0.5 rounded-full font-medium">Photo needed</span>
                 )}
               </div>
+              <div className="p-4 sm:p-5 flex-1 flex flex-col min-w-0">
 
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="min-w-0">
