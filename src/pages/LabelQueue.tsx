@@ -20,6 +20,8 @@ type Row = {
   has_mrp: boolean;
   has_net_qty: boolean;
   locked_at?: string | null;
+  has_storage: boolean;
+  has_shelf_life: boolean;
 };
 
 const FILTERS = ["all", "missing_data", "needs_review", "approved", "locked", "rejected"] as const;
@@ -35,7 +37,7 @@ const LabelQueue = () => {
   const load = async () => {
     setLoading(true);
     const [{ data: prods }, { data: labels }, { data: ings }, { data: nutri }] = await Promise.all([
-      supabase.from("products").select("id,product_name,sku,label_status").eq("is_active", true).order("product_name"),
+      supabase.from("products").select("id,product_name,sku,label_status,storage_instructions,shelf_life_days").eq("is_active", true).order("product_name"),
       supabase.from("labels").select("*"),
       supabase.from("product_ingredients").select("product_id"),
       supabase.from("nutrition_panels").select("product_id"),
@@ -57,6 +59,8 @@ const LabelQueue = () => {
         has_fssai: !!l?.fssai_license,
         has_mrp: l?.mrp != null,
         has_net_qty: !!l?.net_quantity,
+        has_storage: !!p.storage_instructions,
+        has_shelf_life: p.shelf_life_days != null,
         locked_at: l?.locked_at,
       };
     });
@@ -68,7 +72,7 @@ const LabelQueue = () => {
   const filtered = useMemo(() => rows.filter((r) => {
     switch (filter) {
       case "all": return true;
-      case "missing_data": return !r.has_ingredients || !r.has_nutrition || !r.has_fssai || !r.has_mrp || !r.has_net_qty;
+      case "missing_data": return !r.has_ingredients || !r.has_nutrition || !r.has_fssai || !r.has_mrp || !r.has_net_qty || !r.has_storage || !r.has_shelf_life;
       default: return r.status === filter;
     }
   }), [rows, filter]);
@@ -111,6 +115,8 @@ const LabelQueue = () => {
             if (!r.has_fssai) warns.push("FSSAI");
             if (!r.has_mrp) warns.push("MRP");
             if (!r.has_net_qty) warns.push("net qty");
+            if (!r.has_storage) warns.push("storage instructions");
+            if (!r.has_shelf_life) warns.push("shelf life");
             const ready = warns.length === 0;
             const locked = r.status === "locked";
             return (

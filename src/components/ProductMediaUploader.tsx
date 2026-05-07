@@ -142,9 +142,37 @@ export function ProductMediaUploader({ productId, productSku, currentHero, onHer
     await load();
   };
 
+  const normalizeImageUrl = (raw: string): { url: string; warning?: string } => {
+    let u = raw.trim();
+    // Google Drive: convert /file/d/<id>/... or open?id=<id> to direct view
+    const driveFile = u.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const driveOpen = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (u.includes("drive.google.com") && (driveFile || driveOpen)) {
+      const id = driveFile?.[1] || driveOpen?.[1];
+      return {
+        url: `https://drive.google.com/uc?export=view&id=${id}`,
+        warning: "Google Drive links may not render directly. If the image stays blank, download and upload it instead.",
+      };
+    }
+    return { url: u };
+  };
+
+  const looksLikeImageUrl = (u: string) =>
+    /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?.*)?$/i.test(u) ||
+    /supabase\.co\/storage/.test(u) ||
+    /images\.unsplash\.com|cdn\.shopify\.com|imgix\.net|cloudinary\.com|imagekit\.io/.test(u);
+
   const addFromUrl = async () => {
-    const url = urlInput.trim();
-    if (!url) return;
+    const raw = urlInput.trim();
+    if (!raw) return toast.error("URL is required");
+    if (!/^https?:\/\//i.test(raw)) return toast.error("URL must start with http:// or https://");
+    const { url, warning } = normalizeImageUrl(raw);
+    if (warning) toast.warning(warning);
+    if (!looksLikeImageUrl(url) && !url.includes("drive.google.com")) {
+      toast.warning(
+        "This URL may not be a direct image link. Please use a direct image URL ending in .jpg, .jpeg, .png, .webp, or upload from gallery."
+      );
+    }
     const { error } = await supabase.from("product_media").insert({
       product_id: productId,
       file_url: url,
@@ -152,7 +180,10 @@ export function ProductMediaUploader({ productId, productSku, currentHero, onHer
       status: "raw",
       alt_text: "url_import",
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (import.meta.env.DEV) console.error("[media-url-add]", error, url);
+      return toast.error(error.message);
+    }
     setUrlInput("");
     if (!currentHero || isPdfPage(currentHero)) await setAsHero(url);
     toast.success("Image added from URL");
@@ -244,11 +275,27 @@ export function ProductMediaUploader({ productId, productSku, currentHero, onHer
             const pdf = isPdfPage(m.file_url) || m.type === "source_pdf_page" || m.status === "reference_only";
             return (
               <div key={m.id} className="relative group rounded-lg overflow-hidden border bg-muted">
-                <div className="aspect-square">
+                <div className="aspect-square relative bg-muted">
                   {m.type === "video" ? (
                     <video src={m.file_url} className="w-full h-full object-cover" controls />
                   ) : (
-                    <img src={m.file_url} alt={m.alt_text || ""} className={`w-full h-full object-cover ${pdf && !isHero ? "opacity-70" : ""}`} />
+                    <img
+                      src={m.file_url}
+                      alt={m.alt_text || ""}
+                      className={`w-full h-full object-cover ${pdf && !isHero ? "opacity-70" : ""}`}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        img.style.display = "none";
+                        const parent = img.parentElement;
+                        if (parent && !parent.querySelector(".broken-fallback")) {
+                          const div = document.createElement("div");
+                          div.className = "broken-fallback absolute inset-0 flex flex-col items-center justify-center text-[10px] text-muted-foreground p-2 text-center";
+                          div.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15l-5-5L5 21"/><rect x="3" y="3" width="18" height="18" rx="2"/></svg><div class="mt-1">Image failed to load</div>';
+                          parent.appendChild(div);
+                        }
+                        if (import.meta.env.DEV) console.warn("[media-load-fail]", m.file_url);
+                      }}
+                    />
                   )}
                 </div>
                 <div className="absolute top-1 left-1 right-1 flex flex-wrap gap-1">

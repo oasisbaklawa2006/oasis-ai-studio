@@ -121,15 +121,24 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
 
   const onPickChild = async (p: any) => {
     setPickChild(false);
-    // Fetch full child product info to suggest routing
-    const { data: full } = await supabase.from("products").select("sku,product_name,main_department,production_department").eq("id", p.id).maybeSingle();
+    const { data: full } = await supabase
+      .from("products")
+      .select("sku,product_name,main_department,production_department,b2b_price_inr,b2b_price,mrp,primary_uom,b2b_uom")
+      .eq("id", p.id)
+      .maybeSingle();
+    const cost = full?.b2b_price_inr ?? full?.b2b_price ?? full?.mrp ?? null;
+    const unit = full?.b2b_uom ?? full?.primary_uom ?? "pc";
     setDraft((d) => ({
       ...d,
       child_product_id: p.id,
-      component_name: d.component_name || p.product_name,
+      component_name: full?.product_name || p.product_name,
+      cost_per_unit: cost != null ? String(cost) : d.cost_per_unit,
+      unit: unit || d.unit,
       source_department: d.source_department || full?.main_department || "",
       production_department: d.production_department || full?.production_department || "",
     }));
+    if (cost == null) toast.warning("No cost/price found for this linked product. Enter cost manually.");
+    else toast.success(`Cost auto-filled: ₹${cost}/${unit}`);
   };
 
   const validateDraft = (): string | null => {
@@ -344,6 +353,9 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
             <div>
               <Label className="text-xs">Cost per unit (₹)</Label>
               <Input type="number" value={draft.cost_per_unit ?? ""} onChange={(e) => setD("cost_per_unit", e.target.value)} />
+              {draft.child_product_id && (
+                <div className="text-[10px] text-muted-foreground mt-1">Auto-filled from linked product B2B price. You can override manually.</div>
+              )}
             </div>
             <div>
               <Label className="text-xs">Lead time (days)</Label>
