@@ -94,6 +94,62 @@ interface Props {
   bomRequired?: boolean;
 }
 
+// Normalize unit to canonical form
+const normUnit = (u?: string | null) => {
+  const x = (u || "").toLowerCase().trim();
+  if (["pc", "pcs", "piece", "pieces", "nos", "no"].includes(x)) return "pc";
+  if (["kg", "kgs", "kilogram", "kilograms"].includes(x)) return "kg";
+  if (["g", "gm", "gms", "gram", "grams"].includes(x)) return "g";
+  if (["l", "lt", "ltr", "litre", "liter"].includes(x)) return "litre";
+  if (["ml"].includes(x)) return "ml";
+  return x || "pc";
+};
+
+// Get piece weight in grams from product metadata
+const pieceWeightG = (p: any): number | null => {
+  if (p?.approximate_piece_weight_g) return Number(p.approximate_piece_weight_g);
+  if (p?.pieces_per_kg && Number(p.pieces_per_kg) > 0) return 1000 / Number(p.pieces_per_kg);
+  if (p?.grammage_g && p?.pcs_per_pack && Number(p.pcs_per_pack) > 0)
+    return Number(p.grammage_g) / Number(p.pcs_per_pack);
+  if (p?.net_weight_g && p?.pcs_per_pack && Number(p.pcs_per_pack) > 0)
+    return Number(p.net_weight_g) / Number(p.pcs_per_pack);
+  return null;
+};
+
+// Convert base price (per baseUnit) to per targetUnit using product metadata
+// Returns { cost, note } or null when conversion impossible
+const convertCost = (basePrice: number, baseUnit: string, targetUnit: string, p: any): { cost: number; note: string } | null => {
+  const b = normUnit(baseUnit);
+  const t = normUnit(targetUnit);
+  if (b === t) return { cost: basePrice, note: "" };
+
+  // weight family
+  const toG = (u: string) => (u === "kg" ? 1000 : u === "g" ? 1 : null);
+  const bg = toG(b), tg = toG(t);
+  if (bg && tg) return { cost: basePrice * (tg / bg), note: `Converted from ₹${basePrice}/${b} → ₹${(basePrice*(tg/bg)).toFixed(2)}/${t}` };
+
+  // volume family
+  const toMl = (u: string) => (u === "litre" ? 1000 : u === "ml" ? 1 : null);
+  const bm = toMl(b), tm = toMl(t);
+  if (bm && tm) return { cost: basePrice * (tm / bm), note: `Converted from ₹${basePrice}/${b} → ₹${(basePrice*(tm/bm)).toFixed(2)}/${t}` };
+
+  // weight ↔ piece: requires piece weight
+  if ((bg && t === "pc") || (tg && b === "pc")) {
+    const pwG = pieceWeightG(p);
+    if (!pwG) return null;
+    if (bg && t === "pc") {
+      // base ₹/bg → ₹/g = basePrice/bg → ₹/pc = (basePrice/bg) * pwG
+      const cost = (basePrice / bg) * pwG;
+      return { cost, note: `Converted using piece weight ${pwG.toFixed(1)}g: ₹${basePrice}/${b} → ₹${cost.toFixed(2)}/pc` };
+    } else {
+      // base ₹/pc → ₹/tg
+      const cost = (basePrice / pwG) * (tg as number);
+      return { cost, note: `Converted using piece weight ${pwG.toFixed(1)}g: ₹${basePrice}/pc → ₹${cost.toFixed(2)}/${t}` };
+    }
+  }
+  return null;
+};
+
 export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   const [items, setItems] = useState<Bom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +157,8 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   const [pickChild, setPickChild] = useState(false);
   const [draft, setDraft] = useState<Bom>(emptyDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [linkedMeta, setLinkedMeta] = useState<any>(null); // { basePrice, baseUnit, product }
+  const [convNote, setConvNote] = useState<string>("");
 
   const load = async () => {
     setLoading(true);
@@ -123,23 +181,51 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setPickChild(false);
     const { data: full } = await supabase
       .from("products")
-      .select("sku,product_name,main_department,production_department,b2b_price_inr,b2b_price,mrp,primary_uom,b2b_uom")
+      .select("sku,product_name,main_department,production_department,b2b_price_inr,b2b_price,mrp,primary_uom,b2b_uom,approximate_piece_weight_g,pieces_per_kg,grammage_g,pcs_per_pack,net_weight_g")
       .eq("id", p.id)
       .maybeSingle();
-    const cost = full?.b2b_price_inr ?? full?.b2b_price ?? full?.mrp ?? null;
-    const unit = full?.b2b_uom ?? full?.primary_uom ?? "pc";
-    setDraft((d) => ({
-      ...d,
-      child_product_id: p.id,
-      component_name: full?.product_name || p.product_name,
-      cost_per_unit: cost != null ? String(cost) : d.cost_per_unit,
-      unit: unit || d.unit,
-      source_department: d.source_department || full?.main_department || "",
-      production_department: d.production_department || full?.production_department || "",
-    }));
-    if (cost == null) toast.warning("No cost/price found for this linked product. Enter cost manually.");
-    else toast.success(`Cost auto-filled: ₹${cost}/${unit}`);
+    const basePrice = full?.b2b_price_inr ?? full?.b2b_price ?? full?.mrp ?? null;
+    const baseUnit = normUnit(full?.b2b_uom ?? full?.primary_uom ?? "pc");
+    setLinkedMeta(basePrice != null ? { basePrice: Number(basePrice), baseUnit, product: full } : null);
+    setDraft((d) => {
+      const targetUnit = normUnit(d.unit) || baseUnit;
+      let cost: any = d.cost_per_unit;
+      let note = "";
+      if (basePrice != null) {
+        const conv = convertCost(Number(basePrice), baseUnit, targetUnit, full);
+        if (conv) { cost = conv.cost.toFixed(2); note = conv.note; }
+        else {
+          cost = String(basePrice);
+          note = `⚠ Cannot auto-convert ₹${basePrice}/${baseUnit} → /${targetUnit}. Add piece weight on linked product or override manually.`;
+        }
+      }
+      setConvNote(note);
+      return {
+        ...d,
+        child_product_id: p.id,
+        component_name: full?.product_name || p.product_name,
+        cost_per_unit: cost,
+        unit: targetUnit,
+        source_department: d.source_department || full?.main_department || "",
+        production_department: d.production_department || full?.production_department || "",
+      };
+    });
+    if (basePrice == null) toast.warning("No cost/price found for this linked product. Enter cost manually.");
   };
+
+  // Recalculate cost when unit changes for a linked product
+  useEffect(() => {
+    if (!linkedMeta || !draft.child_product_id) return;
+    const conv = convertCost(linkedMeta.basePrice, linkedMeta.baseUnit, normUnit(draft.unit), linkedMeta.product);
+    if (conv) {
+      setConvNote(conv.note);
+      setDraft((d) => ({ ...d, cost_per_unit: conv.cost.toFixed(2) }));
+    } else {
+      setConvNote(`⚠ Cannot auto-convert ₹${linkedMeta.basePrice}/${linkedMeta.baseUnit} → /${normUnit(draft.unit)}. Add piece weight on linked product or override manually.`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft.unit]);
+
 
   const validateDraft = (): string | null => {
     if (!draft.child_product_id && !draft.component_name?.trim()) return "Component name or product is required";
@@ -160,6 +246,8 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setDraft(emptyDraft());
     setEditingId(null);
     setShowAdd(false);
+    setLinkedMeta(null);
+    setConvNote("");
   };
 
   const save = async () => {
@@ -327,7 +415,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
               {draft.child_product_id ? (
                 <div className="flex items-center gap-2 border rounded-md p-2 text-sm">
                   <span className="flex-1 truncate">{draft.component_name}</span>
-                  <Button size="sm" variant="ghost" onClick={() => setD("child_product_id", null)}>Clear</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setD("child_product_id", null); setLinkedMeta(null); setConvNote(""); }}>Clear</Button>
                 </div>
               ) : (
                 <Button variant="outline" size="sm" onClick={() => setPickChild((v) => !v)}>
@@ -354,7 +442,9 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
               <Label className="text-xs">Cost per unit (₹)</Label>
               <Input type="number" value={draft.cost_per_unit ?? ""} onChange={(e) => setD("cost_per_unit", e.target.value)} />
               {draft.child_product_id && (
-                <div className="text-[10px] text-muted-foreground mt-1">Auto-filled from linked product B2B price. You can override manually.</div>
+                <div className={`text-[10px] mt-1 ${convNote.startsWith("⚠") ? "text-destructive" : "text-muted-foreground"}`}>
+                  {convNote || "Auto-filled from linked product B2B price. You can override manually."}
+                </div>
               )}
             </div>
             <div>
