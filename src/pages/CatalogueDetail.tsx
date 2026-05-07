@@ -191,20 +191,20 @@ const CatalogueDetail = () => {
           </div>
         </div>
 
-        <div className="space-y-6 no-print">
+        <div className="space-y-6 no-print min-w-0">
           <SharePanel url={publicUrl} title={c.title} />
           {canWrite && (
-            <div className="card-elevated p-5">
-              <h3 className="font-display text-lg mb-2">Add products</h3>
+            <div className="luxe-panel">
+              <h3 className="luxe-section-title mb-3">Add products</h3>
               <ProductPicker excludeIds={linked.map((l) => l.product_id)} onPick={(p) => addProduct(p.id)} />
             </div>
           )}
-          <div className="card-elevated p-5 text-xs text-muted-foreground space-y-1">
-            <div>Slug: <code className="font-mono text-foreground">{c.public_slug}</code></div>
+          <div className="luxe-panel text-xs text-muted-foreground space-y-1 break-words">
+            <div>Slug: <code className="font-mono text-foreground break-all">{c.public_slug}</code></div>
             <div className="capitalize">Type: {c.catalogue_type?.replace(/_/g, " ")}</div>
             <div className="capitalize">Theme: {c.theme?.replace(/_/g, " ")}</div>
             <div className="capitalize">Price: {c.price_visibility}</div>
-            {status !== "published" && <div className="text-warning mt-2">Public link will return “Catalogue not available” until status is published.</div>}
+            {status !== "published" && <div className="text-warning mt-2">Public link will return "Catalogue not available" until status is published.</div>}
           </div>
         </div>
       </div>
