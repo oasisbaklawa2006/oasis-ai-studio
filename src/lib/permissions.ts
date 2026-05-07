@@ -24,6 +24,7 @@ const MATRIX: Record<PageKey, Role[]> = {
   ai_studio:         ["owner","admin","designer"],
   settings:          ["owner","admin"],
   testing:           ["owner","admin","product_manager","catalogue_manager","designer","sales"],
+  audit_log:         ["owner","admin"],
 };
 
 export const hasRole = (roles: Role[] | string[], role: Role) => roles.includes(role as any);
