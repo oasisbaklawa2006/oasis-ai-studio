@@ -115,6 +115,18 @@
   .luxe-title { @apply font-display text-lg leading-tight text-foreground; }
   .luxe-sub { @apply text-[11px] uppercase tracking-[0.18em] text-muted-foreground; }
   .luxe-price { @apply text-base font-medium text-foreground; }
+  .luxe-section-title {
+    @apply font-display text-xl text-foreground relative pl-3;
+  }
+  .luxe-section-title::before {
+    content: "";
+    @apply absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full;
+    background: hsl(var(--accent));
+  }
+  .luxe-panel {
+    @apply bg-card rounded-2xl border border-border/60 p-5 sm:p-6 min-w-0;
+    box-shadow: 0 1px 2px hsl(38 30% 20% / 0.03), 0 8px 24px -16px hsl(38 30% 20% / 0.10);
+  }
 }
 
 @media print {
