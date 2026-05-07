@@ -65,7 +65,9 @@
     width: 100%;
     max-width: 100%;
     overflow-x: hidden;
+    overscroll-behavior-x: none;
   }
+  body { touch-action: pan-y; }
   img, video, canvas, svg { max-width: 100%; height: auto; }
   body {
     @apply bg-background text-foreground;
