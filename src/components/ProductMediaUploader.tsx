@@ -142,9 +142,37 @@ export function ProductMediaUploader({ productId, productSku, currentHero, onHer
     await load();
   };
 
+  const normalizeImageUrl = (raw: string): { url: string; warning?: string } => {
+    let u = raw.trim();
+    // Google Drive: convert /file/d/<id>/... or open?id=<id> to direct view
+    const driveFile = u.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+    const driveOpen = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (u.includes("drive.google.com") && (driveFile || driveOpen)) {
+      const id = driveFile?.[1] || driveOpen?.[1];
+      return {
+        url: `https://drive.google.com/uc?export=view&id=${id}`,
+        warning: "Google Drive links may not render directly. If the image stays blank, download and upload it instead.",
+      };
+    }
+    return { url: u };
+  };
+
+  const looksLikeImageUrl = (u: string) =>
+    /\.(jpg|jpeg|png|webp|gif|avif|svg)(\?.*)?$/i.test(u) ||
+    /supabase\.co\/storage/.test(u) ||
+    /images\.unsplash\.com|cdn\.shopify\.com|imgix\.net|cloudinary\.com|imagekit\.io/.test(u);
+
   const addFromUrl = async () => {
-    const url = urlInput.trim();
-    if (!url) return;
+    const raw = urlInput.trim();
+    if (!raw) return toast.error("URL is required");
+    if (!/^https?:\/\//i.test(raw)) return toast.error("URL must start with http:// or https://");
+    const { url, warning } = normalizeImageUrl(raw);
+    if (warning) toast.warning(warning);
+    if (!looksLikeImageUrl(url) && !url.includes("drive.google.com")) {
+      toast.warning(
+        "This URL may not be a direct image link. Please use a direct image URL ending in .jpg, .jpeg, .png, .webp, or upload from gallery."
+      );
+    }
     const { error } = await supabase.from("product_media").insert({
       product_id: productId,
       file_url: url,
@@ -152,7 +180,10 @@ export function ProductMediaUploader({ productId, productSku, currentHero, onHer
       status: "raw",
       alt_text: "url_import",
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (import.meta.env.DEV) console.error("[media-url-add]", error, url);
+      return toast.error(error.message);
+    }
     setUrlInput("");
     if (!currentHero || isPdfPage(currentHero)) await setAsHero(url);
     toast.success("Image added from URL");
