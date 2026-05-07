@@ -415,7 +415,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
               {draft.child_product_id ? (
                 <div className="flex items-center gap-2 border rounded-md p-2 text-sm">
                   <span className="flex-1 truncate">{draft.component_name}</span>
-                  <Button size="sm" variant="ghost" onClick={() => setD("child_product_id", null)}>Clear</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { setD("child_product_id", null); setLinkedMeta(null); setConvNote(""); }}>Clear</Button>
                 </div>
               ) : (
                 <Button variant="outline" size="sm" onClick={() => setPickChild((v) => !v)}>
