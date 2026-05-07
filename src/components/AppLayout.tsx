@@ -27,15 +27,17 @@ export const AppLayout = () => {
   const { user, roles, signOut, loading, rolesLoading } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
-  const { flags } = useFeatureFlags();
+  const { flags, loading: flagsLoading } = useFeatureFlags();
   const isAdmin = roles.includes("owner") || roles.includes("admin");
   const rolesReady = !loading && !rolesLoading;
   const items = rolesReady ? nav.filter((n) => {
     if (!canAccessPage(roles as any, n.page)) return false;
-    if (!n.featureKey) return true;
+    if (!n.featureKey) return true; // core pages always visible
+    if (flagsLoading) return isAdmin; // don't hide gated items for admin while loading
     const f = flags.find((x) => x.feature_key === n.featureKey);
-    if (!f) return isAdmin; // Until flags load or if missing — admins still see
-    return f.is_enabled || (f.is_visible && isAdmin) || isAdmin;
+    if (!f) return isAdmin;
+    if (isAdmin) return true;
+    return f.is_enabled || f.is_visible;
   }) : [];
   const roleLabel = !rolesReady ? "Loading account role…" : (roles[0] ?? "Role missing");
 
