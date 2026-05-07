@@ -94,6 +94,8 @@ const Settings = () => (
   <>
     <PageHeader title="Integration Center" subtitle="Future-ready connections for Oasis Central, AI, WhatsApp, label printers, and storage." />
 
+    <PdfHeroCleanup />
+
     <div className="card-elevated p-4 mb-6 bg-accent-soft/40 text-sm flex items-start gap-2">
       <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" />
       <span>Secrets are never stored in the frontend. Configure secrets in backend Edge Function secrets. Owner role only.</span>
