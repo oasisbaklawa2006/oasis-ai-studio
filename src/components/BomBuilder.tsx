@@ -94,6 +94,62 @@ interface Props {
   bomRequired?: boolean;
 }
 
+// Normalize unit to canonical form
+const normUnit = (u?: string | null) => {
+  const x = (u || "").toLowerCase().trim();
+  if (["pc", "pcs", "piece", "pieces", "nos", "no"].includes(x)) return "pc";
+  if (["kg", "kgs", "kilogram", "kilograms"].includes(x)) return "kg";
+  if (["g", "gm", "gms", "gram", "grams"].includes(x)) return "g";
+  if (["l", "lt", "ltr", "litre", "liter"].includes(x)) return "litre";
+  if (["ml"].includes(x)) return "ml";
+  return x || "pc";
+};
+
+// Get piece weight in grams from product metadata
+const pieceWeightG = (p: any): number | null => {
+  if (p?.approximate_piece_weight_g) return Number(p.approximate_piece_weight_g);
+  if (p?.pieces_per_kg && Number(p.pieces_per_kg) > 0) return 1000 / Number(p.pieces_per_kg);
+  if (p?.grammage_g && p?.pcs_per_pack && Number(p.pcs_per_pack) > 0)
+    return Number(p.grammage_g) / Number(p.pcs_per_pack);
+  if (p?.net_weight_g && p?.pcs_per_pack && Number(p.pcs_per_pack) > 0)
+    return Number(p.net_weight_g) / Number(p.pcs_per_pack);
+  return null;
+};
+
+// Convert base price (per baseUnit) to per targetUnit using product metadata
+// Returns { cost, note } or null when conversion impossible
+const convertCost = (basePrice: number, baseUnit: string, targetUnit: string, p: any): { cost: number; note: string } | null => {
+  const b = normUnit(baseUnit);
+  const t = normUnit(targetUnit);
+  if (b === t) return { cost: basePrice, note: "" };
+
+  // weight family
+  const toG = (u: string) => (u === "kg" ? 1000 : u === "g" ? 1 : null);
+  const bg = toG(b), tg = toG(t);
+  if (bg && tg) return { cost: basePrice * (tg / bg), note: `Converted from ₹${basePrice}/${b} → ₹${(basePrice*(tg/bg)).toFixed(2)}/${t}` };
+
+  // volume family
+  const toMl = (u: string) => (u === "litre" ? 1000 : u === "ml" ? 1 : null);
+  const bm = toMl(b), tm = toMl(t);
+  if (bm && tm) return { cost: basePrice * (tm / bm), note: `Converted from ₹${basePrice}/${b} → ₹${(basePrice*(tm/bm)).toFixed(2)}/${t}` };
+
+  // weight ↔ piece: requires piece weight
+  if ((bg && t === "pc") || (tg && b === "pc")) {
+    const pwG = pieceWeightG(p);
+    if (!pwG) return null;
+    if (bg && t === "pc") {
+      // base ₹/bg → ₹/g = basePrice/bg → ₹/pc = (basePrice/bg) * pwG
+      const cost = (basePrice / bg) * pwG;
+      return { cost, note: `Converted using piece weight ${pwG.toFixed(1)}g: ₹${basePrice}/${b} → ₹${cost.toFixed(2)}/pc` };
+    } else {
+      // base ₹/pc → ₹/tg
+      const cost = (basePrice / pwG) * (tg as number);
+      return { cost, note: `Converted using piece weight ${pwG.toFixed(1)}g: ₹${basePrice}/pc → ₹${cost.toFixed(2)}/${t}` };
+    }
+  }
+  return null;
+};
+
 export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   const [items, setItems] = useState<Bom[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,6 +157,8 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   const [pickChild, setPickChild] = useState(false);
   const [draft, setDraft] = useState<Bom>(emptyDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [linkedMeta, setLinkedMeta] = useState<any>(null); // { basePrice, baseUnit, product }
+  const [convNote, setConvNote] = useState<string>("");
 
   const load = async () => {
     setLoading(true);
