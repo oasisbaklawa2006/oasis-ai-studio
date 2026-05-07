@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle2, Circle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, Circle, Upload, FileText, Trash2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
 
 type Item = { id: string; label: string; hint: string };
 type Section = { id: string; title: string; items: Item[] };
