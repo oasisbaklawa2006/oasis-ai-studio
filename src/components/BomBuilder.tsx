@@ -246,6 +246,8 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setDraft(emptyDraft());
     setEditingId(null);
     setShowAdd(false);
+    setLinkedMeta(null);
+    setConvNote("");
   };
 
   const save = async () => {
