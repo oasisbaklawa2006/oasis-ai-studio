@@ -80,7 +80,7 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
     const featureKey = FEATURE_FOR_INTEGRATION[integration_key];
-    const newStatus = result.ok ? "test_passed" : "failed";
+    const newStatus = result.ok ? "test_passed" : "error";
     await admin
       .from("integration_settings")
       .update({ status: newStatus, last_tested_at: new Date().toISOString(), last_test_result: result, secret_status: missing.length ? "missing" : "configured" })
