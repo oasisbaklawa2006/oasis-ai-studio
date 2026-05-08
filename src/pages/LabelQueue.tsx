@@ -24,7 +24,11 @@ type Row = {
   has_shelf_life: boolean;
 };
 
-const FILTERS = ["all", "missing_data", "needs_review", "approved", "locked", "rejected"] as const;
+const FILTERS = [
+  "all", "missing_data", "needs_review", "approved", "locked", "rejected",
+  "missing_ingredients", "missing_nutrition", "missing_fssai", "missing_mrp",
+  "missing_storage", "missing_shelf_life", "ready_for_legal_review", "approved_for_print",
+] as const;
 type Filter = typeof FILTERS[number];
 
 const LabelQueue = () => {
