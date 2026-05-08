@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History } from "lucide-react";
+import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History, Wrench } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
@@ -18,6 +18,7 @@ const nav: NavItem[] = [
   { to: "/ingredients", label: "Ingredients", icon: Leaf, page: "ingredients" },
   { to: "/labels", label: "Label Studio", icon: Tag, page: "labels" },
   { to: "/label-queue", label: "Label Queue", icon: ShieldCheck, page: "labels" },
+  { to: "/data-correction", label: "Data Correction", icon: Wrench, page: "data_correction" },
   { to: "/ai-studio", label: "AI Studio", icon: Sparkles, page: "ai_studio", featureKey: "ai_image_studio" },
   { to: "/testing", label: "Testing Checklist", icon: ClipboardCheck, page: "testing" },
   { to: "/settings", label: "Activation Center", icon: Settings, page: "settings" },

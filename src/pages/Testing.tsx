@@ -69,6 +69,15 @@ const SECTIONS: Section[] = [
     { id: "I2", label: "Confirm all endpoint placeholders", hint: "All 6 cards visible." },
     { id: "I3", label: "Confirm SKU/product_id identity notes", hint: "Notes appear under each card." },
   ]},
+  { id: "J", title: "Stability & Mobile Test", items: [
+    { id: "J1", label: "390px mobile — no horizontal overflow", hint: "Open at 390px width and check every page swipes only top↔bottom." },
+    { id: "J2", label: "Tab-switch — no refresh/reset", hint: "Open Product Edit → Media tab → switch browser tab/app → return → tab and form state preserved." },
+    { id: "J3", label: "Product image URL upload", hint: "Add via direct .jpg/.png URL — image appears." },
+    { id: "J4", label: "Google Drive image URL", hint: "Paste a Drive file link — warning shown, image normalized." },
+    { id: "J5", label: "Replace PDF hero image", hint: "Product with PDF hero → upload real photo → hero replaced, PDF marked reference-only." },
+    { id: "J6", label: "BOM linked-product cost autofill", hint: "Add BOM child product — cost_per_unit and unit auto-filled, conversion note visible." },
+    { id: "J7", label: "Public catalogue photo fallback", hint: "Product without real photo shows elegant placeholder, never PDF screenshot." },
+  ]},
 ];
 
 const KEY = "oasis_testing_checklist_v1";

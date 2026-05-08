@@ -25,9 +25,18 @@ import AIStudio from "./pages/AIStudio";
 import Settings from "./pages/Settings";
 import Testing from "./pages/Testing";
 import AuditLog from "./pages/AuditLog";
+import DataCorrection from "./pages/DataCorrection";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 60_000,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -57,6 +66,7 @@ const App = () => (
                 <Route path="/testing" element={<RoleGate page="testing"><Testing /></RoleGate>} />
                 <Route path="/settings" element={<RoleGate page="settings"><Settings /></RoleGate>} />
                 <Route path="/audit-log" element={<RoleGate page="audit_log"><AuditLog /></RoleGate>} />
+                <Route path="/data-correction" element={<RoleGate page="data_correction"><DataCorrection /></RoleGate>} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
