@@ -68,6 +68,7 @@ const SECTIONS: Section[] = [
     { id: "I1", label: "Open Integration Center", hint: "Settings → Integration Center." },
     { id: "I2", label: "Confirm all endpoint placeholders", hint: "All 6 cards visible." },
     { id: "I3", label: "Confirm SKU/product_id identity notes", hint: "Notes appear under each card." },
+  ]},
   { id: "J", title: "Stability & Mobile Test", items: [
     { id: "J1", label: "390px mobile — no horizontal overflow", hint: "Open at 390px width and check every page swipes only top↔bottom." },
     { id: "J2", label: "Tab-switch — no refresh/reset", hint: "Open Product Edit → Media tab → switch browser tab/app → return → tab and form state preserved." },
