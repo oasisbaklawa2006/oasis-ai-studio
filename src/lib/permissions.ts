@@ -5,7 +5,7 @@ export type PageKey =
   | "media" | "tags" | "catalogues" | "catalogues_write"
   | "hampers" | "ingredients" | "labels" | "labels_write"
   | "ai_studio" | "settings" | "testing" | "audit_log"
-  | "aliases_write" | "sku_write";
+  | "aliases_write" | "sku_write" | "data_correction";
 
 const MATRIX: Record<PageKey, Role[]> = {
   dashboard:         ["owner","admin","product_manager","catalogue_manager","designer","sales"],
@@ -25,6 +25,7 @@ const MATRIX: Record<PageKey, Role[]> = {
   settings:          ["owner","admin"],
   testing:           ["owner","admin","product_manager","catalogue_manager","designer","sales"],
   audit_log:         ["owner","admin"],
+  data_correction:   ["owner","admin","product_manager"],
 };
 
 export const hasRole = (roles: Role[] | string[], role: Role) => roles.includes(role as any);
