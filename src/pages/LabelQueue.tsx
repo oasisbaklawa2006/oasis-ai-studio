@@ -77,6 +77,15 @@ const LabelQueue = () => {
     switch (filter) {
       case "all": return true;
       case "missing_data": return !r.has_ingredients || !r.has_nutrition || !r.has_fssai || !r.has_mrp || !r.has_net_qty || !r.has_storage || !r.has_shelf_life;
+      case "missing_ingredients": return !r.has_ingredients;
+      case "missing_nutrition": return !r.has_nutrition;
+      case "missing_fssai": return !r.has_fssai;
+      case "missing_mrp": return !r.has_mrp;
+      case "missing_storage": return !r.has_storage;
+      case "missing_shelf_life": return !r.has_shelf_life;
+      case "ready_for_legal_review":
+        return r.has_ingredients && r.has_nutrition && r.has_fssai && r.has_mrp && r.has_net_qty && r.has_storage && r.has_shelf_life && r.status !== "approved" && r.status !== "locked";
+      case "approved_for_print": return r.status === "approved" || r.status === "locked";
       default: return r.status === filter;
     }
   }), [rows, filter]);
