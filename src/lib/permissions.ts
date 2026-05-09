@@ -1,4 +1,4 @@
-export type Role = "owner" | "admin" | "product_manager" | "catalogue_manager" | "designer" | "sales";
+export type Role = "owner" | "admin" | "product_manager" | "catalogue_manager" | "designer" | "sales" | "catalogue_contributor";
 
 export type PageKey =
   | "dashboard" | "products" | "products_write"
@@ -8,8 +8,8 @@ export type PageKey =
   | "aliases_write" | "sku_write" | "data_correction";
 
 const MATRIX: Record<PageKey, Role[]> = {
-  dashboard:         ["owner","admin","product_manager","catalogue_manager","designer","sales"],
-  products:          ["owner","admin","product_manager","catalogue_manager","designer","sales"],
+  dashboard:         ["owner","admin","product_manager","catalogue_manager","designer","sales","catalogue_contributor"],
+  products:          ["owner","admin","product_manager","catalogue_manager","designer","sales","catalogue_contributor"],
   products_write:    ["owner","admin","product_manager"],
   sku_write:         ["owner","admin","product_manager"],
   aliases_write:     ["owner","admin","product_manager"],
@@ -23,7 +23,7 @@ const MATRIX: Record<PageKey, Role[]> = {
   labels_write:      ["owner","admin","product_manager"],
   ai_studio:         ["owner","admin","designer"],
   settings:          ["owner","admin"],
-  testing:           ["owner","admin","product_manager","catalogue_manager","designer","sales"],
+  testing:           ["owner","admin","product_manager","catalogue_manager","designer","sales","catalogue_contributor"],
   audit_log:         ["owner","admin"],
   data_correction:   ["owner","admin","product_manager"],
 };

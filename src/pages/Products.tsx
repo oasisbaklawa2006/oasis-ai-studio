@@ -11,6 +11,7 @@ import {
 import { searchProductsWithAliases, type ProductSearchResult } from "@/lib/productSearch";
 import { toast } from "sonner";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
+import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose" },
@@ -185,6 +186,7 @@ const Products = () => {
 
   return (
     <>
+      <CatalogueWriteModeBanner />
       <PageHeader
         title="Product Master"
         subtitle="The single source of truth for every Oasis product."
