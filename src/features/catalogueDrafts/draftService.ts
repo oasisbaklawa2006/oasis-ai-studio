@@ -21,8 +21,10 @@ export async function submitCatalogueDraft({
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user?.id) {
-    return { ok: false, message: "Not authenticated. Please sign in again.", error: userError };
+    return { ok: false, message: "Not authenticated. Please sign in again." };
   }
+
+  if (import.meta.env.DEV) console.log("[draftService] auth user id", user.id);
 
   const now = new Date().toISOString();
   const insertObject = {
@@ -38,15 +40,19 @@ export async function submitCatalogueDraft({
     updated_at: now,
   };
 
+  if (import.meta.env.DEV) console.log("[draftService] draft insert object", insertObject);
+
   const { data, error } = await (supabase as any)
     .from(map.table)
     .insert(insertObject)
     .select("id")
     .single();
 
+  if (import.meta.env.DEV) console.log("[draftService] supabase insert result/error", { data, error });
+
   if (error) {
     return { ok: false, message: error.message, error };
   }
 
-  return { ok: true, draftId: data?.id, message: "Draft submitted for approval." };
+  return { ok: true, draftId: data?.id, message: "Submitted for approval. SKU and final master data will be reviewed by admin." };
 }
