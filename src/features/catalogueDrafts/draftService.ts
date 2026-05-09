@@ -26,7 +26,7 @@ export async function submitCatalogueDraft({
 
   if (import.meta.env.DEV) console.log("[draftService] auth user id", user.id);
 
-  const now = new Date().toISOString();
+  const nowIso = new Date().toISOString();
   const insertObject = {
     source_app: "catalogue_app",
     target_table: "products",
@@ -35,9 +35,9 @@ export async function submitCatalogueDraft({
     payload,
     status: "pending_approval",
     submitted_by: user.id,
-    submitted_at: now,
-    created_at: now,
-    updated_at: now,
+    submitted_at: nowIso,
+    created_at: nowIso,
+    updated_at: nowIso,
   };
 
   if (import.meta.env.DEV) console.log("[draftService] draft insert object", insertObject);
