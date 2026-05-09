@@ -2,10 +2,11 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History, Wrench } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { canAccessPage, type PageKey } from "@/lib/permissions";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
 
 type NavItem = { to: string; label: string; icon: any; page: PageKey; featureKey?: string };
 const nav: NavItem[] = [
@@ -23,6 +24,7 @@ const nav: NavItem[] = [
   { to: "/testing", label: "Testing Checklist", icon: ClipboardCheck, page: "testing" },
   { to: "/settings", label: "Activation Center", icon: Settings, page: "settings" },
   { to: "/audit-log", label: "Audit Log", icon: History, page: "audit_log" },
+  { to: "/approvals", label: "Approval Inbox", icon: ShieldCheck, page: "audit_log" },
 ];
 
 export const AppLayout = () => {
@@ -31,8 +33,11 @@ export const AppLayout = () => {
   const [open, setOpen] = useState(false);
   const { flags, loading: flagsLoading } = useFeatureFlags();
   const isAdmin = roles.includes("owner") || roles.includes("admin");
+  const [isReviewer, setIsReviewer] = useState(false);
+  useEffect(() => { (async () => setIsReviewer(await isCatalogueReviewer()))(); }, []);
   const rolesReady = !loading && !rolesLoading;
   const items = rolesReady ? nav.filter((n) => {
+    if (n.to === "/approvals") return isAdmin || isReviewer;
     if (!canAccessPage(roles as any, n.page)) return false;
     if (!n.featureKey) return true; // core pages always visible
     if (flagsLoading) return isAdmin; // don't hide gated items for admin while loading

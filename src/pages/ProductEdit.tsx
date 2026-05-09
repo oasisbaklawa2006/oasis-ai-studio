@@ -17,6 +17,9 @@ import { BomBuilder } from "@/components/BomBuilder";
 import { ChannelMoqRules } from "@/components/ChannelMoqRules";
 import { ChannelPricingRules } from "@/components/ChannelPricingRules";
 import { AlertTriangle } from "lucide-react";
+import { canWriteMasterDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
+import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -192,17 +195,41 @@ const ProductEdit = () => {
     ["is_active","is_catalogue_ready","sku_locked","fixed_carton_required","private_label_allowed","customization_allowed","bom_required"]
       .forEach((k) => { payload[k] = !!form[k]; });
 
-    const res = isNew
-      ? await supabase.from("products").insert(payload).select().single()
-      : await supabase.from("products").update(payload).eq("id", id).select().single();
+    const direct = await canWriteMasterDirectly();
+    const contributor = await isCatalogueContributor();
+
+    if (direct) {
+      const res = isNew
+        ? await supabase.from("products").insert(payload).select().single()
+        : await supabase.from("products").update(payload).eq("id", id).select().single();
+      setLoading(false);
+      if (res.error) return toast.error(res.error.message);
+      toast.success("Saved");
+      nav(`/products/${res.data.id}`);
+      return;
+    }
+
+    if (contributor) {
+      const draftRes = await submitCatalogueDraft({
+        draftType: "product",
+        operation: isNew ? "create" : "update",
+        payload,
+        targetRecordId: isNew ? null : (id as string),
+      });
+      setLoading(false);
+      if (!draftRes.ok) return toast.error(draftRes.message);
+      toast.success("Submitted for approval. No master product was changed.");
+      nav("/products");
+      return;
+    }
+
     setLoading(false);
-    if (res.error) return toast.error(res.error.message);
-    toast.success("Saved");
-    nav(`/products/${res.data.id}`);
+    toast.error("Read-only mode: you do not have permission to save products.");
   };
 
   return (
     <>
+      <CatalogueWriteModeBanner />
       <PageHeader
         title={isNew ? "New Product" : form.product_name || "Edit Product"}
         subtitle="Master record · catalogue, label, and media-ready."
