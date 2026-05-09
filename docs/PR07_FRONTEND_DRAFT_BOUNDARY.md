@@ -50,3 +50,12 @@
 4. Reviewer/super_admin:
    - `/approvals` should list pending drafts and allow reject.
    - approve may return mapping-not-finalized warning for now.
+
+
+## PR-07 follow-up (smart contributor draft form)
+- Contributor SKU is not required on `/products/new`; SKU finalization stays in admin approval.
+- ProductEdit now persists local draft form state using:
+  - `catalogue_product_form_draft_new`
+  - `catalogue_product_form_draft_${productId}`
+- Generated compliance/pricing/nutrition values are draft suggestions only and are marked for admin/compliance review.
+- Contributor BOM data remains inside draft payload grouping (`bom`) until approval mapping; no direct `product_bom` write in contributor mode.

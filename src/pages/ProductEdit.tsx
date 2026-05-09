@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -45,7 +45,7 @@ const PRODUCTION_DEPARTMENTS = [
   { v: "bakery", label: "Bakery" },
 ];
 
-const UOM_OPTIONS = ["kg", "grams", "pcs", "box", "carton", "tray", "pack", "litre", "ml"];
+const UOM_OPTIONS = ["kg", "grams", "pcs", "box", "carton", "tray", "pack", "litre", "ml", "bundle", "basket", "jar", "packet", "tub"];
 const MOQ_RULE_TYPES = [
   { v: "not_applicable", label: "Not applicable" },
   { v: "fixed_min", label: "Fixed minimum" },
@@ -57,6 +57,16 @@ const MOQ_RULE_TYPES = [
 
 const DEFAULT_CAUTION =
   "Customisation must be confirmed in writing before production. Changes after approval may affect cost, timeline, and dispatch date.";
+
+const PRODUCT_TYPE_PROFILES: Record<string, any> = {
+  loose_bulk_material: { label: "Loose / Bulk Material", showPrivateLabel: false, showCustomization: false, showHamperBom: false },
+  prepacked_ready_packs: { label: "Prepacked Products / Ready Packs", showPrivateLabel: true, showCustomization: false, showHamperBom: false },
+  premium_gift_packs: { label: "Premium Gift Packs", showPrivateLabel: false, showCustomization: true, showHamperBom: true },
+  hamper_assorted_gift_pack: { label: "Hamper / Assorted Gift Pack", showPrivateLabel: false, showCustomization: true, showHamperBom: true },
+  semi_prepared_frozen_bake_and_serve: { label: "Semi-prepared / Frozen / Bake-and-Serve Products", showPrivateLabel: false, showCustomization: false, showHamperBom: false },
+  packaging_decoration_material: { label: "Packaging / Decoration Material", showPrivateLabel: false, showCustomization: false, showHamperBom: false },
+};
+const CUSTOMIZATION_TYPES = ["logo printing","name personalization","message card","sleeve","ribbon","custom box","custom tray","product assortment","corporate branding","wedding branding","other"];
 
 const empty: any = {
   product_name: "", short_name: "", category: "", subcategory: "",
@@ -82,7 +92,7 @@ const empty: any = {
   material_type: "", color_finish_notes: "",
   private_label_allowed: false, private_label_moq: "", private_label_moq_uom: "",
   private_label_cost_per_unit: "", private_label_upfront_cost: "",
-  customization_allowed: false, customization_note: "", customization_caution: "",
+  customization_allowed: false, customization_note: "", customization_caution: "", customization_types: [],
   bom_required: false, pricing_notes: "", operational_notes: "",
   frozen_shelf_life_days: "", post_processing_shelf_life_days: "",
   temperature_requirement: "", thawing_instruction: "",
@@ -127,6 +137,7 @@ const ProductEdit = () => {
   const nav = useNavigate();
   const { roles } = useAuth();
   const canOverride = roles.includes("owner") || roles.includes("admin");
+  const isContributorRole = roles.includes("catalogue_contributor");
   const [form, setForm] = useState<any>(empty);
   const [loading, setLoading] = useState(false);
   const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
@@ -134,6 +145,9 @@ const ProductEdit = () => {
     try { return localStorage.getItem(tabKey) || "identity"; } catch { return "identity"; }
   });
   const [loadedId, setLoadedId] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const restored = useRef(false);
+  const draftKey = isNew ? "catalogue_product_form_draft_new" : `catalogue_product_form_draft_${id}`;
 
   useEffect(() => {
     try { localStorage.setItem(tabKey, tab); } catch {}
@@ -146,8 +160,30 @@ const ProductEdit = () => {
     });
   }, [id, isNew, loadedId]);
 
-  const set = (k: string, v: any) => setForm((f: any) => ({ ...f, [k]: v }));
-  const patch = (p: any) => setForm((f: any) => ({ ...f, ...p }));
+  const set = (k: string, v: any) => { setDirty(true); setForm((f: any) => ({ ...f, [k]: v })); };
+  const patch = (p: any) => { setDirty(true); setForm((f: any) => ({ ...f, ...p })); };
+
+  useEffect(() => {
+    if (restored.current) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      if (raw) {
+        setForm((f: any) => ({ ...f, ...JSON.parse(raw) }));
+      }
+    } catch {}
+    restored.current = true;
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!restored.current) return;
+    try { localStorage.setItem(draftKey, JSON.stringify(form)); } catch {}
+  }, [draftKey, form]);
+
+  useEffect(() => {
+    const onUnload = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } };
+    window.addEventListener("beforeunload", onUnload);
+    return () => window.removeEventListener("beforeunload", onUnload);
+  }, [dirty]);
 
   // Class-aware defaults
   useEffect(() => {
@@ -162,8 +198,9 @@ const ProductEdit = () => {
   }, [form.customization_allowed]);
 
   const cls = form.product_class;
-  const showPrivateLabel = cls === "ready_pack" || cls === "packaging_decoration_material";
-  const showCustomization = cls === "gift_hamper" || cls === "ready_pack" || cls === "service_or_customization";
+  const profile = PRODUCT_TYPE_PROFILES[form.product_type || ""] || {};
+  const showPrivateLabel = !!profile.showPrivateLabel || cls === "ready_pack";
+  const showCustomization = !!profile.showCustomization || cls === "gift_hamper" || cls === "service_or_customization";
   const showDimensions = cls === "packaging_decoration_material" || form.fixed_carton_required;
   const showFrozen = cls === "semi_prepared_frozen";
   const canManageBom = roles.includes("owner") || roles.includes("admin") || roles.includes("product_manager");
@@ -173,14 +210,15 @@ const ProductEdit = () => {
   const missing = useMemo(() => {
     const m: string[] = [];
     if (!form.product_name) m.push("Product name");
-    if (!form.sku) m.push("SKU");
+    if (!form.sku && !isContributorRole) m.push("SKU");
     if (!form.product_class) m.push("Product class");
+    if (!form.product_type && !form.category) m.push("Product type or category");
     if (!form.main_department) m.push("Main department");
     if (form.main_department === "ready_goods_store" && !form.production_department) m.push("Production department");
     if (form.private_label_allowed && (!form.private_label_moq || !form.private_label_cost_per_unit))
       m.push("Private label MOQ & cost");
     return m;
-  }, [form]);
+  }, [form, isContributorRole]);
 
   const save = async () => {
     if (missing.length > 0) return toast.error(`Fix missing fields: ${missing.join(", ")}`);
@@ -204,21 +242,41 @@ const ProductEdit = () => {
         : await supabase.from("products").update(payload).eq("id", id).select().single();
       setLoading(false);
       if (res.error) return toast.error(res.error.message);
+      try { localStorage.removeItem(draftKey); } catch {}
+      setDirty(false);
       toast.success("Saved");
       nav(`/products/${res.data.id}`);
       return;
     }
 
     if (contributor) {
+      const groupedPayload = {
+        identity: { product_name: payload.product_name, original_name: payload.short_name, product_class: payload.product_class, product_type: payload.product_type, category: payload.category, subcategory: payload.subcategory, description: payload.description, short_description: payload.short_description, main_department: payload.main_department, production_department: payload.production_department },
+        aliases: { suggested_aliases: [payload.product_name, payload.short_name].filter(Boolean) },
+        sku_draft: { sku: payload.sku, division_code: payload.division_code, category_code: payload.category_code, subcategory_code: payload.subcategory_code, packaging_code: payload.packaging_code, note: "SKU will be generated/finalized by admin during approval." },
+        uom: { primary_uom: payload.primary_uom, b2b_uom: payload.b2b_uom, retail_uom: payload.retail_uom, approx_piece_weight_g: payload.approximate_piece_weight_g, pieces_per_kg: payload.approximate_piece_weight_g ? Number((1000/Number(payload.approximate_piece_weight_g)).toFixed(2)) : payload.pieces_per_kg, unit_conversion_note: payload.unit_conversion_note || "Manual conversion required" },
+        packing: { primary_pack_type: payload.packaging_code || "NA", pack_uom: payload.carton_uom, qty_per_pack: payload.pcs_per_pack, legacy_moq_note: payload.carton_logic || "1 Master Carton = 4 Primary Packs" },
+        moq: { b2b_moq: payload.moq_value, retail_moq: null, moq_rule_type: payload.moq_rule_type, moq_value: payload.moq_value, moq_uom: payload.moq_uom, increment_value: payload.increment_value, increment_uom: payload.increment_uom },
+        pricing: { hsn: payload.hsn_code, gst_rate: payload.gst_rate, currency: payload.currency, mrp: payload.mrp, bulk_price: payload.mrp ? Math.round((Number(payload.mrp)*0.8)/10)*10 : null, wholesale_price: payload.mrp ? Math.round((Number(payload.mrp)*0.7)/10)*10 : null, b2b_price: payload.b2b_price, export_price: payload.export_price ? Math.round(Number(payload.export_price)) : null },
+        compliance: { ingredients: payload.ingredients, allergen_information: "Suggested — please review", nutritional_information: "Draft placeholder only", manufactured_by: "TCF Chocolates and Gifts Pvt Ltd", production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015", customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com", complaint_text: "If dissatisfied, tell us why and send the packet(s) along with bill of purchase to the above-mentioned address.", label_disclaimer: "Draft label data — requires admin/compliance approval." },
+        private_label: { available: payload.private_label_allowed, moq: payload.private_label_moq, moq_uom: payload.private_label_moq_uom, cost_per_pc: payload.private_label_cost_per_unit, setup_cost: payload.private_label_upfront_cost },
+        customization: { available: payload.customization_allowed, types: payload.customization_types || [], note: payload.customization_note, caution: payload.customization_caution },
+        bom: { internal_bom: payload.internal_bom || [], hamper_bom: payload.hamper_bom || [] },
+        selling_profile: form.product_type || form.product_class,
+        auto_generated_flags: { aliases: true, descriptions: true, pricing_suggestions: true, compliance_suggestions: true },
+        needs_admin_review_flags: { sku: true, pricing: true, compliance: true, nutrition: true, bom_mapping: true },
+      };
       const draftRes = await submitCatalogueDraft({
         draftType: "product",
         operation: isNew ? "create" : "update",
-        payload,
+        payload: groupedPayload,
         targetRecordId: isNew ? null : (id as string),
       });
       setLoading(false);
       if (!draftRes.ok) return toast.error(draftRes.message);
-      toast.success("Submitted for approval. No master product was changed.");
+      try { localStorage.removeItem(draftKey); } catch {}
+      setDirty(false);
+      toast.success("Submitted for approval. SKU and final master data will be reviewed by admin.");
       nav("/products");
       return;
     }
@@ -234,8 +292,8 @@ const ProductEdit = () => {
         title={isNew ? "New Product" : form.product_name || "Edit Product"}
         subtitle="Master record · catalogue, label, and media-ready."
         actions={<>
-          <Button variant="outline" onClick={() => nav("/products")}>Back</Button>
-          <Button onClick={save} disabled={loading}>{loading ? "Saving…" : "Save"}</Button>
+          <Button variant="outline" onClick={() => { if (dirty && !window.confirm("You have unsaved changes. Leave this form?")) return; nav("/products"); }}>Back</Button>
+          <Button onClick={save} disabled={loading}>{loading ? "Saving…" : isContributorRole ? "Submit Draft" : "Save"}</Button>
         </>}
       />
 
@@ -315,6 +373,8 @@ const ProductEdit = () => {
               </div>
 
               <SkuBuilder value={form} canOverride={canOverride} onChange={patch} />
+
+              {isContributorRole && <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">SKU will be generated/finalized by admin during approval.</div>}
 
               {!isNew && <AliasManager productId={id!} productName={form.product_name ?? ""} />}
             </TabsContent>
@@ -435,6 +495,17 @@ const ProductEdit = () => {
                   </div>
                   {form.customization_allowed && (
                     <>
+                      <Field label="Customization type (multi-select)" hint="Suggested — please review">
+                        <div className="flex flex-wrap gap-2">
+                          {CUSTOMIZATION_TYPES.map((t) => {
+                            const selected = (form.customization_types || []).includes(t);
+                            return <button key={t} type="button" className={`rounded-full border px-3 py-1 text-xs ${selected ? "bg-accent text-accent-foreground" : "bg-background"}`} onClick={() => {
+                              const next = selected ? (form.customization_types || []).filter((x: string) => x !== t) : [...(form.customization_types || []), t];
+                              set("customization_types", next);
+                            }}>{t}</button>;
+                          })}
+                        </div>
+                      </Field>
                       <Field label="Customisation note">
                         <Textarea rows={3} value={form.customization_note ?? ""} onChange={(e) => set("customization_note", e.target.value)} placeholder="Example: Logo sticker, ribbon color, greeting card message, client branding." />
                       </Field>
