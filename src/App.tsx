@@ -27,6 +27,7 @@ import Testing from "./pages/Testing";
 import AuditLog from "./pages/AuditLog";
 import DataCorrection from "./pages/DataCorrection";
 import NotFound from "./pages/NotFound";
+import ApprovalInbox from "./pages/ApprovalInbox";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +67,7 @@ const App = () => (
                 <Route path="/testing" element={<RoleGate page="testing"><Testing /></RoleGate>} />
                 <Route path="/settings" element={<RoleGate page="settings"><Settings /></RoleGate>} />
                 <Route path="/audit-log" element={<RoleGate page="audit_log"><AuditLog /></RoleGate>} />
+                <Route path="/approvals" element={<ApprovalInbox />} />
                 <Route path="/data-correction" element={<RoleGate page="data_correction"><DataCorrection /></RoleGate>} />
               </Route>
             </Route>
