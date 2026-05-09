@@ -62,6 +62,7 @@ const CatalogueDetail = () => {
 
   return (
     <>
+      <CatalogueWriteModeBanner />
       <PageHeader title={c.title} subtitle={c.subtitle ?? "Catalogue editor"}
         actions={<>
           <span className={`badge-soft ${STATUS_TONES[status]} capitalize`}>{status.replace(/_/g, " ")}</span>
