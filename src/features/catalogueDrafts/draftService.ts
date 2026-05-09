@@ -27,7 +27,7 @@ export async function submitCatalogueDraft({
   const now = new Date().toISOString();
   const insertObject = {
     source_app: "catalogue_app",
-    target_table: map.targetTable,
+    target_table: "products",
     target_record_id: targetRecordId ?? null,
     operation,
     payload,

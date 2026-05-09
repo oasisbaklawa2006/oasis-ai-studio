@@ -284,7 +284,7 @@ const ProductEdit = () => {
       if (import.meta.env.DEV) console.log("[ProductEdit] submitCatalogueDraft result/error", draftRes);
       if (!draftRes.ok) {
         setSubmitError(`Draft submit failed: ${draftRes.message}`);
-        return toast.error(draftRes.message);
+        return toast.error(`Draft submit failed: ${draftRes.message}`);
       }
       try { localStorage.removeItem(draftKey); } catch {}
       setDirty(false);
