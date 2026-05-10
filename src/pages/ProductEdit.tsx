@@ -207,6 +207,14 @@ const empty: any = {
   post_processing_shelf_life_days: "",
   temperature_requirement: "",
   thawing_instruction: "",
+
+  ingredients: "",
+  allergen_warnings: "",
+  nutritional_info: "",
+  nutrition_facts: "",
+  dimensions: "",
+  material: "",
+  product_family: "",
 };
 
 const NUMERIC_FIELDS = [
@@ -271,6 +279,163 @@ const Select = ({ value, onChange, options, placeholder }: any) => (
   </select>
 );
 
+const toBlank = (v: any) => (v === null || v === undefined ? "" : v);
+
+const inferProductClass = (data: any) => {
+  const text = [
+    data?.product_family,
+    data?.category,
+    data?.sub_category,
+    data?.name,
+    data?.pack_size,
+    data?.carton_type,
+    data?.storage_type,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (text.includes("frozen") || text.includes("semi")) return "semi_prepared_frozen";
+  if (text.includes("hamper") || text.includes("gift")) return "gift_hamper";
+  if (text.includes("packaging") || text.includes("box") || text.includes("tray") || text.includes("jar")) {
+    return "ready_pack";
+  }
+
+  return "bulk_loose_product";
+};
+
+const dbProductToForm = (data: any) => {
+  const mapped = {
+    ...empty,
+    ...data,
+
+    product_name: toBlank(data?.name),
+    short_name: toBlank(data?.short_name),
+    category: toBlank(data?.category),
+    subcategory: toBlank(data?.sub_category),
+    product_type: toBlank(data?.product_family || data?.category),
+    description: toBlank(data?.description),
+    short_description: toBlank(data?.short_description),
+    pack_size: toBlank(data?.pack_size),
+
+    hero_image_url: toBlank(data?.image_url),
+    main_department: toBlank(data?.department),
+    production_department: toBlank(data?.production_department),
+
+    net_weight_g: toBlank(data?.net_weight_grams),
+    gross_weight_g: toBlank(data?.gross_weight_grams),
+    shelf_life_days: toBlank(data?.shelf_life_days),
+    storage_instructions: toBlank(data?.storage_instructions),
+
+    hsn_code: toBlank(data?.hsn_code),
+    gst_rate: toBlank(data?.gst_rate ?? data?.gst_percentage),
+    mrp: toBlank(data?.mrp),
+    b2b_price: toBlank(data?.price_b2b ?? data?.base_price),
+    export_price: toBlank(data?.export_price),
+
+    sku: data?.sku ?? null,
+    legacy_sku: data?.barcode_sku ?? null,
+    is_active: data?.is_active ?? true,
+    is_catalogue_ready: data?.visible_in_catalog ?? false,
+
+    primary_uom: toBlank(data?.uom),
+    b2b_uom: toBlank(data?.uom),
+    retail_uom: toBlank(data?.uom),
+
+    approximate_piece_weight_g: toBlank(data?.weight_per_pc_grams ?? data?.grams_per_piece),
+    pieces_per_kg: data?.weight_per_pc_grams
+      ? Number((1000 / Number(data.weight_per_pc_grams)).toFixed(2))
+      : "",
+    moq_value: toBlank(data?.moq ?? data?.moq_packs),
+    moq_uom: toBlank(data?.uom),
+
+    private_label_moq: toBlank(data?.private_label_moq),
+    private_label_cost_per_unit: toBlank(data?.private_label_price),
+
+    ingredients: toBlank(data?.ingredients),
+    allergen_warnings: toBlank(data?.allergen_warnings),
+    nutritional_info: data?.nutritional_info ?? data?.nutrition_facts ?? "",
+    nutrition_facts: data?.nutrition_facts ?? "",
+    material_type: toBlank(data?.material),
+    material: toBlank(data?.material),
+    dimensions: toBlank(data?.dimensions),
+    product_family: toBlank(data?.product_family),
+    product_class: toBlank(data?.product_class) || inferProductClass(data),
+  };
+
+  return mapped;
+};
+
+const buildDimensionsText = (form: any) => {
+  if (form.dimensions) return form.dimensions;
+
+  const l = form.dimension_l_cm;
+  const w = form.dimension_w_cm;
+  const h = form.dimension_h_cm;
+
+  if (l || w || h) {
+    return [l ? `L ${l} cm` : null, w ? `W ${w} cm` : null, h ? `H ${h} cm` : null]
+      .filter(Boolean)
+      .join(" × ");
+  }
+
+  return null;
+};
+
+const formToProductRow = (form: any) => {
+  const nutritional =
+    typeof form.nutritional_info === "object"
+      ? form.nutritional_info
+      : form.nutritional_info
+        ? { text: String(form.nutritional_info) }
+        : null;
+
+  return {
+    name: form.product_name ?? null,
+    category: form.category ?? null,
+    sub_category: form.subcategory ?? null,
+    sku: form.sku ?? null,
+    description: form.description ?? form.short_description ?? null,
+    image_url: form.hero_image_url ?? null,
+
+    hsn_code: form.hsn_code ?? null,
+    gst_rate: form.gst_rate ?? null,
+    gst_percentage: form.gst_rate ?? null,
+    mrp: form.mrp ?? null,
+    price_b2b: form.b2b_price ?? null,
+    price_bulk: form.mrp ? Math.round((Number(form.mrp) * 0.8) / 10) * 10 : null,
+    price_wholesale: form.mrp ? Math.round((Number(form.mrp) * 0.7) / 10) * 10 : null,
+    wholesale_price: form.mrp ? Math.round((Number(form.mrp) * 0.7) / 10) * 10 : null,
+
+    department: form.main_department ?? null,
+    production_department: form.production_department ?? null,
+    uom: form.primary_uom || form.b2b_uom || form.retail_uom || null,
+
+    ingredients: form.ingredients ?? null,
+    nutritional_info: nutritional,
+    allergen_warnings: form.allergen_warnings ?? null,
+    shelf_life_days: form.shelf_life_days ?? null,
+    storage_instructions: form.storage_instructions ?? null,
+    visible_in_catalog: !!form.is_catalogue_ready,
+
+    weight_per_pc_grams: form.approximate_piece_weight_g ?? null,
+    grams_per_piece: form.approximate_piece_weight_g ?? null,
+    net_weight_grams: form.net_weight_g ?? null,
+    gross_weight_grams: form.gross_weight_g ?? null,
+
+    moq: form.moq_value ?? null,
+    private_label_moq: form.private_label_moq ?? null,
+    private_label_price: form.private_label_cost_per_unit ?? null,
+
+    material: form.material_type || form.material || null,
+    dimensions: buildDimensionsText(form),
+    product_family: form.product_type || form.product_family || null,
+
+    is_active: !!form.is_active,
+    pack_size: form.pack_size ?? null,
+  };
+};
+
 const ProductEdit = () => {
   const { id } = useParams();
   const isNew = !id || id === "new";
@@ -308,9 +473,7 @@ const ProductEdit = () => {
 
     isCatalogueContributor()
       .then((value) => {
-        if (mounted) {
-          setRpcContributorRole(!!value);
-        }
+        if (mounted) setRpcContributorRole(!!value);
       })
       .catch((error) => {
         if (import.meta.env.DEV) {
@@ -332,14 +495,19 @@ const ProductEdit = () => {
   useEffect(() => {
     if (isNew || !id || loadedId === id) return;
 
-    supabase
+    (supabase as any)
       .from("products")
       .select("*")
       .eq("id", id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }: any) => {
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+
         if (data) {
-          setForm({ ...empty, ...data });
+          setForm(dbProductToForm(data));
           setLoadedId(id);
         }
       });
@@ -443,9 +611,7 @@ const ProductEdit = () => {
       m.push("Product type or category");
     }
 
-    if (isContributorMode) {
-      return m;
-    }
+    if (isContributorMode) return m;
 
     if (!form.sku) m.push("SKU");
     if (!form.main_department) m.push("Main department");
@@ -503,9 +669,11 @@ const ProductEdit = () => {
     const contributor = isContributorMode || (await isCatalogueContributor());
 
     if (direct) {
+      const productRow = formToProductRow(payload);
+
       const res = isNew
-        ? await supabase.from("products").insert(payload).select().single()
-        : await supabase.from("products").update(payload).eq("id", id).select().single();
+        ? await (supabase as any).from("products").insert(productRow).select().single()
+        : await (supabase as any).from("products").update(productRow).eq("id", id).select().single();
 
       setLoading(false);
 
@@ -578,6 +746,9 @@ const ProductEdit = () => {
           primary_pack_type: payload.packaging_code || "NA",
           pack_uom: payload.carton_uom,
           qty_per_pack: payload.pcs_per_pack,
+          pack_size: payload.pack_size,
+          net_weight_g: payload.net_weight_g,
+          gross_weight_g: payload.gross_weight_g,
           legacy_moq_note:
             payload.carton_logic || "Advanced carton logic will be finalized in Central App.",
         },
@@ -606,8 +777,10 @@ const ProductEdit = () => {
         },
         compliance: {
           ingredients: payload.ingredients,
-          allergen_information: "Suggested — please review",
-          nutritional_information: "Draft placeholder only",
+          allergen_information: payload.allergen_warnings || "Suggested — please review",
+          nutritional_information: payload.nutritional_info || payload.nutrition_facts || "Draft placeholder only",
+          shelf_life_days: payload.shelf_life_days,
+          storage_instructions: payload.storage_instructions,
           manufactured_by: "TCF Chocolates and Gifts Pvt Ltd",
           production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015",
           customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com",
@@ -631,6 +804,12 @@ const ProductEdit = () => {
         bom: {
           internal_bom: payload.internal_bom || [],
           hamper_bom: payload.hamper_bom || [],
+        },
+        ops: {
+          operational_notes: payload.operational_notes,
+          pricing_notes: payload.pricing_notes,
+          material_type: payload.material_type,
+          dimensions: buildDimensionsText(payload),
         },
         selling_profile: form.product_type || form.product_class,
         auto_generated_flags: {
@@ -684,9 +863,7 @@ const ProductEdit = () => {
             <Button
               variant="outline"
               onClick={() => {
-                if (dirty && !window.confirm("You have unsaved changes. Leave this form?")) {
-                  return;
-                }
+                if (dirty && !window.confirm("You have unsaved changes. Leave this form?")) return;
                 nav("/products");
               }}
             >
@@ -1100,7 +1277,7 @@ const ProductEdit = () => {
 
             {showBom && (
               <TabsContent value="bom" className="space-y-6">
-                <BomBuilder productId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
+                <BomBuilder parentId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
               </TabsContent>
             )}
 
@@ -1132,6 +1309,24 @@ const ProductEdit = () => {
                   <div className="sm:col-span-3">
                     <Field label="Storage instructions">
                       <Textarea rows={2} value={form.storage_instructions ?? ""} onChange={(e) => set("storage_instructions", e.target.value)} placeholder="Example: Store in cool, dry place away from sunlight." />
+                    </Field>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <Field label="Ingredients">
+                      <Textarea rows={2} value={form.ingredients ?? ""} onChange={(e) => set("ingredients", e.target.value)} placeholder="Example: Cashew, sugar, clarified butter, filo pastry." />
+                    </Field>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <Field label="Allergen warnings">
+                      <Textarea rows={2} value={form.allergen_warnings ?? ""} onChange={(e) => set("allergen_warnings", e.target.value)} placeholder="Example: Contains nuts, gluten, dairy." />
+                    </Field>
+                  </div>
+
+                  <div className="sm:col-span-3">
+                    <Field label="Nutritional information">
+                      <Textarea rows={3} value={typeof form.nutritional_info === "string" ? form.nutritional_info : JSON.stringify(form.nutritional_info ?? "", null, 2)} onChange={(e) => set("nutritional_info", e.target.value)} />
                     </Field>
                   </div>
                 </div>
