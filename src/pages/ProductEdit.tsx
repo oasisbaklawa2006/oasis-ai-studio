@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
@@ -17,7 +18,10 @@ import { BomBuilder } from "@/components/BomBuilder";
 import { ChannelMoqRules } from "@/components/ChannelMoqRules";
 import { ChannelPricingRules } from "@/components/ChannelPricingRules";
 import { AlertTriangle } from "lucide-react";
-import { canWriteMasterDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
+import {
+  canWriteMasterDirectly,
+  isCatalogueContributor,
+} from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 
@@ -45,7 +49,23 @@ const PRODUCTION_DEPARTMENTS = [
   { v: "bakery", label: "Bakery" },
 ];
 
-const UOM_OPTIONS = ["kg", "grams", "pcs", "box", "carton", "tray", "pack", "litre", "ml", "bundle", "basket", "jar", "packet", "tub"];
+const UOM_OPTIONS = [
+  "kg",
+  "grams",
+  "pcs",
+  "box",
+  "carton",
+  "tray",
+  "pack",
+  "litre",
+  "ml",
+  "bundle",
+  "basket",
+  "jar",
+  "packet",
+  "tub",
+];
+
 const MOQ_RULE_TYPES = [
   { v: "not_applicable", label: "Not applicable" },
   { v: "fixed_min", label: "Fixed minimum" },
@@ -59,56 +79,170 @@ const DEFAULT_CAUTION =
   "Customisation must be confirmed in writing before production. Changes after approval may affect cost, timeline, and dispatch date.";
 
 const PRODUCT_TYPE_PROFILES: Record<string, any> = {
-  loose_bulk_material: { label: "Loose / Bulk Material", showPrivateLabel: false, showCustomization: false, showHamperBom: false },
-  prepacked_ready_packs: { label: "Prepacked Products / Ready Packs", showPrivateLabel: true, showCustomization: false, showHamperBom: false },
-  premium_gift_packs: { label: "Premium Gift Packs", showPrivateLabel: false, showCustomization: true, showHamperBom: true },
-  hamper_assorted_gift_pack: { label: "Hamper / Assorted Gift Pack", showPrivateLabel: false, showCustomization: true, showHamperBom: true },
-  semi_prepared_frozen_bake_and_serve: { label: "Semi-prepared / Frozen / Bake-and-Serve Products", showPrivateLabel: false, showCustomization: false, showHamperBom: false },
-  packaging_decoration_material: { label: "Packaging / Decoration Material", showPrivateLabel: false, showCustomization: false, showHamperBom: false },
+  loose_bulk_material: {
+    label: "Loose / Bulk Material",
+    showPrivateLabel: false,
+    showCustomization: false,
+    showHamperBom: false,
+  },
+  prepacked_ready_packs: {
+    label: "Prepacked Products / Ready Packs",
+    showPrivateLabel: true,
+    showCustomization: false,
+    showHamperBom: false,
+  },
+  premium_gift_packs: {
+    label: "Premium Gift Packs",
+    showPrivateLabel: false,
+    showCustomization: true,
+    showHamperBom: true,
+  },
+  hamper_assorted_gift_pack: {
+    label: "Hamper / Assorted Gift Pack",
+    showPrivateLabel: false,
+    showCustomization: true,
+    showHamperBom: true,
+  },
+  semi_prepared_frozen_bake_and_serve: {
+    label: "Semi-prepared / Frozen / Bake-and-Serve Products",
+    showPrivateLabel: false,
+    showCustomization: false,
+    showHamperBom: false,
+  },
+  packaging_decoration_material: {
+    label: "Packaging / Decoration Material",
+    showPrivateLabel: false,
+    showCustomization: false,
+    showHamperBom: false,
+  },
 };
-const CUSTOMIZATION_TYPES = ["logo printing","name personalization","message card","sleeve","ribbon","custom box","custom tray","product assortment","corporate branding","wedding branding","other"];
+
+const CUSTOMIZATION_TYPES = [
+  "logo printing",
+  "name personalization",
+  "message card",
+  "sleeve",
+  "ribbon",
+  "custom box",
+  "custom tray",
+  "product assortment",
+  "corporate branding",
+  "wedding branding",
+  "other",
+];
 
 const empty: any = {
-  product_name: "", short_name: "", category: "", subcategory: "",
-  product_type: "", description: "", short_description: "", pack_size: "",
-  net_weight_g: "", gross_weight_g: "", shelf_life_days: "", storage_instructions: "",
-  hsn_code: "", gst_rate: "", mrp: "", b2b_price: "", export_price: "",
-  currency: "INR", moq_text: "", carton_logic: "", hero_image_url: "",
-  is_active: true, is_catalogue_ready: false,
-  sku: null, sku_locked: true,
-  division_code: null, category_code: null, subcategory_code: null, packaging_code: null,
+  product_name: "",
+  short_name: "",
+  category: "",
+  subcategory: "",
+  product_type: "",
+  description: "",
+  short_description: "",
+  pack_size: "",
+  net_weight_g: "",
+  gross_weight_g: "",
+  shelf_life_days: "",
+  storage_instructions: "",
+  hsn_code: "",
+  gst_rate: "",
+  mrp: "",
+  b2b_price: "",
+  export_price: "",
+  currency: "INR",
+  moq_text: "",
+  carton_logic: "",
+  hero_image_url: "",
+  is_active: true,
+  is_catalogue_ready: false,
+  sku: null,
+  sku_locked: true,
+  division_code: null,
+  category_code: null,
+  subcategory_code: null,
+  packaging_code: null,
   legacy_sku: null,
-  // Batch B fields
-  product_class: "", main_department: "", production_department: "",
-  primary_uom: "", b2b_uom: "", retail_uom: "",
-  price_basis: "", b2b_price_basis: "", retail_price_basis: "",
+
+  product_class: "",
+  main_department: "",
+  production_department: "",
+  primary_uom: "",
+  b2b_uom: "",
+  retail_uom: "",
+  price_basis: "",
+  b2b_price_basis: "",
+  retail_price_basis: "",
   unit_conversion_note: "",
-  pieces_per_kg: "", approximate_piece_weight_g: "", pcs_per_pack: "",
-  moq_rule_type: "", moq_value: "", moq_uom: "",
-  increment_value: "", increment_uom: "",
-  fixed_carton_required: false, carton_qty: "", carton_uom: "",
-  master_carton_qty: "", master_carton_uom: "",
-  dimension_l_cm: "", dimension_w_cm: "", dimension_h_cm: "",
-  material_type: "", color_finish_notes: "",
-  private_label_allowed: false, private_label_moq: "", private_label_moq_uom: "",
-  private_label_cost_per_unit: "", private_label_upfront_cost: "",
-  customization_allowed: false, customization_note: "", customization_caution: "", customization_types: [],
-  bom_required: false, pricing_notes: "", operational_notes: "",
-  frozen_shelf_life_days: "", post_processing_shelf_life_days: "",
-  temperature_requirement: "", thawing_instruction: "",
+  pieces_per_kg: "",
+  approximate_piece_weight_g: "",
+  pcs_per_pack: "",
+  moq_rule_type: "",
+  moq_value: "",
+  moq_uom: "",
+  increment_value: "",
+  increment_uom: "",
+  fixed_carton_required: false,
+  carton_qty: "",
+  carton_uom: "",
+  master_carton_qty: "",
+  master_carton_uom: "",
+  dimension_l_cm: "",
+  dimension_w_cm: "",
+  dimension_h_cm: "",
+  material_type: "",
+  color_finish_notes: "",
+  private_label_allowed: false,
+  private_label_moq: "",
+  private_label_moq_uom: "",
+  private_label_cost_per_unit: "",
+  private_label_upfront_cost: "",
+  customization_allowed: false,
+  customization_note: "",
+  customization_caution: "",
+  customization_types: [],
+  bom_required: false,
+  pricing_notes: "",
+  operational_notes: "",
+  frozen_shelf_life_days: "",
+  post_processing_shelf_life_days: "",
+  temperature_requirement: "",
+  thawing_instruction: "",
 };
 
 const NUMERIC_FIELDS = [
-  "net_weight_g", "gross_weight_g", "shelf_life_days", "gst_rate", "mrp", "b2b_price", "export_price",
-  "pieces_per_kg", "approximate_piece_weight_g", "pcs_per_pack",
-  "moq_value", "increment_value",
-  "carton_qty", "master_carton_qty",
-  "dimension_l_cm", "dimension_w_cm", "dimension_h_cm",
-  "private_label_moq", "private_label_cost_per_unit", "private_label_upfront_cost",
-  "frozen_shelf_life_days", "post_processing_shelf_life_days",
+  "net_weight_g",
+  "gross_weight_g",
+  "shelf_life_days",
+  "gst_rate",
+  "mrp",
+  "b2b_price",
+  "export_price",
+  "pieces_per_kg",
+  "approximate_piece_weight_g",
+  "pcs_per_pack",
+  "moq_value",
+  "increment_value",
+  "carton_qty",
+  "master_carton_qty",
+  "dimension_l_cm",
+  "dimension_w_cm",
+  "dimension_h_cm",
+  "private_label_moq",
+  "private_label_cost_per_unit",
+  "private_label_upfront_cost",
+  "frozen_shelf_life_days",
+  "post_processing_shelf_life_days",
 ];
 
-const Field = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
+const Field = ({
+  label,
+  hint,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+}) => (
   <div className="space-y-1">
     <Label className="text-xs">{label}</Label>
     {children}
@@ -124,9 +258,15 @@ const Select = ({ value, onChange, options, placeholder }: any) => (
   >
     <option value="">{placeholder ?? "— Select —"}</option>
     {options.map((o: any) =>
-      typeof o === "string"
-        ? <option key={o} value={o}>{o}</option>
-        : <option key={o.v} value={o.v}>{o.label}</option>
+      typeof o === "string" ? (
+        <option key={o} value={o}>
+          {o}
+        </option>
+      ) : (
+        <option key={o.v} value={o.v}>
+          {o.label}
+        </option>
+      )
     )}
   </select>
 );
@@ -136,113 +276,248 @@ const ProductEdit = () => {
   const isNew = !id || id === "new";
   const nav = useNavigate();
   const { roles } = useAuth();
+
   const canOverride = roles.includes("owner") || roles.includes("admin");
-  const isContributorRole = roles.includes("catalogue_contributor");
+  const authContextContributor = roles.includes("catalogue_contributor");
+
   const [form, setForm] = useState<any>(empty);
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [rpcContributorRole, setRpcContributorRole] = useState(false);
+
   const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
   const [tab, setTab] = useState<string>(() => {
-    try { return localStorage.getItem(tabKey) || "identity"; } catch { return "identity"; }
+    try {
+      return localStorage.getItem(tabKey) || "identity";
+    } catch {
+      return "identity";
+    }
   });
+
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
-  const draftKey = isNew ? "catalogue_product_form_draft_new" : `catalogue_product_form_draft_${id}`;
+  const draftKey = isNew
+    ? "catalogue_product_form_draft_new"
+    : `catalogue_product_form_draft_${id}`;
+
+  const isContributorMode = authContextContributor || rpcContributorRole;
 
   useEffect(() => {
-    try { localStorage.setItem(tabKey, tab); } catch {}
+    let mounted = true;
+
+    isCatalogueContributor()
+      .then((value) => {
+        if (mounted) {
+          setRpcContributorRole(!!value);
+        }
+      })
+      .catch((error) => {
+        if (import.meta.env.DEV) {
+          console.error("[ProductEdit] contributor role lookup failed:", error);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(tabKey, tab);
+    } catch {}
   }, [tab, tabKey]);
 
   useEffect(() => {
     if (isNew || !id || loadedId === id) return;
-    supabase.from("products").select("*").eq("id", id).single().then(({ data }) => {
-      if (data) { setForm({ ...empty, ...data }); setLoadedId(id); }
-    });
+
+    supabase
+      .from("products")
+      .select("*")
+      .eq("id", id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setForm({ ...empty, ...data });
+          setLoadedId(id);
+        }
+      });
   }, [id, isNew, loadedId]);
 
-  const set = (k: string, v: any) => { setDirty(true); setForm((f: any) => ({ ...f, [k]: v })); };
-  const patch = (p: any) => { setDirty(true); setForm((f: any) => ({ ...f, ...p })); };
+  const set = (k: string, v: any) => {
+    setDirty(true);
+    setSubmitError(null);
+    setForm((f: any) => ({ ...f, [k]: v }));
+  };
+
+  const patch = (p: any) => {
+    setDirty(true);
+    setSubmitError(null);
+    setForm((f: any) => ({ ...f, ...p }));
+  };
 
   useEffect(() => {
     if (restored.current) return;
+
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
         setForm((f: any) => ({ ...f, ...JSON.parse(raw) }));
       }
     } catch {}
+
     restored.current = true;
   }, [draftKey]);
 
   useEffect(() => {
     if (!restored.current) return;
-    try { localStorage.setItem(draftKey, JSON.stringify(form)); } catch {}
+
+    try {
+      localStorage.setItem(draftKey, JSON.stringify(form));
+    } catch {}
   }, [draftKey, form]);
 
   useEffect(() => {
-    const onUnload = (e: BeforeUnloadEvent) => { if (dirty) { e.preventDefault(); e.returnValue = ""; } };
+    const onUnload = (e: BeforeUnloadEvent) => {
+      if (dirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+
     window.addEventListener("beforeunload", onUnload);
     return () => window.removeEventListener("beforeunload", onUnload);
   }, [dirty]);
 
-  // Class-aware defaults
   useEffect(() => {
-    if (form.product_class === "gift_hamper" && !form.bom_required) set("bom_required", true);
-    if (form.product_class === "packaging_decoration_material" && !form.fixed_carton_required) set("fixed_carton_required", true);
+    if (form.product_class === "gift_hamper" && !form.bom_required) {
+      set("bom_required", true);
+    }
+
+    if (
+      form.product_class === "packaging_decoration_material" &&
+      !form.fixed_carton_required
+    ) {
+      set("fixed_carton_required", true);
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.product_class]);
 
   useEffect(() => {
-    if (form.customization_allowed && !form.customization_caution) set("customization_caution", DEFAULT_CAUTION);
+    if (form.customization_allowed && !form.customization_caution) {
+      set("customization_caution", DEFAULT_CAUTION);
+    }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.customization_allowed]);
 
   const cls = form.product_class;
   const profile = PRODUCT_TYPE_PROFILES[form.product_type || ""] || {};
   const showPrivateLabel = !!profile.showPrivateLabel || cls === "ready_pack";
-  const showCustomization = !!profile.showCustomization || cls === "gift_hamper" || cls === "service_or_customization";
-  const showDimensions = cls === "packaging_decoration_material" || form.fixed_carton_required;
+  const showCustomization =
+    !!profile.showCustomization ||
+    cls === "gift_hamper" ||
+    cls === "service_or_customization";
+  const showDimensions =
+    cls === "packaging_decoration_material" || form.fixed_carton_required;
   const showFrozen = cls === "semi_prepared_frozen";
-  const canManageBom = roles.includes("owner") || roles.includes("admin") || roles.includes("product_manager");
-  const bomRelevant = cls === "ready_pack" || cls === "gift_hamper" || cls === "packaging_decoration_material" || !!form.bom_required;
+  const canManageBom =
+    roles.includes("owner") ||
+    roles.includes("admin") ||
+    roles.includes("product_manager");
+  const bomRelevant =
+    cls === "ready_pack" ||
+    cls === "gift_hamper" ||
+    cls === "packaging_decoration_material" ||
+    !!form.bom_required;
   const showBom = !isNew && (bomRelevant || canManageBom);
 
   const missing = useMemo(() => {
     const m: string[] = [];
+
     if (!form.product_name) m.push("Product name");
-    if (!form.sku && !isContributorRole) m.push("SKU");
     if (!form.product_class) m.push("Product class");
-    if (!form.product_type && !form.category) m.push("Product type or category");
+    if (!form.product_type && !form.category) {
+      m.push("Product type or category");
+    }
+
+    if (isContributorMode) {
+      return m;
+    }
+
+    if (!form.sku) m.push("SKU");
     if (!form.main_department) m.push("Main department");
-    if (form.main_department === "ready_goods_store" && !form.production_department) m.push("Production department");
-    if (form.private_label_allowed && (!form.private_label_moq || !form.private_label_cost_per_unit))
+    if (form.main_department === "ready_goods_store" && !form.production_department) {
+      m.push("Production department");
+    }
+    if (
+      form.private_label_allowed &&
+      (!form.private_label_moq || !form.private_label_cost_per_unit)
+    ) {
       m.push("Private label MOQ & cost");
+    }
+
     return m;
-  }, [form, isContributorRole]);
+  }, [form, isContributorMode]);
 
   const save = async () => {
-    if (missing.length > 0) return toast.error(`Fix missing fields: ${missing.join(", ")}`);
+    setSubmitError(null);
+
+    if (missing.length > 0) {
+      const message = isContributorMode
+        ? `Draft not submitted: missing ${missing.join(", ")}`
+        : `Fix missing fields: ${missing.join(", ")}`;
+
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
     setLoading(true);
+
     const payload: any = { ...form };
+
     NUMERIC_FIELDS.forEach((k) => {
       payload[k] = payload[k] === "" || payload[k] == null ? null : Number(payload[k]);
     });
-    // empty strings → null for optional text columns to keep DB tidy
-    Object.keys(payload).forEach((k) => { if (payload[k] === "") payload[k] = null; });
-    // restore booleans
-    ["is_active","is_catalogue_ready","sku_locked","fixed_carton_required","private_label_allowed","customization_allowed","bom_required"]
-      .forEach((k) => { payload[k] = !!form[k]; });
+
+    Object.keys(payload).forEach((k) => {
+      if (payload[k] === "") payload[k] = null;
+    });
+
+    [
+      "is_active",
+      "is_catalogue_ready",
+      "sku_locked",
+      "fixed_carton_required",
+      "private_label_allowed",
+      "customization_allowed",
+      "bom_required",
+    ].forEach((k) => {
+      payload[k] = !!form[k];
+    });
 
     const direct = await canWriteMasterDirectly();
-    const contributor = await isCatalogueContributor();
+    const contributor = isContributorMode || (await isCatalogueContributor());
 
     if (direct) {
       const res = isNew
         ? await supabase.from("products").insert(payload).select().single()
         : await supabase.from("products").update(payload).eq("id", id).select().single();
+
       setLoading(false);
-      if (res.error) return toast.error(res.error.message);
-      try { localStorage.removeItem(draftKey); } catch {}
+
+      if (res.error) {
+        toast.error(res.error.message);
+        return;
+      }
+
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {}
+
       setDirty(false);
       toast.success("Saved");
       nav(`/products/${res.data.id}`);
@@ -250,33 +525,145 @@ const ProductEdit = () => {
     }
 
     if (contributor) {
-      const groupedPayload = {
-        identity: { product_name: payload.product_name, original_name: payload.short_name, product_class: payload.product_class, product_type: payload.product_type, category: payload.category, subcategory: payload.subcategory, description: payload.description, short_description: payload.short_description, main_department: payload.main_department, production_department: payload.production_department },
-        aliases: { suggested_aliases: [payload.product_name, payload.short_name].filter(Boolean) },
-        sku_draft: { sku: payload.sku, division_code: payload.division_code, category_code: payload.category_code, subcategory_code: payload.subcategory_code, packaging_code: payload.packaging_code, note: "SKU will be generated/finalized by admin during approval." },
-        uom: { primary_uom: payload.primary_uom, b2b_uom: payload.b2b_uom, retail_uom: payload.retail_uom, approx_piece_weight_g: payload.approximate_piece_weight_g, pieces_per_kg: payload.approximate_piece_weight_g ? Number((1000/Number(payload.approximate_piece_weight_g)).toFixed(2)) : payload.pieces_per_kg, unit_conversion_note: payload.unit_conversion_note || "Manual conversion required" },
-        packing: { primary_pack_type: payload.packaging_code || "NA", pack_uom: payload.carton_uom, qty_per_pack: payload.pcs_per_pack, legacy_moq_note: payload.carton_logic || "1 Master Carton = 4 Primary Packs" },
-        moq: { b2b_moq: payload.moq_value, retail_moq: null, moq_rule_type: payload.moq_rule_type, moq_value: payload.moq_value, moq_uom: payload.moq_uom, increment_value: payload.increment_value, increment_uom: payload.increment_uom },
-        pricing: { hsn: payload.hsn_code, gst_rate: payload.gst_rate, currency: payload.currency, mrp: payload.mrp, bulk_price: payload.mrp ? Math.round((Number(payload.mrp)*0.8)/10)*10 : null, wholesale_price: payload.mrp ? Math.round((Number(payload.mrp)*0.7)/10)*10 : null, b2b_price: payload.b2b_price, export_price: payload.export_price ? Math.round(Number(payload.export_price)) : null },
-        compliance: { ingredients: payload.ingredients, allergen_information: "Suggested — please review", nutritional_information: "Draft placeholder only", manufactured_by: "TCF Chocolates and Gifts Pvt Ltd", production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015", customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com", complaint_text: "If dissatisfied, tell us why and send the packet(s) along with bill of purchase to the above-mentioned address.", label_disclaimer: "Draft label data — requires admin/compliance approval." },
-        private_label: { available: payload.private_label_allowed, moq: payload.private_label_moq, moq_uom: payload.private_label_moq_uom, cost_per_pc: payload.private_label_cost_per_unit, setup_cost: payload.private_label_upfront_cost },
-        customization: { available: payload.customization_allowed, types: payload.customization_types || [], note: payload.customization_note, caution: payload.customization_caution },
-        bom: { internal_bom: payload.internal_bom || [], hamper_bom: payload.hamper_bom || [] },
-        selling_profile: form.product_type || form.product_class,
-        auto_generated_flags: { aliases: true, descriptions: true, pricing_suggestions: true, compliance_suggestions: true },
-        needs_admin_review_flags: { sku: true, pricing: true, compliance: true, nutrition: true, bom_mapping: true },
+      const optionalReviewFlags = {
+        sku: true,
+        pricing: true,
+        compliance: true,
+        nutrition: true,
+        bom_mapping: true,
+        main_department: !payload.main_department,
+        production_department: !payload.production_department,
+        moq: !payload.moq_value,
+        private_label_terms:
+          !!payload.private_label_allowed &&
+          (!payload.private_label_moq || !payload.private_label_cost_per_unit),
       };
+
+      const groupedPayload = {
+        identity: {
+          product_name: payload.product_name,
+          original_name: payload.short_name,
+          product_class: payload.product_class,
+          product_type: payload.product_type,
+          category: payload.category,
+          subcategory: payload.subcategory,
+          description: payload.description,
+          short_description: payload.short_description,
+          main_department: payload.main_department,
+          production_department: payload.production_department,
+        },
+        aliases: {
+          suggested_aliases: [payload.product_name, payload.short_name].filter(Boolean),
+        },
+        sku_draft: {
+          sku: payload.sku,
+          division_code: payload.division_code,
+          category_code: payload.category_code,
+          subcategory_code: payload.subcategory_code,
+          packaging_code: payload.packaging_code,
+          note: "SKU will be generated/finalized by admin during approval.",
+        },
+        uom: {
+          primary_uom: payload.primary_uom,
+          b2b_uom: payload.b2b_uom,
+          retail_uom: payload.retail_uom,
+          approx_piece_weight_g: payload.approximate_piece_weight_g,
+          pieces_per_kg: payload.approximate_piece_weight_g
+            ? Number((1000 / Number(payload.approximate_piece_weight_g)).toFixed(2))
+            : payload.pieces_per_kg,
+          unit_conversion_note:
+            payload.unit_conversion_note || "Manual conversion required",
+        },
+        packing: {
+          primary_pack_type: payload.packaging_code || "NA",
+          pack_uom: payload.carton_uom,
+          qty_per_pack: payload.pcs_per_pack,
+          legacy_moq_note:
+            payload.carton_logic || "Advanced carton logic will be finalized in Central App.",
+        },
+        moq: {
+          b2b_moq: payload.moq_value,
+          retail_moq: null,
+          moq_rule_type: payload.moq_rule_type,
+          moq_value: payload.moq_value,
+          moq_uom: payload.moq_uom,
+          increment_value: payload.increment_value,
+          increment_uom: payload.increment_uom,
+        },
+        pricing: {
+          hsn: payload.hsn_code,
+          gst_rate: payload.gst_rate,
+          currency: payload.currency,
+          mrp: payload.mrp,
+          bulk_price: payload.mrp
+            ? Math.round((Number(payload.mrp) * 0.8) / 10) * 10
+            : null,
+          wholesale_price: payload.mrp
+            ? Math.round((Number(payload.mrp) * 0.7) / 10) * 10
+            : null,
+          b2b_price: payload.b2b_price,
+          export_price: payload.export_price ? Math.round(Number(payload.export_price)) : null,
+        },
+        compliance: {
+          ingredients: payload.ingredients,
+          allergen_information: "Suggested — please review",
+          nutritional_information: "Draft placeholder only",
+          manufactured_by: "TCF Chocolates and Gifts Pvt Ltd",
+          production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015",
+          customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com",
+          complaint_text:
+            "If dissatisfied, tell us why and send the packet(s) along with bill of purchase to the above-mentioned address.",
+          label_disclaimer: "Draft label data — requires admin/compliance approval.",
+        },
+        private_label: {
+          available: payload.private_label_allowed,
+          moq: payload.private_label_moq,
+          moq_uom: payload.private_label_moq_uom,
+          cost_per_pc: payload.private_label_cost_per_unit,
+          setup_cost: payload.private_label_upfront_cost,
+        },
+        customization: {
+          available: payload.customization_allowed,
+          types: payload.customization_types || [],
+          note: payload.customization_note,
+          caution: payload.customization_caution,
+        },
+        bom: {
+          internal_bom: payload.internal_bom || [],
+          hamper_bom: payload.hamper_bom || [],
+        },
+        selling_profile: form.product_type || form.product_class,
+        auto_generated_flags: {
+          aliases: true,
+          descriptions: true,
+          pricing_suggestions: true,
+          compliance_suggestions: true,
+        },
+        needs_admin_review_flags: optionalReviewFlags,
+      };
+
       const draftRes = await submitCatalogueDraft({
         draftType: "product",
         operation: isNew ? "create" : "update",
         payload: groupedPayload,
         targetRecordId: isNew ? null : (id as string),
       });
+
       setLoading(false);
-      if (!draftRes.ok) return toast.error(draftRes.message);
-      try { localStorage.removeItem(draftKey); } catch {}
+
+      if (!draftRes.ok) {
+        const message = `Draft submit failed: ${draftRes.message}`;
+        setSubmitError(message);
+        toast.error(message);
+        return;
+      }
+
+      try {
+        localStorage.removeItem(draftKey);
+      } catch {}
+
       setDirty(false);
-      toast.success("Submitted for approval. SKU and final master data will be reviewed by admin.");
+      toast.success(draftRes.message);
       nav("/products");
       return;
     }
@@ -288,19 +675,46 @@ const ProductEdit = () => {
   return (
     <>
       <CatalogueWriteModeBanner />
+
       <PageHeader
         title={isNew ? "New Product" : form.product_name || "Edit Product"}
         subtitle="Master record · catalogue, label, and media-ready."
-        actions={<>
-          <Button variant="outline" onClick={() => { if (dirty && !window.confirm("You have unsaved changes. Leave this form?")) return; nav("/products"); }}>Back</Button>
-          <Button onClick={save} disabled={loading}>{loading ? "Saving…" : isContributorRole ? "Submit Draft" : "Save"}</Button>
-        </>}
+        actions={
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (dirty && !window.confirm("You have unsaved changes. Leave this form?")) {
+                  return;
+                }
+                nav("/products");
+              }}
+            >
+              Back
+            </Button>
+            <Button onClick={save} disabled={loading}>
+              {loading ? "Saving…" : isContributorMode ? "Submit Draft" : "Save"}
+            </Button>
+          </>
+        }
       />
+
+      {submitError && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 mt-0.5" />
+          <div>{submitError}</div>
+        </div>
+      )}
 
       {missing.length > 0 && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
           <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
-          <div><span className="font-medium">Fix missing fields:</span> {missing.join(" · ")}</div>
+          <div>
+            <span className="font-medium">
+              {isContributorMode ? "Draft needs:" : "Fix missing fields:"}
+            </span>{" "}
+            {missing.join(" · ")}
+          </div>
         </div>
       )}
 
@@ -309,62 +723,98 @@ const ProductEdit = () => {
           <Tabs value={tab} onValueChange={setTab}>
             <div className="-mx-3 sm:mx-0 overflow-x-auto border-b border-border/60 mb-4">
               <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 bg-transparent px-3 sm:px-0 py-0">
-                <TabsTrigger value="identity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Identity</TabsTrigger>
-                <TabsTrigger value="uom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">UOM / MOQ</TabsTrigger>
-                {!isNew && <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Media</TabsTrigger>}
-                {showPrivateLabel && <TabsTrigger value="private_label" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Private Label</TabsTrigger>}
-                {showCustomization && <TabsTrigger value="customisation" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Customisation</TabsTrigger>}
-                {showDimensions && <TabsTrigger value="dimensions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Dimensions</TabsTrigger>}
-                {showFrozen && <TabsTrigger value="frozen" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Frozen</TabsTrigger>}
-                {showBom && <TabsTrigger value="bom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">BOM</TabsTrigger>}
-                {!isNew && <TabsTrigger value="channels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Channels</TabsTrigger>}
-                <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Compliance</TabsTrigger>
-                <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">Ops Notes</TabsTrigger>
+                <TabsTrigger value="identity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  Identity
+                </TabsTrigger>
+                <TabsTrigger value="uom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  UOM / MOQ
+                </TabsTrigger>
+                {!isNew && (
+                  <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Media
+                  </TabsTrigger>
+                )}
+                {showPrivateLabel && (
+                  <TabsTrigger value="private_label" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Private Label
+                  </TabsTrigger>
+                )}
+                {showCustomization && (
+                  <TabsTrigger value="customisation" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Customisation
+                  </TabsTrigger>
+                )}
+                {showDimensions && (
+                  <TabsTrigger value="dimensions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Dimensions
+                  </TabsTrigger>
+                )}
+                {showFrozen && (
+                  <TabsTrigger value="frozen" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Frozen
+                  </TabsTrigger>
+                )}
+                {showBom && (
+                  <TabsTrigger value="bom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    BOM
+                  </TabsTrigger>
+                )}
+                {!isNew && (
+                  <TabsTrigger value="channels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Channels
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  Compliance
+                </TabsTrigger>
+                <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  Ops Notes
+                </TabsTrigger>
               </TabsList>
             </div>
 
-            {/* IDENTITY */}
             <TabsContent value="identity" className="space-y-6">
               <div className="card-elevated p-6 grid sm:grid-cols-2 gap-4">
                 <Field label="Product Name *">
-                  <Input
-                    value={form.product_name}
-                    onChange={(e) => set("product_name", e.target.value)}
-                    placeholder="Example: Cashew Pyramid Baklawa / Baklawa Acrylic Box 6 pcs"
-                  />
+                  <Input value={form.product_name} onChange={(e) => set("product_name", e.target.value)} placeholder="Example: Cashew Pyramid Baklawa / Baklawa Acrylic Box 6 pcs" />
                 </Field>
+
                 <Field label="Short Name">
                   <Input value={form.short_name ?? ""} onChange={(e) => set("short_name", e.target.value)} placeholder="Example: Cashew Pyramid" />
                 </Field>
+
                 <Field label="Product Class *">
                   <Select value={form.product_class} onChange={(v: string) => set("product_class", v)} options={PRODUCT_CLASSES} />
                 </Field>
+
                 <Field label="Product Type">
                   <Input value={form.product_type ?? ""} onChange={(e) => set("product_type", e.target.value)} placeholder="Example: Baklawa, Hamper, Jar pack" />
                 </Field>
+
                 <Field label="Display Category">
                   <Input value={form.category ?? ""} onChange={(e) => set("category", e.target.value)} placeholder="Example: Baklawa, Dates, Dragees, Hampers, Packaging Material" />
                 </Field>
+
                 <Field label="Display Subcategory">
                   <Input value={form.subcategory ?? ""} onChange={(e) => set("subcategory", e.target.value)} placeholder="Example: Pyramid, Roll, Acrylic Box" />
                 </Field>
-                <Field label="Main Department *" hint="Example: Baklawa → Ready Goods Store → Arabic Sweets">
+
+                <Field label={isContributorMode ? "Main Department" : "Main Department *"} hint={isContributorMode ? "Optional for draft. Admin can finalize during approval." : "Example: Baklawa → Ready Goods Store → Arabic Sweets"}>
                   <Select value={form.main_department} onChange={(v: string) => set("main_department", v)} options={MAIN_DEPARTMENTS} />
                 </Field>
+
                 {form.main_department === "ready_goods_store" && (
-                  <Field label="Production Department *">
+                  <Field label={isContributorMode ? "Production Department" : "Production Department *"}>
                     <Select value={form.production_department} onChange={(v: string) => set("production_department", v)} options={PRODUCTION_DEPARTMENTS} />
                   </Field>
                 )}
+
                 <div className="sm:col-span-2">
                   <Field label="Short description">
-                    <Input
-                      value={form.short_description ?? ""}
-                      onChange={(e) => set("short_description", e.target.value)}
-                      placeholder="Example: Premium pyramid-shaped baklawa filled with roasted cashews."
-                    />
+                    <Input value={form.short_description ?? ""} onChange={(e) => set("short_description", e.target.value)} placeholder="Example: Premium pyramid-shaped baklawa filled with roasted cashews." />
                   </Field>
                 </div>
+
                 <div className="sm:col-span-2">
                   <Field label="Description">
                     <Textarea rows={4} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
@@ -374,33 +824,57 @@ const ProductEdit = () => {
 
               <SkuBuilder value={form} canOverride={canOverride} onChange={patch} />
 
-              {isContributorRole && <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">SKU will be generated/finalized by admin during approval.</div>}
+              {isContributorMode && (
+                <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">
+                  SKU will be generated/finalized by admin during approval.
+                </div>
+              )}
 
               {!isNew && <AliasManager productId={id!} productName={form.product_name ?? ""} />}
             </TabsContent>
 
-            {/* UOM / MOQ */}
             <TabsContent value="uom" className="space-y-6">
               <div className="card-elevated p-6 space-y-5">
                 <div>
                   <h3 className="font-display text-xl mb-1">Unit of measure</h3>
                   <p className="text-xs text-muted-foreground">Example: kg for B2B, pcs for retail, grams for retail nuts/dragees.</p>
                 </div>
+
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <Field label="Primary UOM"><Select value={form.primary_uom} onChange={(v: string) => set("primary_uom", v)} options={UOM_OPTIONS} /></Field>
-                  <Field label="B2B UOM"><Select value={form.b2b_uom} onChange={(v: string) => set("b2b_uom", v)} options={UOM_OPTIONS} /></Field>
-                  <Field label="Retail UOM"><Select value={form.retail_uom} onChange={(v: string) => set("retail_uom", v)} options={UOM_OPTIONS} /></Field>
-                  <Field label="Price basis"><Input value={form.price_basis ?? ""} onChange={(e) => set("price_basis", e.target.value)} placeholder="per kg / per pc / per 100g" /></Field>
-                  <Field label="B2B price basis"><Input value={form.b2b_price_basis ?? ""} onChange={(e) => set("b2b_price_basis", e.target.value)} placeholder="per kg" /></Field>
-                  <Field label="Retail price basis"><Input value={form.retail_price_basis ?? ""} onChange={(e) => set("retail_price_basis", e.target.value)} placeholder="per pc / per 100g" /></Field>
+                  <Field label="Primary UOM">
+                    <Select value={form.primary_uom} onChange={(v: string) => set("primary_uom", v)} options={UOM_OPTIONS} />
+                  </Field>
+                  <Field label="B2B UOM">
+                    <Select value={form.b2b_uom} onChange={(v: string) => set("b2b_uom", v)} options={UOM_OPTIONS} />
+                  </Field>
+                  <Field label="Retail UOM">
+                    <Select value={form.retail_uom} onChange={(v: string) => set("retail_uom", v)} options={UOM_OPTIONS} />
+                  </Field>
+                  <Field label="Price basis">
+                    <Input value={form.price_basis ?? ""} onChange={(e) => set("price_basis", e.target.value)} placeholder="per kg / per pc / per 100g" />
+                  </Field>
+                  <Field label="B2B price basis">
+                    <Input value={form.b2b_price_basis ?? ""} onChange={(e) => set("b2b_price_basis", e.target.value)} placeholder="per kg" />
+                  </Field>
+                  <Field label="Retail price basis">
+                    <Input value={form.retail_price_basis ?? ""} onChange={(e) => set("retail_price_basis", e.target.value)} placeholder="per pc / per 100g" />
+                  </Field>
+
                   <div className="sm:col-span-3">
                     <Field label="Unit conversion note">
                       <Textarea rows={2} value={form.unit_conversion_note ?? ""} onChange={(e) => set("unit_conversion_note", e.target.value)} placeholder="Example: Approx. 55–60 pcs per kg; retail sold by piece." />
                     </Field>
                   </div>
-                  <Field label="Pieces per kg"><Input type="number" value={form.pieces_per_kg ?? ""} onChange={(e) => set("pieces_per_kg", e.target.value)} placeholder="55" /></Field>
-                  <Field label="Approx. piece weight (g)"><Input type="number" value={form.approximate_piece_weight_g ?? ""} onChange={(e) => set("approximate_piece_weight_g", e.target.value)} placeholder="18" /></Field>
-                  <Field label="Pieces per pack"><Input type="number" value={form.pcs_per_pack ?? ""} onChange={(e) => set("pcs_per_pack", e.target.value)} placeholder="6" /></Field>
+
+                  <Field label="Pieces per kg">
+                    <Input type="number" value={form.pieces_per_kg ?? ""} onChange={(e) => set("pieces_per_kg", e.target.value)} placeholder="55" />
+                  </Field>
+                  <Field label="Approx. piece weight (g)">
+                    <Input type="number" value={form.approximate_piece_weight_g ?? ""} onChange={(e) => set("approximate_piece_weight_g", e.target.value)} placeholder="18" />
+                  </Field>
+                  <Field label="Pieces per pack">
+                    <Input type="number" value={form.pcs_per_pack ?? ""} onChange={(e) => set("pcs_per_pack", e.target.value)} placeholder="6" />
+                  </Field>
                 </div>
               </div>
 
@@ -409,48 +883,72 @@ const ProductEdit = () => {
                   <h3 className="font-display text-xl mb-1">MOQ & increment</h3>
                   <p className="text-xs text-muted-foreground">Example: B2B MOQ 1 master carton; Retail MOQ not applicable.</p>
                 </div>
+
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <Field label="MOQ rule type"><Select value={form.moq_rule_type} onChange={(v: string) => set("moq_rule_type", v)} options={MOQ_RULE_TYPES} /></Field>
-                  <Field label="MOQ value"><Input type="number" value={form.moq_value ?? ""} onChange={(e) => set("moq_value", e.target.value)} placeholder="1" /></Field>
-                  <Field label="MOQ UOM"><Select value={form.moq_uom} onChange={(v: string) => set("moq_uom", v)} options={UOM_OPTIONS} /></Field>
-                  <Field label="Increment value"><Input type="number" value={form.increment_value ?? ""} onChange={(e) => set("increment_value", e.target.value)} placeholder="1" /></Field>
-                  <Field label="Increment UOM"><Select value={form.increment_uom} onChange={(v: string) => set("increment_uom", v)} options={UOM_OPTIONS} /></Field>
-                  <Field label="Legacy MOQ note"><Input value={form.moq_text ?? ""} onChange={(e) => set("moq_text", e.target.value)} placeholder="Free text fallback" /></Field>
+                  <Field label="MOQ rule type">
+                    <Select value={form.moq_rule_type} onChange={(v: string) => set("moq_rule_type", v)} options={MOQ_RULE_TYPES} />
+                  </Field>
+                  <Field label="MOQ value">
+                    <Input type="number" value={form.moq_value ?? ""} onChange={(e) => set("moq_value", e.target.value)} placeholder="1" />
+                  </Field>
+                  <Field label="MOQ UOM">
+                    <Select value={form.moq_uom} onChange={(v: string) => set("moq_uom", v)} options={UOM_OPTIONS} />
+                  </Field>
+                  <Field label="Increment value">
+                    <Input type="number" value={form.increment_value ?? ""} onChange={(e) => set("increment_value", e.target.value)} placeholder="1" />
+                  </Field>
+                  <Field label="Increment UOM">
+                    <Select value={form.increment_uom} onChange={(v: string) => set("increment_uom", v)} options={UOM_OPTIONS} />
+                  </Field>
+                  <Field label="Legacy MOQ note">
+                    <Input value={form.moq_text ?? ""} onChange={(e) => set("moq_text", e.target.value)} placeholder="Free text fallback" />
+                  </Field>
                 </div>
               </div>
 
               <div className="card-elevated p-6 space-y-5">
                 <div>
                   <h3 className="font-display text-xl mb-1">Carton logic</h3>
-                  <p className="text-xs text-muted-foreground">Example: Sold only in closed carton of 50 pcs.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Advanced carton logic will be finalized in Central App.
+                  </p>
                 </div>
-                <div className="flex items-center justify-between">
-                  <Label>Fixed carton required</Label>
-                  <Switch checked={!!form.fixed_carton_required} onCheckedChange={(v) => set("fixed_carton_required", v)} />
-                </div>
-                <div className="grid sm:grid-cols-3 gap-4">
-                  <Field label="Carton qty"><Input type="number" value={form.carton_qty ?? ""} onChange={(e) => set("carton_qty", e.target.value)} placeholder="50" /></Field>
-                  <Field label="Carton UOM"><Select value={form.carton_uom} onChange={(v: string) => set("carton_uom", v)} options={UOM_OPTIONS} /></Field>
-                  <Field label="Master carton qty"><Input type="number" value={form.master_carton_qty ?? ""} onChange={(e) => set("master_carton_qty", e.target.value)} placeholder="6" /></Field>
-                  <Field label="Master carton UOM"><Select value={form.master_carton_uom} onChange={(v: string) => set("master_carton_uom", v)} options={UOM_OPTIONS} /></Field>
-                  <div className="sm:col-span-3">
-                    <Field label="Carton logic note">
-                      <Input value={form.carton_logic ?? ""} onChange={(e) => set("carton_logic", e.target.value)} placeholder="Example: Sold only in closed carton of 50 pcs." />
-                    </Field>
-                  </div>
-                </div>
+
+                {!isContributorMode && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <Label>Fixed carton required</Label>
+                      <Switch checked={!!form.fixed_carton_required} onCheckedChange={(v) => set("fixed_carton_required", v)} />
+                    </div>
+
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <Field label="Carton qty">
+                        <Input type="number" value={form.carton_qty ?? ""} onChange={(e) => set("carton_qty", e.target.value)} placeholder="50" />
+                      </Field>
+                      <Field label="Carton UOM">
+                        <Select value={form.carton_uom} onChange={(v: string) => set("carton_uom", v)} options={UOM_OPTIONS} />
+                      </Field>
+                      <Field label="Master carton qty">
+                        <Input type="number" value={form.master_carton_qty ?? ""} onChange={(e) => set("master_carton_qty", e.target.value)} placeholder="6" />
+                      </Field>
+                      <Field label="Master carton UOM">
+                        <Select value={form.master_carton_uom} onChange={(v: string) => set("master_carton_uom", v)} options={UOM_OPTIONS} />
+                      </Field>
+                      <div className="sm:col-span-3">
+                        <Field label="Carton logic note">
+                          <Input value={form.carton_logic ?? ""} onChange={(e) => set("carton_logic", e.target.value)} placeholder="Example: Sold only in closed carton of 50 pcs." />
+                        </Field>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </TabsContent>
 
-            {/* MEDIA */}
             {!isNew && (
               <TabsContent value="media" className="space-y-6">
-                <ProductMediaUploader
-                  productId={id!}
-                  productSku={form.sku}
-                  currentHero={form.hero_image_url}
-                  onHeroChange={(url) => set("hero_image_url", url)}
-                />
+                <ProductMediaUploader productId={id!} productSku={form.sku} currentHero={form.hero_image_url} onHeroChange={(url) => set("hero_image_url", url)} />
+
                 <div className="card-elevated p-4">
                   <Field label="Hero image URL (advanced)">
                     <Input value={form.hero_image_url ?? ""} onChange={(e) => set("hero_image_url", e.target.value)} placeholder="https://…" />
@@ -459,7 +957,6 @@ const ProductEdit = () => {
               </TabsContent>
             )}
 
-            {/* PRIVATE LABEL */}
             {showPrivateLabel && (
               <TabsContent value="private_label" className="space-y-6">
                 <div className="card-elevated p-6 space-y-4">
@@ -470,19 +967,27 @@ const ProductEdit = () => {
                     </div>
                     <Switch checked={!!form.private_label_allowed} onCheckedChange={(v) => set("private_label_allowed", v)} />
                   </div>
+
                   {form.private_label_allowed && (
                     <div className="grid sm:grid-cols-2 gap-4">
-                      <Field label="Private label MOQ"><Input type="number" value={form.private_label_moq ?? ""} onChange={(e) => set("private_label_moq", e.target.value)} placeholder="500" /></Field>
-                      <Field label="Private label MOQ UOM"><Select value={form.private_label_moq_uom} onChange={(v: string) => set("private_label_moq_uom", v)} options={UOM_OPTIONS} /></Field>
-                      <Field label="Cost per unit (₹)"><Input type="number" value={form.private_label_cost_per_unit ?? ""} onChange={(e) => set("private_label_cost_per_unit", e.target.value)} placeholder="10" /></Field>
-                      <Field label="Upfront cost (₹)"><Input type="number" value={form.private_label_upfront_cost ?? ""} onChange={(e) => set("private_label_upfront_cost", e.target.value)} placeholder="5000" /></Field>
+                      <Field label="Private label MOQ">
+                        <Input type="number" value={form.private_label_moq ?? ""} onChange={(e) => set("private_label_moq", e.target.value)} placeholder="500" />
+                      </Field>
+                      <Field label="Private label MOQ UOM">
+                        <Select value={form.private_label_moq_uom} onChange={(v: string) => set("private_label_moq_uom", v)} options={UOM_OPTIONS} />
+                      </Field>
+                      <Field label="Cost per unit (₹)">
+                        <Input type="number" value={form.private_label_cost_per_unit ?? ""} onChange={(e) => set("private_label_cost_per_unit", e.target.value)} placeholder="10" />
+                      </Field>
+                      <Field label="Upfront cost (₹)">
+                        <Input type="number" value={form.private_label_upfront_cost ?? ""} onChange={(e) => set("private_label_upfront_cost", e.target.value)} placeholder="5000" />
+                      </Field>
                     </div>
                   )}
                 </div>
               </TabsContent>
             )}
 
-            {/* CUSTOMISATION */}
             {showCustomization && (
               <TabsContent value="customisation" className="space-y-6">
                 <div className="card-elevated p-6 space-y-4">
@@ -493,29 +998,42 @@ const ProductEdit = () => {
                     </div>
                     <Switch checked={!!form.customization_allowed} onCheckedChange={(v) => set("customization_allowed", v)} />
                   </div>
+
                   {form.customization_allowed && (
                     <>
                       <Field label="Customization type (multi-select)" hint="Suggested — please review">
                         <div className="flex flex-wrap gap-2">
                           {CUSTOMIZATION_TYPES.map((t) => {
                             const selected = (form.customization_types || []).includes(t);
-                            return <button key={t} type="button" className={`rounded-full border px-3 py-1 text-xs ${selected ? "bg-accent text-accent-foreground" : "bg-background"}`} onClick={() => {
-                              const next = selected ? (form.customization_types || []).filter((x: string) => x !== t) : [...(form.customization_types || []), t];
-                              set("customization_types", next);
-                            }}>{t}</button>;
+
+                            return (
+                              <button
+                                key={t}
+                                type="button"
+                                className={`rounded-full border px-3 py-1 text-xs ${
+                                  selected ? "bg-accent text-accent-foreground" : "bg-background"
+                                }`}
+                                onClick={() => {
+                                  const next = selected
+                                    ? (form.customization_types || []).filter((x: string) => x !== t)
+                                    : [...(form.customization_types || []), t];
+
+                                  set("customization_types", next);
+                                }}
+                              >
+                                {t}
+                              </button>
+                            );
                           })}
                         </div>
                       </Field>
+
                       <Field label="Customisation note">
                         <Textarea rows={3} value={form.customization_note ?? ""} onChange={(e) => set("customization_note", e.target.value)} placeholder="Example: Logo sticker, ribbon color, greeting card message, client branding." />
                       </Field>
+
                       <Field label="Customisation caution">
-                        <Textarea
-                          rows={3}
-                          value={form.customization_caution ?? ""}
-                          onChange={(e) => set("customization_caution", e.target.value)}
-                          className="bg-warning/10 underline decoration-warning underline-offset-2 font-medium"
-                        />
+                        <Textarea rows={3} value={form.customization_caution ?? ""} onChange={(e) => set("customization_caution", e.target.value)} className="bg-warning/10 underline decoration-warning underline-offset-2 font-medium" />
                       </Field>
                     </>
                   )}
@@ -523,7 +1041,6 @@ const ProductEdit = () => {
               </TabsContent>
             )}
 
-            {/* DIMENSIONS */}
             {showDimensions && (
               <TabsContent value="dimensions" className="space-y-6">
                 <div className="card-elevated p-6 space-y-4">
@@ -531,20 +1048,30 @@ const ProductEdit = () => {
                     <h3 className="font-display text-xl mb-1">Dimensions & material</h3>
                     <p className="text-xs text-muted-foreground">Example: L 22 cm × W 18 cm × H 6 cm.</p>
                   </div>
+
                   <div className="grid sm:grid-cols-3 gap-4">
-                    <Field label="Length (cm)"><Input type="number" value={form.dimension_l_cm ?? ""} onChange={(e) => set("dimension_l_cm", e.target.value)} placeholder="22" /></Field>
-                    <Field label="Width (cm)"><Input type="number" value={form.dimension_w_cm ?? ""} onChange={(e) => set("dimension_w_cm", e.target.value)} placeholder="18" /></Field>
-                    <Field label="Height (cm)"><Input type="number" value={form.dimension_h_cm ?? ""} onChange={(e) => set("dimension_h_cm", e.target.value)} placeholder="6" /></Field>
-                    <Field label="Material type"><Input value={form.material_type ?? ""} onChange={(e) => set("material_type", e.target.value)} placeholder="Acrylic / Kraft / Velvet" /></Field>
+                    <Field label="Length (cm)">
+                      <Input type="number" value={form.dimension_l_cm ?? ""} onChange={(e) => set("dimension_l_cm", e.target.value)} placeholder="22" />
+                    </Field>
+                    <Field label="Width (cm)">
+                      <Input type="number" value={form.dimension_w_cm ?? ""} onChange={(e) => set("dimension_w_cm", e.target.value)} placeholder="18" />
+                    </Field>
+                    <Field label="Height (cm)">
+                      <Input type="number" value={form.dimension_h_cm ?? ""} onChange={(e) => set("dimension_h_cm", e.target.value)} placeholder="6" />
+                    </Field>
+                    <Field label="Material type">
+                      <Input value={form.material_type ?? ""} onChange={(e) => set("material_type", e.target.value)} placeholder="Acrylic / Kraft / Velvet" />
+                    </Field>
                     <div className="sm:col-span-2">
-                      <Field label="Colour / finish notes"><Input value={form.color_finish_notes ?? ""} onChange={(e) => set("color_finish_notes", e.target.value)} placeholder="Matte gold, transparent lid" /></Field>
+                      <Field label="Colour / finish notes">
+                        <Input value={form.color_finish_notes ?? ""} onChange={(e) => set("color_finish_notes", e.target.value)} placeholder="Matte gold, transparent lid" />
+                      </Field>
                     </div>
                   </div>
                 </div>
               </TabsContent>
             )}
 
-            {/* FROZEN */}
             {showFrozen && (
               <TabsContent value="frozen" className="space-y-6">
                 <div className="card-elevated p-6 space-y-4">
@@ -552,24 +1079,31 @@ const ProductEdit = () => {
                     <h3 className="font-display text-xl mb-1">Frozen / semi-prepared</h3>
                     <p className="text-xs text-muted-foreground">Example: Store at -18°C. Use within 48 hours after thawing.</p>
                   </div>
+
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <Field label="Frozen shelf life (days)"><Input type="number" value={form.frozen_shelf_life_days ?? ""} onChange={(e) => set("frozen_shelf_life_days", e.target.value)} placeholder="180" /></Field>
-                    <Field label="Post-processing shelf life (days)"><Input type="number" value={form.post_processing_shelf_life_days ?? ""} onChange={(e) => set("post_processing_shelf_life_days", e.target.value)} placeholder="2" /></Field>
-                    <Field label="Temperature requirement"><Input value={form.temperature_requirement ?? ""} onChange={(e) => set("temperature_requirement", e.target.value)} placeholder="-18°C" /></Field>
-                    <Field label="Thawing instruction"><Input value={form.thawing_instruction ?? ""} onChange={(e) => set("thawing_instruction", e.target.value)} placeholder="Thaw at 4°C overnight" /></Field>
+                    <Field label="Frozen shelf life (days)">
+                      <Input type="number" value={form.frozen_shelf_life_days ?? ""} onChange={(e) => set("frozen_shelf_life_days", e.target.value)} placeholder="180" />
+                    </Field>
+                    <Field label="Post-processing shelf life (days)">
+                      <Input type="number" value={form.post_processing_shelf_life_days ?? ""} onChange={(e) => set("post_processing_shelf_life_days", e.target.value)} placeholder="2" />
+                    </Field>
+                    <Field label="Temperature requirement">
+                      <Input value={form.temperature_requirement ?? ""} onChange={(e) => set("temperature_requirement", e.target.value)} placeholder="-18°C" />
+                    </Field>
+                    <Field label="Thawing instruction">
+                      <Input value={form.thawing_instruction ?? ""} onChange={(e) => set("thawing_instruction", e.target.value)} placeholder="Thaw at 4°C overnight" />
+                    </Field>
                   </div>
                 </div>
               </TabsContent>
             )}
 
-            {/* BOM */}
             {showBom && (
               <TabsContent value="bom" className="space-y-6">
-                <BomBuilder parentId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
+                <BomBuilder productId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
               </TabsContent>
             )}
 
-            {/* CHANNELS - MOQ + Pricing */}
             {!isNew && (
               <TabsContent value="channels" className="space-y-6">
                 <ChannelMoqRules productId={id!} product={form} />
@@ -577,15 +1111,24 @@ const ProductEdit = () => {
               </TabsContent>
             )}
 
-            {/* COMPLIANCE */}
             <TabsContent value="compliance" className="space-y-6">
               <div className="card-elevated p-6">
                 <h3 className="font-display text-xl mb-4">Pack & shelf</h3>
+
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <Field label="Pack size"><Input value={form.pack_size ?? ""} onChange={(e) => set("pack_size", e.target.value)} placeholder="500g jar / 6 pcs box" /></Field>
-                  <Field label="Net weight (g)"><Input type="number" value={form.net_weight_g ?? ""} onChange={(e) => set("net_weight_g", e.target.value)} /></Field>
-                  <Field label="Gross weight (g)"><Input type="number" value={form.gross_weight_g ?? ""} onChange={(e) => set("gross_weight_g", e.target.value)} /></Field>
-                  <Field label="Shelf life (days)"><Input type="number" value={form.shelf_life_days ?? ""} onChange={(e) => set("shelf_life_days", e.target.value)} /></Field>
+                  <Field label="Pack size">
+                    <Input value={form.pack_size ?? ""} onChange={(e) => set("pack_size", e.target.value)} placeholder="500g jar / 6 pcs box" />
+                  </Field>
+                  <Field label="Net weight (g)">
+                    <Input type="number" value={form.net_weight_g ?? ""} onChange={(e) => set("net_weight_g", e.target.value)} />
+                  </Field>
+                  <Field label="Gross weight (g)">
+                    <Input type="number" value={form.gross_weight_g ?? ""} onChange={(e) => set("gross_weight_g", e.target.value)} />
+                  </Field>
+                  <Field label="Shelf life (days)">
+                    <Input type="number" value={form.shelf_life_days ?? ""} onChange={(e) => set("shelf_life_days", e.target.value)} />
+                  </Field>
+
                   <div className="sm:col-span-3">
                     <Field label="Storage instructions">
                       <Textarea rows={2} value={form.storage_instructions ?? ""} onChange={(e) => set("storage_instructions", e.target.value)} placeholder="Example: Store in cool, dry place away from sunlight." />
@@ -597,26 +1140,40 @@ const ProductEdit = () => {
               <div className="card-elevated p-6">
                 <h3 className="font-display text-xl mb-4">Tax & pricing (legacy)</h3>
                 <p className="text-xs text-muted-foreground mb-3">Channel-wise pricing comes in the next batch. These fields stay for backward compatibility.</p>
+
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <Field label="HSN"><Input value={form.hsn_code ?? ""} onChange={(e) => set("hsn_code", e.target.value)} /></Field>
-                  <Field label="GST %"><Input type="number" value={form.gst_rate ?? ""} onChange={(e) => set("gst_rate", e.target.value)} /></Field>
-                  <Field label="Currency"><Input value={form.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} /></Field>
-                  <Field label="MRP"><Input type="number" value={form.mrp ?? ""} onChange={(e) => set("mrp", e.target.value)} /></Field>
-                  <Field label="B2B price"><Input type="number" value={form.b2b_price ?? ""} onChange={(e) => set("b2b_price", e.target.value)} /></Field>
-                  <Field label="Export price"><Input type="number" value={form.export_price ?? ""} onChange={(e) => set("export_price", e.target.value)} /></Field>
+                  <Field label="HSN">
+                    <Input value={form.hsn_code ?? ""} onChange={(e) => set("hsn_code", e.target.value)} />
+                  </Field>
+                  <Field label="GST %">
+                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => set("gst_rate", e.target.value)} />
+                  </Field>
+                  <Field label="Currency">
+                    <Input value={form.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} />
+                  </Field>
+                  <Field label="MRP">
+                    <Input type="number" value={form.mrp ?? ""} onChange={(e) => set("mrp", e.target.value)} />
+                  </Field>
+                  <Field label="B2B price">
+                    <Input type="number" value={form.b2b_price ?? ""} onChange={(e) => set("b2b_price", e.target.value)} />
+                  </Field>
+                  <Field label="Export price">
+                    <Input type="number" value={form.export_price ?? ""} onChange={(e) => set("export_price", e.target.value)} />
+                  </Field>
                 </div>
               </div>
             </TabsContent>
 
-            {/* OPS NOTES */}
             <TabsContent value="ops" className="space-y-6">
               <div className="card-elevated p-6 space-y-4">
                 <Field label="Pricing notes">
                   <Textarea rows={3} value={form.pricing_notes ?? ""} onChange={(e) => set("pricing_notes", e.target.value)} placeholder="Example: MRP ₹1000; Bulk = MRP - 20%; Wholesale = MRP - 30%" />
                 </Field>
+
                 <Field label="Operational notes">
                   <Textarea rows={3} value={form.operational_notes ?? ""} onChange={(e) => set("operational_notes", e.target.value)} placeholder="Example: Supplied by 3rd Party Goods Store; required before assembly." />
                 </Field>
+
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
                     <Label>BOM required</Label>
@@ -629,27 +1186,35 @@ const ProductEdit = () => {
           </Tabs>
         </div>
 
-        {/* SIDEBAR */}
         <div className="space-y-6">
           <div className="card-elevated p-6 space-y-4">
             <h3 className="font-display text-xl">Status</h3>
+
             <div className="flex items-center justify-between">
               <Label>Active</Label>
               <Switch checked={!!form.is_active} onCheckedChange={(v) => set("is_active", v)} />
             </div>
+
             <div className="flex items-center justify-between">
               <Label>Catalogue-ready</Label>
               <Switch checked={!!form.is_catalogue_ready} onCheckedChange={(v) => set("is_catalogue_ready", v)} />
             </div>
+
             <div className="text-xs text-muted-foreground border-t pt-3">
-              Label status: <span className="font-medium text-foreground">{form.label_status ?? "draft"}</span><br />
+              Label status: <span className="font-medium text-foreground">{form.label_status ?? "draft"}</span>
+              <br />
               Media status: <span className="font-medium text-foreground">{form.media_status ?? "missing"}</span>
             </div>
           </div>
 
           <div className="card-elevated p-6 bg-accent-soft/40">
-            <div className="text-xs uppercase tracking-wider text-accent-foreground/80 mb-2">API integration note</div>
-            <p className="text-sm">SKU is the permanent system identity used by Oasis Central, B2B Portal, label & barcode tools, and all future APIs. Aliases are search helpers only — never use alias text as an external reference.</p>
+            <div className="text-xs uppercase tracking-wider text-accent-foreground/80 mb-2">
+              API integration note
+            </div>
+            <p className="text-sm">
+              SKU is the permanent system identity used by Oasis Central, B2B Portal, label & barcode tools, and all future APIs.
+              Aliases are search helpers only — never use alias text as an external reference.
+            </p>
           </div>
         </div>
       </div>
