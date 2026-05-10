@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { AlertTriangle, Boxes, Link2, Plus, Search, Trash2, X } from "lucide-react";
 
+type BomType = "internal_bom" | "hamper_bom";
+
 type BomItem = {
   id: string;
   product_id: string;
@@ -14,6 +16,7 @@ type BomItem = {
   component_name: string | null;
   quantity_per_unit: number | null;
   source_department: string | null;
+  bom_type?: BomType | null;
   created_at: string | null;
 };
 
@@ -29,6 +32,19 @@ interface Props {
   productClass?: string | null;
   bomRequired?: boolean;
 }
+
+const BOM_TYPES: { v: BomType; label: string; description: string }[] = [
+  {
+    v: "internal_bom",
+    label: "Internal BOM",
+    description: "Articles required to make one ready pack, box, jar, tin, or private-label pack.",
+  },
+  {
+    v: "hamper_bom",
+    label: "Hamper BOM",
+    description: "Ready packs, loose products, and packaging items required to assemble one hamper.",
+  },
+];
 
 const SOURCE_DEPARTMENTS = [
   { v: "ready_goods_store", label: "Ready Goods Store" },
@@ -59,6 +75,11 @@ const Select = ({ value, onChange, options, placeholder }: any) => (
   </select>
 );
 
+const defaultBomTypeForClass = (productClass?: string | null): BomType => {
+  if (productClass === "gift_hamper") return "hamper_bom";
+  return "internal_bom";
+};
+
 const formatDepartment = (value?: string | null) => {
   if (!value) return "—";
 
@@ -68,23 +89,58 @@ const formatDepartment = (value?: string | null) => {
 
 const productDisplayName = (p: ProductOption) => p.name || p.sku || p.id;
 
+const isMissingBomTypeColumnError = (message?: string | null) => {
+  const m = String(message || "").toLowerCase();
+  return m.includes("bom_type") || m.includes("schema cache");
+};
+
 export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   const [items, setItems] = useState<BomItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyDraft());
+  const [selectedBomType, setSelectedBomType] = useState<BomType>(() =>
+    defaultBomTypeForClass(productClass)
+  );
+  const [supportsBomType, setSupportsBomType] = useState<boolean | null>(null);
 
   const [productSearch, setProductSearch] = useState("");
   const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
   const [productSearchLoading, setProductSearchLoading] = useState(false);
+
+  useEffect(() => {
+    setSelectedBomType(defaultBomTypeForClass(productClass));
+  }, [productClass]);
 
   const load = async () => {
     if (!parentId) return;
 
     setLoading(true);
 
-    const { data, error } = await (supabase as any)
+    const withBomType = await (supabase as any)
+      .from("product_bom")
+      .select(
+        "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, bom_type, created_at"
+      )
+      .eq("product_id", parentId)
+      .order("created_at", { ascending: true });
+
+    if (!withBomType.error) {
+      setSupportsBomType(true);
+      setItems((withBomType.data ?? []) as BomItem[]);
+      setLoading(false);
+      return;
+    }
+
+    if (!isMissingBomTypeColumnError(withBomType.error.message)) {
+      toast.error(withBomType.error.message);
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    const fallback = await (supabase as any)
       .from("product_bom")
       .select(
         "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, created_at"
@@ -92,14 +148,20 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       .eq("product_id", parentId)
       .order("created_at", { ascending: true });
 
-    if (error) {
-      toast.error(error.message);
+    if (fallback.error) {
+      toast.error(fallback.error.message);
       setItems([]);
       setLoading(false);
       return;
     }
 
-    setItems((data ?? []) as BomItem[]);
+    setSupportsBomType(false);
+    setItems(
+      ((fallback.data ?? []) as BomItem[]).map((item) => ({
+        ...item,
+        bom_type: "internal_bom",
+      }))
+    );
     setLoading(false);
   };
 
@@ -169,6 +231,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   };
 
   const startEdit = (item: BomItem) => {
+    setSelectedBomType((item.bom_type as BomType) || selectedBomType);
     setDraft({
       component_product_id: item.component_product_id,
       component_name: item.component_name ?? "",
@@ -208,13 +271,21 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     return null;
   };
 
-  const buildPayload = () => ({
-    product_id: parentId,
-    component_product_id: draft.component_product_id || null,
-    component_name: draft.component_name.trim() || null,
-    quantity_per_unit: Number(draft.quantity_per_unit),
-    source_department: draft.source_department || null,
-  });
+  const buildPayload = () => {
+    const payload: Record<string, any> = {
+      product_id: parentId,
+      component_product_id: draft.component_product_id || null,
+      component_name: draft.component_name.trim() || null,
+      quantity_per_unit: Number(draft.quantity_per_unit),
+      source_department: draft.source_department || null,
+    };
+
+    if (supportsBomType !== false) {
+      payload.bom_type = selectedBomType;
+    }
+
+    return payload;
+  };
 
   const save = async () => {
     const validationError = validateDraft();
@@ -260,41 +331,78 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     load();
   };
 
+  const visibleItems = useMemo(() => {
+    if (supportsBomType === false) return items;
+    return items.filter((item) => (item.bom_type || "internal_bom") === selectedBomType);
+  }, [items, selectedBomType, supportsBomType]);
+
   const warnings = useMemo(() => {
     const list: string[] = [];
 
-    if (bomRequired && items.length === 0) {
-      list.push("BOM is marked required but no components exist yet.");
+    if (supportsBomType === false) {
+      list.push("BOM type column is not active yet. Run the bom_type SQL to separate Internal BOM and Hamper BOM rows.");
     }
 
-    if (productClass === "gift_hamper" && items.length === 0) {
-      list.push("Gift hamper should have a BOM before approval.");
+    if (bomRequired && visibleItems.length === 0) {
+      list.push("BOM is marked required but no components exist yet for the selected BOM type.");
     }
 
-    if (productClass === "ready_pack" && items.length === 0) {
-      list.push("Ready pack usually needs food material and packing material components.");
+    if (productClass === "gift_hamper" && selectedBomType === "hamper_bom" && visibleItems.length === 0) {
+      list.push("Hamper product should have a Hamper BOM before approval.");
+    }
+
+    if (productClass === "ready_pack" && selectedBomType === "internal_bom" && visibleItems.length === 0) {
+      list.push("Ready pack should have an Internal BOM before approval.");
     }
 
     return list;
-  }, [bomRequired, productClass, items.length]);
+  }, [bomRequired, productClass, selectedBomType, supportsBomType, visibleItems.length]);
 
   const groupedCounts = useMemo(() => {
-    return items.reduce<Record<string, number>>((acc, item) => {
+    return visibleItems.reduce<Record<string, number>>((acc, item) => {
       const key = item.source_department || "unspecified";
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-  }, [items]);
+  }, [visibleItems]);
+
+  const selectedTypeMeta = BOM_TYPES.find((type) => type.v === selectedBomType)!;
 
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-warning/10 border-warning/40 p-3 text-xs flex gap-2 items-start">
         <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
         <div>
-          Advanced BOM fields require schema expansion and are not active yet.
-          Current live schema supports only component name, optional linked product,
-          quantity per unit, and source department.
+          Packing & Assembly products must use BOM. Internal BOM makes one ready pack.
+          Hamper BOM assembles one hamper from ready packs, loose products, and packaging items.
         </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {BOM_TYPES.map((type) => (
+          <button
+            key={type.v}
+            type="button"
+            onClick={() => {
+              setSelectedBomType(type.v);
+              setShowAdd(false);
+              setEditingId(null);
+              setDraft(emptyDraft());
+            }}
+            className={`rounded-lg border p-3 text-left transition ${
+              selectedBomType === type.v
+                ? "border-primary bg-primary/10"
+                : "bg-background hover:bg-muted/50"
+            }`}
+          >
+            <div className="text-sm font-medium">{type.label}</div>
+            <div className="text-xs text-muted-foreground mt-1">{type.description}</div>
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+        Selected: <span className="font-medium text-foreground">{selectedTypeMeta.label}</span> — {selectedTypeMeta.description}
       </div>
 
       {warnings.length > 0 && (
@@ -310,7 +418,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
           <div className="text-[11px] uppercase text-muted-foreground">
             Components
           </div>
-          <div className="text-xl font-semibold">{items.length}</div>
+          <div className="text-xl font-semibold">{visibleItems.length}</div>
         </div>
 
         <div className="card-elevated p-4 sm:col-span-2">
@@ -335,18 +443,22 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       <div className="space-y-2">
         {loading ? (
           <div className="text-sm text-muted-foreground">Loading BOM…</div>
-        ) : items.length === 0 ? (
+        ) : visibleItems.length === 0 ? (
           <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground text-center">
-            No BOM components yet.
+            No {selectedTypeMeta.label} components yet.
           </div>
         ) : (
-          items.map((item) => (
+          visibleItems.map((item) => (
             <div key={item.id} className="card-elevated p-4 flex gap-3 items-start">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="font-medium truncate">
                     {item.component_name || "Unnamed component"}
                   </div>
+
+                  <Badge variant="outline" className="text-[10px]">
+                    {BOM_TYPES.find((type) => type.v === (item.bom_type || "internal_bom"))?.label || "Internal BOM"}
+                  </Badge>
 
                   {item.component_product_id && (
                     <Badge variant="secondary" className="text-[10px]">
@@ -393,7 +505,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       {!showAdd && (
         <Button onClick={startAdd}>
           <Plus className="h-4 w-4 mr-1" />
-          Add component
+          Add {selectedTypeMeta.label} component
         </Button>
       )}
 
@@ -401,7 +513,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
         <div className="card-elevated p-5 space-y-4 border-primary/30">
           <div className="flex items-center justify-between">
             <h4 className="font-display text-lg">
-              {editingId ? "Edit BOM component" : "Add BOM component"}
+              {editingId ? "Edit" : "Add"} {selectedTypeMeta.label} component
             </h4>
             <Button size="icon" variant="ghost" onClick={cancel}>
               <X className="h-4 w-4" />
@@ -409,12 +521,21 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
           </div>
 
           <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-            This form writes only to <span className="font-mono">public.product_bom</span>.
+            This form writes to <span className="font-mono">public.product_bom</span>.
             Supported columns: product_id, component_product_id, component_name,
-            quantity_per_unit, source_department.
+            quantity_per_unit, source_department{supportsBomType === false ? "." : ", bom_type."}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2 space-y-2">
+              <Label className="text-xs">BOM type</Label>
+              <Select
+                value={selectedBomType}
+                onChange={(value: BomType) => setSelectedBomType(value)}
+                options={BOM_TYPES}
+              />
+            </div>
+
             <div className="sm:col-span-2 space-y-2">
               <Label className="text-xs">Linked product optional</Label>
 
