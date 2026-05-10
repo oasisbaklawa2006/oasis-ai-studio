@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { hasPermission } from "@/shared/auth/centralPermissions";
 import { draftTableMap, type DraftType } from "./draftTableMap";
 
 type SubmitCatalogueDraftInput = {
@@ -28,15 +27,6 @@ export async function submitCatalogueDraft({
     return {
       ok: false,
       message: "Unsupported draft type",
-    };
-  }
-
-  const permitted = await hasPermission(map.permission);
-
-  if (!permitted) {
-    return {
-      ok: false,
-      message: "You do not have permission to submit this draft.",
     };
   }
 
