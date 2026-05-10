@@ -35,18 +35,18 @@ const PRODUCT_CLASSES = [
 ];
 
 const MAIN_DEPARTMENTS = [
-  { v: "packing_assembly", label: "Packing & Assembly" },
-  { v: "third_party_goods_store", label: "3rd Party Goods Store" },
   { v: "ready_goods_store", label: "Ready Goods Store" },
+  { v: "packing_assembly", label: "Packing & Assembly Store" },
+  { v: "third_party_goods_store", label: "Third Party Goods Store" },
 ];
 
 const PRODUCTION_DEPARTMENTS = [
-  { v: "arabic_sweets", label: "Arabic Sweets" },
-  { v: "fusion_sweets", label: "Fusion Sweets" },
-  { v: "chocolates_confectionery", label: "Chocolates & Confectionery" },
-  { v: "dragees", label: "Dragees" },
-  { v: "seasoned_nuts_mixes", label: "Seasoned Nuts & Mixes" },
-  { v: "bakery", label: "Bakery" },
+  { v: "arabic_sweets", label: "Arabic Sweets Department" },
+  { v: "dragees", label: "Dragees Department" },
+  { v: "fusion_sweets", label: "Fusion Sweets Department" },
+  { v: "chocolates_confectionery", label: "Chocolate Department" },
+  { v: "seasoned_nuts_mixes", label: "Seasoned Nuts & Mixes Department" },
+  { v: "bakery", label: "Bakery Department" },
 ];
 
 const UOM_OPTIONS = [
@@ -281,6 +281,162 @@ const Select = ({ value, onChange, options, placeholder }: any) => (
 
 const toBlank = (v: any) => (v === null || v === undefined ? "" : v);
 
+const cleanText = (value: any) => String(value ?? "").trim().toLowerCase();
+
+const normalizeMainDepartment = (data: any) => {
+  const dept = cleanText(data?.department);
+  const prod = cleanText(data?.production_department);
+  const cat = cleanText(data?.category);
+  const sub = cleanText(data?.sub_category);
+  const family = cleanText(data?.product_family);
+  const name = cleanText(data?.name);
+
+  const combined = `${dept} ${prod} ${cat} ${sub} ${family} ${name}`;
+
+  const isPackagingMaterial =
+    dept.includes("packing material") ||
+    prod.includes("3rd party") ||
+    prod.includes("third party") ||
+    cat.includes("packaging & decoration") ||
+    sub.includes("packaging accessories") ||
+    sub.includes("goldware") ||
+    sub.includes("tray") ||
+    sub.includes("trays") ||
+    sub.includes("basket") ||
+    sub.includes("baskets") ||
+    combined.includes("packing material");
+
+  if (isPackagingMaterial) {
+    return "third_party_goods_store";
+  }
+
+  const isReadyPackOrGift =
+    cat.includes("ready packs") ||
+    cat.includes("premium gift") ||
+    cat.includes("gifts & hampers") ||
+    sub === "gifts" ||
+    sub.includes("gift") ||
+    sub.includes("hamper") ||
+    name.includes("hamper") ||
+    name.includes("gift");
+
+  if (isReadyPackOrGift) {
+    return "packing_assembly";
+  }
+
+  const isNonBulkPackagingAssembly =
+    dept.includes("packaging assembly") &&
+    !cat.includes("bulk sweets") &&
+    !sub.includes("dates") &&
+    !sub.includes("dragees") &&
+    !sub.includes("baklawa") &&
+    !sub.includes("fusion") &&
+    !sub.includes("nuts") &&
+    !sub.includes("chocolates");
+
+  if (isNonBulkPackagingAssembly) {
+    return "packing_assembly";
+  }
+
+  return "ready_goods_store";
+};
+
+const normalizeProductionDepartment = (data: any) => {
+  const mainDepartment = normalizeMainDepartment(data);
+
+  if (mainDepartment !== "ready_goods_store") {
+    return "";
+  }
+
+  const dept = cleanText(data?.department);
+  const prod = cleanText(data?.production_department);
+  const cat = cleanText(data?.category);
+  const sub = cleanText(data?.sub_category);
+  const family = cleanText(data?.product_family);
+  const name = cleanText(data?.name);
+
+  const combined = `${dept} ${prod} ${cat} ${sub} ${family} ${name}`;
+
+  if (
+    sub.includes("dragee") ||
+    sub.includes("dragees") ||
+    prod.includes("dragee") ||
+    prod.includes("dragees") ||
+    name.includes("dragee") ||
+    name.includes("dragees")
+  ) {
+    return "dragees";
+  }
+
+  if (
+    sub.includes("fusion ball") ||
+    sub.includes("fusion bite") ||
+    prod.includes("fusion sweets") ||
+    dept.includes("fusion sweets") ||
+    cat.includes("fusion") ||
+    sub.includes("fusion")
+  ) {
+    return "fusion_sweets";
+  }
+
+  if (
+    sub.includes("dates") ||
+    sub.includes("date") ||
+    name.includes("chocodate") ||
+    name.includes("chocodates") ||
+    name.includes("khajoor") ||
+    name.includes("tamaar") ||
+    name.includes("tamoor") ||
+    name.includes("tammar")
+  ) {
+    return "chocolates_confectionery";
+  }
+
+  if (
+    sub.includes("baklawa") ||
+    sub.includes("kadayif") ||
+    sub.includes("kunafa") ||
+    dept.includes("arabic sweets") ||
+    prod.includes("arabic sweets")
+  ) {
+    return "arabic_sweets";
+  }
+
+  if (
+    dept.includes("nuts roasting") ||
+    prod.includes("seasoned nuts") ||
+    sub.includes("nuts") ||
+    name.includes("nuts")
+  ) {
+    return "seasoned_nuts_mixes";
+  }
+
+  if (
+    dept.includes("confectionery") ||
+    dept.includes("chocolate") ||
+    prod.includes("chocolate") ||
+    sub.includes("chocolate") ||
+    sub.includes("chocolates") ||
+    name.includes("chocolate") ||
+    name.includes("toffee")
+  ) {
+    return "chocolates_confectionery";
+  }
+
+  if (
+    dept.includes("bakery") ||
+    prod.includes("bakery") ||
+    cat.includes("bakery") ||
+    name.includes("cake") ||
+    name.includes("cookie") ||
+    name.includes("biscuit")
+  ) {
+    return "bakery";
+  }
+
+  return "";
+};
+
 const inferProductClass = (data: any) => {
   const text = [
     data?.product_family,
@@ -297,15 +453,16 @@ const inferProductClass = (data: any) => {
 
   if (text.includes("frozen") || text.includes("semi")) return "semi_prepared_frozen";
   if (text.includes("hamper") || text.includes("gift")) return "gift_hamper";
-  if (text.includes("packaging") || text.includes("box") || text.includes("tray") || text.includes("jar")) {
-    return "ready_pack";
-  }
+  if (text.includes("packaging & decoration")) return "packaging_decoration_material";
+  if (text.includes("ready packs") || text.includes("pack")) return "ready_pack";
 
   return "bulk_loose_product";
 };
 
 const dbProductToForm = (data: any) => {
-  const mapped = {
+  const weightPerPiece = data?.weight_per_pc_grams ?? data?.grams_per_piece;
+
+  return {
     ...empty,
     ...data,
 
@@ -319,8 +476,8 @@ const dbProductToForm = (data: any) => {
     pack_size: toBlank(data?.pack_size),
 
     hero_image_url: toBlank(data?.image_url),
-    main_department: toBlank(data?.department),
-    production_department: toBlank(data?.production_department),
+    main_department: normalizeMainDepartment(data),
+    production_department: normalizeProductionDepartment(data),
 
     net_weight_g: toBlank(data?.net_weight_grams),
     gross_weight_g: toBlank(data?.gross_weight_grams),
@@ -342,9 +499,9 @@ const dbProductToForm = (data: any) => {
     b2b_uom: toBlank(data?.uom),
     retail_uom: toBlank(data?.uom),
 
-    approximate_piece_weight_g: toBlank(data?.weight_per_pc_grams ?? data?.grams_per_piece),
-    pieces_per_kg: data?.weight_per_pc_grams
-      ? Number((1000 / Number(data.weight_per_pc_grams)).toFixed(2))
+    approximate_piece_weight_g: toBlank(weightPerPiece),
+    pieces_per_kg: weightPerPiece
+      ? Number((1000 / Number(weightPerPiece)).toFixed(2))
       : "",
     moq_value: toBlank(data?.moq ?? data?.moq_packs),
     moq_uom: toBlank(data?.uom),
@@ -362,8 +519,6 @@ const dbProductToForm = (data: any) => {
     product_family: toBlank(data?.product_family),
     product_class: toBlank(data?.product_class) || inferProductClass(data),
   };
-
-  return mapped;
 };
 
 const buildDimensionsText = (form: any) => {
@@ -778,7 +933,8 @@ const ProductEdit = () => {
         compliance: {
           ingredients: payload.ingredients,
           allergen_information: payload.allergen_warnings || "Suggested — please review",
-          nutritional_information: payload.nutritional_info || payload.nutrition_facts || "Draft placeholder only",
+          nutritional_information:
+            payload.nutritional_info || payload.nutrition_facts || "Draft placeholder only",
           shelf_life_days: payload.shelf_life_days,
           storage_instructions: payload.storage_instructions,
           manufactured_by: "TCF Chocolates and Gifts Pvt Ltd",
@@ -976,7 +1132,7 @@ const ProductEdit = () => {
                   <Input value={form.subcategory ?? ""} onChange={(e) => set("subcategory", e.target.value)} placeholder="Example: Pyramid, Roll, Acrylic Box" />
                 </Field>
 
-                <Field label={isContributorMode ? "Main Department" : "Main Department *"} hint={isContributorMode ? "Optional for draft. Admin can finalize during approval." : "Example: Baklawa → Ready Goods Store → Arabic Sweets"}>
+                <Field label={isContributorMode ? "Main Department" : "Main Department *"} hint={isContributorMode ? "Optional for draft. Admin can finalize during approval." : "Order first routes to RGS, Packing & Assembly, or Third Party Goods Store."}>
                   <Select value={form.main_department} onChange={(v: string) => set("main_department", v)} options={MAIN_DEPARTMENTS} />
                 </Field>
 
@@ -1326,7 +1482,15 @@ const ProductEdit = () => {
 
                   <div className="sm:col-span-3">
                     <Field label="Nutritional information">
-                      <Textarea rows={3} value={typeof form.nutritional_info === "string" ? form.nutritional_info : JSON.stringify(form.nutritional_info ?? "", null, 2)} onChange={(e) => set("nutritional_info", e.target.value)} />
+                      <Textarea
+                        rows={3}
+                        value={
+                          typeof form.nutritional_info === "string"
+                            ? form.nutritional_info
+                            : JSON.stringify(form.nutritional_info ?? "", null, 2)
+                        }
+                        onChange={(e) => set("nutritional_info", e.target.value)}
+                      />
                     </Field>
                   </div>
                 </div>
