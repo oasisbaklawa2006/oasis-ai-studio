@@ -66,6 +66,35 @@ const UOM_OPTIONS = [
   "tub",
 ];
 
+const PRIMARY_PACK_TYPES = [
+  { v: "Carton", label: "Carton" },
+  { v: "Box", label: "Box" },
+  { v: "Tray", label: "Tray" },
+  { v: "Basket", label: "Basket" },
+  { v: "Jar", label: "Jar" },
+  { v: "Packet", label: "Packet" },
+  { v: "Tub", label: "Tub" },
+  { v: "NA", label: "NA" },
+];
+
+const PACK_UOM_OPTIONS = [
+  "carton",
+  "box",
+  "tray",
+  "basket",
+  "jar",
+  "packet",
+  "tub",
+  "pack",
+  "pcs",
+  "kg",
+  "grams",
+  "ml",
+  "litre",
+];
+
+const CONTENT_UOM_OPTIONS = ["pcs", "kg", "grams", "ml", "litre"];
+
 const MOQ_RULE_TYPES = [
   { v: "not_applicable", label: "Not applicable" },
   { v: "fixed_min", label: "Fixed minimum" },
@@ -175,7 +204,13 @@ const empty: any = {
   unit_conversion_note: "",
   pieces_per_kg: "",
   approximate_piece_weight_g: "",
+
+  primary_pack_type: "",
+  primary_pack_uom: "",
+  qty_per_pack: "",
+  qty_content_uom: "",
   pcs_per_pack: "",
+
   moq_rule_type: "",
   moq_value: "",
   moq_uom: "",
@@ -227,6 +262,7 @@ const NUMERIC_FIELDS = [
   "export_price",
   "pieces_per_kg",
   "approximate_piece_weight_g",
+  "qty_per_pack",
   "pcs_per_pack",
   "moq_value",
   "increment_value",
@@ -282,6 +318,14 @@ const Select = ({ value, onChange, options, placeholder }: any) => (
 const toBlank = (v: any) => (v === null || v === undefined ? "" : v);
 
 const cleanText = (value: any) => String(value ?? "").trim().toLowerCase();
+
+const getPrimaryPackPreview = (form: any) => {
+  if (!form?.primary_pack_uom || !form?.qty_per_pack || !form?.qty_content_uom) {
+    return "";
+  }
+
+  return `1 ${form.primary_pack_uom} = ${form.qty_per_pack} ${form.qty_content_uom}`;
+};
 
 const normalizeMainDepartment = (data: any) => {
   const dept = cleanText(data?.department);
@@ -352,7 +396,6 @@ const normalizeProductionDepartment = (data: any) => {
   const prod = cleanText(data?.production_department);
   const cat = cleanText(data?.category);
   const sub = cleanText(data?.sub_category);
-  const family = cleanText(data?.product_family);
   const name = cleanText(data?.name);
 
   if (
@@ -460,6 +503,8 @@ const inferProductClass = (data: any) => {
 const dbProductToForm = (data: any) => {
   const weightPerPiece = data?.weight_per_pc_grams ?? data?.grams_per_piece;
   const mainDepartment = normalizeMainDepartment(data);
+  const primaryPackUom = data?.settlement_unit || data?.uom || "";
+  const qtyPerPack = data?.pcs_per_master_carton || data?.packs_per_carton || "";
 
   return {
     ...empty,
@@ -505,8 +550,16 @@ const dbProductToForm = (data: any) => {
     pieces_per_kg: weightPerPiece
       ? Number((1000 / Number(weightPerPiece)).toFixed(2))
       : "",
+
+    primary_pack_type: toBlank(data?.carton_type || ""),
+    primary_pack_uom: toBlank(primaryPackUom),
+    qty_per_pack: toBlank(qtyPerPack),
+    qty_content_uom: toBlank(data?.uom || ""),
+    pcs_per_pack: toBlank(qtyPerPack),
+
     moq_value: toBlank(data?.moq ?? data?.moq_packs),
     moq_uom: toBlank(data?.uom),
+    increment_uom: toBlank(data?.uom),
 
     private_label_moq: toBlank(data?.private_label_moq),
     private_label_cost_per_unit: toBlank(data?.private_label_price),
@@ -629,6 +682,12 @@ const ProductEdit = () => {
 
   const isContributorMode = authContextContributor || rpcContributorRole;
 
+  const primaryPackPreview = getPrimaryPackPreview(form);
+  const moqUomMismatch =
+    !!form.moq_uom &&
+    !!form.increment_uom &&
+    form.moq_uom !== form.increment_uom;
+
   useEffect(() => {
     let mounted = true;
 
@@ -734,15 +793,76 @@ const ProductEdit = () => {
   }, [form.main_department]);
 
   useEffect(() => {
-    if (form.product_class === "gift_hamper" && !form.bom_required) {
-      set("bom_required", true);
+    if (form.main_department !== "third_party_goods_store") return;
+
+    setForm((f: any) => {
+      if (!f.production_department) return f;
+      return { ...f, production_department: "" };
+    });
+  }, [form.main_department]);
+
+  useEffect(() => {
+    if (!form.primary_pack_uom) return;
+
+    setForm((f: any) => {
+      const next = { ...f };
+      let changed = false;
+
+      if (!next.moq_uom) {
+        next.moq_uom = form.primary_pack_uom;
+        changed = true;
+      }
+
+      if (!next.increment_uom) {
+        next.increment_uom = form.primary_pack_uom;
+        changed = true;
+      }
+
+      return changed ? next : f;
+    });
+  }, [form.primary_pack_uom]);
+
+  useEffect(() => {
+    if (form.product_class === "gift_hamper") {
+      setForm((f: any) => {
+        const next = {
+          ...f,
+          main_department: "packing_assembly",
+          bom_required: true,
+          production_department: "",
+        };
+
+        if (
+          f.main_department === next.main_department &&
+          f.bom_required === next.bom_required &&
+          f.production_department === next.production_department
+        ) {
+          return f;
+        }
+
+        return next;
+      });
     }
 
-    if (
-      form.product_class === "packaging_decoration_material" &&
-      !form.fixed_carton_required
-    ) {
-      set("fixed_carton_required", true);
+    if (form.product_class === "packaging_decoration_material") {
+      setForm((f: any) => {
+        const next = {
+          ...f,
+          main_department: f.main_department || "third_party_goods_store",
+          production_department: "",
+          fixed_carton_required: f.fixed_carton_required || true,
+        };
+
+        if (
+          f.main_department === next.main_department &&
+          f.production_department === next.production_department &&
+          f.fixed_carton_required === next.fixed_carton_required
+        ) {
+          return f;
+        }
+
+        return next;
+      });
     }
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -780,6 +900,13 @@ const ProductEdit = () => {
     !!form.bom_required;
 
   const showBom = bomRelevant || canManageBom;
+
+  const expectedBomType =
+    cls === "gift_hamper"
+      ? "hamper_bom"
+      : cls === "ready_pack" || isPackingAssembly
+        ? "internal_bom"
+        : null;
 
   const missing = useMemo(() => {
     const m: string[] = [];
@@ -879,6 +1006,8 @@ const ProductEdit = () => {
     }
 
     if (contributor) {
+      const packPreview = getPrimaryPackPreview(payload);
+
       const optionalReviewFlags = {
         sku: true,
         pricing: true,
@@ -930,9 +1059,11 @@ const ProductEdit = () => {
             payload.unit_conversion_note || "Manual conversion required",
         },
         packing: {
-          primary_pack_type: payload.packaging_code || "NA",
-          pack_uom: payload.carton_uom,
-          qty_per_pack: payload.pcs_per_pack,
+          primary_pack_type: payload.primary_pack_type || payload.packaging_code || "NA",
+          pack_uom: payload.primary_pack_uom || payload.carton_uom,
+          qty_per_pack: payload.qty_per_pack || payload.pcs_per_pack,
+          qty_content_uom: payload.qty_content_uom,
+          pack_preview: packPreview,
           pack_size: payload.pack_size,
           net_weight_g: payload.net_weight_g,
           gross_weight_g: payload.gross_weight_g,
@@ -994,7 +1125,7 @@ const ProductEdit = () => {
           expected_type:
             payload.product_class === "gift_hamper"
               ? "hamper_bom"
-              : payload.main_department === "packing_assembly"
+              : payload.product_class === "ready_pack" || payload.main_department === "packing_assembly"
                 ? "internal_bom"
                 : null,
           internal_bom: payload.internal_bom || [],
@@ -1209,7 +1340,7 @@ const ProductEdit = () => {
               <div className="card-elevated p-6 space-y-5">
                 <div>
                   <h3 className="font-display text-xl mb-1">Unit of measure</h3>
-                  <p className="text-xs text-muted-foreground">Example: kg for B2B, pcs for retail, grams for retail nuts/dragees.</p>
+                  <p className="text-xs text-muted-foreground">Define the base selling and pricing unit before packing and MOQ.</p>
                 </div>
 
                 <div className="grid sm:grid-cols-3 gap-4">
@@ -1244,17 +1375,105 @@ const ProductEdit = () => {
                   <Field label="Approx. piece weight (g)">
                     <Input type="number" value={form.approximate_piece_weight_g ?? ""} onChange={(e) => set("approximate_piece_weight_g", e.target.value)} placeholder="18" />
                   </Field>
-                  <Field label="Pieces per pack">
-                    <Input type="number" value={form.pcs_per_pack ?? ""} onChange={(e) => set("pcs_per_pack", e.target.value)} placeholder="6" />
-                  </Field>
                 </div>
               </div>
 
               <div className="card-elevated p-6 space-y-5">
                 <div>
-                  <h3 className="font-display text-xl mb-1">MOQ & increment</h3>
-                  <p className="text-xs text-muted-foreground">Example: B2B MOQ 1 master carton; Retail MOQ not applicable.</p>
+                  <h3 className="font-display text-xl mb-1">Primary Packing</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Defines what one primary pack contains before MOQ is calculated.
+                  </p>
                 </div>
+
+                <div className="grid sm:grid-cols-4 gap-4">
+                  <Field label="Primary Pack Type">
+                    <Select
+                      value={form.primary_pack_type}
+                      onChange={(v: string) => set("primary_pack_type", v)}
+                      options={PRIMARY_PACK_TYPES}
+                    />
+                  </Field>
+
+                  <Field label="Pack UOM">
+                    <Select
+                      value={form.primary_pack_uom}
+                      onChange={(v: string) => set("primary_pack_uom", v)}
+                      options={PACK_UOM_OPTIONS}
+                    />
+                  </Field>
+
+                  <Field label="Qty per Pack">
+                    <Input
+                      type="number"
+                      value={form.qty_per_pack ?? ""}
+                      onChange={(e) => {
+                        set("qty_per_pack", e.target.value);
+                        set("pcs_per_pack", e.target.value);
+                      }}
+                      placeholder="6"
+                    />
+                  </Field>
+
+                  <Field label="Qty Content UOM">
+                    <Select
+                      value={form.qty_content_uom}
+                      onChange={(v: string) => set("qty_content_uom", v)}
+                      options={CONTENT_UOM_OPTIONS}
+                    />
+                  </Field>
+                </div>
+
+                <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                  {primaryPackPreview ? (
+                    <>
+                      Primary Pack:{" "}
+                      <span className="font-medium text-foreground">{primaryPackPreview}</span>
+                    </>
+                  ) : (
+                    <>
+                      Example: <span className="font-medium text-foreground">1 box = 6 pcs</span>,{" "}
+                      <span className="font-medium text-foreground">1 jar = 500 grams</span>,{" "}
+                      <span className="font-medium text-foreground">1 tray = 24 pcs</span>
+                    </>
+                  )}
+                </div>
+
+                {cls === "ready_pack" && (
+                  <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">
+                    Ready packs use Internal BOM: food material + box/jar/tray/cavity/label/ribbon.
+                  </div>
+                )}
+
+                {cls === "bulk_loose_product" && (
+                  <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    For loose bulk products, Primary Packing can remain NA unless the item is sold in a fixed pack.
+                  </div>
+                )}
+              </div>
+
+              <div className="card-elevated p-6 space-y-5">
+                <div>
+                  <h3 className="font-display text-xl mb-1">MOQ & increment</h3>
+                  <p className="text-xs text-muted-foreground">
+                    MOQ must be based on the sellable pack unit after Primary Packing is defined.
+                  </p>
+                </div>
+
+                {primaryPackPreview && (
+                  <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    {primaryPackPreview}. Example: MOQ 6 {form.primary_pack_uom}s means minimum 6 primary packs.
+                  </div>
+                )}
+
+                {moqUomMismatch && (
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs flex gap-2 items-start">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
+                    <div>
+                      MOQ UOM and Increment UOM should normally match unless a conversion rule is defined.
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="MOQ rule type">
@@ -1264,13 +1483,13 @@ const ProductEdit = () => {
                     <Input type="number" value={form.moq_value ?? ""} onChange={(e) => set("moq_value", e.target.value)} placeholder="1" />
                   </Field>
                   <Field label="MOQ UOM">
-                    <Select value={form.moq_uom} onChange={(v: string) => set("moq_uom", v)} options={UOM_OPTIONS} />
+                    <Select value={form.moq_uom} onChange={(v: string) => set("moq_uom", v)} options={PACK_UOM_OPTIONS} />
                   </Field>
                   <Field label="Increment value">
                     <Input type="number" value={form.increment_value ?? ""} onChange={(e) => set("increment_value", e.target.value)} placeholder="1" />
                   </Field>
                   <Field label="Increment UOM">
-                    <Select value={form.increment_uom} onChange={(v: string) => set("increment_uom", v)} options={UOM_OPTIONS} />
+                    <Select value={form.increment_uom} onChange={(v: string) => set("increment_uom", v)} options={PACK_UOM_OPTIONS} />
                   </Field>
                   <Field label="Legacy MOQ note">
                     <Input value={form.moq_text ?? ""} onChange={(e) => set("moq_text", e.target.value)} placeholder="Free text fallback" />
@@ -1280,9 +1499,9 @@ const ProductEdit = () => {
 
               <div className="card-elevated p-6 space-y-5">
                 <div>
-                  <h3 className="font-display text-xl mb-1">Carton logic</h3>
+                  <h3 className="font-display text-xl mb-1">Carton / Master Carton logic</h3>
                   <p className="text-xs text-muted-foreground">
-                    Advanced carton logic will be finalized in Central App.
+                    Carton logic belongs to master packing / Central App. Keep it as a simple reference here.
                   </p>
                 </div>
 
@@ -1298,13 +1517,13 @@ const ProductEdit = () => {
                         <Input type="number" value={form.carton_qty ?? ""} onChange={(e) => set("carton_qty", e.target.value)} placeholder="50" />
                       </Field>
                       <Field label="Carton UOM">
-                        <Select value={form.carton_uom} onChange={(v: string) => set("carton_uom", v)} options={UOM_OPTIONS} />
+                        <Select value={form.carton_uom} onChange={(v: string) => set("carton_uom", v)} options={PACK_UOM_OPTIONS} />
                       </Field>
                       <Field label="Master carton qty">
                         <Input type="number" value={form.master_carton_qty ?? ""} onChange={(e) => set("master_carton_qty", e.target.value)} placeholder="6" />
                       </Field>
                       <Field label="Master carton UOM">
-                        <Select value={form.master_carton_uom} onChange={(v: string) => set("master_carton_uom", v)} options={UOM_OPTIONS} />
+                        <Select value={form.master_carton_uom} onChange={(v: string) => set("master_carton_uom", v)} options={PACK_UOM_OPTIONS} />
                       </Field>
                       <div className="sm:col-span-3">
                         <Field label="Carton logic note">
@@ -1346,7 +1565,7 @@ const ProductEdit = () => {
                         <Input type="number" value={form.private_label_moq ?? ""} onChange={(e) => set("private_label_moq", e.target.value)} placeholder="500" />
                       </Field>
                       <Field label="Private label MOQ UOM">
-                        <Select value={form.private_label_moq_uom} onChange={(v: string) => set("private_label_moq_uom", v)} options={UOM_OPTIONS} />
+                        <Select value={form.private_label_moq_uom} onChange={(v: string) => set("private_label_moq_uom", v)} options={PACK_UOM_OPTIONS} />
                       </Field>
                       <Field label="Cost per unit (₹)">
                         <Input type="number" value={form.private_label_cost_per_unit ?? ""} onChange={(e) => set("private_label_cost_per_unit", e.target.value)} placeholder="10" />
@@ -1370,6 +1589,12 @@ const ProductEdit = () => {
                     </div>
                     <Switch checked={!!form.customization_allowed} onCheckedChange={(v) => set("customization_allowed", v)} />
                   </div>
+
+                  {cls === "gift_hamper" && (
+                    <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">
+                      Hampers use Hamper BOM: ready packs + loose products + packaging/accessories.
+                    </div>
+                  )}
 
                   {form.customization_allowed && (
                     <>
@@ -1472,6 +1697,15 @@ const ProductEdit = () => {
 
             {showBom && (
               <TabsContent value="bom" className="space-y-6">
+                {expectedBomType && (
+                  <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+                    Expected BOM type:{" "}
+                    <span className="font-medium text-foreground">
+                      {expectedBomType === "hamper_bom" ? "Hamper BOM" : "Internal BOM"}
+                    </span>
+                  </div>
+                )}
+
                 {isNew ? (
                   <div className="card-elevated p-6">
                     <h3 className="font-display text-xl mb-2">BOM will be added after save</h3>
