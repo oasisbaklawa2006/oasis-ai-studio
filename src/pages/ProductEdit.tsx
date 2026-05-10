@@ -355,8 +355,6 @@ const normalizeProductionDepartment = (data: any) => {
   const family = cleanText(data?.product_family);
   const name = cleanText(data?.name);
 
-  const combined = `${dept} ${prod} ${cat} ${sub} ${family} ${name}`;
-
   if (
     sub.includes("dragee") ||
     sub.includes("dragees") ||
@@ -461,6 +459,7 @@ const inferProductClass = (data: any) => {
 
 const dbProductToForm = (data: any) => {
   const weightPerPiece = data?.weight_per_pc_grams ?? data?.grams_per_piece;
+  const mainDepartment = normalizeMainDepartment(data);
 
   return {
     ...empty,
@@ -476,8 +475,11 @@ const dbProductToForm = (data: any) => {
     pack_size: toBlank(data?.pack_size),
 
     hero_image_url: toBlank(data?.image_url),
-    main_department: normalizeMainDepartment(data),
-    production_department: normalizeProductionDepartment(data),
+    main_department: mainDepartment,
+    production_department:
+      mainDepartment === "ready_goods_store"
+        ? normalizeProductionDepartment(data)
+        : "",
 
     net_weight_g: toBlank(data?.net_weight_grams),
     gross_weight_g: toBlank(data?.gross_weight_grams),
@@ -518,6 +520,7 @@ const dbProductToForm = (data: any) => {
     dimensions: toBlank(data?.dimensions),
     product_family: toBlank(data?.product_family),
     product_class: toBlank(data?.product_class) || inferProductClass(data),
+    bom_required: mainDepartment === "packing_assembly" ? true : !!data?.bom_required,
   };
 };
 
@@ -563,7 +566,10 @@ const formToProductRow = (form: any) => {
     wholesale_price: form.mrp ? Math.round((Number(form.mrp) * 0.7) / 10) * 10 : null,
 
     department: form.main_department ?? null,
-    production_department: form.production_department ?? null,
+    production_department:
+      form.main_department === "ready_goods_store"
+        ? form.production_department ?? null
+        : null,
     uom: form.primary_uom || form.b2b_uom || form.retail_uom || null,
 
     ingredients: form.ingredients ?? null,
@@ -714,6 +720,20 @@ const ProductEdit = () => {
   }, [dirty]);
 
   useEffect(() => {
+    if (form.main_department !== "packing_assembly") return;
+
+    setForm((f: any) => {
+      if (f.bom_required === true && !f.production_department) return f;
+
+      return {
+        ...f,
+        bom_required: true,
+        production_department: "",
+      };
+    });
+  }, [form.main_department]);
+
+  useEffect(() => {
     if (form.product_class === "gift_hamper" && !form.bom_required) {
       set("bom_required", true);
     }
@@ -737,6 +757,7 @@ const ProductEdit = () => {
   }, [form.customization_allowed]);
 
   const cls = form.product_class;
+  const isPackingAssembly = form.main_department === "packing_assembly";
   const profile = PRODUCT_TYPE_PROFILES[form.product_type || ""] || {};
   const showPrivateLabel = !!profile.showPrivateLabel || cls === "ready_pack";
   const showCustomization =
@@ -750,12 +771,15 @@ const ProductEdit = () => {
     roles.includes("owner") ||
     roles.includes("admin") ||
     roles.includes("product_manager");
+
   const bomRelevant =
+    isPackingAssembly ||
     cls === "ready_pack" ||
     cls === "gift_hamper" ||
     cls === "packaging_decoration_material" ||
     !!form.bom_required;
-  const showBom = !isNew && (bomRelevant || canManageBom);
+
+  const showBom = bomRelevant || canManageBom;
 
   const missing = useMemo(() => {
     const m: string[] = [];
@@ -798,7 +822,14 @@ const ProductEdit = () => {
 
     setLoading(true);
 
-    const payload: any = { ...form };
+    const payload: any = {
+      ...form,
+      bom_required: isPackingAssembly || !!form.bom_required,
+      production_department:
+        form.main_department === "ready_goods_store"
+          ? form.production_department
+          : null,
+    };
 
     NUMERIC_FIELDS.forEach((k) => {
       payload[k] = payload[k] === "" || payload[k] == null ? null : Number(payload[k]);
@@ -817,7 +848,7 @@ const ProductEdit = () => {
       "customization_allowed",
       "bom_required",
     ].forEach((k) => {
-      payload[k] = !!form[k];
+      payload[k] = k === "bom_required" ? isPackingAssembly || !!form[k] : !!form[k];
     });
 
     const direct = await canWriteMasterDirectly();
@@ -855,7 +886,8 @@ const ProductEdit = () => {
         nutrition: true,
         bom_mapping: true,
         main_department: !payload.main_department,
-        production_department: !payload.production_department,
+        production_department:
+          payload.main_department === "ready_goods_store" && !payload.production_department,
         moq: !payload.moq_value,
         private_label_terms:
           !!payload.private_label_allowed &&
@@ -958,6 +990,13 @@ const ProductEdit = () => {
           caution: payload.customization_caution,
         },
         bom: {
+          required: payload.bom_required,
+          expected_type:
+            payload.product_class === "gift_hamper"
+              ? "hamper_bom"
+              : payload.main_department === "packing_assembly"
+                ? "internal_bom"
+                : null,
           internal_bom: payload.internal_bom || [],
           hamper_bom: payload.hamper_bom || [],
         },
@@ -1433,7 +1472,20 @@ const ProductEdit = () => {
 
             {showBom && (
               <TabsContent value="bom" className="space-y-6">
-                <BomBuilder parentId={id!} productClass={form.product_class} bomRequired={!!form.bom_required} />
+                {isNew ? (
+                  <div className="card-elevated p-6">
+                    <h3 className="font-display text-xl mb-2">BOM will be added after save</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Save this product first, then add Internal BOM / Hamper BOM.
+                    </p>
+                  </div>
+                ) : (
+                  <BomBuilder
+                    parentId={id!}
+                    productClass={form.product_class}
+                    bomRequired={isPackingAssembly || !!form.bom_required}
+                  />
+                )}
               </TabsContent>
             )}
 
@@ -1536,9 +1588,15 @@ const ProductEdit = () => {
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
                     <Label>BOM required</Label>
-                    <div className="text-[11px] text-muted-foreground">Auto-on for gift hampers. Use the BOM tab to add components.</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Auto-on for Packing & Assembly and gift hampers. Use the BOM tab to add components after saving.
+                    </div>
                   </div>
-                  <Switch checked={!!form.bom_required} onCheckedChange={(v) => set("bom_required", v)} />
+                  <Switch
+                    checked={isPackingAssembly || !!form.bom_required}
+                    disabled={isPackingAssembly}
+                    onCheckedChange={(v) => set("bom_required", v)}
+                  />
                 </div>
               </div>
             </TabsContent>
