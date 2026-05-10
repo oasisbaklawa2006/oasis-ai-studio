@@ -3,48 +3,46 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { ProductPicker } from "@/components/ProductPicker";
 import { toast } from "sonner";
-import { AlertTriangle, Trash2, Plus, X, Eye, EyeOff, Boxes } from "lucide-react";
+import { AlertTriangle, Boxes, Link2, Plus, Search, Trash2, X } from "lucide-react";
 
-const COMPONENT_TYPES = [
-  { v: "product", label: "Product / Edible" },
-  { v: "packaging_material", label: "Packaging material" },
-  { v: "decoration", label: "Decoration" },
-  { v: "service", label: "Service" },
-  { v: "labour", label: "Labour" },
-  { v: "note", label: "Note" },
-];
-const SOURCE_DEPTS = [
+type BomItem = {
+  id: string;
+  product_id: string;
+  component_product_id: string | null;
+  component_name: string | null;
+  quantity_per_unit: number | null;
+  source_department: string | null;
+  created_at: string | null;
+};
+
+type ProductOption = {
+  id: string;
+  name: string | null;
+  sku: string | null;
+  category: string | null;
+};
+
+interface Props {
+  parentId: string;
+  productClass?: string | null;
+  bomRequired?: boolean;
+}
+
+const SOURCE_DEPARTMENTS = [
   { v: "ready_goods_store", label: "Ready Goods Store" },
-  { v: "third_party_goods_store", label: "3rd Party Goods Store" },
-  { v: "packing_assembly", label: "Packing & Assembly" },
+  { v: "packing_assembly", label: "Packing & Assembly Store" },
+  { v: "third_party_goods_store", label: "Third Party Goods Store" },
   { v: "external_vendor", label: "External Vendor" },
-  { v: "internal_service", label: "Internal Service" },
 ];
-const PROD_DEPTS = [
-  { v: "arabic_sweets", label: "Arabic Sweets" },
-  { v: "fusion_sweets", label: "Fusion Sweets" },
-  { v: "chocolates_confectionery", label: "Chocolates & Confectionery" },
-  { v: "dragees", label: "Dragees" },
-  { v: "seasoned_nuts_mixes", label: "Seasoned Nuts & Mixes" },
-  { v: "bakery", label: "Bakery" },
-];
-const ISSUE_TO = [
-  { v: "packing_assembly", label: "Packing & Assembly" },
-  { v: "ready_goods_store", label: "Ready Goods Store" },
-  { v: "third_party_goods_store", label: "3rd Party Goods Store" },
-];
-const VISIBILITY_SCOPES = [
-  { v: "internal_only", label: "Internal only" },
-  { v: "customer_visible", label: "Customer visible" },
-  { v: "catalogue_visible", label: "Catalogue visible" },
-  { v: "label_visible", label: "Label visible" },
-];
-const UNITS = ["pc", "pcs", "g", "kg", "ml", "litre", "box", "pack", "carton", "roll", "hour"];
+
+const emptyDraft = () => ({
+  component_product_id: null as string | null,
+  component_name: "",
+  quantity_per_unit: "1",
+  source_department: "",
+});
 
 const Select = ({ value, onChange, options, placeholder }: any) => (
   <select
@@ -53,488 +51,472 @@ const Select = ({ value, onChange, options, placeholder }: any) => (
     onChange={(e) => onChange(e.target.value || null)}
   >
     <option value="">{placeholder ?? "— Select —"}</option>
-    {options.map((o: any) =>
-      typeof o === "string"
-        ? <option key={o} value={o}>{o}</option>
-        : <option key={o.v} value={o.v}>{o.label}</option>
-    )}
+    {options.map((o: any) => (
+      <option key={o.v} value={o.v}>
+        {o.label}
+      </option>
+    ))}
   </select>
 );
 
-type Bom = any;
+const formatDepartment = (value?: string | null) => {
+  if (!value) return "—";
 
-const emptyDraft = (): Bom => ({
-  component_type: "product",
-  component_name: "",
-  child_product_id: null,
-  quantity: 1,
-  unit: "pc",
-  cost_per_unit: "",
-  notes: "",
-  visibility_scope: "internal_only",
-  show_to_customer: false,
-  show_in_public_catalogue: false,
-  show_in_pdf_catalogue: false,
-  show_on_label: false,
-  is_individually_saleable: false,
-  internal_component_only: true,
-  source_department: "",
-  production_department: "",
-  issue_to_department: "packing_assembly",
-  required_before_assembly: true,
-  lead_time_days: "",
-  stock_check_required: true,
-  is_packaging_component: false,
-  is_private_label_component: false,
-});
-
-interface Props {
-  parentId: string;
-  productClass?: string | null;
-  bomRequired?: boolean;
-}
-
-// Normalize unit to canonical form
-const normUnit = (u?: string | null) => {
-  const x = (u || "").toLowerCase().trim();
-  if (["pc", "pcs", "piece", "pieces", "nos", "no"].includes(x)) return "pc";
-  if (["kg", "kgs", "kilogram", "kilograms"].includes(x)) return "kg";
-  if (["g", "gm", "gms", "gram", "grams"].includes(x)) return "g";
-  if (["l", "lt", "ltr", "litre", "liter"].includes(x)) return "litre";
-  if (["ml"].includes(x)) return "ml";
-  return x || "pc";
+  const found = SOURCE_DEPARTMENTS.find((d) => d.v === value);
+  return found?.label || value.replace(/_/g, " ");
 };
 
-// Get piece weight in grams from product metadata
-const pieceWeightG = (p: any): number | null => {
-  if (p?.approximate_piece_weight_g) return Number(p.approximate_piece_weight_g);
-  if (p?.pieces_per_kg && Number(p.pieces_per_kg) > 0) return 1000 / Number(p.pieces_per_kg);
-  if (p?.grammage_g && p?.pcs_per_pack && Number(p.pcs_per_pack) > 0)
-    return Number(p.grammage_g) / Number(p.pcs_per_pack);
-  if (p?.net_weight_g && p?.pcs_per_pack && Number(p.pcs_per_pack) > 0)
-    return Number(p.net_weight_g) / Number(p.pcs_per_pack);
-  return null;
-};
-
-// Convert base price (per baseUnit) to per targetUnit using product metadata
-// Returns { cost, note } or null when conversion impossible
-const convertCost = (basePrice: number, baseUnit: string, targetUnit: string, p: any): { cost: number; note: string } | null => {
-  const b = normUnit(baseUnit);
-  const t = normUnit(targetUnit);
-  if (b === t) return { cost: basePrice, note: "" };
-
-  // weight family
-  const toG = (u: string) => (u === "kg" ? 1000 : u === "g" ? 1 : null);
-  const bg = toG(b), tg = toG(t);
-  if (bg && tg) return { cost: basePrice * (tg / bg), note: `Converted from ₹${basePrice}/${b} → ₹${(basePrice*(tg/bg)).toFixed(2)}/${t}` };
-
-  // volume family
-  const toMl = (u: string) => (u === "litre" ? 1000 : u === "ml" ? 1 : null);
-  const bm = toMl(b), tm = toMl(t);
-  if (bm && tm) return { cost: basePrice * (tm / bm), note: `Converted from ₹${basePrice}/${b} → ₹${(basePrice*(tm/bm)).toFixed(2)}/${t}` };
-
-  // weight ↔ piece: requires piece weight
-  if ((bg && t === "pc") || (tg && b === "pc")) {
-    const pwG = pieceWeightG(p);
-    if (!pwG) return null;
-    if (bg && t === "pc") {
-      // base ₹/bg → ₹/g = basePrice/bg → ₹/pc = (basePrice/bg) * pwG
-      const cost = (basePrice / bg) * pwG;
-      return { cost, note: `Converted using piece weight ${pwG.toFixed(1)}g: ₹${basePrice}/${b} → ₹${cost.toFixed(2)}/pc` };
-    } else {
-      // base ₹/pc → ₹/tg
-      const cost = (basePrice / pwG) * (tg as number);
-      return { cost, note: `Converted using piece weight ${pwG.toFixed(1)}g: ₹${basePrice}/pc → ₹${cost.toFixed(2)}/${t}` };
-    }
-  }
-  return null;
-};
+const productDisplayName = (p: ProductOption) => p.name || p.sku || p.id;
 
 export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
-  const [items, setItems] = useState<Bom[]>([]);
+  const [items, setItems] = useState<BomItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
-  const [pickChild, setPickChild] = useState(false);
-  const [draft, setDraft] = useState<Bom>(emptyDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [linkedMeta, setLinkedMeta] = useState<any>(null); // { basePrice, baseUnit, product }
-  const [convNote, setConvNote] = useState<string>("");
+  const [draft, setDraft] = useState(emptyDraft());
+
+  const [productSearch, setProductSearch] = useState("");
+  const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
+  const [productSearchLoading, setProductSearchLoading] = useState(false);
 
   const load = async () => {
+    if (!parentId) return;
+
     setLoading(true);
+
     const { data, error } = await (supabase as any)
-      .from("product_bom_items")
-      .select("*")
-      .eq("parent_product_id", parentId)
-      .order("sort_order", { ascending: true })
+      .from("product_bom")
+      .select(
+        "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, created_at"
+      )
+      .eq("product_id", parentId)
       .order("created_at", { ascending: true });
-    if (error) toast.error(error.message);
-    setItems(data ?? []);
+
+    if (error) {
+      toast.error(error.message);
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    setItems((data ?? []) as BomItem[]);
     setLoading(false);
   };
 
-  useEffect(() => { if (parentId) load(); }, [parentId]);
-
-  const setD = (k: string, v: any) => setDraft((d) => ({ ...d, [k]: v }));
-
-  const onPickChild = async (p: any) => {
-    setPickChild(false);
-    const { data: full } = await supabase
-      .from("products")
-      .select("sku,product_name,main_department,production_department,b2b_price_inr,b2b_price,mrp,primary_uom,b2b_uom,approximate_piece_weight_g,pieces_per_kg,grammage_g,pcs_per_pack,net_weight_g")
-      .eq("id", p.id)
-      .maybeSingle();
-    const basePrice = full?.b2b_price_inr ?? full?.b2b_price ?? full?.mrp ?? null;
-    const baseUnit = normUnit(full?.b2b_uom ?? full?.primary_uom ?? "pc");
-    setLinkedMeta(basePrice != null ? { basePrice: Number(basePrice), baseUnit, product: full } : null);
-    setDraft((d) => {
-      const targetUnit = normUnit(d.unit) || baseUnit;
-      let cost: any = d.cost_per_unit;
-      let note = "";
-      if (basePrice != null) {
-        const conv = convertCost(Number(basePrice), baseUnit, targetUnit, full);
-        if (conv) { cost = conv.cost.toFixed(2); note = conv.note; }
-        else {
-          cost = String(basePrice);
-          note = `⚠ Cannot auto-convert ₹${basePrice}/${baseUnit} → /${targetUnit}. Add piece weight on linked product or override manually.`;
-        }
-      }
-      setConvNote(note);
-      return {
-        ...d,
-        child_product_id: p.id,
-        component_name: full?.product_name || p.product_name,
-        cost_per_unit: cost,
-        unit: targetUnit,
-        source_department: d.source_department || full?.main_department || "",
-        production_department: d.production_department || full?.production_department || "",
-      };
-    });
-    if (basePrice == null) toast.warning("No cost/price found for this linked product. Enter cost manually.");
-  };
-
-  // Recalculate cost when unit changes for a linked product
   useEffect(() => {
-    if (!linkedMeta || !draft.child_product_id) return;
-    const conv = convertCost(linkedMeta.basePrice, linkedMeta.baseUnit, normUnit(draft.unit), linkedMeta.product);
-    if (conv) {
-      setConvNote(conv.note);
-      setDraft((d) => ({ ...d, cost_per_unit: conv.cost.toFixed(2) }));
-    } else {
-      setConvNote(`⚠ Cannot auto-convert ₹${linkedMeta.basePrice}/${linkedMeta.baseUnit} → /${normUnit(draft.unit)}. Add piece weight on linked product or override manually.`);
-    }
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.unit]);
+  }, [parentId]);
 
+  const searchProducts = async () => {
+    const q = productSearch.trim();
 
-  const validateDraft = (): string | null => {
-    if (!draft.child_product_id && !draft.component_name?.trim()) return "Component name or product is required";
-    if (!draft.quantity || Number(draft.quantity) <= 0) return "Quantity is required";
-    if (!draft.unit) return "Unit is required";
-    if (draft.source_department === "ready_goods_store" && !draft.production_department)
-      return "Production department required for Ready Goods Store";
-    return null;
+    if (q.length < 2) {
+      toast.error("Type at least 2 characters to search products.");
+      return;
+    }
+
+    setProductSearchLoading(true);
+
+    const safeQ = q.replaceAll("%", "").replaceAll(",", " ");
+
+    const { data, error } = await (supabase as any)
+      .from("products")
+      .select("id, name, sku, category")
+      .or(`name.ilike.%${safeQ}%,sku.ilike.%${safeQ}%,category.ilike.%${safeQ}%`)
+      .neq("id", parentId)
+      .order("name", { ascending: true })
+      .limit(12);
+
+    if (error) {
+      toast.error(error.message);
+      setProductOptions([]);
+      setProductSearchLoading(false);
+      return;
+    }
+
+    setProductOptions((data ?? []) as ProductOption[]);
+    setProductSearchLoading(false);
   };
 
-  const startEdit = (it: Bom) => {
-    setDraft({ ...emptyDraft(), ...it });
-    setEditingId(it.id);
+  const setD = (key: string, value: any) => {
+    setDraft((d) => ({ ...d, [key]: value }));
+  };
+
+  const pickProduct = (p: ProductOption) => {
+    setDraft((d) => ({
+      ...d,
+      component_product_id: p.id,
+      component_name: productDisplayName(p),
+    }));
+    setProductSearch("");
+    setProductOptions([]);
+  };
+
+  const clearPickedProduct = () => {
+    setDraft((d) => ({
+      ...d,
+      component_product_id: null,
+    }));
+  };
+
+  const startAdd = () => {
+    setDraft(emptyDraft());
+    setEditingId(null);
     setShowAdd(true);
+    setProductSearch("");
+    setProductOptions([]);
+  };
+
+  const startEdit = (item: BomItem) => {
+    setDraft({
+      component_product_id: item.component_product_id,
+      component_name: item.component_name ?? "",
+      quantity_per_unit:
+        item.quantity_per_unit === null || item.quantity_per_unit === undefined
+          ? "1"
+          : String(item.quantity_per_unit),
+      source_department: item.source_department ?? "",
+    });
+    setEditingId(item.id);
+    setShowAdd(true);
+    setProductSearch("");
+    setProductOptions([]);
   };
 
   const cancel = () => {
     setDraft(emptyDraft());
     setEditingId(null);
     setShowAdd(false);
-    setLinkedMeta(null);
-    setConvNote("");
+    setProductSearch("");
+    setProductOptions([]);
   };
 
-  const save = async () => {
-    const err = validateDraft();
-    if (err) return toast.error(err);
-    const payload: any = { ...draft, parent_product_id: parentId };
-    ["cost_per_unit", "quantity", "lead_time_days"].forEach((k) => {
-      payload[k] = payload[k] === "" || payload[k] == null ? null : Number(payload[k]);
-    });
-    payload.total_cost =
-      payload.quantity != null && payload.cost_per_unit != null
-        ? Number(payload.quantity) * Number(payload.cost_per_unit)
-        : null;
-    // visibility coherence
-    if (payload.show_to_customer && payload.visibility_scope === "internal_only") {
-      payload.visibility_scope = "customer_visible";
-      payload.internal_component_only = false;
+  const validateDraft = () => {
+    if (!draft.component_product_id && !draft.component_name.trim()) {
+      return "Component name or linked product is required.";
     }
-    Object.keys(payload).forEach((k) => { if (payload[k] === "") payload[k] = null; });
 
-    const res = editingId
-      ? await (supabase as any).from("product_bom_items").update(payload).eq("id", editingId)
-      : await (supabase as any).from("product_bom_items").insert(payload);
-    if (res.error) return toast.error(res.error.message);
-    toast.success(editingId ? "Component updated" : "Component added");
+    if (!draft.quantity_per_unit || Number(draft.quantity_per_unit) <= 0) {
+      return "Quantity per unit must be greater than 0.";
+    }
+
+    if (!draft.source_department) {
+      return "Source department is required.";
+    }
+
+    return null;
+  };
+
+  const buildPayload = () => ({
+    product_id: parentId,
+    component_product_id: draft.component_product_id || null,
+    component_name: draft.component_name.trim() || null,
+    quantity_per_unit: Number(draft.quantity_per_unit),
+    source_department: draft.source_department || null,
+  });
+
+  const save = async () => {
+    const validationError = validateDraft();
+
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+
+    const payload = buildPayload();
+
+    const result = editingId
+      ? await (supabase as any)
+          .from("product_bom")
+          .update(payload)
+          .eq("id", editingId)
+      : await (supabase as any).from("product_bom").insert(payload);
+
+    if (result.error) {
+      toast.error(result.error.message);
+      return;
+    }
+
+    toast.success(editingId ? "BOM component updated" : "BOM component added");
     cancel();
     load();
   };
 
   const remove = async (id: string) => {
-    if (!confirm("Remove this component?")) return;
-    const { error } = await (supabase as any).from("product_bom_items").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (!confirm("Remove this BOM component?")) return;
+
+    const { error } = await (supabase as any)
+      .from("product_bom")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("BOM component removed");
     load();
   };
 
-  // Summaries
-  const totals = useMemo(() => {
-    const sum = (filter: (i: Bom) => boolean) =>
-      items.filter(filter).reduce((acc, i) => acc + (Number(i.total_cost) || 0), 0);
-    return {
-      all: sum(() => true),
-      packaging: sum((i) => !!i.is_packaging_component),
-      product: sum((i) => i.component_type === "product"),
-      labour: sum((i) => i.component_type === "labour" || i.component_type === "service"),
-      visibleCount: items.filter((i) => i.show_to_customer).length,
-      internalCount: items.filter((i) => !i.show_to_customer).length,
-    };
-  }, [items]);
+  const warnings = useMemo(() => {
+    const list: string[] = [];
 
-  const routing = useMemo(() => {
-    const map: Record<string, number> = {};
-    items.forEach((i) => {
-      const k = i.source_department || "unspecified";
-      map[k] = (map[k] || 0) + 1;
-    });
-    return map;
-  }, [items]);
+    if (bomRequired && items.length === 0) {
+      list.push("BOM is marked required but no components exist yet.");
+    }
 
-  // Warnings
-  const warnings: string[] = [];
-  if (productClass === "gift_hamper" && items.length === 0)
-    warnings.push("Gift hamper requires a BOM. Add at least one component.");
-  if (productClass === "ready_pack") {
-    if (!items.some((i) => i.is_packaging_component)) warnings.push("Ready pack: no packaging component yet.");
-    if (!items.some((i) => i.component_type === "product")) warnings.push("Ready pack: no product/edible component yet.");
-  }
-  if (bomRequired && items.length === 0) warnings.push("BOM is marked required but no components exist.");
+    if (productClass === "gift_hamper" && items.length === 0) {
+      list.push("Gift hamper should have a BOM before approval.");
+    }
+
+    if (productClass === "ready_pack" && items.length === 0) {
+      list.push("Ready pack usually needs food material and packing material components.");
+    }
+
+    return list;
+  }, [bomRequired, productClass, items.length]);
+
+  const groupedCounts = useMemo(() => {
+    return items.reduce<Record<string, number>>((acc, item) => {
+      const key = item.source_department || "unspecified";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+  }, [items]);
 
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-warning/10 border-warning/40 p-3 text-xs flex gap-2 items-start">
         <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
         <div>
-          BOM is primarily internal for Packing & Assembly. Only components explicitly marked
-          <span className="font-medium"> visible</span> should ever be shown to customers.
+          Advanced BOM fields require schema expansion and are not active yet.
+          Current live schema supports only component name, optional linked product,
+          quantity per unit, and source department.
         </div>
       </div>
 
       {warnings.length > 0 && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs space-y-1">
-          {warnings.map((w, i) => <div key={i}>⚠️ {w}</div>)}
+          {warnings.map((warning, index) => (
+            <div key={index}>⚠️ {warning}</div>
+          ))}
         </div>
       )}
 
-      {/* Summary */}
-      <div className="grid sm:grid-cols-4 gap-3">
+      <div className="grid sm:grid-cols-3 gap-3">
         <div className="card-elevated p-4">
-          <div className="text-[11px] uppercase text-muted-foreground">Total est. BOM cost</div>
-          <div className="text-xl font-semibold">₹{totals.all.toFixed(2)}</div>
+          <div className="text-[11px] uppercase text-muted-foreground">
+            Components
+          </div>
+          <div className="text-xl font-semibold">{items.length}</div>
         </div>
-        <div className="card-elevated p-4">
-          <div className="text-[11px] uppercase text-muted-foreground">Packaging cost</div>
-          <div className="text-xl font-semibold">₹{totals.packaging.toFixed(2)}</div>
-        </div>
-        <div className="card-elevated p-4">
-          <div className="text-[11px] uppercase text-muted-foreground">Product cost</div>
-          <div className="text-xl font-semibold">₹{totals.product.toFixed(2)}</div>
-        </div>
-        <div className="card-elevated p-4">
-          <div className="text-[11px] uppercase text-muted-foreground">Labour / service</div>
-          <div className="text-xl font-semibold">₹{totals.labour.toFixed(2)}</div>
+
+        <div className="card-elevated p-4 sm:col-span-2">
+          <div className="text-[11px] uppercase text-muted-foreground mb-2">
+            Source routing
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {Object.keys(groupedCounts).length === 0 ? (
+              <span className="text-xs text-muted-foreground">No routing yet</span>
+            ) : (
+              Object.entries(groupedCounts).map(([department, count]) => (
+                <Badge key={department} variant="outline" className="text-[10px]">
+                  <Boxes className="h-3 w-3 mr-1" />
+                  {formatDepartment(department)}: {count}
+                </Badge>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex gap-2 text-xs">
-        <Badge variant="secondary"><Eye className="h-3 w-3 mr-1" />Customer-visible: {totals.visibleCount}</Badge>
-        <Badge variant="outline"><EyeOff className="h-3 w-3 mr-1" />Internal-only: {totals.internalCount}</Badge>
-        {Object.entries(routing).map(([k, n]) => (
-          <Badge key={k} variant="outline"><Boxes className="h-3 w-3 mr-1" />{k.replace(/_/g, " ")}: {n}</Badge>
-        ))}
-      </div>
-
-      {/* Items list */}
       <div className="space-y-2">
-        {loading ? <div className="text-sm text-muted-foreground">Loading…</div> :
-          items.length === 0 ? <div className="text-sm text-muted-foreground">No components yet.</div> :
-          items.map((it) => (
-            <div key={it.id} className="card-elevated p-4 flex gap-3 items-start">
+        {loading ? (
+          <div className="text-sm text-muted-foreground">Loading BOM…</div>
+        ) : items.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-6 text-sm text-muted-foreground text-center">
+            No BOM components yet.
+          </div>
+        ) : (
+          items.map((item) => (
+            <div key={item.id} className="card-elevated p-4 flex gap-3 items-start">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <div className="font-medium truncate">{it.component_name || "(unnamed)"}</div>
-                  <Badge variant="outline" className="text-[10px]">{it.component_type}</Badge>
-                  {it.show_to_customer && <Badge className="text-[10px]">Customer-visible</Badge>}
-                  {it.is_packaging_component && <Badge variant="secondary" className="text-[10px]">Packaging</Badge>}
-                  {it.is_individually_saleable && <Badge variant="secondary" className="text-[10px]">Saleable</Badge>}
+                  <div className="font-medium truncate">
+                    {item.component_name || "Unnamed component"}
+                  </div>
+
+                  {item.component_product_id && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      <Link2 className="h-3 w-3 mr-1" />
+                      linked product
+                    </Badge>
+                  )}
                 </div>
+
                 <div className="text-xs text-muted-foreground mt-1">
-                  Qty {it.quantity} {it.unit}
-                  {it.cost_per_unit != null && <> · ₹{it.cost_per_unit}/unit · Total ₹{(Number(it.total_cost) || 0).toFixed(2)}</>}
+                  Qty per unit:{" "}
+                  <span className="font-medium text-foreground">
+                    {item.quantity_per_unit ?? "—"}
+                  </span>
                 </div>
-                <div className="text-xs text-muted-foreground">
-                  Route: {(it.source_department || "—").replace(/_/g, " ")}
-                  {it.production_department && <> → {it.production_department.replace(/_/g, " ")}</>}
-                  {" → "}{(it.issue_to_department || "—").replace(/_/g, " ")}
+
+                <div className="text-xs text-muted-foreground mt-1">
+                  Source:{" "}
+                  <span className="font-medium text-foreground">
+                    {formatDepartment(item.source_department)}
+                  </span>
                 </div>
-                {it.notes && <div className="text-xs mt-1">{it.notes}</div>}
+
+                {item.component_product_id && (
+                  <div className="text-[10px] text-muted-foreground mt-1 font-mono">
+                    Linked product ID: {item.component_product_id}
+                  </div>
+                )}
               </div>
-              <div className="flex gap-1">
-                <Button size="sm" variant="outline" onClick={() => startEdit(it)}>Edit</Button>
-                <Button size="sm" variant="ghost" onClick={() => remove(it.id)}><Trash2 className="h-4 w-4" /></Button>
+
+              <div className="flex gap-1 shrink-0">
+                <Button size="sm" variant="outline" onClick={() => startEdit(item)}>
+                  Edit
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => remove(item.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
-          ))}
+          ))
+        )}
       </div>
 
       {!showAdd && (
-        <Button onClick={() => setShowAdd(true)}><Plus className="h-4 w-4 mr-1" />Add component</Button>
+        <Button onClick={startAdd}>
+          <Plus className="h-4 w-4 mr-1" />
+          Add component
+        </Button>
       )}
 
       {showAdd && (
         <div className="card-elevated p-5 space-y-4 border-primary/30">
           <div className="flex items-center justify-between">
-            <h4 className="font-display text-lg">{editingId ? "Edit component" : "Add component"}</h4>
-            <Button size="icon" variant="ghost" onClick={cancel}><X className="h-4 w-4" /></Button>
+            <h4 className="font-display text-lg">
+              {editingId ? "Edit BOM component" : "Add BOM component"}
+            </h4>
+            <Button size="icon" variant="ghost" onClick={cancel}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
+            This form writes only to <span className="font-mono">public.product_bom</span>.
+            Supported columns: product_id, component_product_id, component_name,
+            quantity_per_unit, source_department.
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs">Component type</Label>
-              <Select value={draft.component_type} onChange={(v: string) => setD("component_type", v)} options={COMPONENT_TYPES} />
-            </div>
-            <div>
-              <Label className="text-xs">Linked product (optional)</Label>
-              {draft.child_product_id ? (
-                <div className="flex items-center gap-2 border rounded-md p-2 text-sm">
+            <div className="sm:col-span-2 space-y-2">
+              <Label className="text-xs">Linked product optional</Label>
+
+              {draft.component_product_id ? (
+                <div className="flex items-center gap-2 rounded-md border p-2 text-sm">
+                  <Link2 className="h-4 w-4 text-muted-foreground" />
                   <span className="flex-1 truncate">{draft.component_name}</span>
-                  <Button size="sm" variant="ghost" onClick={() => { setD("child_product_id", null); setLinkedMeta(null); setConvNote(""); }}>Clear</Button>
+                  <Button size="sm" variant="ghost" onClick={clearPickedProduct}>
+                    Clear link
+                  </Button>
                 </div>
               ) : (
-                <Button variant="outline" size="sm" onClick={() => setPickChild((v) => !v)}>
-                  {pickChild ? "Close picker" : "Pick product…"}
-                </Button>
-              )}
-              {pickChild && !draft.child_product_id && (
-                <div className="mt-2 border rounded-md p-2"><ProductPicker onPick={onPickChild} /></div>
-              )}
-            </div>
-            <div className="sm:col-span-2">
-              <Label className="text-xs">Component name</Label>
-              <Input value={draft.component_name ?? ""} onChange={(e) => setD("component_name", e.target.value)} placeholder="Example: Acrylic box, Pistachio Baklawa, Ribbon" />
-            </div>
-            <div>
-              <Label className="text-xs">Quantity</Label>
-              <Input type="number" value={draft.quantity ?? ""} onChange={(e) => setD("quantity", e.target.value)} />
-            </div>
-            <div>
-              <Label className="text-xs">Unit</Label>
-              <Select value={draft.unit} onChange={(v: string) => setD("unit", v)} options={UNITS} />
-            </div>
-            <div>
-              <Label className="text-xs">Cost per unit (₹)</Label>
-              <Input type="number" value={draft.cost_per_unit ?? ""} onChange={(e) => setD("cost_per_unit", e.target.value)} />
-              {draft.child_product_id && (
-                <div className={`text-[10px] mt-1 ${convNote.startsWith("⚠") ? "text-destructive" : "text-muted-foreground"}`}>
-                  {convNote || "Auto-filled from linked product B2B price. You can override manually."}
-                </div>
-              )}
-            </div>
-            <div>
-              <Label className="text-xs">Lead time (days)</Label>
-              <Input type="number" value={draft.lead_time_days ?? ""} onChange={(e) => setD("lead_time_days", e.target.value)} />
-            </div>
-            <div className="sm:col-span-2">
-              <Label className="text-xs">Notes</Label>
-              <Textarea rows={2} value={draft.notes ?? ""} onChange={(e) => setD("notes", e.target.value)} />
-            </div>
-
-            {/* Routing */}
-            <div className="sm:col-span-2 border-t pt-3">
-              <div className="text-xs font-medium uppercase text-muted-foreground mb-2">Routing</div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Source department</Label>
-                  <Select value={draft.source_department} onChange={(v: string) => setD("source_department", v)} options={SOURCE_DEPTS} />
-                </div>
-                {draft.source_department === "ready_goods_store" && (
-                  <div>
-                    <Label className="text-xs">Production department *</Label>
-                    <Select value={draft.production_department} onChange={(v: string) => setD("production_department", v)} options={PROD_DEPTS} />
+                <>
+                  <div className="flex gap-2">
+                    <Input
+                      value={productSearch}
+                      onChange={(e) => setProductSearch(e.target.value)}
+                      placeholder="Search product by name, SKU, or category…"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          searchProducts();
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={searchProducts}
+                      disabled={productSearchLoading}
+                    >
+                      <Search className="h-4 w-4 mr-1" />
+                      {productSearchLoading ? "Searching…" : "Search"}
+                    </Button>
                   </div>
-                )}
-                <div>
-                  <Label className="text-xs">Issue to</Label>
-                  <Select value={draft.issue_to_department} onChange={(v: string) => setD("issue_to_department", v)} options={ISSUE_TO} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Required before assembly</Label>
-                  <Switch checked={!!draft.required_before_assembly} onCheckedChange={(v) => setD("required_before_assembly", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Stock check required</Label>
-                  <Switch checked={!!draft.stock_check_required} onCheckedChange={(v) => setD("stock_check_required", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Packaging component</Label>
-                  <Switch checked={!!draft.is_packaging_component} onCheckedChange={(v) => setD("is_packaging_component", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Private label component</Label>
-                  <Switch checked={!!draft.is_private_label_component} onCheckedChange={(v) => setD("is_private_label_component", v)} />
-                </div>
-              </div>
+
+                  {productOptions.length > 0 && (
+                    <div className="rounded-md border divide-y max-h-64 overflow-auto">
+                      {productOptions.map((product) => (
+                        <button
+                          key={product.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-muted/60"
+                          onClick={() => pickProduct(product)}
+                        >
+                          <div className="text-sm font-medium truncate">
+                            {productDisplayName(product)}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {product.sku || "No SKU"}
+                            {product.category ? ` · ${product.category}` : ""}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
-            {/* Visibility & saleability */}
-            <div className="sm:col-span-2 border-t pt-3">
-              <div className="text-xs font-medium uppercase text-muted-foreground mb-2">Visibility & saleability</div>
-              <div className="grid sm:grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Visibility scope</Label>
-                  <Select value={draft.visibility_scope} onChange={(v: string) => setD("visibility_scope", v)} options={VISIBILITY_SCOPES} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Show to customer</Label>
-                  <Switch checked={!!draft.show_to_customer} onCheckedChange={(v) => setD("show_to_customer", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Show in public catalogue</Label>
-                  <Switch checked={!!draft.show_in_public_catalogue} onCheckedChange={(v) => setD("show_in_public_catalogue", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Show in PDF catalogue</Label>
-                  <Switch checked={!!draft.show_in_pdf_catalogue} onCheckedChange={(v) => setD("show_in_pdf_catalogue", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Show on label</Label>
-                  <Switch checked={!!draft.show_on_label} onCheckedChange={(v) => setD("show_on_label", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Individually saleable</Label>
-                  <Switch checked={!!draft.is_individually_saleable} onCheckedChange={(v) => setD("is_individually_saleable", v)} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs">Internal component only</Label>
-                  <Switch checked={!!draft.internal_component_only} onCheckedChange={(v) => setD("internal_component_only", v)} />
-                </div>
-              </div>
+            <div className="sm:col-span-2 space-y-1">
+              <Label className="text-xs">Component name</Label>
+              <Input
+                value={draft.component_name}
+                onChange={(e) => setD("component_name", e.target.value)}
+                placeholder="Example: Acrylic box, Pistachio Baklawa, Ribbon, Tray"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Quantity per unit</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.001"
+                value={draft.quantity_per_unit}
+                onChange={(e) => setD("quantity_per_unit", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Source department</Label>
+              <Select
+                value={draft.source_department}
+                onChange={(value: string) => setD("source_department", value)}
+                options={SOURCE_DEPARTMENTS}
+              />
             </div>
           </div>
 
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={cancel}>Cancel</Button>
-            <Button onClick={save}>{editingId ? "Update" : "Add"} component</Button>
+            <Button variant="outline" onClick={cancel}>
+              Cancel
+            </Button>
+            <Button onClick={save}>
+              {editingId ? "Update" : "Add"} component
+            </Button>
           </div>
         </div>
       )}
     </div>
   );
 }
+
+export default BomBuilder;
