@@ -87,10 +87,6 @@ const PACK_UOM_OPTIONS = [
   "tub",
   "pack",
   "pcs",
-  "kg",
-  "grams",
-  "ml",
-  "litre",
 ];
 
 const CONTENT_UOM_OPTIONS = ["pcs", "kg", "grams", "ml", "litre"];
@@ -327,6 +323,29 @@ const getPrimaryPackPreview = (form: any) => {
   return `1 ${form.primary_pack_uom} = ${form.qty_per_pack} ${form.qty_content_uom}`;
 };
 
+const primaryPackTypeToUom = (type: string) => {
+  switch (type) {
+    case "Carton":
+      return "carton";
+    case "Box":
+      return "box";
+    case "Tray":
+      return "tray";
+    case "Basket":
+      return "basket";
+    case "Jar":
+      return "jar";
+    case "Packet":
+      return "packet";
+    case "Tub":
+      return "tub";
+    case "NA":
+      return "";
+    default:
+      return "";
+  }
+};
+
 const normalizeMainDepartment = (data: any) => {
   const dept = cleanText(data?.department);
   const prod = cleanText(data?.production_department);
@@ -558,8 +577,8 @@ const dbProductToForm = (data: any) => {
     pcs_per_pack: toBlank(qtyPerPack),
 
     moq_value: toBlank(data?.moq ?? data?.moq_packs),
-    moq_uom: toBlank(data?.uom),
-    increment_uom: toBlank(data?.uom),
+    moq_uom: toBlank(primaryPackUom || data?.uom),
+    increment_uom: toBlank(primaryPackUom || data?.uom),
 
     private_label_moq: toBlank(data?.private_label_moq),
     private_label_cost_per_unit: toBlank(data?.private_label_price),
@@ -683,6 +702,15 @@ const ProductEdit = () => {
   const isContributorMode = authContextContributor || rpcContributorRole;
 
   const primaryPackPreview = getPrimaryPackPreview(form);
+
+  const primaryPackTypeNeedsUom =
+    !!form.primary_pack_type &&
+    form.primary_pack_type !== "NA" &&
+    !form.primary_pack_uom;
+
+  const qtyContentUomMissing =
+    !!form.qty_per_pack && !form.qty_content_uom;
+
   const moqUomMismatch =
     !!form.moq_uom &&
     !!form.increment_uom &&
@@ -850,7 +878,7 @@ const ProductEdit = () => {
           ...f,
           main_department: f.main_department || "third_party_goods_store",
           production_department: "",
-          fixed_carton_required: f.fixed_carton_required || true,
+          fixed_carton_required: true,
         };
 
         if (
@@ -1390,7 +1418,27 @@ const ProductEdit = () => {
                   <Field label="Primary Pack Type">
                     <Select
                       value={form.primary_pack_type}
-                      onChange={(v: string) => set("primary_pack_type", v)}
+                      onChange={(v: string) => {
+                        const mappedUom = primaryPackTypeToUom(v);
+
+                        if (v === "NA") {
+                          patch({
+                            primary_pack_type: v,
+                            primary_pack_uom: "",
+                            qty_per_pack: "",
+                            qty_content_uom: "",
+                            pcs_per_pack: "",
+                          });
+                          return;
+                        }
+
+                        patch({
+                          primary_pack_type: v,
+                          primary_pack_uom: mappedUom,
+                          moq_uom: form.moq_uom || mappedUom,
+                          increment_uom: form.increment_uom || mappedUom,
+                        });
+                      }}
                       options={PRIMARY_PACK_TYPES}
                     />
                   </Field>
@@ -1438,6 +1486,20 @@ const ProductEdit = () => {
                     </>
                   )}
                 </div>
+
+                {primaryPackTypeNeedsUom && (
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs flex gap-2 items-start">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
+                    <div>Pack UOM is required for Primary Packing.</div>
+                  </div>
+                )}
+
+                {qtyContentUomMissing && (
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs flex gap-2 items-start">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
+                    <div>Qty Content UOM is required to complete Primary Packing.</div>
+                  </div>
+                )}
 
                 {cls === "ready_pack" && (
                   <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">
