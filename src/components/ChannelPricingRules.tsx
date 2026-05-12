@@ -48,10 +48,21 @@ export const ChannelPricingRules = ({ productId, product }: { productId: string;
     if (error) toast.error("Please remove duplicate channel rule.");
   };
 
+
+  const add = async () => {
+    const { error } = await supabase.from("product_pricing_rules").insert({
+      product_id: productId,
+      price_channel: "retail",
+      price_type: "fixed_price",
+    });
+    if (error) return toast.error(error.message);
+    load();
+  };
+
   const summary = useMemo(() => rows.map((r) => `${r.price_channel}: ${pricingLabel(r)}`), [rows]);
 
   return <div className="card-elevated p-6 space-y-4">
-    <div><h3 className="font-display text-xl">Sales Pricing Rules</h3></div>
+    <div className="flex items-center justify-between"><h3 className="font-display text-xl">Sales Pricing Rules</h3><Button size="sm" onClick={add}>Add price</Button></div>
     <div className="rounded-xl border bg-muted/20 p-4 text-sm"><b>BUSINESS SUMMARY</b>{summary.map((s, i) => <div key={i}>{s}</div>)}</div>
     <div className="space-y-3">
       {rows.map((r) => <div key={r.id} className="rounded-xl bg-white shadow-sm border border-amber-100 p-4 space-y-3">

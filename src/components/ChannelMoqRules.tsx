@@ -83,6 +83,13 @@ export const ChannelMoqRules = ({ productId, product }: { productId: string; pro
     if (error) toast.error("Please remove duplicate channel rule.");
   };
 
+
+  const add = async () => {
+    const { error } = await supabase.from("product_moq_rules").insert({ product_id: productId, channel: "retail", moq_applicable: false });
+    if (error) return toast.error(error.message);
+    load();
+  };
+
   const generateBusinessRules = async (template: string) => {
     if (!template) return;
     const defs = (TEMPLATES[template] ?? []).map((r) => normalize({ product_id: productId, ...r }));
@@ -98,6 +105,7 @@ export const ChannelMoqRules = ({ productId, product }: { productId: string; pro
       <div className="flex items-center gap-2">
         <Sel value={suggestedTemplate} onChange={generateBusinessRules} options={Object.keys(TEMPLATES)} placeholder="Generate Business Rules" />
         <Button size="sm" variant="outline" onClick={() => generateBusinessRules(suggestedTemplate || "bulk_wholesale")}><Wand2 className="h-3.5 w-3.5 mr-1" />Generate Business Rules</Button>
+        <Button size="sm" onClick={add}>Add rule</Button>
       </div>
     </div>
     <div className="rounded-xl border bg-muted/20 p-4 text-sm"><b>BUSINESS SUMMARY</b>{rows.map((r) => <div key={r.id}>{r.channel}: {r.moq_applicable ? `${r.moq_value ?? "Flexible"} ${r.moq_uom ?? ""}` : "Not Available"}</div>)}</div>
