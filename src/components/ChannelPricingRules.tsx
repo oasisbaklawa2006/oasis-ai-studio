@@ -3,67 +3,566 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { ChevronDown, Copy, Power } from "lucide-react";
+import {
+  Archive,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
-const PRICE_TYPES = ["fixed_price", "discount_from_mrp", "margin_based", "quotation_based"];
-const asNumberOrNull = (v: unknown) => (v === "" || v === undefined || v === null ? null : Number(v));
-const pricingLabel = (r: any) => (r.price_type === "discount_from_mrp" ? `MRP - ${r.discount_percent ?? 0}%` : r.price_type.replace(/_/g, " "));
+const PRICE_CHANNELS = [
+  "mrp",
+  "retail",
+  "bulk",
+  "wholesale",
+  "horeca",
+  "b2b",
+  "distributor",
+  "franchisee",
+  "own_outlet",
+  "export",
+  "private_label",
+  "promotional",
+  "special_customer",
+  "corporate_gifting",
+  "modern_trade",
+];
 
-export const ChannelPricingRules = ({ productId, product }: { productId: string; product: any }) => {
+const PRICE_TYPES = [
+  "fixed_price",
+  "discount_from_mrp",
+  "margin_based",
+  "quotation_based",
+];
+
+const STATUSES = ["draft", "needs_review", "approved", "archived"];
+
+const SOURCES = [
+  "catalogue_local",
+  "oasis_central_synced",
+  "manual_override",
+  "promotional",
+  "customer_special",
+];
+
+const Sel = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string | null | undefined;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+}) => (
+  <select
+    className="h-9 px-2 rounded border bg-background text-xs w-full"
+    value={value ?? ""}
+    onChange={(e) => onChange(e.target.value)}
+  >
+    <option value="">{placeholder ?? "—"}</option>
+    {options.map((o) => (
+      <option key={o} value={o}>
+        {o.replace(/_/g, " ")}
+      </option>
+    ))}
+  </select>
+);
+
+const asNumberOrNull = (value: unknown) => {
+  if (value === "" || value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+};
+
+const normalizeText = (value: unknown) => String(value ?? "").trim().toLowerCase();
+
+const pricingLabel = (channel?: string | null) =>
+  String(channel ?? "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (m) => m.toUpperCase()) || "Unnamed";
+
+const computeCalculated = (row: any, mrp?: number | null) => {
+  const basePrice = asNumberOrNull(row.base_price);
+  const discountPercent = asNumberOrNull(row.discount_percent);
+
+  if (row.price_type === "quotation_based") return null;
+  if (row.price_type === "fixed_price") return basePrice;
+  if (row.price_type === "discount_from_mrp" && mrp != null && discountPercent != null) {
+    return Math.round(Number(mrp) * (1 - discountPercent / 100) * 100) / 100;
+  }
+
+  return asNumberOrNull(row.calculated_price);
+};
+
+const isDuplicateChannel = (rows: any[], rowId: string, channel: string | null | undefined) => {
+  const c = normalizeText(channel);
+  if (!c) return false;
+  return rows.some((r) => r.id !== rowId && normalizeText(r.price_channel) === c);
+};
+
+const priceSummary = (r: any) => {
+  if (r.price_type === "quotation_based") return "Quotation based";
+
+  const calc = r.calculated_price != null ? `${r.calculated_price} ${r.currency || "INR"}` : "Not set";
+  const uom = r.uom ? ` / ${r.uom}` : "";
+  return `${calc}${uom}`;
+};
+
+export const ChannelPricingRules = ({
+  productId,
+  product,
+}: {
+  productId: string;
+  product: any;
+}) => {
+  const { roles } = useAuth();
+  const canApprove = roles.includes("owner") || roles.includes("admin");
+
   const [rows, setRows] = useState<any[]>([]);
-  const [adv, setAdv] = useState<Record<string, boolean>>({});
+  const [editing, setEditing] = useState<Record<string, boolean>>({});
+  const [advanced, setAdvanced] = useState<Record<string, boolean>>({});
+
   const load = async () => {
-    const { data } = await supabase.from("product_pricing_rules").select("*").eq("product_id", productId).order("price_channel");
+    const { data, error } = await supabase
+      .from("product_pricing_rules")
+      .select("*")
+      .eq("product_id", productId)
+      .order("price_channel");
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
     setRows(data ?? []);
   };
-  useEffect(() => { load(); }, [productId]);
 
-  const normalize = (row: any) => {
-    const out = { ...row };
-    out.base_price = asNumberOrNull(out.base_price);
-    out.discount_percent = asNumberOrNull(out.discount_percent);
-    out.calculated_price = asNumberOrNull(out.calculated_price);
-    out.gst_rate = asNumberOrNull(out.gst_rate);
-    if (out.price_type === "quotation_based") Object.assign(out, { base_price: null, discount_percent: null, calculated_price: null });
-    if (out.price_type === "discount_from_mrp") {
-      out.calculated_price = product.mrp && out.discount_percent != null ? Math.round(Number(product.mrp) * (1 - Number(out.discount_percent) / 100) * 100) / 100 : null;
+  useEffect(() => {
+    load();
+  }, [productId]);
+
+  const businessSummary = useMemo(() => {
+    if (!rows.length) return [];
+
+    return rows.map((r) => ({
+      id: r.id,
+      title: pricingLabel(r.price_channel),
+      summary: priceSummary(r),
+    }));
+  }, [rows]);
+
+  const persistPatch = async (id: string, patch: any) => {
+    const current = rows.find((r) => r.id === id);
+    if (!current) return;
+
+    const next = { ...current, ...patch };
+
+    if (isDuplicateChannel(rows, id, next.price_channel)) {
+      toast.error("A pricing rule for this channel already exists.");
+      return;
     }
-    if (out.price_type === "fixed_price") out.calculated_price = out.base_price;
-    return out;
+
+    const normalizedPatch: any = { ...patch };
+
+    if ("base_price" in normalizedPatch) {
+      normalizedPatch.base_price = asNumberOrNull(normalizedPatch.base_price);
+    }
+    if ("discount_percent" in normalizedPatch) {
+      normalizedPatch.discount_percent = asNumberOrNull(normalizedPatch.discount_percent);
+    }
+    if ("calculated_price" in normalizedPatch) {
+      normalizedPatch.calculated_price = asNumberOrNull(normalizedPatch.calculated_price);
+    }
+    if ("gst_rate" in normalizedPatch) {
+      normalizedPatch.gst_rate = asNumberOrNull(normalizedPatch.gst_rate);
+    }
+
+    const merged = { ...current, ...normalizedPatch };
+
+    if (merged.price_type === "quotation_based") {
+      normalizedPatch.base_price = null;
+      normalizedPatch.discount_percent = null;
+      normalizedPatch.calculated_price = null;
+    } else {
+      normalizedPatch.calculated_price = computeCalculated(merged, product?.mrp);
+    }
+
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...normalizedPatch } : r)));
+
+    const { error } = await supabase
+      .from("product_pricing_rules")
+      .update(normalizedPatch)
+      .eq("id", id);
+
+    if (error) {
+      toast.error(error.message);
+      load();
+    }
   };
 
-  const dup = (id: string, channel: string) => rows.some((r) => r.id !== id && r.price_channel === channel && r.product_id === productId);
-
-  const update = async (id: string, patch: any) => {
-    const merged = normalize({ ...rows.find((r) => r.id === id), ...patch });
-    if (dup(id, merged.price_channel)) return toast.error("Please remove duplicate channel rule.");
-    if (["base_price", "discount_percent", "calculated_price", "gst_rate"].some((k) => patch[k] === "" || patch[k] === undefined)) {
-      toast.message("Numeric fields cannot be blank. They will be saved as empty.");
+  const remove = async (id: string) => {
+    const { error } = await supabase.from("product_pricing_rules").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
     }
-    setRows((r) => r.map((x) => (x.id === id ? merged : x)));
-    const { error } = await supabase.from("product_pricing_rules").update(normalize(patch)).eq("id", id);
-    if (error) toast.error("Please remove duplicate channel rule.");
+    toast.success("Pricing rule removed");
+    load();
   };
 
-  const summary = useMemo(() => rows.map((r) => `${r.price_channel}: ${pricingLabel(r)}`), [rows]);
+  const add = async () => {
+    if (rows.some((r) => normalizeText(r.price_channel) === "retail")) {
+      toast.error("Retail pricing rule already exists.");
+      return;
+    }
 
-  return <div className="card-elevated p-6 space-y-4">
-    <div><h3 className="font-display text-xl">Sales Pricing Rules</h3></div>
-    <div className="rounded-xl border bg-muted/20 p-4 text-sm"><b>BUSINESS SUMMARY</b>{summary.map((s, i) => <div key={i}>{s}</div>)}</div>
-    <div className="space-y-3">
-      {rows.map((r) => <div key={r.id} className="rounded-xl bg-white shadow-sm border border-amber-100 p-4 space-y-3">
-        <div className="flex justify-between"><div className="font-semibold">{(r.price_channel || "channel").replace(/_/g, " ")}</div><div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => setAdv((a) => ({ ...a, [r.id]: !a[r.id] }))}><ChevronDown className="h-3 w-3 mr-1" />Edit</Button><Button size="sm" variant="ghost" onClick={() => update(r.id, { price_channel: `${r.price_channel}_copy` })}><Copy className="h-3 w-3 mr-1" />Duplicate</Button><Button size="sm" variant="ghost" onClick={() => update(r.id, { price_type: "quotation_based" })}><Power className="h-3 w-3 mr-1" />Disable</Button></div></div>
-        <div className="grid sm:grid-cols-5 gap-2">
-          <div><Label className="text-xs">Pricing label</Label><Input className="h-9" value={pricingLabel(r)} readOnly /></div>
-          <div><Label className="text-xs">Price type</Label><select className="h-9 px-2 rounded border bg-background text-xs w-full" value={r.price_type ?? ""} onChange={(e) => update(r.id, { price_type: e.target.value })}>{PRICE_TYPES.map((o) => <option key={o} value={o}>{o.replace(/_/g, " ")}</option>)}</select></div>
-          <div><Label className="text-xs">Base price</Label><Input className="h-9" value={r.base_price ?? ""} readOnly={r.price_type !== "fixed_price"} onChange={(e) => update(r.id, { base_price: e.target.value })} /></div>
-          <div><Label className="text-xs">Discount %</Label><Input className="h-9" value={r.discount_percent ?? ""} onChange={(e) => update(r.id, { discount_percent: e.target.value })} /></div>
-          <div><Label className="text-xs">Calculated price</Label><Input className="h-9" value={r.calculated_price ?? ""} readOnly={r.price_type === "discount_from_mrp" || r.price_type === "quotation_based"} onChange={(e) => update(r.id, { calculated_price: e.target.value })} /></div>
+    const { data, error } = await supabase
+      .from("product_pricing_rules")
+      .insert({
+        product_id: productId,
+        price_channel: "retail",
+        price_type: "quotation_based",
+        currency: "INR",
+        approval_status: "draft",
+        source: "catalogue_local",
+      })
+      .select("*")
+      .single();
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setRows((prev) => [...prev, data].sort((a, b) => String(a.price_channel).localeCompare(String(b.price_channel))));
+    setEditing((prev) => ({ ...prev, [data.id]: true }));
+  };
+
+  const approve = async (id: string) => {
+    if (!canApprove) {
+      toast.error("Only owner/admin can approve");
+      return;
+    }
+
+    const { data: authData } = await supabase.auth.getUser();
+    const { error } = await supabase
+      .from("product_pricing_rules")
+      .update({
+        approval_status: "approved",
+        approved_by: authData.user?.id ?? null,
+        approved_at: new Date().toISOString(),
+      })
+      .eq("id", id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Pricing approved");
+    load();
+  };
+
+  const archive = async (id: string) => {
+    const { error } = await supabase
+      .from("product_pricing_rules")
+      .update({ approval_status: "archived" })
+      .eq("id", id);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Pricing archived");
+    load();
+  };
+
+  return (
+    <div className="card-elevated p-6 space-y-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h3 className="font-display text-xl">Sales Pricing Rules</h3>
+          <p className="text-xs text-muted-foreground">
+            Card-first pricing setup with summary view by default.
+          </p>
         </div>
-        {adv[r.id] && <div className="grid sm:grid-cols-2 gap-2 rounded-lg border p-3"><div><Label className="text-xs">Source</Label><Input className="h-9" value={r.source ?? ""} onChange={(e) => update(r.id, { source: e.target.value || null })} /></div><div><Label className="text-xs">Approval status</Label><Input className="h-9" value={r.approval_status ?? "draft"} onChange={(e) => update(r.id, { approval_status: e.target.value || null })} /></div><div><Label className="text-xs">GST %</Label><Input className="h-9" value={r.gst_rate ?? ""} onChange={(e) => update(r.id, { gst_rate: e.target.value })} /></div><div><Label className="text-xs">Notes</Label><Textarea rows={1} value={r.notes ?? ""} onChange={(e) => update(r.id, { notes: e.target.value || null })} /></div></div>}
-      </div>)}
+
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" onClick={add}>
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add Price
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
+        <div className="text-sm font-medium">Business Summary</div>
+        {businessSummary.length ? (
+          <div className="space-y-2">
+            {businessSummary.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-lg border bg-background px-3 py-2 text-sm"
+              >
+                <span className="font-medium">{item.title}</span>
+                <span className="text-muted-foreground">{item.summary}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-sm text-muted-foreground">
+            No pricing rules yet. Add one to begin.
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-3">
+        {rows.map((r) => {
+          const isEditing = !!editing[r.id];
+          const showAdvanced = !!advanced[r.id];
+
+          return (
+            <div key={r.id} className="rounded-xl border bg-background p-4 space-y-3 shadow-sm">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-1">
+                  <div className="text-base font-semibold">{pricingLabel(r.price_channel)}</div>
+                  <div className="text-sm text-muted-foreground">{priceSummary(r)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    Status: {String(r.approval_status ?? "draft").replace(/_/g, " ")}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      setEditing((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                    }
+                  >
+                    <Pencil className="h-3.5 w-3.5 mr-1" />
+                    {isEditing ? "Close" : "Edit"}
+                  </Button>
+
+                  {canApprove && r.approval_status !== "approved" && (
+                    <Button size="sm" variant="outline" onClick={() => approve(r.id)}>
+                      <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                      Approve
+                    </Button>
+                  )}
+
+                  <Button size="sm" variant="outline" onClick={() => archive(r.id)}>
+                    <Archive className="h-3.5 w-3.5 mr-1" />
+                    Archive
+                  </Button>
+
+                  <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {isEditing && (
+                <div className="space-y-3 border-t pt-3">
+                  <div className="grid sm:grid-cols-4 gap-3">
+                    <div>
+                      <Label className="text-xs">Pricing Label / Channel</Label>
+                      <Sel
+                        value={r.price_channel}
+                        onChange={(v) => persistPatch(r.id, { price_channel: v || null })}
+                        options={PRICE_CHANNELS}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Price Type</Label>
+                      <Sel
+                        value={r.price_type}
+                        onChange={(v) => persistPatch(r.id, { price_type: v || null })}
+                        options={PRICE_TYPES}
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Base Price</Label>
+                      <Input
+                        className="h-9"
+                        type="number"
+                        value={r.base_price ?? ""}
+                        disabled={r.price_type === "quotation_based"}
+                        onChange={(e) =>
+                          persistPatch(r.id, { base_price: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Discount %</Label>
+                      <Input
+                        className="h-9"
+                        type="number"
+                        value={r.discount_percent ?? ""}
+                        disabled={r.price_type !== "discount_from_mrp"}
+                        onChange={(e) =>
+                          persistPatch(r.id, { discount_percent: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Calculated Price</Label>
+                      <Input
+                        className="h-9"
+                        type="number"
+                        value={r.calculated_price ?? ""}
+                        disabled={r.price_type === "fixed_price" || r.price_type === "discount_from_mrp"}
+                        onChange={(e) =>
+                          persistPatch(r.id, { calculated_price: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">Currency</Label>
+                      <Input
+                        className="h-9"
+                        value={r.currency ?? "INR"}
+                        onChange={(e) =>
+                          persistPatch(r.id, { currency: e.target.value || "INR" })
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <Label className="text-xs">UOM</Label>
+                      <Input
+                        className="h-9"
+                        value={r.uom ?? ""}
+                        onChange={(e) =>
+                          persistPatch(r.id, { uom: e.target.value || null })
+                        }
+                        placeholder="per pc / kg"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                      <Label className="text-xs">Tax Inclusive</Label>
+                      <Switch
+                        checked={!!r.tax_inclusive}
+                        onCheckedChange={(v) => persistPatch(r.id, { tax_inclusive: v })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() =>
+                        setAdvanced((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                      }
+                    >
+                      {showAdvanced ? (
+                        <ChevronUp className="h-4 w-4 mr-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 mr-1" />
+                      )}
+                      Advanced Settings
+                    </Button>
+                  </div>
+
+                  {showAdvanced && (
+                    <div className="grid sm:grid-cols-4 gap-3 rounded-lg border bg-muted/20 p-3">
+                      <div>
+                        <Label className="text-xs">Status</Label>
+                        <Sel
+                          value={r.approval_status}
+                          onChange={(v) =>
+                            persistPatch(r.id, { approval_status: v || "draft" })
+                          }
+                          options={STATUSES}
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">Source</Label>
+                        <Sel
+                          value={r.source}
+                          onChange={(v) => persistPatch(r.id, { source: v || null })}
+                          options={SOURCES}
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">GST %</Label>
+                        <Input
+                          className="h-9"
+                          type="number"
+                          value={r.gst_rate ?? ""}
+                          onChange={(e) =>
+                            persistPatch(r.id, { gst_rate: e.target.value })
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">Valid From</Label>
+                        <Input
+                          className="h-9"
+                          type="date"
+                          value={r.valid_from ?? ""}
+                          onChange={(e) =>
+                            persistPatch(r.id, { valid_from: e.target.value || null })
+                          }
+                        />
+                      </div>
+
+                      <div>
+                        <Label className="text-xs">Valid Until</Label>
+                        <Input
+                          className="h-9"
+                          type="date"
+                          value={r.valid_until ?? ""}
+                          onChange={(e) =>
+                            persistPatch(r.id, { valid_until: e.target.value || null })
+                          }
+                        />
+                      </div>
+
+                      <div className="sm:col-span-3">
+                        <Label className="text-xs">Notes</Label>
+                        <Textarea
+                          rows={2}
+                          value={r.notes ?? ""}
+                          onChange={(e) =>
+                            persistPatch(r.id, { notes: e.target.value || null })
+                          }
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {rows.length === 0 && (
+          <div className="text-sm text-muted-foreground py-4 text-center">
+            No pricing rules yet. Add one to begin.
+          </div>
+        )}
+      </div>
     </div>
-  </div>;
+  );
 };
