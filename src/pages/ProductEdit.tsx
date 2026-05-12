@@ -1292,7 +1292,7 @@ const ProductEdit = () => {
                 )}
                 {!isNew && (
                   <TabsTrigger value="channels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
-                    Channels
+                    Business Rules
                   </TabsTrigger>
                 )}
                 <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
