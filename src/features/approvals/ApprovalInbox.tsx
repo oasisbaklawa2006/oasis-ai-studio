@@ -42,6 +42,7 @@ const TABS = [
   { key: "rejected", label: "Rejection Bin" },
 ] as const;
 
+/** Fallback labels when payload has no `needs_admin_review_flags` (main inbox behavior). */
 const FLAG_CHIPS = ["SKU", "Pricing", "Nutrition", "Compliance", "BOM", "MOQ", "Department"];
 
 const getSubmittedBy = (item: ApprovalItem) => item.submitter_name || item.submitter_email || item.submitted_by || "Unknown";
@@ -57,12 +58,81 @@ const formatAge = (dateStr?: string | null) => {
   return `Submitted ${days} day${days === 1 ? "" : "s"} ago`;
 };
 
-const read = (payload: Record<string, any> | null | undefined, ...keys: string[]) => {
-  if (!payload) return "—";
-  for (const key of keys) {
-    if (payload[key] !== undefined && payload[key] !== null && payload[key] !== "") return String(payload[key]);
+const nestedRead = (payload: Record<string, any> | null | undefined, path: string) => {
+  if (!payload) return undefined;
+  return path.split(".").reduce<any>((acc, key) => (acc == null ? undefined : acc[key]), payload);
+};
+
+const read = (payload: Record<string, any> | null | undefined, ...paths: string[]) => {
+  for (const path of paths) {
+    const value = nestedRead(payload, path);
+    if (value !== undefined && value !== null && value !== "") return String(value);
   }
   return "—";
+};
+
+const formatProductMoq = (payload: Record<string, any> | null | undefined) => {
+  const moqValue = nestedRead(payload, "moq.moq_value");
+  const moqUom = nestedRead(payload, "moq.moq_uom");
+  const incValue = nestedRead(payload, "moq.increment_value");
+  const incUom = nestedRead(payload, "moq.increment_uom");
+
+  const base = [moqValue, moqUom].filter((v) => v !== undefined && v !== null && v !== "").join(" ");
+  const increment = [incValue, incUom].filter((v) => v !== undefined && v !== null && v !== "").join(" ");
+
+  if (!base && !increment) {
+    const legacy = read(payload, "moq");
+    return legacy !== "—" ? legacy : "—";
+  }
+  if (!increment) return base;
+  return `${base}, increment ${increment}`;
+};
+
+const formatPricing = (payload: Record<string, any> | null | undefined) => {
+  const mrp = nestedRead(payload, "pricing.mrp");
+  const b2b = nestedRead(payload, "pricing.b2b_price");
+  const exportPrice = nestedRead(payload, "pricing.export_price");
+  const gst = nestedRead(payload, "pricing.gst_rate");
+
+  const lines = [
+    mrp !== undefined && mrp !== null && mrp !== "" ? `MRP: ${mrp}` : null,
+    b2b !== undefined && b2b !== null && b2b !== "" ? `B2B: ${b2b}` : null,
+    exportPrice !== undefined && exportPrice !== null && exportPrice !== "" ? `Export: ${exportPrice}` : null,
+    gst !== undefined && gst !== null && gst !== "" ? `GST: ${gst}` : null,
+  ].filter(Boolean);
+
+  if (lines.length) return lines.join(" • ");
+  const legacy = read(payload, "pricing");
+  return legacy !== "—" ? legacy : "—";
+};
+
+const formatBom = (payload: Record<string, any> | null | undefined) => {
+  const required = nestedRead(payload, "bom.required");
+  const expectedType = nestedRead(payload, "bom.expected_type");
+  const requiredText = required === true ? "Required" : required === false ? "Not required" : null;
+  if (requiredText && expectedType) return `${requiredText} (${expectedType})`;
+  if (requiredText) return requiredText;
+  if (expectedType) return String(expectedType);
+
+  const legacyRequired = read(payload, "bom_required");
+  const legacyType = read(payload, "expected_bom_type");
+  if (legacyRequired !== "—" || legacyType !== "—") {
+    return [legacyRequired !== "—" ? legacyRequired : null, legacyType !== "—" ? legacyType : null].filter(Boolean).join(" · ");
+  }
+  return "—";
+};
+
+const getReviewFlags = (payload: Record<string, any> | null | undefined) => {
+  const flags = nestedRead(payload, "needs_admin_review_flags");
+  if (!flags || typeof flags !== "object") return [];
+  return Object.entries(flags)
+    .filter(([, enabled]) => enabled === true)
+    .map(([key]) => key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
+};
+
+const getDisplayReviewFlags = (payload: Record<string, any> | null | undefined) => {
+  const dynamic = getReviewFlags(payload);
+  return dynamic.length > 0 ? dynamic : FLAG_CHIPS;
 };
 
 export default function ApprovalInbox() {
@@ -139,7 +209,7 @@ export default function ApprovalInbox() {
             const count = groupedByStatus[tab.key].length;
             const isActive = activeTab === tab.key;
             return (
-              <Button key={tab.key} variant={isActive ? "default" : "outline"} onClick={() => setActiveTab(tab.key)}>
+              <Button key={tab.key} variant={isActive ? "default" : "outline"} className="rounded-full" onClick={() => setActiveTab(tab.key)}>
                 {tab.label} ({count})
               </Button>
             );
@@ -148,81 +218,105 @@ export default function ApprovalInbox() {
 
         <div className="space-y-4">
           {currentItems.length === 0 && (
-            <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">No items in this section.</div>
+            <div className="catalogue-empty py-10">
+              <p className="catalogue-empty-text">No items in this section.</p>
+            </div>
           )}
 
           {currentItems.map((r) => {
             const isPending = r.status === "pending_approval";
             const isApproved = r.status === "approved";
             const isRejected = r.status === "rejected";
+            const reviewFlags = getDisplayReviewFlags(r.payload);
+            const flagsFromPayload = getReviewFlags(r.payload).length > 0;
 
             return (
-              <div key={`${r.draftType}-${r.id}`} className="rounded-xl bg-white p-4 shadow-sm border space-y-3">
+              <div key={`${r.draftType}-${r.id}`} className="luxe-panel space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm">
-                    <div className="font-semibold capitalize">{r.draftType} draft · {r.operation || "update"}</div>
+                    <div className="font-semibold capitalize text-foreground">{r.draftType} draft · {r.operation || "update"}</div>
                     <div className="text-muted-foreground">Target: {r.target_record_id || "(new)"}</div>
                   </div>
 
-                  {isPending && <span className="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold">AWAITING APPROVAL</span>}
-                  {isApproved && <span className="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold">APPROVED</span>}
-                  {isRejected && <span className="rounded-full bg-red-100 text-red-800 px-3 py-1 text-xs font-semibold">REJECTED</span>}
+                  {isPending && <span className="badge-soft catalogue-status-review">Awaiting approval</span>}
+                  {isApproved && <span className="badge-soft catalogue-status-published">Approved</span>}
+                  {isRejected && <span className="badge-soft bg-destructive/10 text-destructive border border-destructive/20">Rejected</span>}
                 </div>
 
                 <div className="text-sm text-muted-foreground space-y-1">
                   <div>{formatAge(r.submitted_at)}</div>
                   <div>Submitted by: {getSubmittedBy(r)}</div>
-                  {isRejected && <div className="text-red-700 font-medium">Reason: {r.rejection_reason || "No reason provided"}</div>}
+                  {isRejected && <div className="text-destructive font-medium">Reason: {r.rejection_reason || "No reason provided"}</div>}
                   {isRejected && r.rejected_at && <div>Rejected at: {new Date(r.rejected_at).toLocaleString()}</div>}
                 </div>
 
                 {r.draftType === "product" ? (
-                  <div className="rounded-lg border bg-slate-50 p-3 text-sm space-y-2">
-                    <div><span className="font-medium">Product Name:</span> {read(r.payload, "product_name", "name")}</div>
-                    <div><span className="font-medium">Product Class:</span> {read(r.payload, "product_class", "class")}</div>
-                    <div><span className="font-medium">Product Type:</span> {read(r.payload, "product_type", "type")}</div>
-                    <div><span className="font-medium">Category:</span> {read(r.payload, "category")}</div>
-                    <div><span className="font-medium">Subcategory:</span> {read(r.payload, "subcategory")}</div>
-                    <div><span className="font-medium">Main Department:</span> {read(r.payload, "main_department")}</div>
-                    <div><span className="font-medium">Production Department:</span> {read(r.payload, "production_department")}</div>
-                    <div><span className="font-medium">Primary Pack:</span> {read(r.payload, "primary_pack")}</div>
-                    <div><span className="font-medium">MOQ:</span> {read(r.payload, "moq")}</div>
-                    <div><span className="font-medium">Pricing:</span> {read(r.payload, "pricing")}</div>
-                    <div><span className="font-medium">Compliance Review Needed:</span> {read(r.payload, "compliance_review_needed")}</div>
-                    <div><span className="font-medium">BOM Required:</span> {read(r.payload, "bom_required")}</div>
-                    <div><span className="font-medium">Expected BOM Type:</span> {read(r.payload, "expected_bom_type")}</div>
-                    <div><span className="font-medium">Submitted By:</span> {getSubmittedBy(r)}</div>
-                    <div><span className="font-medium">Submitted At:</span> {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "—"}</div>
-                    <div><span className="font-medium">Target:</span> {r.target_record_id || "(new)"}</div>
-                    <div><span className="font-medium">Operation:</span> {r.operation || "update"}</div>
+                  <div className="rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm space-y-2">
+                    <div><span className="font-medium text-foreground">Product Name:</span> {read(r.payload, "identity.product_name", "product_name", "name")}</div>
+                    <div><span className="font-medium text-foreground">Product Class:</span> {read(r.payload, "identity.product_class", "product_class", "class")}</div>
+                    <div><span className="font-medium text-foreground">Product Type:</span> {read(r.payload, "identity.product_type", "product_type", "type")}</div>
+                    <div><span className="font-medium text-foreground">Category:</span> {read(r.payload, "identity.category", "category")}</div>
+                    <div><span className="font-medium text-foreground">Subcategory:</span> {read(r.payload, "identity.subcategory", "subcategory")}</div>
+                    <div>
+                      <span className="font-medium text-foreground">Department Route:</span>{" "}
+                      {`${read(r.payload, "identity.main_department", "main_department")} → ${read(r.payload, "identity.production_department", "production_department")}`}
+                    </div>
+                    <div><span className="font-medium text-foreground">Primary Pack:</span> {read(r.payload, "packing.pack_preview", "primary_pack")}</div>
+                    <div><span className="font-medium text-foreground">MOQ:</span> {formatProductMoq(r.payload)}</div>
+                    <div><span className="font-medium text-foreground">Pricing:</span> {formatPricing(r.payload)}</div>
+                    <div><span className="font-medium text-foreground">Compliance Review Needed:</span> {read(r.payload, "compliance.review_needed", "compliance_review_needed")}</div>
+                    <div><span className="font-medium text-foreground">BOM:</span> {formatBom(r.payload)}</div>
+                    <div><span className="font-medium text-foreground">Submitted By:</span> {getSubmittedBy(r)}</div>
+                    <div><span className="font-medium text-foreground">Submitted At:</span> {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "—"}</div>
+                    <div><span className="font-medium text-foreground">Target:</span> {r.target_record_id || "(new)"}</div>
+                    <div><span className="font-medium text-foreground">Operation:</span> {r.operation || "update"}</div>
 
-                    <div className="pt-1">
-                      <div className="font-medium mb-1">Review Flags:</div>
+                    <div className="pt-2 border-t border-border/50">
+                      <div className="font-medium mb-1.5 text-foreground">
+                        Review Flags{flagsFromPayload ? "" : " (standard areas)"}:
+                      </div>
                       <div className="flex flex-wrap gap-2">
-                        {FLAG_CHIPS.map((flag) => (
-                          <span key={flag} className="rounded-full bg-slate-200 px-2 py-0.5 text-xs">{flag}</span>
+                        {reviewFlags.map((flag) => (
+                          <span
+                            key={flag}
+                            className={`rounded-full px-2.5 py-0.5 text-xs ${flagsFromPayload ? "bg-accent/15 text-accent-foreground border border-accent/25" : "bg-muted text-muted-foreground"}`}
+                          >
+                            {flag}
+                          </span>
                         ))}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-sm">Draft type: <span className="font-medium capitalize">{r.draftType}</span></div>
+                  <div className="text-sm text-muted-foreground">
+                    Draft type: <span className="font-medium capitalize text-foreground">{r.draftType}</span>
+                  </div>
                 )}
 
-                <details className="text-sm">
-                  <summary className="cursor-pointer text-muted-foreground">View technical payload</summary>
-                  <pre className="mt-2 text-xs bg-muted p-2 rounded overflow-auto max-h-56">{JSON.stringify(r.payload, null, 2)}</pre>
+                <details className="text-sm group">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground transition-colors">
+                    View technical payload
+                  </summary>
+                  <pre className="mt-2 text-xs bg-muted/50 border border-border/60 p-3 rounded-lg overflow-auto max-h-56">
+                    {JSON.stringify(r.payload, null, 2)}
+                  </pre>
                 </details>
 
                 {isPending && (
-                  <div className="flex gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
                     <Input
-                      placeholder="Reject reason (required)"
+                      className="flex-1"
+                      placeholder="Rejection reason (required)"
                       value={reasons[r.id] ?? ""}
                       onChange={(e) => setReasons((x) => ({ ...x, [r.id]: e.target.value }))}
+                      aria-label="Rejection reason"
                     />
-                    <Button variant="outline" onClick={() => reject(r)}>Reject</Button>
-                    <Button onClick={() => approve(r)}>Approve</Button>
+                    <div className="flex gap-2 shrink-0">
+                      <Button variant="outline" className="rounded-full" onClick={() => reject(r)} disabled={!(reasons[r.id] || "").trim()}>
+                        Reject
+                      </Button>
+                      <Button className="rounded-full" onClick={() => approve(r)}>Approve</Button>
+                    </div>
                   </div>
                 )}
               </div>
