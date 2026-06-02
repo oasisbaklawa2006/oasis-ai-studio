@@ -87,9 +87,54 @@ where n.nspname = 'public'
     'products',
     'product_variants',
     'profiles',
+    'tags',
+    'product_tags',
     'product_aliases',
     'product_bom',
     'moq_rules',
     'pricing_slabs'
   )
 order by c.relname;
+
+-- 7. PR-06C1: tags + product_aliases columns required for approve mapping
+select
+  table_name,
+  column_name,
+  data_type,
+  is_nullable,
+  column_default
+from information_schema.columns
+where table_schema = 'public'
+  and table_name in ('tags', 'product_aliases')
+order by table_name, ordinal_position;
+
+-- 8. PR-06C1: unique constraints used by approval logic
+select
+  tc.table_name,
+  tc.constraint_name,
+  tc.constraint_type,
+  kcu.column_name
+from information_schema.table_constraints tc
+join information_schema.key_column_usage kcu
+  on kcu.constraint_name = tc.constraint_name
+  and kcu.table_schema = tc.table_schema
+where tc.table_schema = 'public'
+  and tc.table_name in ('tags', 'product_aliases')
+  and tc.constraint_type in ('UNIQUE', 'PRIMARY KEY')
+order by tc.table_name, tc.constraint_name, kcu.ordinal_position;
+
+-- 9. PR-06C1: helper functions expected before running C1 migration
+select
+  p.proname as function_name,
+  pg_get_function_identity_arguments(p.oid) as args
+from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public'
+  and p.proname in (
+    'normalize_alias',
+    'is_catalogue_reviewer',
+    'reject_catalogue_draft',
+    'approve_catalogue_tag_draft',
+    'approve_catalogue_alias_draft'
+  )
+order by p.proname;
