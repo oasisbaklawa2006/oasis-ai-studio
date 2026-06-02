@@ -5,6 +5,7 @@ import { UomConversionPanel } from "./panels/UomConversionPanel";
 import { PackagingHierarchyPanel } from "./panels/PackagingHierarchyPanel";
 import { ChannelRulesPanel } from "./panels/ChannelRulesPanel";
 import { PreviewCalculatorPanel } from "./panels/PreviewCalculatorPanel";
+import { CentralSyncPreviewPanel } from "@/features/catalogueSnapshot/panels/CentralSyncPreviewPanel";
 import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
 import type { ChannelMoqRule, ChannelPriceRecord } from "./types";
 
@@ -57,6 +58,7 @@ export function ProductTruthAdminSection({
           <TabsTrigger value="packaging" className="text-xs">Packaging</TabsTrigger>
           <TabsTrigger value="channels" className="text-xs">Channels</TabsTrigger>
           <TabsTrigger value="preview" className="text-xs">Preview</TabsTrigger>
+          <TabsTrigger value="central_sync" className="text-xs">Central Sync</TabsTrigger>
         </TabsList>
 
         <TabsContent value="readiness" className="mt-4">
@@ -74,6 +76,18 @@ export function ProductTruthAdminSection({
         <TabsContent value="preview" className="mt-4">
           <PreviewCalculatorPanel packaging={truthInput.packaging ?? {}} moqRules={moqRules} />
         </TabsContent>
+        {productId && (
+          <TabsContent value="central_sync" className="mt-4">
+            <CentralSyncPreviewPanel
+              form={form}
+              productId={productId}
+              complianceApproved={complianceApproved}
+              complianceMetaPending={complianceMetaPending}
+              prices={prices}
+              moqRules={moqRules}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       {!productId && (
