@@ -24,6 +24,7 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
