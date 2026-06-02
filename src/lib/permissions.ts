@@ -25,7 +25,8 @@ const MATRIX: Record<PageKey, Role[]> = {
   sku_write:         ["owner","admin","product_manager"],
   aliases_write:     ["owner","admin","product_manager"],
   media:             ["owner","admin","product_manager","catalogue_manager","designer"],
-  tags:              ["owner","admin","product_manager","catalogue_manager"],
+  // catalogue_contributor: view + draft submit only (see Tags.tsx write boundary).
+  tags:              ["owner","admin","product_manager","catalogue_manager","catalogue_contributor"],
   catalogues:        ["owner","admin","product_manager","catalogue_manager","sales"],
   catalogues_write:  ["owner","admin","catalogue_manager"],
   hampers:           ["owner","admin","product_manager"],
