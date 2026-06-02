@@ -24,6 +24,7 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -1850,10 +1851,10 @@ const ProductEdit = () => {
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="HSN">
-                    <Input value={form.hsn_code ?? ""} onChange={(e) => setComplianceField("hsn_code", e.target.value)} />
+                    <Input value={form.hsn_code ?? ""} onChange={(e) => set("hsn_code", e.target.value)} />
                   </Field>
                   <Field label="GST %">
-                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => setComplianceField("gst_rate", e.target.value)} />
+                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => set("gst_rate", e.target.value)} />
                   </Field>
                   <Field label="Currency">
                     <Input value={form.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} />
