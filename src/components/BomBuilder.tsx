@@ -6,6 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { AlertTriangle, Boxes, Link2, Plus, Search, Trash2, X } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
+import {
+  canSubmitDraft,
+  canWriteMasterDirectly,
+  isCatalogueContributor,
+} from "@/shared/auth/centralPermissions";
+import type { Role } from "@/lib/permissions";
 
 type BomType = "internal_bom" | "hamper_bom";
 
@@ -32,6 +41,18 @@ interface Props {
   productClass?: string | null;
   bomRequired?: boolean;
 }
+
+const DIRECT_BOM_ROLES: Role[] = ["owner", "admin", "product_manager"];
+
+type WriteMode = "direct" | "draft" | "readonly";
+
+type BomLineDraftFields = {
+  component_product_id: string | null;
+  component_name: string | null;
+  quantity_per_unit: number;
+  source_department: string | null;
+  bom_type?: BomType;
+};
 
 const BOM_TYPES: { v: BomType; label: string; description: string }[] = [
   {
@@ -60,11 +81,12 @@ const emptyDraft = () => ({
   source_department: "",
 });
 
-const Select = ({ value, onChange, options, placeholder }: any) => (
+const Select = ({ value, onChange, options, placeholder, disabled }: any) => (
   <select
-    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
     value={value ?? ""}
     onChange={(e) => onChange(e.target.value || null)}
+    disabled={disabled}
   >
     <option value="">{placeholder ?? "— Select —"}</option>
     {options.map((o: any) => (
@@ -89,14 +111,46 @@ const formatDepartment = (value?: string | null) => {
 
 const productDisplayName = (p: ProductOption) => p.name || p.sku || p.id;
 
+const buildCatalogueDraftPayload = (
+  productId: string,
+  fields: BomLineDraftFields,
+  includeBomType: boolean
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {
+    scope: "product_bom_line",
+    product_id: productId,
+    component_product_id: fields.component_product_id,
+    component_name: fields.component_name,
+    quantity_per_unit: fields.quantity_per_unit,
+    source_department: fields.source_department,
+  };
+
+  if (includeBomType && fields.bom_type) {
+    payload.bom_type = fields.bom_type;
+  }
+
+  return payload;
+};
+
+const bomLineFieldsFromItem = (item: BomItem): BomLineDraftFields => ({
+  component_product_id: item.component_product_id,
+  component_name: item.component_name,
+  quantity_per_unit: Number(item.quantity_per_unit ?? 1),
+  source_department: item.source_department,
+  bom_type: (item.bom_type as BomType) || "internal_bom",
+});
+
 const isMissingBomTypeColumnError = (message?: string | null) => {
   const m = String(message || "").toLowerCase();
   return m.includes("bom_type") || m.includes("schema cache");
 };
 
 export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
+  const { roles } = useAuth();
   const [items, setItems] = useState<BomItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [writeMode, setWriteMode] = useState<WriteMode>("readonly");
+  const [submitting, setSubmitting] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyDraft());
@@ -170,7 +224,29 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentId]);
 
+  useEffect(() => {
+    (async () => {
+      const roleList = roles as Role[];
+      const hasDirect =
+        roleList.some((r) => DIRECT_BOM_ROLES.includes(r)) || (await canWriteMasterDirectly());
+      if (hasDirect) {
+        setWriteMode("direct");
+        return;
+      }
+      if (await isCatalogueContributor()) {
+        const canSubmit = await canSubmitDraft(draftTableMap.bom.permission);
+        setWriteMode(canSubmit ? "draft" : "readonly");
+        return;
+      }
+      setWriteMode("readonly");
+    })();
+  }, [roles]);
+
+  const canMutate = writeMode === "direct" || writeMode === "draft";
+
   const searchProducts = async () => {
+    if (submitting) return;
+
     const q = productSearch.trim();
 
     if (q.length < 2) {
@@ -271,7 +347,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     return null;
   };
 
-  const buildPayload = () => {
+  const buildDirectPayload = () => {
     const payload: Record<string, any> = {
       product_id: parentId,
       component_product_id: draft.component_product_id || null,
@@ -287,7 +363,17 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     return payload;
   };
 
+  const buildFormLineFields = (): BomLineDraftFields => ({
+    component_product_id: draft.component_product_id || null,
+    component_name: draft.component_name.trim() || null,
+    quantity_per_unit: Number(draft.quantity_per_unit),
+    source_department: draft.source_department || null,
+    bom_type: selectedBomType,
+  });
+
   const save = async () => {
+    if (!canMutate || submitting) return;
+
     const validationError = validateDraft();
 
     if (validationError) {
@@ -295,40 +381,102 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       return;
     }
 
-    const payload = buildPayload();
+    setSubmitting(true);
+    try {
+      if (writeMode === "direct") {
+        const payload = buildDirectPayload();
 
-    const result = editingId
-      ? await (supabase as any)
-          .from("product_bom")
-          .update(payload)
-          .eq("id", editingId)
-      : await (supabase as any).from("product_bom").insert(payload);
+        const result = editingId
+          ? await (supabase as any)
+              .from("product_bom")
+              .update(payload)
+              .eq("id", editingId)
+          : await (supabase as any).from("product_bom").insert(payload);
 
-    if (result.error) {
-      toast.error(result.error.message);
-      return;
+        if (result.error) {
+          toast.error(result.error.message);
+          return;
+        }
+
+        toast.success(editingId ? "BOM component updated" : "BOM component added");
+        cancel();
+        await load();
+        return;
+      }
+
+      const draftPayload = buildCatalogueDraftPayload(
+        parentId,
+        buildFormLineFields(),
+        supportsBomType !== false
+      );
+
+      const res = await submitCatalogueDraft({
+        draftType: "bom",
+        operation: editingId ? "update" : "create",
+        payload: draftPayload,
+        targetRecordId: editingId,
+      });
+
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+
+      toast.success(
+        editingId
+          ? "BOM line change submitted for approval."
+          : "BOM line submitted for approval. Approved BOM changes will appear here after review."
+      );
+      cancel();
+    } finally {
+      setSubmitting(false);
     }
-
-    toast.success(editingId ? "BOM component updated" : "BOM component added");
-    cancel();
-    load();
   };
 
-  const remove = async (id: string) => {
+  const remove = async (item: BomItem) => {
+    if (!canMutate || submitting) return;
     if (!confirm("Remove this BOM component?")) return;
 
-    const { error } = await (supabase as any)
-      .from("product_bom")
-      .delete()
-      .eq("id", id);
+    setSubmitting(true);
+    try {
+      if (writeMode === "direct") {
+        const { error } = await (supabase as any)
+          .from("product_bom")
+          .delete()
+          .eq("id", item.id);
 
-    if (error) {
-      toast.error(error.message);
-      return;
+        if (error) {
+          toast.error(error.message);
+          return;
+        }
+
+        toast.success("BOM component removed");
+        await load();
+        return;
+      }
+
+      const res = await submitCatalogueDraft({
+        draftType: "bom",
+        operation: "delete_request",
+        payload: buildCatalogueDraftPayload(
+          parentId,
+          bomLineFieldsFromItem(item),
+          supportsBomType !== false
+        ),
+        targetRecordId: item.id,
+      });
+
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+
+      toast.success(
+        "Delete request submitted for approval. This BOM line stays visible until review."
+      );
+    } finally {
+      setSubmitting(false);
     }
-
-    toast.success("BOM component removed");
-    load();
   };
 
   const visibleItems = useMemo(() => {
@@ -404,6 +552,12 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
         Selected: <span className="font-medium text-foreground">{selectedTypeMeta.label}</span> — {selectedTypeMeta.description}
       </div>
+
+      {writeMode === "draft" && (
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          BOM line changes are submitted for approval. Approved BOM changes will appear here after review.
+        </p>
+      )}
 
       {warnings.length > 0 && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs space-y-1">
@@ -489,41 +643,63 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                 )}
               </div>
 
-              <div className="flex gap-1 shrink-0">
-                <Button size="sm" variant="outline" onClick={() => startEdit(item)}>
-                  Edit
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => remove(item.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+              {canMutate && (
+                <div className="flex gap-1 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => startEdit(item)}
+                    disabled={submitting}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => remove(item)}
+                    disabled={submitting}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           ))
         )}
       </div>
 
-      {!showAdd && (
-        <Button onClick={startAdd}>
+      {!showAdd && canMutate && (
+        <Button onClick={startAdd} disabled={submitting}>
           <Plus className="h-4 w-4 mr-1" />
           Add {selectedTypeMeta.label} component
         </Button>
       )}
 
-      {showAdd && (
+      {showAdd && canMutate && (
         <div className="card-elevated p-5 space-y-4 border-primary/30">
           <div className="flex items-center justify-between">
             <h4 className="font-display text-lg">
               {editingId ? "Edit" : "Add"} {selectedTypeMeta.label} component
             </h4>
-            <Button size="icon" variant="ghost" onClick={cancel}>
+            <Button size="icon" variant="ghost" onClick={cancel} disabled={submitting}>
               <X className="h-4 w-4" />
             </Button>
           </div>
 
           <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-            This form writes to <span className="font-mono">public.product_bom</span>.
-            Supported columns: product_id, component_product_id, component_name,
-            quantity_per_unit, source_department{supportsBomType === false ? "." : ", bom_type."}
+            {writeMode === "draft" ? (
+              <>
+                Changes submit a BOM line draft for approval. Fields: component link or name,
+                quantity per unit, source department
+                {supportsBomType === false ? "." : ", and BOM type."}
+              </>
+            ) : (
+              <>
+                Supported columns: product_id, component_product_id, component_name,
+                quantity_per_unit, source_department
+                {supportsBomType === false ? "." : ", bom_type."}
+              </>
+            )}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
@@ -533,6 +709,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                 value={selectedBomType}
                 onChange={(value: BomType) => setSelectedBomType(value)}
                 options={BOM_TYPES}
+                disabled={submitting}
               />
             </div>
 
@@ -543,7 +720,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                 <div className="flex items-center gap-2 rounded-md border p-2 text-sm">
                   <Link2 className="h-4 w-4 text-muted-foreground" />
                   <span className="flex-1 truncate">{draft.component_name}</span>
-                  <Button size="sm" variant="ghost" onClick={clearPickedProduct}>
+                  <Button size="sm" variant="ghost" onClick={clearPickedProduct} disabled={submitting}>
                     Clear link
                   </Button>
                 </div>
@@ -554,6 +731,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                       value={productSearch}
                       onChange={(e) => setProductSearch(e.target.value)}
                       placeholder="Search product by name, SKU, or category…"
+                      disabled={submitting}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -565,7 +743,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                       type="button"
                       variant="outline"
                       onClick={searchProducts}
-                      disabled={productSearchLoading}
+                      disabled={productSearchLoading || submitting}
                     >
                       <Search className="h-4 w-4 mr-1" />
                       {productSearchLoading ? "Searching…" : "Search"}
@@ -580,6 +758,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                           type="button"
                           className="w-full text-left px-3 py-2 hover:bg-muted/60"
                           onClick={() => pickProduct(product)}
+                          disabled={submitting}
                         >
                           <div className="text-sm font-medium truncate">
                             {productDisplayName(product)}
@@ -602,6 +781,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                 value={draft.component_name}
                 onChange={(e) => setD("component_name", e.target.value)}
                 placeholder="Example: Acrylic box, Pistachio Baklawa, Ribbon, Tray"
+                disabled={submitting}
               />
             </div>
 
@@ -613,6 +793,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                 step="0.001"
                 value={draft.quantity_per_unit}
                 onChange={(e) => setD("quantity_per_unit", e.target.value)}
+                disabled={submitting}
               />
             </div>
 
@@ -622,16 +803,19 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                 value={draft.source_department}
                 onChange={(value: string) => setD("source_department", value)}
                 options={SOURCE_DEPARTMENTS}
+                disabled={submitting}
               />
             </div>
           </div>
 
           <div className="flex gap-2 justify-end">
-            <Button variant="outline" onClick={cancel}>
+            <Button variant="outline" onClick={cancel} disabled={submitting}>
               Cancel
             </Button>
-            <Button onClick={save}>
-              {editingId ? "Update" : "Add"} component
+            <Button onClick={save} disabled={submitting}>
+              {submitting
+                ? "Submitting…"
+                : `${editingId ? "Update" : "Add"} component`}
             </Button>
           </div>
         </div>
