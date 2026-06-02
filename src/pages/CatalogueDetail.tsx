@@ -12,12 +12,13 @@ import { ProductPicker } from "@/components/ProductPicker";
 import { SharePanel } from "@/components/SharePanel";
 import { useAuth } from "@/contexts/AuthContext";
 import { canAccessPage } from "@/lib/permissions";
+import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 
-const STATUS_TONES: Record<string, string> = {
-  draft: "bg-muted text-muted-foreground",
-  internal_review: "bg-warning/10 text-warning",
-  published: "bg-success/10 text-success",
-  archived: "bg-destructive/10 text-destructive",
+const statusClass = (status: string) => {
+  if (status === "published") return "catalogue-status-published";
+  if (status === "internal_review") return "catalogue-status-review";
+  if (status === "archived") return "catalogue-status-archived";
+  return "catalogue-status-draft";
 };
 
 const CatalogueDetail = () => {
@@ -37,7 +38,18 @@ const CatalogueDetail = () => {
   };
   useEffect(() => { load(); }, [id]);
 
-  if (!c) return <div className="text-muted-foreground">Loading…</div>;
+  if (!c) {
+    return (
+      <div className="catalogue-loading min-h-[40vh]" aria-busy="true">
+        <div className="flex gap-2">
+          <span className="catalogue-loading-dot" />
+          <span className="catalogue-loading-dot" style={{ animationDelay: "150ms" }} />
+          <span className="catalogue-loading-dot" style={{ animationDelay: "300ms" }} />
+        </div>
+        <p className="luxe-sub text-muted-foreground">Loading catalogue</p>
+      </div>
+    );
+  }
 
   const update = async (patch: any) => {
     const { error } = await supabase.from("catalogues").update(patch).eq("id", id);
@@ -65,20 +77,20 @@ const CatalogueDetail = () => {
       <CatalogueWriteModeBanner />
       <PageHeader title={c.title} subtitle={c.subtitle ?? "Catalogue editor"}
         actions={<>
-          <span className={`badge-soft ${STATUS_TONES[status]} capitalize`}>{status.replace(/_/g, " ")}</span>
-          <Button variant="outline" onClick={() => nav("/catalogues")}>Back</Button>
-          <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print / PDF</Button>
-          <Button variant="outline" onClick={() => nav(`/catalogues/${id}/proposal`)}><FileText className="h-4 w-4 mr-1" />Proposal / PDF</Button>
-          <Button asChild><a href={`/c/${c.public_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" />Public</a></Button>
+          <span className={`badge-soft capitalize ${statusClass(status)}`}>{status.replace(/_/g, " ")}</span>
+          <Button variant="outline" className="rounded-full" onClick={() => nav("/catalogues")}>Back</Button>
+          <Button variant="outline" className="rounded-full" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print / PDF</Button>
+          <Button variant="outline" className="rounded-full" onClick={() => nav(`/catalogues/${id}/proposal`)}><FileText className="h-4 w-4 mr-1" />Proposal / PDF</Button>
+          <Button asChild className="rounded-full"><a href={`/c/${c.public_slug}`} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4 mr-1" />Public</a></Button>
         </>} />
 
       {canWrite && (
         <div className="luxe-panel mb-6 flex flex-wrap gap-2 no-print">
-          <Button size="sm" variant="outline" onClick={() => setStatus("draft")}><Undo2 className="h-4 w-4 mr-1" />Save Draft</Button>
-          <Button size="sm" variant="outline" onClick={() => setStatus("internal_review")}><Send className="h-4 w-4 mr-1" />Send to Internal Review</Button>
-          <Button size="sm" onClick={() => setStatus("published")}><CheckCircle2 className="h-4 w-4 mr-1" />Publish</Button>
-          {status === "published" && <Button size="sm" variant="outline" onClick={() => setStatus("draft")}>Unpublish</Button>}
-          <Button size="sm" variant="ghost" onClick={() => setStatus("archived")}><Archive className="h-4 w-4 mr-1" />Archive</Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={() => setStatus("draft")}><Undo2 className="h-4 w-4 mr-1" />Save Draft</Button>
+          <Button size="sm" variant="outline" className="rounded-full" onClick={() => setStatus("internal_review")}><Send className="h-4 w-4 mr-1" />Send to Internal Review</Button>
+          <Button size="sm" className="rounded-full" onClick={() => setStatus("published")}><CheckCircle2 className="h-4 w-4 mr-1" />Publish</Button>
+          {status === "published" && <Button size="sm" variant="outline" className="rounded-full" onClick={() => setStatus("draft")}>Unpublish</Button>}
+          <Button size="sm" variant="ghost" className="rounded-full" onClick={() => setStatus("archived")}><Archive className="h-4 w-4 mr-1" />Archive</Button>
         </div>
       )}
 
@@ -90,18 +102,22 @@ const CatalogueDetail = () => {
             </div>
             <div className="space-y-2">
               {linked.map((l) => (
-                <div key={l.id} className="flex items-center gap-3 p-2 rounded-lg border border-border/60 bg-background/40 min-w-0">
-                  <div className="h-12 w-12 bg-secondary rounded-lg overflow-hidden flex-shrink-0">
-                    {l.products?.hero_image_url && <img src={l.products.hero_image_url} className="w-full h-full object-cover" />}
+                <div key={l.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/60 bg-background/50 min-w-0 transition-colors hover:bg-secondary/30">
+                  <div className="h-14 w-14 bg-secondary/80 rounded-xl overflow-hidden flex-shrink-0 ring-1 ring-border/50">
+                    {l.products?.hero_image_url && <img src={l.products.hero_image_url} className="w-full h-full object-cover" alt="" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{l.products?.product_name}</div>
-                    <div className="text-xs text-muted-foreground font-mono truncate">{l.products?.sku}</div>
+                    <div className="text-sm font-medium truncate text-foreground">{l.products?.product_name}</div>
+                    <div className="text-xs text-muted-foreground font-mono truncate mt-0.5">{l.products?.sku}</div>
                   </div>
-                  {canWrite && <Button size="icon" variant="ghost" onClick={() => removeProduct(l.id)}><Trash2 className="h-4 w-4" /></Button>}
+                  {canWrite && <Button size="icon" variant="ghost" className="shrink-0 rounded-full" onClick={() => removeProduct(l.id)}><Trash2 className="h-4 w-4" /></Button>}
                 </div>
               ))}
-              {linked.length === 0 && <div className="text-sm text-muted-foreground py-4 text-center">Add products from the right panel.</div>}
+              {linked.length === 0 && (
+                <div className="catalogue-empty py-10">
+                  <p className="catalogue-empty-text">Add products from the panel on the right to build your catalogue.</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -116,7 +132,7 @@ const CatalogueDetail = () => {
           {canWrite && (
             <div className="luxe-panel space-y-4 no-print">
               <h3 className="luxe-section-title">Customer channel & price display</h3>
-              <p className="text-xs text-muted-foreground">Catalogue shows only the selected customer channel's price. Internal/franchisee/own-outlet prices must never be shown publicly.</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">Catalogue shows only the selected customer channel&apos;s price. Internal/franchisee/own-outlet prices must never be shown publicly.</p>
               <div className="grid sm:grid-cols-2 gap-3 min-w-0">
                 <div className="min-w-0">
                   <Label className="text-xs">Target customer channel</Label>
@@ -124,10 +140,10 @@ const CatalogueDetail = () => {
                     {["retail","b2c","bulk","wholesale","horeca","b2b","distributor","franchisee","own_outlet","export","private_label","corporate_gifting","wedding","price_hidden"].map((ch) => <option key={ch} value={ch}>{ch.replace(/_/g," ")}</option>)}
                   </select>
                 </div>
-                <div className="min-w-0"><Label className="text-xs">Price label (e.g. "B2B price")</Label><Input value={c.show_price_label ?? ""} onChange={(e) => setC({ ...c, show_price_label: e.target.value })} onBlur={(e) => update({ show_price_label: e.target.value || null })} /></div>
-                <div className="flex items-center justify-between border border-border/60 rounded-lg p-3"><Label className="text-xs">Show price</Label><input type="checkbox" checked={!!c.show_price} onChange={(e) => { setC({ ...c, show_price: e.target.checked }); update({ show_price: e.target.checked }); }} /></div>
-                <div className="flex items-center justify-between border border-border/60 rounded-lg p-3"><Label className="text-xs">Show MRP</Label><input type="checkbox" checked={!!c.show_mrp} onChange={(e) => { setC({ ...c, show_mrp: e.target.checked }); update({ show_mrp: e.target.checked }); }} /></div>
-                <div className="flex items-center justify-between border border-border/60 rounded-lg p-3"><Label className="text-xs">Show discount %</Label><input type="checkbox" checked={!!c.show_discount} onChange={(e) => { setC({ ...c, show_discount: e.target.checked }); update({ show_discount: e.target.checked }); }} /></div>
+                <div className="min-w-0"><Label className="text-xs">Price label (e.g. &quot;B2B price&quot;)</Label><Input value={c.show_price_label ?? ""} onChange={(e) => setC({ ...c, show_price_label: e.target.value })} onBlur={(e) => update({ show_price_label: e.target.value || null })} /></div>
+                <div className="flex items-center justify-between border border-border/60 rounded-xl p-3 bg-background/40"><Label className="text-xs">Show price</Label><input type="checkbox" checked={!!c.show_price} onChange={(e) => { setC({ ...c, show_price: e.target.checked }); update({ show_price: e.target.checked }); }} /></div>
+                <div className="flex items-center justify-between border border-border/60 rounded-xl p-3 bg-background/40"><Label className="text-xs">Show MRP</Label><input type="checkbox" checked={!!c.show_mrp} onChange={(e) => { setC({ ...c, show_mrp: e.target.checked }); update({ show_mrp: e.target.checked }); }} /></div>
+                <div className="flex items-center justify-between border border-border/60 rounded-xl p-3 bg-background/40"><Label className="text-xs">Show discount %</Label><input type="checkbox" checked={!!c.show_discount} onChange={(e) => { setC({ ...c, show_discount: e.target.checked }); update({ show_discount: e.target.checked }); }} /></div>
               </div>
             </div>
           )}
@@ -155,11 +171,11 @@ const CatalogueDetail = () => {
           {/* Print view */}
           <div className="hidden print:block print-page">
             <div className="text-center mb-6">
-              <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Oasis Baklawa</div>
-              <h1 className="font-display text-4xl mt-2">{c.title}</h1>
+              <div className="luxe-sub text-muted-foreground">Oasis Baklawa</div>
+              <h1 className="font-display text-4xl mt-2 text-foreground">{c.title}</h1>
               {c.subtitle && <div className="text-sm text-muted-foreground mt-1">{c.subtitle}</div>}
               {c.client_name && <div className="text-sm mt-2">For <strong>{c.client_name}</strong></div>}
-              {c.intro_text && <p className="text-sm max-w-2xl mx-auto mt-4">{c.intro_text}</p>}
+              {c.intro_text && <p className="text-sm max-w-2xl mx-auto mt-4 leading-relaxed">{c.intro_text}</p>}
             </div>
             <div className="print-grid">
               {linked.map((l) => {
@@ -169,13 +185,13 @@ const CatalogueDetail = () => {
                     <div className="luxe-media relative">
                       {p.hero_image_url
                         ? <img src={p.hero_image_url} alt={p.product_name} />
-                        : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><span className="font-display text-3xl text-accent/30">{p.product_name?.[0] ?? "·"}</span></div>}
+                        : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/50"><span className="font-display text-3xl text-accent/30">{p.product_name?.[0] ?? "·"}</span></div>}
                     </div>
                     <div className="p-4 text-center">
                       <div className="luxe-sub mb-1 truncate">{p.category || "Oasis Baklawa"}</div>
                       <div className="luxe-title break-words">{p.product_name}</div>
                       <div className="text-[10px] font-mono text-muted-foreground mt-1">{p.sku}</div>
-                      {p.short_description && <p className="text-xs mt-2 text-muted-foreground">{p.short_description}</p>}
+                      {p.short_description && <p className="text-xs mt-2 text-muted-foreground line-clamp-3">{p.short_description}</p>}
                       <div className="text-[11px] text-muted-foreground mt-2 space-y-0.5">
                         {p.pack_size && <div>Pack · {p.pack_size}</div>}
                         {p.shelf_life_days && <div>Shelf life · {p.shelf_life_days} days</div>}
@@ -200,12 +216,12 @@ const CatalogueDetail = () => {
               <ProductPicker excludeIds={linked.map((l) => l.product_id)} onPick={(p) => addProduct(p.id)} />
             </div>
           )}
-          <div className="luxe-panel text-xs text-muted-foreground space-y-1 break-words">
-            <div>Slug: <code className="font-mono text-foreground break-all">{c.public_slug}</code></div>
+          <div className="luxe-panel text-xs text-muted-foreground space-y-2 break-words">
+            <div>Slug: <code className="font-mono text-foreground break-all bg-secondary/50 px-1.5 py-0.5 rounded">{c.public_slug}</code></div>
             <div className="capitalize">Type: {c.catalogue_type?.replace(/_/g, " ")}</div>
             <div className="capitalize">Theme: {c.theme?.replace(/_/g, " ")}</div>
             <div className="capitalize">Price: {c.price_visibility}</div>
-            {status !== "published" && <div className="text-warning mt-2">Public link will return "Catalogue not available" until status is published.</div>}
+            {status !== "published" && <div className="text-warning mt-2 p-2 rounded-lg bg-warning/10 border border-warning/20">Public link will return &quot;Catalogue not available&quot; until status is published.</div>}
           </div>
         </div>
       </div>
