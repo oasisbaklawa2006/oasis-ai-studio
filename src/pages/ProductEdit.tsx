@@ -24,7 +24,6 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
-import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -1871,6 +1870,17 @@ const ProductEdit = () => {
                 </div>
               </div>
             </TabsContent>
+
+            {!isNew && (
+              <TabsContent value="product_truth" className="space-y-6">
+                <ProductTruthAdminSection
+                  form={form}
+                  productId={id}
+                  complianceApproved={canOverride}
+                  complianceMetaPending={false}
+                />
+              </TabsContent>
+            )}
 
             <TabsContent value="ops" className="space-y-6">
               <div className="card-elevated p-6 space-y-4">
