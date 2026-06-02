@@ -40,8 +40,29 @@ const CatalogueProposal = () => {
     })();
   }, [id]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading proposal…</div>;
-  if (!cat) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Catalogue not found.</div>;
+  if (loading) {
+    return (
+      <div className="catalogue-loading" aria-busy="true">
+        <div className="flex gap-2">
+          <span className="catalogue-loading-dot" />
+          <span className="catalogue-loading-dot" style={{ animationDelay: "150ms" }} />
+          <span className="catalogue-loading-dot" style={{ animationDelay: "300ms" }} />
+        </div>
+        <p className="luxe-sub text-muted-foreground">Loading proposal</p>
+      </div>
+    );
+  }
+
+  if (!cat) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-background">
+        <div className="catalogue-empty max-w-md w-full">
+          <h1 className="catalogue-empty-title">Catalogue not found</h1>
+          <p className="catalogue-empty-text">This proposal could not be loaded.</p>
+        </div>
+      </div>
+    );
+  }
 
   const channel: string = cat.target_customer_channel ?? "price_hidden";
   const channelSafe = !HIDDEN_CHANNELS.has(channel);
@@ -56,17 +77,17 @@ const CatalogueProposal = () => {
     if (showPrice && r?.public_price != null) {
       return (
         <div className="mt-2">
-          <div className="font-display text-lg" style={{ color: "hsl(var(--accent))" }}>
+          <div className="luxe-price font-display text-accent">
             {r.currency || "₹"} {r.public_price}
-            <span className="text-[10px] uppercase tracking-wider ml-2 text-muted-foreground">{r.price_label || priceLabel}</span>
-            {showDiscount && r.discount_percent ? <span className="text-[10px] ml-2 text-success">-{r.discount_percent}%</span> : null}
+            <span className="text-[10px] uppercase tracking-wider ml-2 text-muted-foreground font-sans">{r.price_label || priceLabel}</span>
+            {showDiscount && r.discount_percent ? <span className="text-[10px] ml-2 text-success font-sans">-{r.discount_percent}%</span> : null}
           </div>
           {showMrp && r.mrp && <div className="text-[11px] text-muted-foreground line-through">MRP ₹ {r.mrp}</div>}
         </div>
       );
     }
     if (showMrp && (r?.mrp ?? p.mrp)) {
-      return <div className="mt-2 font-display text-lg" style={{ color: "hsl(var(--accent))" }}>₹ {r?.mrp ?? p.mrp} <span className="text-[10px] uppercase ml-1 text-muted-foreground">MRP</span></div>;
+      return <div className="mt-2 luxe-price font-display text-accent">₹ {r?.mrp ?? p.mrp} <span className="text-[10px] uppercase ml-1 text-muted-foreground font-sans">MRP</span></div>;
     }
     return <div className="mt-2 text-sm italic text-muted-foreground">{r?.price_display_text || "Price on request"}</div>;
   };
@@ -88,87 +109,76 @@ const CatalogueProposal = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Toolbar — hidden in print */}
-      <div className="no-print sticky top-0 z-30 bg-card border-b">
+      <div className="proposal-toolbar no-print">
         <div className="max-w-5xl mx-auto px-4 py-3 flex flex-wrap gap-2 items-center">
-          <Button size="sm" variant="ghost" onClick={() => nav(`/catalogues/${id}`)}><ArrowLeft className="h-4 w-4 mr-1" />Back</Button>
-          <div className="flex-1" />
-          <Button size="sm" variant="outline" onClick={copyMsg}><Copy className="h-4 w-4 mr-1" />Copy WhatsApp message</Button>
-          <Button size="sm" variant="outline" asChild><a href={`https://wa.me/?text=${encodeURIComponent(waMessage)}`} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1" />Open WhatsApp</a></Button>
-          <Button size="sm" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print / Save PDF</Button>
+          <Button size="sm" variant="ghost" className="rounded-full" onClick={() => nav(`/catalogues/${id}`)}><ArrowLeft className="h-4 w-4 mr-1" />Back</Button>
+          <div className="flex-1 min-w-[8rem]" />
+          <Button size="sm" variant="outline" className="rounded-full" onClick={copyMsg}><Copy className="h-4 w-4 mr-1" />Copy WhatsApp message</Button>
+          <Button size="sm" variant="outline" className="rounded-full border-accent/30" asChild><a href={`https://wa.me/?text=${encodeURIComponent(waMessage)}`} target="_blank" rel="noreferrer"><MessageCircle className="h-4 w-4 mr-1" />Open WhatsApp</a></Button>
+          <Button size="sm" className="rounded-full" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" />Print / Save PDF</Button>
         </div>
       </div>
 
-      <div className="proposal-doc max-w-5xl mx-auto px-6 py-10 print-page">
-        {/* Header */}
-        <header className="border-b pb-6 mb-8" style={{ borderColor: "hsl(var(--accent) / 0.4)" }}>
+      <div className="proposal-doc max-w-5xl mx-auto px-5 sm:px-8 py-10 sm:py-12 print-page">
+        <header className="proposal-doc-header">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">Oasis Baklawa</div>
-              <h1 className="font-display text-4xl mt-2" style={{ color: "hsl(var(--primary))" }}>{cat.title}</h1>
-              {cat.subtitle && <div className="text-sm text-muted-foreground mt-1">{cat.subtitle}</div>}
+              <div className="luxe-sub text-accent/80">Oasis Baklawa</div>
+              <h1 className="font-display text-4xl sm:text-5xl mt-2 text-primary leading-tight">{cat.title}</h1>
+              {cat.subtitle && <div className="text-sm sm:text-base text-muted-foreground mt-2">{cat.subtitle}</div>}
             </div>
-            <div className="text-right text-xs text-muted-foreground">
+            <div className="text-right text-xs text-muted-foreground space-y-1">
               <div><strong className="text-foreground">Proposal date:</strong> {proposalDate}</div>
-              {cat.client_name && <div className="mt-1"><strong className="text-foreground">For:</strong> {cat.client_name}</div>}
-              <div className="mt-1 capitalize"><strong className="text-foreground">Channel:</strong> {channel.replace(/_/g, " ")}</div>
+              {cat.client_name && <div><strong className="text-foreground">For:</strong> {cat.client_name}</div>}
+              <div className="capitalize"><strong className="text-foreground">Channel:</strong> {channel.replace(/_/g, " ")}</div>
             </div>
           </div>
-          {cat.intro_text && <p className="text-sm mt-5 max-w-3xl leading-relaxed">{cat.intro_text}</p>}
+          {cat.intro_text && <p className="text-sm sm:text-base mt-6 max-w-3xl leading-relaxed text-muted-foreground">{cat.intro_text}</p>}
         </header>
 
-        {/* Products */}
-        <section className="proposal-grid">
-          {items.map(({ products: p }) => p && (
-            <article key={p.id} className="proposal-card luxe-card flex flex-col">
-              <div className="luxe-media relative">
-                {p.hero_image_url && !p.hero_image_url.includes("/_pdf_pages/")
-                  ? <img src={p.hero_image_url} alt={p.product_name} loading="lazy" />
-                  : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><span className="font-display text-4xl text-accent/30">{p.product_name?.[0] ?? "·"}</span></div>}
-              </div>
-              <div className="p-5 flex-1 flex flex-col text-center">
-                <div className="luxe-sub mb-2 truncate">{p.category || "Oasis Baklawa"}</div>
-                <h3 className="luxe-title mb-2 break-words">{p.product_name}</h3>
-                <div className="text-[10px] font-mono text-muted-foreground">{p.sku}</div>
-                {p.short_description && <p className="text-xs mt-3 text-muted-foreground line-clamp-2">{p.short_description}</p>}
-                <div className="text-[11px] mt-3 space-y-0.5 text-muted-foreground mt-auto">
-                  {p.pack_size && <div>Pack · {p.pack_size}</div>}
-                  {p.shelf_life_days && <div>Shelf life · {p.shelf_life_days} days</div>}
-                  <div>{renderMoq(p)}</div>
+        {items.length === 0 ? (
+          <div className="catalogue-empty">
+            <h2 className="catalogue-empty-title">No products in this catalogue</h2>
+            <p className="catalogue-empty-text">Add products in the catalogue editor before generating a proposal.</p>
+          </div>
+        ) : (
+          <section className="proposal-grid">
+            {items.map(({ products: p }) => p && (
+              <article key={p.id} className="proposal-card luxe-card flex flex-col">
+                <div className="luxe-media relative">
+                  {p.hero_image_url && !p.hero_image_url.includes("/_pdf_pages/")
+                    ? <img src={p.hero_image_url} alt={p.product_name} loading="lazy" />
+                    : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/50"><span className="font-display text-4xl text-accent/30">{p.product_name?.[0] ?? "·"}</span></div>}
                 </div>
-                <div className="mt-3 pt-3 border-t border-border/60">{renderPrice(p)}</div>
-              </div>
-            </article>
-          ))}
+                <div className="p-5 flex-1 flex flex-col text-center">
+                  <div className="luxe-sub mb-2 truncate">{p.category || "Oasis Baklawa"}</div>
+                  <h3 className="luxe-title mb-2 break-words">{p.product_name}</h3>
+                  <div className="text-[10px] font-mono text-muted-foreground">{p.sku}</div>
+                  {p.short_description && <p className="text-xs mt-3 text-muted-foreground line-clamp-2 leading-relaxed">{p.short_description}</p>}
+                  <div className="text-[11px] mt-3 space-y-0.5 text-muted-foreground mt-auto">
+                    {p.pack_size && <div>Pack · {p.pack_size}</div>}
+                    {p.shelf_life_days && <div>Shelf life · {p.shelf_life_days} days</div>}
+                    <div>{renderMoq(p)}</div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-border/60">{renderPrice(p)}</div>
+                </div>
+              </article>
+            ))}
+          </section>
+        )}
+
+        <section className="mt-10 border-t border-accent/30 pt-8 text-sm space-y-3">
+          <h2 className="font-display text-xl sm:text-2xl text-primary mb-4">Commercial notes</h2>
+          <div className="leading-relaxed"><strong className="text-foreground">Validity:</strong> {validityNote}</div>
+          <div className="leading-relaxed"><strong className="text-foreground">Tax:</strong> {taxNote}</div>
+          <div className="leading-relaxed"><strong className="text-foreground">Transport:</strong> {transportNote}</div>
+          <div className="leading-relaxed"><strong className="text-foreground">Customization:</strong> {customizationNote}</div>
         </section>
 
-        {items.length === 0 && <div className="text-center text-muted-foreground py-8">No products in this catalogue.</div>}
-
-        {/* Commercial summary */}
-        <section className="mt-10 border-t pt-6 text-sm space-y-2" style={{ borderColor: "hsl(var(--accent) / 0.4)" }}>
-          <h2 className="font-display text-xl mb-3" style={{ color: "hsl(var(--primary))" }}>Commercial notes</h2>
-          <div><strong>Validity:</strong> {validityNote}</div>
-          <div><strong>Tax:</strong> {taxNote}</div>
-          <div><strong>Transport:</strong> {transportNote}</div>
-          <div><strong>Customization:</strong> {customizationNote}</div>
-        </section>
-
-        {/* Footer */}
-        <footer className="mt-10 pt-6 border-t text-center text-xs text-muted-foreground">
+        <footer className="mt-12 pt-8 border-t border-border/70 text-center text-xs text-muted-foreground leading-relaxed">
           {footerNote}
         </footer>
       </div>
-
-      <style>{`
-        .proposal-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 16px; }
-        @media (max-width: 640px) { .proposal-grid { grid-template-columns: 1fr; } }
-        @media print {
-          .proposal-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
-          .proposal-card { break-inside: avoid; page-break-inside: avoid; }
-          .proposal-doc { padding: 0 !important; }
-          aside, nav, header.app-header { display: none !important; }
-        }
-      `}</style>
     </div>
   );
 };
