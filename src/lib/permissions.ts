@@ -25,8 +25,7 @@ const MATRIX: Record<PageKey, Role[]> = {
   sku_write:         ["owner","admin","product_manager"],
   aliases_write:     ["owner","admin","product_manager"],
   media:             ["owner","admin","product_manager","catalogue_manager","designer"],
-  // catalogue_contributor: view + draft submit only (see Tags.tsx write boundary).
-  tags:              ["owner","admin","product_manager","catalogue_manager","catalogue_contributor"],
+  tags:              ["owner","admin","product_manager","catalogue_manager"],
   catalogues:        ["owner","admin","product_manager","catalogue_manager","sales"],
   catalogues_write:  ["owner","admin","catalogue_manager"],
   hampers:           ["owner","admin","product_manager"],
@@ -38,7 +37,11 @@ const MATRIX: Record<PageKey, Role[]> = {
   testing:           ["owner","admin","product_manager","catalogue_manager","designer","sales"],
   audit_log:         ["owner","admin"],
   data_correction:   ["owner","admin","product_manager"],
+  compliance_approve: COMPLIANCE_APPROVER,
 };
+
+export const canApproveComplianceFields = (roles: Role[] | string[]) =>
+  COMPLIANCE_APPROVER.some((r) => (roles as string[]).includes(r));
 
 export const hasRole = (roles: Role[] | string[], role: Role) => roles.includes(role as any);
 
