@@ -72,6 +72,8 @@ export type CatalogueSnapshotJson = {
     approved_image_urls: string[];
     media_status: string | null;
     requirements: string[];
+    media_readiness_blockers?: string[];
+    can_sync_media_to_central?: boolean;
   };
   fulfillment_transform: Record<string, unknown>;
   synced_at: string | null;

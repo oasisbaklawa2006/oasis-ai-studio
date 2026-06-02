@@ -1,3 +1,5 @@
+import type { MediaAsset, ProductMediaContext } from "@/features/mediaReadiness/types";
+
 /** Catalogue channels supported by the Product Truth MVP engines. */
 export const PRODUCT_TRUTH_CHANNELS = [
   "retail",
@@ -116,5 +118,7 @@ export type ProductTruthInput = {
   bomRequired?: boolean;
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
+  mediaAssets?: MediaAsset[];
+  mediaContext?: ProductMediaContext;
   dimensionStatuses?: Partial<Record<ReadinessDimension, ReadinessBadge>>;
 };

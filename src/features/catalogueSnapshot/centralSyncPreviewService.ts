@@ -10,7 +10,7 @@ import {
   updateCatalogueVersionSnapshot,
 } from "./catalogueVersionStore";
 import { generateCatalogueSnapshot } from "./snapshotGenerator";
-import { validateSnapshotGate } from "./snapshotValidation";
+import { validateSnapshotGate, validateSnapshotGateWithMedia } from "./snapshotValidation";
 import type { CentralSyncPreviewBundle, SnapshotGeneratorInput } from "./types";
 
 export type PreviewCentralSyncResult = {
@@ -30,7 +30,7 @@ export async function previewCentralSync(
   }
 
   const snapshot = generateCatalogueSnapshot(input);
-  const validation = validateSnapshotGate(snapshot.readiness, {
+  const validation = validateSnapshotGateWithMedia(snapshot.readiness, snapshot, {
     complianceManuallyApproved: !!input.complianceApproved && !input.complianceMetaPending,
   });
 
@@ -83,12 +83,10 @@ export async function previewCentralSync(
 export async function approveAndPreviewCentralSync(
   input: SnapshotGeneratorInput,
 ): Promise<{ preview: PreviewCentralSyncResult; approveMessage: string }> {
-  const gate = validateSnapshotGate(
-    generateCatalogueSnapshot(input).readiness,
-    {
-      complianceManuallyApproved: !!input.complianceApproved && !input.complianceMetaPending,
-    },
-  );
+  const snapForGate = generateCatalogueSnapshot(input);
+  const gate = validateSnapshotGateWithMedia(snapForGate.readiness, snapForGate, {
+    complianceManuallyApproved: !!input.complianceApproved && !input.complianceMetaPending,
+  });
 
   if (!gate.allowed) {
     const snapshot = generateCatalogueSnapshot(input);
