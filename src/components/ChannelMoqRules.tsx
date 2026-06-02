@@ -5,16 +5,25 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   ChevronDown,
   ChevronUp,
   Pencil,
   Plus,
-  RefreshCcw,
   Trash2,
   Wand2,
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
+import {
+  canSubmitDraft,
+  canWriteMasterDirectly,
+  isCatalogueContributor,
+} from "@/shared/auth/centralPermissions";
+import type { Role } from "@/lib/permissions";
 
 const CHANNELS = [
   "retail",
@@ -57,6 +66,12 @@ const TEMPLATE_OPTIONS = [
 
 type TemplateKey = (typeof TEMPLATE_OPTIONS)[number];
 
+type WriteMode = "direct" | "draft" | "readonly";
+
+type MoqRuleRow = Record<string, any>;
+
+const DIRECT_MOQ_ROLES: Role[] = ["owner", "admin", "product_manager"];
+
 const templateLabel = (v: TemplateKey) =>
   ({
     bulk_wholesale: "Bulk Wholesale",
@@ -76,21 +91,26 @@ const channelLabel = (v?: string | null) =>
 const uomLabel = (v?: string | null) =>
   String(v ?? "").replace(/_/g, " ").trim() || "—";
 
+const isLocalRowId = (id: string) => id.startsWith("local-");
+
 const Sel = ({
   value,
   onChange,
   options,
   placeholder,
+  disabled,
 }: {
   value: string | null | undefined;
   onChange: (v: string) => void;
   options: string[];
   placeholder?: string;
+  disabled?: boolean;
 }) => (
   <select
-    className="h-9 px-2 rounded border bg-background text-xs w-full"
+    className="h-9 px-2 rounded border bg-background text-xs w-full disabled:opacity-50"
     value={value ?? ""}
     onChange={(e) => onChange(e.target.value)}
+    disabled={disabled}
   >
     <option value="">{placeholder ?? "—"}</option>
     {options.map((o) => (
@@ -109,7 +129,7 @@ const asNumberOrNull = (value: unknown) => {
 
 const normalizeText = (value: unknown) => String(value ?? "").trim().toLowerCase();
 
-const rowSummary = (r: any) => {
+const rowSummary = (r: MoqRuleRow) => {
   if (!r?.moq_applicable) return "Disabled";
 
   const moq =
@@ -126,7 +146,7 @@ const rowSummary = (r: any) => {
 };
 
 const isDuplicateChannel = (
-  rows: any[],
+  rows: MoqRuleRow[],
   rowId: string,
   channel: string | null | undefined,
   customerType?: string | null
@@ -143,6 +163,188 @@ const isDuplicateChannel = (
   );
 };
 
+const normalizeMoqPatch = (current: MoqRuleRow, patch: Record<string, any>) => {
+  const normalizedPatch: Record<string, any> = { ...patch };
+
+  if ("moq_value" in normalizedPatch) {
+    normalizedPatch.moq_value = asNumberOrNull(normalizedPatch.moq_value);
+  }
+  if ("increment_value" in normalizedPatch) {
+    normalizedPatch.increment_value = asNumberOrNull(normalizedPatch.increment_value);
+  }
+  if ("min_carton_qty" in normalizedPatch) {
+    normalizedPatch.min_carton_qty = asNumberOrNull(normalizedPatch.min_carton_qty);
+  }
+
+  const merged = { ...current, ...normalizedPatch };
+
+  if (merged.moq_applicable === false) {
+    normalizedPatch.moq_value = null;
+    normalizedPatch.moq_uom = null;
+    normalizedPatch.increment_value = null;
+    normalizedPatch.increment_uom = null;
+    normalizedPatch.min_carton_qty = null;
+    normalizedPatch.carton_logic = null;
+  }
+
+  return { normalizedPatch, merged };
+};
+
+const buildCatalogueMoqDraftPayload = (productId: string, row: MoqRuleRow) => ({
+  scope: "product_moq_rule" as const,
+  product_id: productId,
+  channel: row.channel ?? null,
+  customer_type: row.customer_type ?? null,
+  min_order_quantity: row.moq_value ?? null,
+  increment_quantity: row.increment_value ?? null,
+  is_active: row.moq_applicable !== false,
+  moq_applicable: row.moq_applicable !== false,
+  moq_value: row.moq_value ?? null,
+  moq_uom: row.moq_uom ?? null,
+  increment_value: row.increment_value ?? null,
+  increment_uom: row.increment_uom ?? null,
+  allow_override: row.allow_override ?? false,
+  min_carton_qty: row.min_carton_qty ?? null,
+  carton_logic: row.carton_logic ?? null,
+  notes: row.notes ?? null,
+});
+
+const buildTemplateDefaults = (template: TemplateKey, product: any): MoqRuleRow[] => {
+  const defaults: MoqRuleRow[] = [];
+  const push = (r: Record<string, any>) =>
+    defaults.push({ customer_type: null, moq_applicable: false, ...r });
+
+  if (template === "bulk_wholesale") {
+    push({
+      channel: "distributor",
+      moq_applicable: true,
+      moq_value: 5,
+      moq_uom: product?.primary_uom || "kg",
+      increment_value: 1,
+      increment_uom: product?.primary_uom || "kg",
+    });
+    push({
+      channel: "export",
+      moq_applicable: true,
+      moq_value: 25,
+      moq_uom: product?.primary_uom || "kg",
+      increment_value: 5,
+      increment_uom: product?.primary_uom || "kg",
+    });
+  }
+
+  if (template === "ready_pack_retail") {
+    push({
+      channel: "distributor",
+      moq_applicable: true,
+      moq_value: 1,
+      moq_uom: "master_carton",
+      increment_value: 1,
+      increment_uom: "carton",
+    });
+    push({
+      channel: "modern_trade",
+      moq_applicable: true,
+      moq_value: 2,
+      moq_uom: "master_carton",
+      increment_value: 1,
+      increment_uom: "master_carton",
+    });
+    push({ channel: "retail", moq_applicable: false });
+  }
+
+  if (template === "premium_gift_pack") {
+    push({
+      channel: "distributor",
+      moq_applicable: true,
+      moq_value: 6,
+      moq_uom: "pcs",
+      increment_value: 1,
+      increment_uom: "pcs",
+    });
+    push({
+      channel: "corporate_gifting",
+      moq_applicable: true,
+      moq_value: 25,
+      moq_uom: "pcs",
+      increment_value: 5,
+      increment_uom: "pcs",
+    });
+    push({
+      channel: "export",
+      moq_applicable: true,
+      moq_value: 50,
+      moq_uom: "pcs",
+      increment_value: 10,
+      increment_uom: "pcs",
+    });
+  }
+
+  if (template === "horeca_flexible") {
+    push({
+      channel: "horeca",
+      moq_applicable: true,
+      allow_override: true,
+      moq_value: 1,
+      moq_uom: product?.primary_uom || "kg",
+      increment_value: 1,
+      increment_uom: product?.primary_uom || "kg",
+    });
+  }
+
+  if (template === "export_carton") {
+    push({
+      channel: "export",
+      moq_applicable: true,
+      moq_value: 10,
+      moq_uom: "carton",
+      increment_value: 1,
+      increment_uom: "carton",
+    });
+  }
+
+  if (template === "packaging_material") {
+    push({
+      channel: "distributor",
+      moq_applicable: true,
+      moq_value: 1,
+      moq_uom: product?.carton_uom || "carton",
+      increment_value: 1,
+      increment_uom: product?.carton_uom || "carton",
+    });
+    push({ channel: "retail", moq_applicable: false });
+  }
+
+  if (template === "frozen_semi_processed") {
+    push({
+      channel: "distributor",
+      moq_applicable: true,
+      moq_value: 1,
+      moq_uom: "carton",
+      increment_value: 1,
+      increment_uom: "carton",
+    });
+    push({
+      channel: "export",
+      moq_applicable: true,
+      moq_value: 10,
+      moq_uom: "carton",
+      increment_value: 5,
+      increment_uom: "carton",
+    });
+  }
+
+  return defaults.filter((row, index, arr) => {
+    return (
+      arr.findIndex(
+        (x) =>
+          normalizeText(x.channel) === normalizeText(row.channel) &&
+          normalizeText(x.customer_type) === normalizeText(row.customer_type)
+      ) === index
+    );
+  });
+};
+
 export const ChannelMoqRules = ({
   productId,
   product,
@@ -150,9 +352,14 @@ export const ChannelMoqRules = ({
   productId: string;
   product: any;
 }) => {
-  const [rows, setRows] = useState<any[]>([]);
+  const { roles } = useAuth();
+  const [rows, setRows] = useState<MoqRuleRow[]>([]);
+  const [localNewRows, setLocalNewRows] = useState<MoqRuleRow[]>([]);
+  const [stagedEdits, setStagedEdits] = useState<Record<string, MoqRuleRow>>({});
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [advanced, setAdvanced] = useState<Record<string, boolean>>({});
+  const [writeMode, setWriteMode] = useState<WriteMode>("readonly");
+  const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -167,11 +374,59 @@ export const ChannelMoqRules = ({
     }
 
     setRows(data ?? []);
+    setStagedEdits({});
+    setLocalNewRows([]);
   };
 
   useEffect(() => {
     load();
   }, [productId]);
+
+  useEffect(() => {
+    (async () => {
+      const roleList = roles as Role[];
+      const hasDirect =
+        roleList.some((r) => DIRECT_MOQ_ROLES.includes(r)) || (await canWriteMasterDirectly());
+      if (hasDirect) {
+        setWriteMode("direct");
+        return;
+      }
+      if (await isCatalogueContributor()) {
+        const canSubmit = await canSubmitDraft(draftTableMap.moq.permission);
+        setWriteMode(canSubmit ? "draft" : "readonly");
+        return;
+      }
+      setWriteMode("readonly");
+    })();
+  }, [roles]);
+
+  const canMutate = writeMode === "direct" || writeMode === "draft";
+
+  const allDisplayRows = useMemo(() => {
+    const mergedMaster = rows.map((row) => ({
+      ...row,
+      ...(stagedEdits[row.id] ?? {}),
+    }));
+    return [...mergedMaster, ...localNewRows].sort((a, b) =>
+      String(a.channel).localeCompare(String(b.channel))
+    );
+  }, [rows, stagedEdits, localNewRows]);
+
+  const baselineRow = (id: string) => {
+    if (isLocalRowId(id)) {
+      return localNewRows.find((r) => r.id === id);
+    }
+    return rows.find((r) => r.id === id);
+  };
+
+  const hasStagedChanges = (id: string) => {
+    if (isLocalRowId(id)) return true;
+    const staged = stagedEdits[id];
+    if (!staged) return false;
+    const base = rows.find((r) => r.id === id);
+    if (!base) return false;
+    return JSON.stringify({ ...base, ...staged }) !== JSON.stringify(base);
+  };
 
   const suggestedTemplate = useMemo<TemplateKey>(() => {
     if (product?.product_class === "gift_hamper") return "premium_gift_pack";
@@ -187,48 +442,40 @@ export const ChannelMoqRules = ({
   }, [product]);
 
   const businessSummary = useMemo(() => {
-    if (!rows.length) return [];
+    if (!allDisplayRows.length) return [];
 
-    return rows.map((r) => ({
+    return allDisplayRows.map((r) => ({
       id: r.id,
       title: channelLabel(r.channel),
       summary: rowSummary(r),
     }));
-  }, [rows]);
+  }, [allDisplayRows]);
 
-  const persistPatch = async (id: string, patch: any) => {
-    const current = rows.find((r) => r.id === id);
+  const submitMoqDraft = async (
+    operation: "create" | "update" | "delete_request",
+    row: MoqRuleRow,
+    targetRecordId?: string | null
+  ) => {
+    return submitCatalogueDraft({
+      draftType: "moq",
+      operation,
+      payload: buildCatalogueMoqDraftPayload(productId, row),
+      targetRecordId: targetRecordId ?? null,
+    });
+  };
+
+  const persistPatch = async (id: string, patch: Record<string, any>) => {
+    const current = allDisplayRows.find((r) => r.id === id) ?? baselineRow(id);
     if (!current) return;
 
     const next = { ...current, ...patch };
 
-    if (isDuplicateChannel(rows, id, next.channel, next.customer_type)) {
+    if (isDuplicateChannel(allDisplayRows, id, next.channel, next.customer_type)) {
       toast.error("A rule for this channel already exists.");
       return;
     }
 
-    const normalizedPatch: any = { ...patch };
-
-    if ("moq_value" in normalizedPatch) {
-      normalizedPatch.moq_value = asNumberOrNull(normalizedPatch.moq_value);
-    }
-    if ("increment_value" in normalizedPatch) {
-      normalizedPatch.increment_value = asNumberOrNull(normalizedPatch.increment_value);
-    }
-    if ("min_carton_qty" in normalizedPatch) {
-      normalizedPatch.min_carton_qty = asNumberOrNull(normalizedPatch.min_carton_qty);
-    }
-
-    const merged = { ...current, ...normalizedPatch };
-
-    if (merged.moq_applicable === false) {
-      normalizedPatch.moq_value = null;
-      normalizedPatch.moq_uom = null;
-      normalizedPatch.increment_value = null;
-      normalizedPatch.increment_uom = null;
-      normalizedPatch.min_carton_qty = null;
-      normalizedPatch.carton_logic = null;
-    }
+    const { normalizedPatch } = normalizeMoqPatch(current, patch);
 
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...normalizedPatch } : r)));
 
@@ -243,19 +490,151 @@ export const ChannelMoqRules = ({
     }
   };
 
-  const remove = async (id: string) => {
-    const { error } = await supabase.from("product_moq_rules").delete().eq("id", id);
-    if (error) {
-      toast.error(error.message);
+  const stagePatch = (id: string, patch: Record<string, any>) => {
+    const current = allDisplayRows.find((r) => r.id === id) ?? baselineRow(id);
+    if (!current) return;
+
+    const next = { ...current, ...patch };
+
+    if (isDuplicateChannel(allDisplayRows, id, next.channel, next.customer_type)) {
+      toast.error("A rule for this channel already exists.");
       return;
     }
-    toast.success("Rule removed");
-    load();
+
+    const { normalizedPatch, merged } = normalizeMoqPatch(current, patch);
+
+    if (isLocalRowId(id)) {
+      setLocalNewRows((prev) => prev.map((r) => (r.id === id ? merged : r)));
+      return;
+    }
+
+    setStagedEdits((prev) => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? {}), ...normalizedPatch },
+    }));
+  };
+
+  const applyFieldChange = (id: string, patch: Record<string, any>) => {
+    if (writeMode === "direct") {
+      void persistPatch(id, patch);
+      return;
+    }
+    if (writeMode === "draft") {
+      stagePatch(id, patch);
+    }
+  };
+
+  const submitStagedChange = async (id: string) => {
+    if (submitting || writeMode !== "draft") return;
+
+    const row = allDisplayRows.find((r) => r.id === id);
+    if (!row) return;
+
+    if (isDuplicateChannel(allDisplayRows, id, row.channel, row.customer_type)) {
+      toast.error("A rule for this channel already exists.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      if (isLocalRowId(id)) {
+        const res = await submitMoqDraft("create", row, null);
+        if (!res.ok) {
+          toast.error(res.message);
+          return;
+        }
+        setLocalNewRows((prev) => prev.filter((r) => r.id !== id));
+        setEditing((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+        toast.success(
+          "MOQ rule submitted for approval. Approved MOQ changes will appear here after review."
+        );
+        return;
+      }
+
+      const res = await submitMoqDraft("update", row, id);
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+
+      setStagedEdits((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      setEditing((prev) => ({ ...prev, [id]: false }));
+      toast.success("MOQ rule change submitted for approval.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const remove = async (id: string) => {
+    if (!canMutate || submitting) return;
+
+    if (isLocalRowId(id)) {
+      setLocalNewRows((prev) => prev.filter((r) => r.id !== id));
+      setEditing((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+
+    const row = rows.find((r) => r.id === id);
+    if (!row) return;
+
+    if (writeMode === "direct") {
+      const { error } = await supabase.from("product_moq_rules").delete().eq("id", id);
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Rule removed");
+      await load();
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const displayRow = allDisplayRows.find((r) => r.id === id) ?? row;
+      const res = await submitMoqDraft("delete_request", displayRow, id);
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+      toast.success(
+        "Delete request submitted for approval. This MOQ rule stays visible until review."
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const add = async () => {
-    if (rows.some((r) => normalizeText(r.channel) === "retail")) {
+    if (!canMutate || submitting) return;
+
+    if (allDisplayRows.some((r) => normalizeText(r.channel) === "retail")) {
       toast.error("Retail rule already exists.");
+      return;
+    }
+
+    if (writeMode === "draft") {
+      const tempId = `local-${crypto.randomUUID()}`;
+      const newRule: MoqRuleRow = {
+        id: tempId,
+        product_id: productId,
+        channel: "retail",
+        moq_applicable: false,
+        customer_type: null,
+      };
+      setLocalNewRows((prev) => [...prev, newRule]);
+      setEditing((prev) => ({ ...prev, [tempId]: true }));
       return;
     }
 
@@ -274,12 +653,16 @@ export const ChannelMoqRules = ({
       return;
     }
 
-    setRows((prev) => [...prev, data].sort((a, b) => String(a.channel).localeCompare(String(b.channel))));
+    setRows((prev) =>
+      [...prev, data].sort((a, b) => String(a.channel).localeCompare(String(b.channel)))
+    );
     setEditing((prev) => ({ ...prev, [data.id]: true }));
   };
 
   const disableRule = async (id: string) => {
-    await persistPatch(id, {
+    if (!canMutate || submitting) return;
+
+    const disablePatch = {
       moq_applicable: false,
       moq_value: null,
       moq_uom: null,
@@ -287,155 +670,97 @@ export const ChannelMoqRules = ({
       increment_uom: null,
       min_carton_qty: null,
       carton_logic: null,
-    });
+    };
+
+    if (writeMode === "direct") {
+      await persistPatch(id, disablePatch);
+      return;
+    }
+
+    const row = allDisplayRows.find((r) => r.id === id);
+    if (!row) return;
+
+    const disabledRow = { ...row, ...disablePatch };
+
+    setSubmitting(true);
+    try {
+      const operation = isLocalRowId(id) ? "create" : "update";
+      const res = await submitMoqDraft(
+        operation,
+        disabledRow,
+        isLocalRowId(id) ? null : id
+      );
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+
+      if (isLocalRowId(id)) {
+        setLocalNewRows((prev) => prev.filter((r) => r.id !== id));
+      } else {
+        setStagedEdits((prev) => {
+          const next = { ...prev };
+          delete next[id];
+          return next;
+        });
+      }
+
+      toast.success("MOQ disable submitted for approval.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const generateBusinessRules = async (template: TemplateKey) => {
-    const defaults: any[] = [];
-    const push = (r: any) => defaults.push({ product_id: productId, customer_type: null, ...r });
+    if (!canMutate || submitting) return;
 
-    if (template === "bulk_wholesale") {
-      push({
-        channel: "distributor",
-        moq_applicable: true,
-        moq_value: 5,
-        moq_uom: product?.primary_uom || "kg",
-        increment_value: 1,
-        increment_uom: product?.primary_uom || "kg",
-      });
-      push({
-        channel: "export",
-        moq_applicable: true,
-        moq_value: 25,
-        moq_uom: product?.primary_uom || "kg",
-        increment_value: 5,
-        increment_uom: product?.primary_uom || "kg",
-      });
-    }
+    const deduped = buildTemplateDefaults(template, product);
 
-    if (template === "ready_pack_retail") {
-      push({
-        channel: "distributor",
-        moq_applicable: true,
-        moq_value: 1,
-        moq_uom: "master_carton",
-        increment_value: 1,
-        increment_uom: "carton",
-      });
-      push({
-        channel: "modern_trade",
-        moq_applicable: true,
-        moq_value: 2,
-        moq_uom: "master_carton",
-        increment_value: 1,
-        increment_uom: "master_carton",
-      });
-      push({
-        channel: "retail",
-        moq_applicable: false,
-      });
-    }
-
-    if (template === "premium_gift_pack") {
-      push({
-        channel: "distributor",
-        moq_applicable: true,
-        moq_value: 6,
-        moq_uom: "pcs",
-        increment_value: 1,
-        increment_uom: "pcs",
-      });
-      push({
-        channel: "corporate_gifting",
-        moq_applicable: true,
-        moq_value: 25,
-        moq_uom: "pcs",
-        increment_value: 5,
-        increment_uom: "pcs",
-      });
-      push({
-        channel: "export",
-        moq_applicable: true,
-        moq_value: 50,
-        moq_uom: "pcs",
-        increment_value: 10,
-        increment_uom: "pcs",
-      });
-    }
-
-    if (template === "horeca_flexible") {
-      push({
-        channel: "horeca",
-        moq_applicable: true,
-        allow_override: true,
-        moq_value: 1,
-        moq_uom: product?.primary_uom || "kg",
-        increment_value: 1,
-        increment_uom: product?.primary_uom || "kg",
-      });
-    }
-
-    if (template === "export_carton") {
-      push({
-        channel: "export",
-        moq_applicable: true,
-        moq_value: 10,
-        moq_uom: "carton",
-        increment_value: 1,
-        increment_uom: "carton",
-      });
-    }
-
-    if (template === "packaging_material") {
-      push({
-        channel: "distributor",
-        moq_applicable: true,
-        moq_value: 1,
-        moq_uom: product?.carton_uom || "carton",
-        increment_value: 1,
-        increment_uom: product?.carton_uom || "carton",
-      });
-      push({
-        channel: "retail",
-        moq_applicable: false,
-      });
-    }
-
-    if (template === "frozen_semi_processed") {
-      push({
-        channel: "distributor",
-        moq_applicable: true,
-        moq_value: 1,
-        moq_uom: "carton",
-        increment_value: 1,
-        increment_uom: "carton",
-      });
-      push({
-        channel: "export",
-        moq_applicable: true,
-        moq_value: 10,
-        moq_uom: "carton",
-        increment_value: 5,
-        increment_uom: "carton",
-      });
-    }
-
-    if (!defaults.length) {
+    if (!deduped.length) {
       toast.error("No rules generated.");
       return;
     }
 
-    const deduped = defaults.filter((row, index, arr) => {
-      return (
-        arr.findIndex(
-          (x) =>
-            normalizeText(x.channel) === normalizeText(row.channel) &&
-            normalizeText(x.customer_type) === normalizeText(row.customer_type)
-        ) === index
-      );
-    });
+    if (writeMode === "draft") {
+      setSubmitting(true);
+      try {
+        let submitted = 0;
+        for (const row of deduped) {
+          if (
+            allDisplayRows.some(
+              (r) =>
+                normalizeText(r.channel) === normalizeText(row.channel) &&
+                normalizeText(r.customer_type) === normalizeText(row.customer_type)
+            )
+          ) {
+            continue;
+          }
 
-    const { error } = await supabase.from("product_moq_rules").upsert(deduped, {
+          const res = await submitMoqDraft(
+            "create",
+            { ...row, product_id: productId },
+            null
+          );
+          if (res.ok) submitted += 1;
+          else toast.error(res.message);
+        }
+
+        if (submitted > 0) {
+          toast.success(
+            `Submitted ${submitted} MOQ rule draft${submitted === 1 ? "" : "s"} for approval. Approved MOQ changes will appear here after review.`
+          );
+        } else {
+          toast.info("No new MOQ rules to submit — channels may already exist.");
+        }
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
+    const payload = deduped.map((row) => ({ product_id: productId, customer_type: null, ...row }));
+
+    const { error } = await supabase.from("product_moq_rules").upsert(payload, {
       onConflict: "product_id,channel,customer_type",
       ignoreDuplicates: false,
     } as any);
@@ -457,23 +782,39 @@ export const ChannelMoqRules = ({
           <p className="text-xs text-muted-foreground">
             Business-first MOQ setup with summary cards and edit-on-demand controls.
           </p>
+          {writeMode === "draft" && (
+            <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+              MOQ rule changes are submitted for approval. Approved MOQ changes will appear here
+              after review.
+            </p>
+          )}
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => generateBusinessRules(suggestedTemplate)}
-          >
-            <Wand2 className="h-3.5 w-3.5 mr-1" />
-            Generate Business Rules
-          </Button>
-          <Button size="sm" onClick={add}>
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            Add Rule
-          </Button>
-        </div>
+        {canMutate && (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => generateBusinessRules(suggestedTemplate)}
+              disabled={submitting}
+            >
+              <Wand2 className="h-3.5 w-3.5 mr-1" />
+              Generate Business Rules
+            </Button>
+            <Button size="sm" onClick={add} disabled={submitting}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              Add Rule
+            </Button>
+          </div>
+        )}
       </div>
+
+      {writeMode === "draft" && (
+        <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          Edit fields below, then use <span className="font-medium text-foreground">Submit change</span>{" "}
+          on each rule. Changes are not sent until you submit.
+        </div>
+      )}
 
       <div className="rounded-xl border bg-muted/20 p-4 space-y-2">
         <div className="text-xs font-medium text-muted-foreground">Recommended Template</div>
@@ -486,6 +827,7 @@ export const ChannelMoqRules = ({
                 size="sm"
                 variant={active ? "default" : "outline"}
                 onClick={() => generateBusinessRules(template)}
+                disabled={!canMutate || submitting}
               >
                 {templateLabel(template)}
               </Button>
@@ -516,52 +858,90 @@ export const ChannelMoqRules = ({
       </div>
 
       <div className="space-y-3">
-        {rows.map((r) => {
+        {allDisplayRows.map((r) => {
           const isEditing = !!editing[r.id];
           const showAdvanced = !!advanced[r.id];
+          const staged = hasStagedChanges(r.id);
+          const isNewLocal = isLocalRowId(r.id);
 
           return (
             <div key={r.id} className="rounded-xl border bg-background p-4 space-y-3 shadow-sm">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-1">
-                  <div className="text-base font-semibold">{channelLabel(r.channel)}</div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="text-base font-semibold">{channelLabel(r.channel)}</div>
+                    {isNewLocal && (
+                      <Badge variant="outline" className="text-[10px]">
+                        New — not submitted
+                      </Badge>
+                    )}
+                    {writeMode === "draft" && staged && !isNewLocal && (
+                      <Badge variant="secondary" className="text-[10px]">
+                        Unsaved edits
+                      </Badge>
+                    )}
+                  </div>
                   <div className="text-sm text-muted-foreground">{rowSummary(r)}</div>
                   {r.allow_override ? (
                     <div className="text-xs text-muted-foreground">Overrides allowed</div>
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                      setEditing((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
-                    }
-                  >
-                    <Pencil className="h-3.5 w-3.5 mr-1" />
-                    {isEditing ? "Close" : "Edit"}
-                  </Button>
+                {canMutate && (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setEditing((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
+                      }
+                      disabled={submitting}
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1" />
+                      {isEditing ? "Close" : "Edit"}
+                    </Button>
 
-                  <Button size="sm" variant="outline" onClick={() => disableRule(r.id)}>
-                    Disable
-                  </Button>
+                    {writeMode === "draft" && isEditing && staged && (
+                      <Button
+                        size="sm"
+                        onClick={() => submitStagedChange(r.id)}
+                        disabled={submitting}
+                      >
+                        Submit change
+                      </Button>
+                    )}
 
-                  <Button size="icon" variant="ghost" onClick={() => remove(r.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => disableRule(r.id)}
+                      disabled={submitting}
+                    >
+                      Disable
+                    </Button>
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => remove(r.id)}
+                      disabled={submitting}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
 
-              {isEditing && (
+              {isEditing && canMutate && (
                 <div className="space-y-3 border-t pt-3">
                   <div className="grid sm:grid-cols-4 gap-3">
                     <div>
                       <Label className="text-xs">Channel</Label>
                       <Sel
                         value={r.channel}
-                        onChange={(v) => persistPatch(r.id, { channel: v || null })}
+                        onChange={(v) => applyFieldChange(r.id, { channel: v || null })}
                         options={CHANNELS}
+                        disabled={submitting}
                       />
                     </div>
 
@@ -569,7 +949,8 @@ export const ChannelMoqRules = ({
                       <Label className="text-xs">MOQ Applicable</Label>
                       <Switch
                         checked={!!r.moq_applicable}
-                        onCheckedChange={(v) => persistPatch(r.id, { moq_applicable: v })}
+                        disabled={submitting}
+                        onCheckedChange={(v) => applyFieldChange(r.id, { moq_applicable: v })}
                       />
                     </div>
 
@@ -579,8 +960,9 @@ export const ChannelMoqRules = ({
                         className="h-9"
                         type="number"
                         value={r.moq_value ?? ""}
+                        disabled={submitting}
                         onChange={(e) =>
-                          persistPatch(r.id, { moq_value: e.target.value })
+                          applyFieldChange(r.id, { moq_value: e.target.value })
                         }
                       />
                     </div>
@@ -589,8 +971,9 @@ export const ChannelMoqRules = ({
                       <Label className="text-xs">MOQ UOM</Label>
                       <Sel
                         value={r.moq_uom}
-                        onChange={(v) => persistPatch(r.id, { moq_uom: v || null })}
+                        onChange={(v) => applyFieldChange(r.id, { moq_uom: v || null })}
                         options={UOMS}
+                        disabled={submitting}
                       />
                     </div>
 
@@ -600,8 +983,9 @@ export const ChannelMoqRules = ({
                         className="h-9"
                         type="number"
                         value={r.increment_value ?? ""}
+                        disabled={submitting}
                         onChange={(e) =>
-                          persistPatch(r.id, { increment_value: e.target.value })
+                          applyFieldChange(r.id, { increment_value: e.target.value })
                         }
                       />
                     </div>
@@ -610,8 +994,9 @@ export const ChannelMoqRules = ({
                       <Label className="text-xs">Increment UOM</Label>
                       <Sel
                         value={r.increment_uom}
-                        onChange={(v) => persistPatch(r.id, { increment_uom: v || null })}
+                        onChange={(v) => applyFieldChange(r.id, { increment_uom: v || null })}
                         options={UOMS}
+                        disabled={submitting}
                       />
                     </div>
 
@@ -619,18 +1004,20 @@ export const ChannelMoqRules = ({
                       <Label className="text-xs">Allow Override</Label>
                       <Switch
                         checked={!!r.allow_override}
-                        onCheckedChange={(v) => persistPatch(r.id, { allow_override: v })}
+                        disabled={submitting}
+                        onCheckedChange={(v) => applyFieldChange(r.id, { allow_override: v })}
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-between">
+                  <div className="flex justify-between flex-wrap gap-2">
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={() =>
                         setAdvanced((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
                       }
+                      disabled={submitting}
                     >
                       {showAdvanced ? (
                         <ChevronUp className="h-4 w-4 mr-1" />
@@ -639,6 +1026,16 @@ export const ChannelMoqRules = ({
                       )}
                       Advanced Settings
                     </Button>
+
+                    {writeMode === "draft" && staged && (
+                      <Button
+                        size="sm"
+                        onClick={() => submitStagedChange(r.id)}
+                        disabled={submitting}
+                      >
+                        Submit change
+                      </Button>
+                    )}
                   </div>
 
                   {showAdvanced && (
@@ -648,8 +1045,9 @@ export const ChannelMoqRules = ({
                         <Input
                           className="h-9"
                           value={r.customer_type ?? ""}
+                          disabled={submitting}
                           onChange={(e) =>
-                            persistPatch(r.id, {
+                            applyFieldChange(r.id, {
                               customer_type: e.target.value || null,
                             })
                           }
@@ -662,8 +1060,9 @@ export const ChannelMoqRules = ({
                           className="h-9"
                           type="number"
                           value={r.min_carton_qty ?? ""}
+                          disabled={submitting}
                           onChange={(e) =>
-                            persistPatch(r.id, { min_carton_qty: e.target.value })
+                            applyFieldChange(r.id, { min_carton_qty: e.target.value })
                           }
                         />
                       </div>
@@ -673,8 +1072,9 @@ export const ChannelMoqRules = ({
                         <Input
                           className="h-9"
                           value={r.carton_logic ?? ""}
+                          disabled={submitting}
                           onChange={(e) =>
-                            persistPatch(r.id, { carton_logic: e.target.value || null })
+                            applyFieldChange(r.id, { carton_logic: e.target.value || null })
                           }
                         />
                       </div>
@@ -684,8 +1084,9 @@ export const ChannelMoqRules = ({
                         <Textarea
                           rows={2}
                           value={r.notes ?? ""}
+                          disabled={submitting}
                           onChange={(e) =>
-                            persistPatch(r.id, { notes: e.target.value || null })
+                            applyFieldChange(r.id, { notes: e.target.value || null })
                           }
                         />
                       </div>
@@ -697,7 +1098,7 @@ export const ChannelMoqRules = ({
           );
         })}
 
-        {rows.length === 0 && (
+        {allDisplayRows.length === 0 && (
           <div className="text-sm text-muted-foreground py-4 text-center">
             No MOQ rules yet. Generate Business Rules or add one manually.
           </div>
