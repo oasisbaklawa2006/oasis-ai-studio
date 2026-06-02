@@ -21,7 +21,7 @@
 - **Intent:** Run PR-06C1a on staging.
 - **Actual:** `PR06C1_central_tag_alias_approve_mapping.sql` and manual approve tests were applied on **`tcxvcatsqqertcnycuop`** (live Central).
 - **Function:** `approve_catalogue_draft_internal` + `catalogue_slugify_tag_part` remain deployed on production. **Do not rollback** unless owner explicitly requests it.
-- **Test data:** Master rows, drafts (`source_app = 'pr06c1_staging_verify'`), and linked audit rows must be removed via owner-reviewed cleanup — see `scripts/supabase/PR06C1a_production_test_artifact_cleanup.sql`.
+- **Test data:** Master rows, drafts (`source_app = 'pr06c1_staging_verify'`), and linked audit rows Cleaned on production (`tcxvcatsqqertcnycuop`) 2026-06-02 — exact-ID transaction; Cranberry Dragees untouched. See cleanup script.
 - **Optional follow-up:** Four blocked-approve test drafts (`payload = {"test": true}`, `submitted_at` ~ `2026-06-02 04:05:34 UTC`) use default `source_app = 'catalogue_app'`; not in the primary cleanup script. See optional block at end of that file.
 
 ## Related docs
