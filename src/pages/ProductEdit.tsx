@@ -1298,6 +1298,11 @@ const ProductEdit = () => {
                 <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
                   Compliance
                 </TabsTrigger>
+                {!isNew && (
+                  <TabsTrigger value="product_truth" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Product Truth
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
                   Ops Notes
                 </TabsTrigger>
@@ -1870,17 +1875,6 @@ const ProductEdit = () => {
                 </div>
               </div>
             </TabsContent>
-
-            {!isNew && (
-              <TabsContent value="product_truth" className="space-y-6">
-                <ProductTruthAdminSection
-                  form={form}
-                  productId={id}
-                  complianceApproved={canOverride}
-                  complianceMetaPending={false}
-                />
-              </TabsContent>
-            )}
 
             <TabsContent value="ops" className="space-y-6">
               <div className="card-elevated p-6 space-y-4">
