@@ -8,6 +8,10 @@ export const COMPLIANCE_SENSITIVE_FIELDS = [
   "nutritional_info",
   "nutrition_facts",
   "storage_instructions",
+  "country_of_origin",
+  "legal_claims",
+  "export_compliance_notes",
+  "health_claims",
 ] as const;
 
 export type ComplianceSensitiveField = (typeof COMPLIANCE_SENSITIVE_FIELDS)[number];
