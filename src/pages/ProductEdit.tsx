@@ -24,6 +24,7 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -1298,6 +1299,11 @@ const ProductEdit = () => {
                 <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
                   Compliance
                 </TabsTrigger>
+                {!isNew && (
+                  <TabsTrigger value="product_truth" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Product Truth
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
                   Ops Notes
                 </TabsTrigger>
@@ -1850,10 +1856,10 @@ const ProductEdit = () => {
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="HSN">
-                    <Input value={form.hsn_code ?? ""} onChange={(e) => setComplianceField("hsn_code", e.target.value)} />
+                    <Input value={form.hsn_code ?? ""} onChange={(e) => set("hsn_code", e.target.value)} />
                   </Field>
                   <Field label="GST %">
-                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => setComplianceField("gst_rate", e.target.value)} />
+                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => set("gst_rate", e.target.value)} />
                   </Field>
                   <Field label="Currency">
                     <Input value={form.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} />
@@ -1870,6 +1876,18 @@ const ProductEdit = () => {
                 </div>
               </div>
             </TabsContent>
+
+            {!isNew && (
+              <TabsContent value="product_truth" className="space-y-6">
+                <ProductTruthAdminSection
+                  form={form}
+                  productId={id}
+                  complianceApproved={canOverride}
+                  complianceMetaPending={false}
+                />
+              </TabsContent>
+            )}
+
 
             <TabsContent value="ops" className="space-y-6">
               <div className="card-elevated p-6 space-y-4">
