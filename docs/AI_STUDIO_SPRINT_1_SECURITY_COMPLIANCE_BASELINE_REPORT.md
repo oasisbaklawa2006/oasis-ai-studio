@@ -78,3 +78,12 @@ Coverage includes: suggestion_only, approved false, disclaimer, save strip, role
 ## Merge recommendation
 
 **Approve and merge** — completes Sprint 1 baseline: env safety, CI gate, AI compliance suggestion-only flow with Product Edit wiring, and role-safe save stripping.
+
+## Build failure fix (2026-06-02)
+
+| Item | Detail |
+|------|--------|
+| **Root cause** | Sprint commit `9f8cf42` accidentally removed `jspdf` and `jspdf-autotable` from `package.json` while PR #22 code (`src/features/catalogueBuilder/pdfExport.ts`) still imports them. CI `npm ci` could not resolve `jspdf`. |
+| **First CI error** | `src/features/catalogueBuilder/pdfExport.ts` — Rollup failed to resolve import `"jspdf"` |
+| **Fix** | Restored `jspdf` and `jspdf-autotable` in `package.json` + `package-lock.json` (no logic changes) |
+| **Post-fix** | `npm ci` → typecheck pass, build pass, 50 tests pass |
