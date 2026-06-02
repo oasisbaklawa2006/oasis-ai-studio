@@ -24,6 +24,7 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -1298,11 +1299,6 @@ const ProductEdit = () => {
                 <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
                   Compliance
                 </TabsTrigger>
-                {!isNew && (
-                  <TabsTrigger value="product_truth" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
-                    Product Truth
-                  </TabsTrigger>
-                )}
                 <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
                   Ops Notes
                 </TabsTrigger>
