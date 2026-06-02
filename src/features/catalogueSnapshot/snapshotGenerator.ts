@@ -3,6 +3,14 @@ import {
   productTruthInputFromForm,
 } from "@/features/productTruth/productReadiness";
 import type { ConversionRule, PackagingHierarchy } from "@/features/productTruth/types";
+import {
+  evaluateMediaReadiness,
+  selectApprovedImageUrlsForCentral,
+} from "@/features/mediaReadiness/mediaReadinessEngine";
+import {
+  mediaAssetsFromForm,
+  productMediaContextFromForm,
+} from "@/features/mediaReadiness/mediaAssetsFromForm";
 import type {
   GstClassificationStatus,
   CatalogueSnapshotJson,
@@ -73,8 +81,11 @@ export function generateCatalogueSnapshot(
   const packaging = truthInput.packaging ?? {};
   const conversionRules = conversionRulesFromHierarchy(packaging);
 
-  const hero = str(input.form.hero_image_url);
-  const approvedImages = hero ? [hero] : [];
+  const mediaAssets = mediaAssetsFromForm(input.form);
+  const mediaContext = productMediaContextFromForm(input.form);
+  const mediaReadiness = evaluateMediaReadiness(mediaContext, mediaAssets);
+  const approvedImages = selectApprovedImageUrlsForCentral(mediaAssets);
+  const hero = approvedImages[0] ?? str(input.form.hero_image_url);
 
   const primaryPack = {
     type: input.form.primary_pack_type,
@@ -131,7 +142,9 @@ export function generateCatalogueSnapshot(
       hero_image_url: hero,
       approved_image_urls: approvedImages,
       media_status: str(input.form.media_status),
-      requirements: ["hero_image_or_approved_media"],
+      requirements: mediaReadiness.requiredAssets,
+      media_readiness_blockers: mediaReadiness.blockers,
+      can_sync_media_to_central: mediaReadiness.canSyncMediaToCentral,
     },
     fulfillment_transform: fulfillmentTransform,
     synced_at: null,

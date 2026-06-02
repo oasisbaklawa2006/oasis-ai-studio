@@ -7,6 +7,8 @@ import type {
 import { READINESS_DIMENSIONS } from "./types";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { validateConversionRuleChain } from "./uomPackagingEngine";
+import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
+import { mediaAssetsFromForm, productMediaContextFromForm } from "@/features/mediaReadiness/mediaAssetsFromForm";
 
 export type ProductReadinessResult = {
   score: number;
@@ -44,6 +46,27 @@ function evalContent(input: ProductTruthInput): DimensionStatus {
 }
 
 function evalMedia(input: ProductTruthInput): DimensionStatus {
+  const assets = input.mediaAssets ?? [];
+  if (assets.length > 0) {
+    const ctx =
+      input.mediaContext ??
+      ({
+        productName: input.productName,
+        isLegacy: input.isLegacy,
+      } as import("@/features/mediaReadiness/types").ProductMediaContext);
+    const mr = evaluateMediaReadiness(ctx, assets);
+    const pending = assets.some(
+      (a) => a.url && (a.status === "pending_approval" || a.status === "draft"),
+    );
+    const complete = mr.canPublishMedia;
+    return {
+      dimension: "media_status",
+      badge: badgeFor(complete, { pending, legacy: input.isLegacy && !complete }),
+      complete,
+      note: complete ? undefined : mr.blockers[0] ?? "Required media missing or not approved",
+    };
+  }
+
   const complete = !!(input.heroImageUrl || input.mediaStatus === "approved");
   const pending = input.mediaStatus === "pending_approval";
   return {
@@ -215,6 +238,9 @@ export function productTruthInputFromForm(
     moqRules?: ProductTruthInput["moqRules"];
   },
 ): ProductTruthInput {
+  const mediaAssets = mediaAssetsFromForm(form);
+  const mediaContext = productMediaContextFromForm(form);
+
   return {
     productId: (form.id as string) ?? null,
     productName: (form.product_name as string) ?? null,
@@ -248,5 +274,7 @@ export function productTruthInputFromForm(
     },
     prices: opts?.prices,
     moqRules: opts?.moqRules,
+    mediaAssets,
+    mediaContext,
   };
 }

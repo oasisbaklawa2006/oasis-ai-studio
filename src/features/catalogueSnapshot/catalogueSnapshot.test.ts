@@ -113,6 +113,25 @@ describe("catalogueSnapshot", () => {
     expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);
   });
 
+  it("Central sync payload uses approved media only in snapshot", () => {
+    const snap = generateCatalogueSnapshot({
+      form: {
+        ...baseForm,
+        media_assets: [
+          { type: "primary_image", url: "https://cdn.example/hero.jpg", status: "approved" },
+          { type: "pairing_image", url: "https://cdn.example/p.jpg", status: "draft" },
+          { type: "close_up_image", url: "https://cdn.example/c.jpg", status: "approved" },
+        ],
+      },
+      productId: String(baseForm.id),
+      complianceApproved: true,
+      prices: approvedPrices,
+      moqRules,
+    });
+    expect(snap.media.approved_image_urls).toContain("https://cdn.example/hero.jpg");
+    expect(snap.media.approved_image_urls).not.toContain("https://cdn.example/p.jpg");
+  });
+
   it("sets GST/HSN null unless manually approved", () => {
     const pending = generateCatalogueSnapshot({
       form: baseForm,

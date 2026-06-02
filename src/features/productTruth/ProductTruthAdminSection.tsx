@@ -6,6 +6,7 @@ import { PackagingHierarchyPanel } from "./panels/PackagingHierarchyPanel";
 import { ChannelRulesPanel } from "./panels/ChannelRulesPanel";
 import { PreviewCalculatorPanel } from "./panels/PreviewCalculatorPanel";
 import { CentralSyncPreviewPanel } from "@/features/catalogueSnapshot/panels/CentralSyncPreviewPanel";
+import { MediaReadinessPanel } from "@/features/mediaReadiness/panels/MediaReadinessPanel";
 import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
 import type { ChannelMoqRule, ChannelPriceRecord } from "./types";
 
@@ -54,6 +55,7 @@ export function ProductTruthAdminSection({
       <Tabs value={subTab} onValueChange={setSubTab}>
         <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/40 p-1">
           <TabsTrigger value="readiness" className="text-xs">Readiness</TabsTrigger>
+          <TabsTrigger value="media_readiness" className="text-xs">Media</TabsTrigger>
           <TabsTrigger value="uom" className="text-xs">UOM</TabsTrigger>
           <TabsTrigger value="packaging" className="text-xs">Packaging</TabsTrigger>
           <TabsTrigger value="channels" className="text-xs">Channels</TabsTrigger>
@@ -63,6 +65,9 @@ export function ProductTruthAdminSection({
 
         <TabsContent value="readiness" className="mt-4">
           <ProductReadinessPanel readiness={readiness} />
+        </TabsContent>
+        <TabsContent value="media_readiness" className="mt-4">
+          <MediaReadinessPanel form={form} />
         </TabsContent>
         <TabsContent value="uom" className="mt-4">
           <UomConversionPanel form={form} truthInput={truthInput} />

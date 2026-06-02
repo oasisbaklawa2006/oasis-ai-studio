@@ -15,6 +15,7 @@ const nav: NavItem[] = [
   { to: "/media", label: "Media Library", icon: Image, page: "media" },
   { to: "/tags", label: "Tags", icon: Tags, page: "tags" },
   { to: "/catalogues", label: "Catalogues", icon: BookOpen, page: "catalogues" },
+  { to: "/admin/catalogue-builder", label: "Catalogue Builder", icon: BookOpen, page: "catalogues" },
   { to: "/hampers", label: "Hampers & BOM", icon: Gift, page: "hampers" },
   { to: "/ingredients", label: "Ingredients", icon: Leaf, page: "ingredients" },
   { to: "/labels", label: "Label Studio", icon: Tag, page: "labels" },

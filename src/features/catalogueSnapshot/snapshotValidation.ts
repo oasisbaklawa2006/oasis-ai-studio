@@ -1,5 +1,6 @@
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type { ReadinessBadge, ReadinessDimension } from "@/features/productTruth/types";
+import type { CatalogueSnapshotJson } from "./types";
 
 export type SnapshotValidationResult = {
   allowed: boolean;
@@ -30,6 +31,20 @@ function dimensionApproved(
   const row = readiness.dimensions.find((d) => d.dimension === dimension);
   if (!row?.complete) return false;
   return APPROVED_LIKE_BADGES.includes(row.badge);
+}
+
+export function validateSnapshotMediaGate(snapshot: CatalogueSnapshotJson): string[] {
+  const blockers: string[] = [];
+  if (snapshot.media.can_sync_media_to_central === false) {
+    blockers.push("Media not ready for Central sync");
+    for (const b of snapshot.media.media_readiness_blockers ?? []) {
+      blockers.push(b);
+    }
+  }
+  if (!snapshot.media.approved_image_urls.length) {
+    blockers.push("No approved media URLs for Central payload");
+  }
+  return blockers;
 }
 
 /**
@@ -71,4 +86,15 @@ export function validateSnapshotGate(
     allowed: unique.length === 0,
     blockers: unique,
   };
+}
+
+export function validateSnapshotGateWithMedia(
+  readiness: ProductReadinessResult,
+  snapshot: CatalogueSnapshotJson,
+  opts: { complianceManuallyApproved: boolean },
+): SnapshotValidationResult {
+  const base = validateSnapshotGate(readiness, opts);
+  const mediaBlockers = validateSnapshotMediaGate(snapshot);
+  const blockers = Array.from(new Set([...base.blockers, ...mediaBlockers]));
+  return { allowed: blockers.length === 0, blockers };
 }
