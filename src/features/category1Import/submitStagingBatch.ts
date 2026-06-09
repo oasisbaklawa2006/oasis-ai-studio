@@ -1,6 +1,6 @@
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { buildCategory1DraftPayload } from "./buildDraftPayload";
-import { createImportLogEntry } from "./importLogService";
+import { createImportLogEntry, isImportLogsTableAvailable } from "./importLogService";
 import type { StagedCategory1Row, SubmitBatchResult } from "./types";
 
 export function newBatchId(): string {
@@ -15,6 +15,8 @@ export async function submitCategory1StagingBatch(args: {
   fileName: string;
   rows: StagedCategory1Row[];
 }): Promise<SubmitBatchResult> {
+  const importLogsEnabled = await isImportLogsTableAvailable();
+
   const result: SubmitBatchResult = {
     batchId: args.batchId,
     submitted: 0,
@@ -22,6 +24,7 @@ export async function submitCategory1StagingBatch(args: {
     failed: [],
     draftIds: [],
     importLogIds: [],
+    importLogsSkipped: !importLogsEnabled,
   };
 
   for (const entry of args.rows) {
@@ -50,11 +53,12 @@ export async function submitCategory1StagingBatch(args: {
 
     if (!draftRes.ok) {
       result.failed.push({ rowIndex: entry.row.rowIndex, message: draftRes.message });
-      await createImportLogEntry({
+      const logRes = await createImportLogEntry({
         row: entry.row,
         importStatus: "draft_submit_failed",
         warningNotes: `${warningNotes}; error: ${draftRes.message}`.trim(),
       });
+      if (logRes.skipped) result.importLogsSkipped = true;
       continue;
     }
 
@@ -65,7 +69,9 @@ export async function submitCategory1StagingBatch(args: {
       productId: entry.duplicates.find((d) => d.existingProductId)?.existingProductId ?? null,
     });
 
-    if (logRes.ok && logRes.id) {
+    if (logRes.skipped) {
+      result.importLogsSkipped = true;
+    } else if (logRes.ok && logRes.id) {
       result.importLogIds.push(logRes.id);
     }
 

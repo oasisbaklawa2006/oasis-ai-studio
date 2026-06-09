@@ -88,4 +88,6 @@ export type SubmitBatchResult = {
   failed: { rowIndex: number; message: string }[];
   draftIds: string[];
   importLogIds: string[];
+  /** True when `import_logs` table is missing or writes are skipped. */
+  importLogsSkipped: boolean;
 };

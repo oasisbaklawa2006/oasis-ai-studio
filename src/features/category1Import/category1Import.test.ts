@@ -4,10 +4,30 @@ import { parseCsvText } from "./parseFile";
 import { buildCategory1DraftPayload } from "./buildDraftPayload";
 import { validateCategory1Row } from "./validate";
 import { detectInFileDuplicates } from "./duplicateDetection";
+import { createImportLogEntry } from "./importLogService";
 import type { StagedCategory1Row } from "./types";
 
 vi.mock("@/integrations/supabase/client", () => ({
-  supabase: { from: () => ({ select: () => ({ eq: () => Promise.resolve({ data: [] }) }) }) },
+  supabase: {
+    from: (table: string) => {
+      const importLogsMissing = table === "import_logs";
+      const missingError = {
+        code: "PGRST205",
+        message: "Could not find the table public.import_logs",
+      };
+      return {
+        select: () =>
+          importLogsMissing
+            ? Promise.resolve({ data: null, error: missingError })
+            : Promise.resolve({ data: [], error: null }),
+        insert: () => ({
+          select: () => ({
+            single: () => Promise.resolve({ data: null, error: missingError }),
+          }),
+        }),
+      };
+    },
+  },
 }));
 
 describe("category1Import", () => {
@@ -50,6 +70,17 @@ describe("category1Import", () => {
     const dupes = detectInFileDuplicates(staged);
     expect(dupes.length).toBe(1);
     expect(dupes[0].duplicates[0].kind).toBe("in_file_sku");
+  });
+
+  it("skips import_logs write when table is missing", async () => {
+    const row = mapRawRowToCategory1({ name: "Test", category: "Baklawa" }, 1, "f.csv");
+    const res = await createImportLogEntry({
+      row,
+      importStatus: "draft_submitted",
+    });
+    expect(res.skipped).toBe(true);
+    expect(res.ok).toBe(true);
+    expect(res.message).toMatch(/catalogue_product_drafts/);
   });
 
   it("builds draft payload with category1_import flag", () => {

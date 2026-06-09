@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { AuthorityStatusBadges } from "@/components/catalogueAuthority/Authority
 import { CATEGORY1_TARGET_FIELDS } from "@/features/category1Import/columnMapping";
 import { detectExistingProductDuplicates } from "@/features/category1Import/duplicateDetection";
 import { parseCategory1File } from "@/features/category1Import/parseFile";
+import { isImportLogsTableAvailable } from "@/features/category1Import/importLogService";
 import { newBatchId, submitCategory1StagingBatch } from "@/features/category1Import/submitStagingBatch";
 import type { ParseFileResult, StagedCategory1Row } from "@/features/category1Import/types";
 
@@ -21,6 +22,13 @@ export default function Category1ImportStaging() {
   const [submitting, setSubmitting] = useState(false);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Record<number, boolean>>({});
+  const [importLogsUnavailable, setImportLogsUnavailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    void isImportLogsTableAvailable().then((available) => {
+      setImportLogsUnavailable(!available);
+    });
+  }, []);
 
   const mappingPreview = useMemo(() => {
     if (!staged[0]) return [];
@@ -82,9 +90,13 @@ export default function Category1ImportStaging() {
         rows,
       });
       setBatchId(id);
+      if (result.importLogsSkipped) {
+        setImportLogsUnavailable(true);
+      }
       toast.success(
         `Submitted ${result.submitted} draft(s) to Approval Inbox` +
-          (result.failed.length ? ` · ${result.failed.length} failed` : ""),
+          (result.failed.length ? ` · ${result.failed.length} failed` : "") +
+          (result.importLogsSkipped ? " · import audit log skipped" : ""),
       );
       if (result.failed.length) {
         console.error("[Category1Import] failures:", result.failed);
@@ -114,6 +126,11 @@ export default function Category1ImportStaging() {
         <p className="text-xs text-muted-foreground">
           Category 1 product master only. Channel pricing, tags, and catalogue compositions are out of scope.
         </p>
+        {importLogsUnavailable && (
+          <p className="text-xs text-warning border border-warning/30 rounded-md px-3 py-2 bg-warning/5">
+            Import audit log unavailable — draft submission still recorded in catalogue_product_drafts.
+          </p>
+        )}
       </div>
 
       <div className="card-elevated p-4 mb-6 space-y-3">

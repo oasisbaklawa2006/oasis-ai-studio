@@ -22,10 +22,16 @@ Safely receive Category 1 (product master) authority data without master table w
 
 ### Write on submit (non-master)
 
-| Table | Purpose |
-|-------|---------|
-| `catalogue_product_drafts` | One row per submitted import line (`operation: create`, `status: pending_approval`) |
-| `import_logs` | Audit trail per submitted row (`import_status: draft_submitted` or `draft_submit_failed`) |
+| Table | Purpose | Shared Supabase (`tcxvcatsqqertcnycuop`) |
+|-------|---------|----------------------------------------|
+| `catalogue_product_drafts` | One row per submitted import line (`operation: create`, `status: pending_approval`) | **EXISTS** — primary audit path |
+| `import_logs` | Optional audit trail per submitted row | **MISSING** — deferred; writes skipped automatically |
+
+When `import_logs` is unavailable, the UI shows:
+
+> Import audit log unavailable — draft submission still recorded in catalogue_product_drafts.
+
+Draft submission and Approval Inbox flow are unchanged.
 
 ### Not written
 
@@ -130,7 +136,7 @@ Upload CSV/JSON
   → User selects submittable rows
   → submitCategory1StagingBatch
        → submitCatalogueDraft({ draftType: "product", operation: "create" })
-       → createImportLogEntry({ import_status: "draft_submitted" })
+       → createImportLogEntry({ import_status: "draft_submitted" }) — skipped if table missing
   → Reviewer opens /approvals
        → approve_catalogue_product_draft RPC (when deployed on Central)
        → Master `products` write (reviewer only — not automatic)
@@ -170,6 +176,7 @@ Upload CSV/JSON
 ## Follow-up PRs (not this release)
 
 1. Verify `approve_catalogue_product_draft` handles `category1_import` payload on Central
-2. Import batch history view (read `import_logs`)
+2. Add `import_logs` table on shared Supabase (separate migration PR) then enable audit writes
+3. Import batch history view (read `import_logs` once deployed)
 3. Update-existing flow (`operation: update` + `target_record_id`) for duplicate SKU rows
 4. Regenerate `types.ts` from Central for column name alignment
