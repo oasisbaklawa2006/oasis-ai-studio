@@ -12,7 +12,8 @@ export type PageKey =
   | "media" | "tags" | "catalogues" | "catalogues_write"
   | "hampers" | "ingredients" | "labels" | "labels_write"
   | "ai_studio" | "settings" | "testing" | "audit_log"
-  | "aliases_write" | "sku_write" | "data_correction";
+  | "aliases_write" | "sku_write" | "data_correction"
+  | "category1_import";
 
 const MATRIX: Record<PageKey, Role[]> = {
   dashboard:         ["owner","admin","product_manager","catalogue_manager","designer","sales","catalogue_contributor"],
@@ -37,6 +38,7 @@ const MATRIX: Record<PageKey, Role[]> = {
   testing:           ["owner","admin","product_manager","catalogue_manager","designer","sales"],
   audit_log:         ["owner","admin"],
   data_correction:   ["owner","admin","product_manager"],
+  category1_import:  ["owner","admin","product_manager","catalogue_contributor"],
   compliance_approve: COMPLIANCE_APPROVER,
 };
 
