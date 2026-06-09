@@ -7,6 +7,7 @@ import { ChannelRulesPanel } from "./panels/ChannelRulesPanel";
 import { PreviewCalculatorPanel } from "./panels/PreviewCalculatorPanel";
 import { CentralSyncPreviewPanel } from "@/features/catalogueSnapshot/panels/CentralSyncPreviewPanel";
 import { MediaReadinessPanel } from "@/features/mediaReadiness/panels/MediaReadinessPanel";
+import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
 import type { ChannelMoqRule, ChannelPriceRecord } from "./types";
 
@@ -45,11 +46,17 @@ export function ProductTruthAdminSection({
 
   return (
     <div className="space-y-4">
-      <div className="card-elevated p-4">
+      <div className="card-elevated p-4 space-y-2">
         <h3 className="font-display text-xl mb-1">Product Truth</h3>
         <p className="text-sm text-muted-foreground">
           Readiness, UOM/packaging rules, and channel pricing/MOQ validation for Catalogue master data.
         </p>
+        <AuthorityStatusBadges
+          show={{
+            not_synced_to_central: true,
+            central_live_write_disabled: true,
+          }}
+        />
       </div>
 
       <Tabs value={subTab} onValueChange={setSubTab}>
