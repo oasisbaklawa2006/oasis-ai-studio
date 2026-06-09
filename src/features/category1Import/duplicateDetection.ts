@@ -86,7 +86,7 @@ export async function detectExistingProductDuplicates(
   if (skus.length) {
     const { data: bySku } = await (supabase as any)
       .from("products")
-      .select("id, sku, product_name, name, pack_size")
+      .select("id, sku, name, pack_size")
       .in("sku", skus);
 
     existing = [...(bySku ?? [])];
@@ -97,18 +97,9 @@ export async function detectExistingProductDuplicates(
   ];
 
   for (const name of names.slice(0, 25)) {
-    const { data: byProductName } = await (supabase as any)
-      .from("products")
-      .select("id, sku, product_name, name, pack_size")
-      .eq("product_name", name);
-
-    for (const row of byProductName ?? []) {
-      if (!existing.some((e) => e.id === row.id)) existing.push(row);
-    }
-
     const { data: byName } = await (supabase as any)
       .from("products")
-      .select("id, sku, product_name, name, pack_size")
+      .select("id, sku, name, pack_size")
       .eq("name", name);
 
     for (const row of byName ?? []) {
