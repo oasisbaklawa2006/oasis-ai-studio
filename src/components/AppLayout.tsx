@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History, Wrench } from "lucide-react";
+import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History, Wrench, Upload } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -12,6 +12,7 @@ type NavItem = { to: string; label: string; icon: any; page: PageKey; featureKey
 const nav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, page: "dashboard" },
   { to: "/products", label: "Products", icon: Package, page: "products" },
+  { to: "/admin/import/category-1", label: "Cat 1 Import", icon: Upload, page: "category1_import" },
   { to: "/media", label: "Media Library", icon: Image, page: "media" },
   { to: "/tags", label: "Tags", icon: Tags, page: "tags" },
   { to: "/catalogues", label: "Catalogues", icon: BookOpen, page: "catalogues" },
