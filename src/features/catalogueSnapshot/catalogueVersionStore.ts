@@ -1,4 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+import {
+  assertLocalCatalogueFallbackWrite,
+  isLocalCatalogueFallbackReadEnabled,
+} from "@/lib/catalogueAuthority/localStoragePolicy";
+import {
+  getVersionsPersistenceSource,
+  setVersionsPersistenceSource,
+} from "@/lib/catalogueAuthority/dataSource";
 import {
   IMMUTABLE_VERSION_STATUSES,
   type CatalogueSnapshotJson,
@@ -10,6 +19,8 @@ import {
 
 const STORAGE_PREFIX = "oasis_catalogue_versions_";
 const EVENTS_PREFIX = "oasis_catalogue_sync_events_";
+
+const authorityDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
 
 function storageKey(productId: string) {
   return `${STORAGE_PREFIX}${productId}`;
@@ -30,6 +41,7 @@ function readLocalVersions(productId: string): CatalogueVersionRow[] {
 }
 
 function writeLocalVersions(productId: string, rows: CatalogueVersionRow[]) {
+  assertLocalCatalogueFallbackWrite("catalogue versions");
   localStorage.setItem(storageKey(productId), JSON.stringify(rows));
 }
 
@@ -44,12 +56,15 @@ function readLocalEvents(productId: string): CatalogueSyncEventRow[] {
 }
 
 function writeLocalEvents(productId: string, rows: CatalogueSyncEventRow[]) {
+  assertLocalCatalogueFallbackWrite("catalogue sync events");
   localStorage.setItem(eventsKey(productId), JSON.stringify(rows));
 }
 
 function newId(): string {
   return crypto.randomUUID();
 }
+
+export { getVersionsPersistenceSource };
 
 export function nextVersionNumber(existing: CatalogueVersionRow[]): number {
   if (!existing.length) return 1;
@@ -69,20 +84,27 @@ export async function listCatalogueVersions(
   productId: string,
 ): Promise<CatalogueVersionRow[]> {
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_versions")
       .select("*")
       .eq("product_id", productId)
       .order("version_number", { ascending: false });
 
-    if (!error && Array.isArray(data) && data.length) {
-      return data as CatalogueVersionRow[];
+    if (!error) {
+      setVersionsPersistenceSource(productId, "supabase");
+      return (data ?? []) as CatalogueVersionRow[];
     }
   } catch {
-    /* local fallback */
+    /* fall through */
   }
 
-  return readLocalVersions(productId).sort((a, b) => b.version_number - a.version_number);
+  if (isLocalCatalogueFallbackReadEnabled()) {
+    setVersionsPersistenceSource(productId, "local_only");
+    return readLocalVersions(productId).sort((a, b) => b.version_number - a.version_number);
+  }
+
+  setVersionsPersistenceSource(productId, "supabase_unavailable");
+  return [];
 }
 
 export async function createCatalogueVersionDraft(args: {
@@ -110,7 +132,7 @@ export async function createCatalogueVersionDraft(args: {
   };
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_versions")
       .insert({
         product_id: row.product_id,
@@ -123,14 +145,19 @@ export async function createCatalogueVersionDraft(args: {
       .select("*")
       .single();
 
-    if (!error && data) return data as CatalogueVersionRow;
+    if (!error && data) {
+      setVersionsPersistenceSource(args.productId, "supabase");
+      return data as CatalogueVersionRow;
+    }
   } catch {
-    /* fallback */
+    /* fall through */
   }
 
+  assertLocalCatalogueFallbackWrite("createCatalogueVersionDraft");
   const local = readLocalVersions(args.productId);
   local.push(row);
   writeLocalVersions(args.productId, local);
+  setVersionsPersistenceSource(args.productId, "local_only");
   return row;
 }
 
@@ -158,7 +185,7 @@ export async function approveCatalogueVersion(args: {
   };
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_versions")
       .update({
         status: updated.status,
@@ -171,9 +198,21 @@ export async function approveCatalogueVersion(args: {
       .select("*")
       .single();
 
-    if (!error && data) return { ok: true, row: data as CatalogueVersionRow, message: "Version approved" };
+    if (!error && data) {
+      setVersionsPersistenceSource(args.productId, "supabase");
+      return { ok: true, row: data as CatalogueVersionRow, message: "Version approved" };
+    }
   } catch {
-    /* fallback */
+    /* fall through */
+  }
+
+  try {
+    assertLocalCatalogueFallbackWrite("approveCatalogueVersion");
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Supabase unavailable; local fallback disabled",
+    };
   }
 
   const local = readLocalVersions(args.productId);
@@ -181,7 +220,8 @@ export async function approveCatalogueVersion(args: {
   if (localIdx < 0) return { ok: false, message: "Version not found locally" };
   local[localIdx] = updated;
   writeLocalVersions(args.productId, local);
-  return { ok: true, row: updated, message: "Version approved (local)" };
+  setVersionsPersistenceSource(args.productId, "local_only");
+  return { ok: true, row: updated, message: "Version approved (local only — not authoritative)" };
 }
 
 /**
@@ -205,14 +245,41 @@ export async function updateCatalogueVersionSnapshot(args: {
     updated_at: new Date().toISOString(),
   };
 
+  try {
+    const { error } = await authorityDb
+      .from("catalogue_versions")
+      .update({
+        snapshot_json: updated.snapshot_json,
+        updated_at: updated.updated_at,
+      })
+      .eq("id", args.versionId);
+
+    if (!error) {
+      setVersionsPersistenceSource(args.productId, "supabase");
+      return { ok: true, message: "Draft snapshot updated" };
+    }
+  } catch {
+    /* fall through */
+  }
+
+  try {
+    assertLocalCatalogueFallbackWrite("updateCatalogueVersionSnapshot");
+  } catch (err) {
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Supabase unavailable; local fallback disabled",
+    };
+  }
+
   const local = readLocalVersions(args.productId);
   const localIdx = local.findIndex((v) => v.id === args.versionId);
   if (localIdx >= 0) {
     local[localIdx] = updated;
     writeLocalVersions(args.productId, local);
+    setVersionsPersistenceSource(args.productId, "local_only");
   }
 
-  return { ok: true, message: "Draft snapshot updated" };
+  return { ok: true, message: "Draft snapshot updated (local only — not authoritative)" };
 }
 
 export async function recordSyncPreviewEvent(args: {
@@ -233,7 +300,7 @@ export async function recordSyncPreviewEvent(args: {
   };
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_sync_events")
       .insert({
         catalogue_version_id: event.catalogue_version_id,
@@ -245,14 +312,25 @@ export async function recordSyncPreviewEvent(args: {
       .select("*")
       .single();
 
-    if (!error && data) return data as CatalogueSyncEventRow;
+    if (!error && data) {
+      setVersionsPersistenceSource(args.productId, "supabase");
+      return data as CatalogueSyncEventRow;
+    }
   } catch {
-    /* fallback */
+    /* fall through */
+  }
+
+  try {
+    assertLocalCatalogueFallbackWrite("recordSyncPreviewEvent");
+  } catch {
+    setVersionsPersistenceSource(args.productId, "supabase_unavailable");
+    return event;
   }
 
   const events = readLocalEvents(args.productId);
   events.unshift(event);
   writeLocalEvents(args.productId, events.slice(0, 50));
+  setVersionsPersistenceSource(args.productId, "local_only");
   return event;
 }
 
@@ -262,22 +340,24 @@ export async function listSyncPreviewEvents(
   try {
     const versions = await listCatalogueVersions(productId);
     const versionIds = versions.map((v) => v.id);
-    if (!versionIds.length) return readLocalEvents(productId);
+    if (!versionIds.length) {
+      return isLocalCatalogueFallbackReadEnabled() ? readLocalEvents(productId) : [];
+    }
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_sync_events")
       .select("*")
       .in("catalogue_version_id", versionIds)
       .order("triggered_at", { ascending: false });
 
-    if (!error && Array.isArray(data) && data.length) {
-      return data as CatalogueSyncEventRow[];
+    if (!error) {
+      return (data ?? []) as CatalogueSyncEventRow[];
     }
   } catch {
-    /* fallback */
+    /* fall through */
   }
 
-  return readLocalEvents(productId);
+  return isLocalCatalogueFallbackReadEnabled() ? readLocalEvents(productId) : [];
 }
 
 export function getHeadVersion(versions: CatalogueVersionRow[]): CatalogueVersionRow | null {

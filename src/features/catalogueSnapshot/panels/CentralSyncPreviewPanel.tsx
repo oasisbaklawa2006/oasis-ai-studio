@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertTriangle, CheckCircle2, Copy, Eye, Lock } from "lucide-react";
+import { CheckCircle2, Copy, Eye, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { CentralSyncReadOnlyBanner } from "@/components/catalogueAuthority/AuthorityStatusBadges";
+import { getVersionsPersistenceSource } from "../catalogueVersionStore";
 import {
   evaluateProductReadiness,
   productTruthInputFromForm,
@@ -141,17 +143,21 @@ export function CentralSyncPreviewPanel({
     URL.revokeObjectURL(url);
   };
 
+  const persistenceSource = getVersionsPersistenceSource(productId);
+
   return (
     <div className="space-y-4">
-      <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-sm flex gap-2">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
-        <div>
-          <strong>Preview only — no live Central write.</strong>
-          <p className="text-xs text-muted-foreground mt-1">
-            Connector 25B/25C export shape for review. Live sync and webhooks are not enabled.
-          </p>
-        </div>
-      </div>
+      <CentralSyncReadOnlyBanner />
+      {persistenceSource === "local_only" && (
+        <p className="text-xs text-orange-700 dark:text-orange-300">
+          Version history is being read from browser local storage — not authoritative.
+        </p>
+      )}
+      {persistenceSource === "supabase_unavailable" && (
+        <p className="text-xs text-destructive">
+          Catalogue versions could not be loaded from Supabase. Preview actions may fail until connectivity is restored.
+        </p>
+      )}
 
       <div className="card-elevated p-4 flex flex-wrap items-center justify-between gap-2">
         <div>

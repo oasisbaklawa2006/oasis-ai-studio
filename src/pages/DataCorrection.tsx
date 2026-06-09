@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
+import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -235,6 +236,13 @@ const DataCorrection = () => {
         title="Data Correction Center"
         subtitle="Review and correct products: photos, prices, MOQ, departments, and label data."
       />
+
+      <div className="mb-4 space-y-1">
+        <AuthorityStatusBadges show={{ local_only: true }} />
+        <p className="text-xs text-muted-foreground">
+          &quot;Reviewed&quot; checkmarks are stored in this browser only ({REVIEW_KEY}) — not synced to Supabase or Oasis Central.
+        </p>
+      </div>
 
       {queryError && (
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
