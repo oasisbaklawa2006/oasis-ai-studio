@@ -1,12 +1,16 @@
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ExternalLink } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
 import {
   PRODUCT_LANGUAGE_TERM_TYPES,
   TERM_TYPE_LABELS,
   TERM_TYPE_UI_NOTICE,
 } from "@/features/productLanguage/terms";
-import { countStoredTermTypes } from "@/features/productLanguage/termTypeStorage";
+import { fetchProductLanguageSnapshot } from "@/features/productIntelligence/fetchLanguageTerms";
+import { capabilityReadinessScore } from "@/features/productIntelligence/productLanguageReadiness";
+import type { ProductLanguageReadinessResult } from "@/features/productIntelligence/types";
 
 type Props = {
   productId: string;
@@ -19,9 +23,40 @@ export function ProductLanguageTermsPanel({
   productName,
   onOpenAliasManager,
 }: Props) {
-  const counts = countStoredTermTypes(productId);
-  const totalTracked = Object.values(counts).reduce((n, c) => n + (c ?? 0), 0);
+  const [loading, setLoading] = useState(true);
+  const [readiness, setReadiness] = useState<ProductLanguageReadinessResult | null>(null);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [gaps, setGaps] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const snap = await fetchProductLanguageSnapshot(productId, productName);
+        if (cancelled) return;
+        setReadiness(snap.readiness);
+        setCounts(snap.counts);
+        setGaps(snap.readiness.gaps);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [productId, productName]);
+
+  const capability = readiness
+    ? capabilityReadinessScore(readiness, {
+        productTruthWired: true,
+        snapshotWired: true,
+        searchWired: true,
+      })
+    : null;
+
   const whatsappCount = counts.whatsapp_keyword ?? 0;
+  const totalAliases = counts.total_aliases ?? 0;
 
   return (
     <div className="space-y-4">
@@ -42,6 +77,39 @@ export function ProductLanguageTermsPanel({
           {TERM_TYPE_UI_NOTICE}
         </p>
 
+        {loading ? (
+          <p className="text-xs text-muted-foreground">Loading language inventory…</p>
+        ) : readiness ? (
+          <div className="rounded-md border p-3 space-y-2 bg-muted/10">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Language discoverability readiness
+                </div>
+                <p className="text-sm">
+                  {readiness.score}/{readiness.maxScore} dimensions · {readiness.percent}%
+                </p>
+              </div>
+              {readiness.readyForDiscoverability ? (
+                <span className="badge-soft bg-success/10 text-success flex items-center gap-1 text-xs px-2 py-1 rounded-full">
+                  <CheckCircle2 className="h-3 w-3" /> Baseline complete
+                </span>
+              ) : (
+                <span className="badge-soft bg-warning/10 text-warning flex items-center gap-1 text-xs px-2 py-1 rounded-full">
+                  <AlertTriangle className="h-3 w-3" /> Gaps remain
+                </span>
+              )}
+            </div>
+            <Progress value={readiness.percent} className="h-2" />
+            <p className="text-[11px] text-muted-foreground">{readiness.nextAction}</p>
+            {capability && (
+              <p className="text-[11px] text-muted-foreground">
+                Product Intelligence capability layer: {capability.score}/{capability.maxScore} ({capability.label.replace(/_/g, " ")})
+              </p>
+            )}
+          </div>
+        ) : null}
+
         <div className="rounded-md border border-warning/30 bg-warning/5 p-3 flex gap-2">
           <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
           <div className="text-xs space-y-1">
@@ -50,8 +118,8 @@ export function ProductLanguageTermsPanel({
               Phrases in the WhatsApp Keyword tab are submitted as drafts and must be approved before they affect
               order matching or chat flows.
               {whatsappCount > 0
-                ? ` ${whatsappCount} keyword${whatsappCount === 1 ? "" : "s"} tracked in UI metadata.`
-                : " No WhatsApp keywords tracked yet."}
+                ? ` ${whatsappCount} keyword${whatsappCount === 1 ? "" : "s"} in inventory.`
+                : " No WhatsApp keywords in inventory yet."}
             </p>
           </div>
         </div>
@@ -65,10 +133,22 @@ export function ProductLanguageTermsPanel({
           ))}
         </div>
 
-        {totalTracked > 0 && (
+        {!loading && (
           <p className="text-[11px] text-muted-foreground">
-            {totalTracked} term type assignment{totalTracked === 1 ? "" : "s"} stored in browser metadata (not in Central DB).
+            {totalAliases} alias row{totalAliases === 1 ? "" : "s"} from product_aliases
+            {totalAliases === 0 ? " — add terms via Manage language terms" : ""}.
           </p>
+        )}
+
+        {gaps.length > 0 && !loading && (
+          <div className="rounded-md border p-3 bg-muted/20 space-y-1">
+            <div className="text-xs font-medium">Missing discoverability coverage</div>
+            <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+              {gaps.map((g) => (
+                <li key={g}>{g}</li>
+              ))}
+            </ul>
+          </div>
         )}
 
         {onOpenAliasManager && (

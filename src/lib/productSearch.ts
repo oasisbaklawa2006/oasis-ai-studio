@@ -168,7 +168,7 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
     supabase
       .from("product_aliases")
       .select("alias_text, alias, product_id, canonical_name")
-      .ilike("alias_text", pattern),
+      .or(`alias_text.ilike.${pattern},canonical_name.ilike.${pattern}`),
   ]);
 
   if (productsRes.error) console.error("[productSearch] products fallback:", productsRes.error);

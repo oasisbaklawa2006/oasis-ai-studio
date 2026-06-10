@@ -1,4 +1,5 @@
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
+import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
 import type {
   ChannelMoqRule,
   ChannelPriceRecord,
@@ -76,6 +77,8 @@ export type CatalogueSnapshotJson = {
     can_sync_media_to_central?: boolean;
   };
   fulfillment_transform: Record<string, unknown>;
+  /** Product Intelligence — read-only until product_language_terms schema ships. */
+  language_intelligence: SnapshotLanguageIntelligence;
   synced_at: string | null;
   ready_for_central_sync: boolean;
 };
@@ -137,4 +140,13 @@ export type SnapshotGeneratorInput = {
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
   approvedBy?: string | null;
+  /** Optional alias rows for language_intelligence section (read-only preview). */
+  languageAliasRows?: Array<{
+    id: string;
+    alias_text?: string | null;
+    alias?: string | null;
+    product_id?: string | null;
+    canonical_name?: string | null;
+    alias_type?: string | null;
+  }>;
 };
