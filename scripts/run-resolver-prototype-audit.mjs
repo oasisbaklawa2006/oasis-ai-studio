@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Read-only resolver prototype audit against Phase 1 + Wave 2A catalog fixture.
+ * Read-only resolver prototype audit against Phase 1 + Wave 2A + Wave 2B catalog fixture.
  * No DB writes. No order creation.
  */
 
@@ -92,12 +92,17 @@ const PRODUCT_IDS = {
   "OAS-AS-BKL-0003": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
   "OAS-AS-BKL-0007": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
   "OAS-AS-BKL-0010": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+  "OAS-AS-BKL-0012": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
   "OAS-AS-BKL-0013": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
   "OAS-AS-BKL-0014": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+  "OAS-AS-BKL-0015": "73f91572-8844-4fa6-b267-56210d180468",
+  "OAS-AS-BKL-0016": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
   "OAS-AS-BKL-0017": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
   "OAS-AS-BKL-0019": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
   "OAS-AS-BKL-0020": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
   "OAS-AS-BKL-0021": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+  "OAS-AS-BKL-0022": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+  "OAS-AS-BKL-0023": "43a25d30-f7d9-426b-b5af-cae7d477468e",
   "OAS-AS-BKL-0024": "cea65af8-129c-4838-988f-30955fa5bc22",
   "OAS-AS-BKL-0025": "f58e0a78-53a9-400b-8768-7af09b68ba38",
 };
@@ -107,12 +112,17 @@ const PRODUCTS = [
   { id: PRODUCT_IDS["OAS-AS-BKL-0003"], sku: "OAS-AS-BKL-0003", name: "Cashew Ring" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0007"], sku: "OAS-AS-BKL-0007", name: "Cashew Finger" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0010"], sku: "OAS-AS-BKL-0010", name: "Pistachio Ring" },
+  { id: PRODUCT_IDS["OAS-AS-BKL-0012"], sku: "OAS-AS-BKL-0012", name: "Chocolate Pistachio Asiyah" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0013"], sku: "OAS-AS-BKL-0013", name: "Chocolate Cashew Asiyah" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0014"], sku: "OAS-AS-BKL-0014", name: "Mor Cashew Asiyah" },
+  { id: PRODUCT_IDS["OAS-AS-BKL-0015"], sku: "OAS-AS-BKL-0015", name: "Mor Pistachio Asiyah" },
+  { id: PRODUCT_IDS["OAS-AS-BKL-0016"], sku: "OAS-AS-BKL-0016", name: "Pistachio Asiyah" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0017"], sku: "OAS-AS-BKL-0017", name: "Cashew Asiyah" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0019"], sku: "OAS-AS-BKL-0019", name: "Pistachio Pyramid" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0020"], sku: "OAS-AS-BKL-0020", name: "Tart Cashew" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0021"], sku: "OAS-AS-BKL-0021", name: "Mix Nut Tart" },
+  { id: PRODUCT_IDS["OAS-AS-BKL-0022"], sku: "OAS-AS-BKL-0022", name: "Almond Tart" },
+  { id: PRODUCT_IDS["OAS-AS-BKL-0023"], sku: "OAS-AS-BKL-0023", name: "Pistachio Tart" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0024"], sku: "OAS-AS-BKL-0024", name: "Mor Pistachio Durum" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0025"], sku: "OAS-AS-BKL-0025", name: "Coconut Durum" },
 ];
@@ -120,7 +130,8 @@ const PRODUCTS = [
 function loadAliases() {
   const phase1 = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview/batch001_phase1_drafts_payload.json"), "utf8"));
   const wave2a = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview/batch001_wave2a_drafts_payload.json"), "utf8"));
-  return [...phase1, ...wave2a].map((d) => ({
+  const wave2b = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview/batch001_wave2b_drafts_payload.json"), "utf8"));
+  return [...phase1, ...wave2a, ...wave2b].map((d) => ({
     alias_text: d.payload.alias_text,
     canonical_name: d.payload.canonical_name,
     product_id: d.payload.product_id,
@@ -151,6 +162,17 @@ const TEST_CASES = [
   { utterance: "pistachio pyramid", expectSku: "OAS-AS-BKL-0019", expectClarify: false },
   { utterance: "mix nut tart", expectSku: "OAS-AS-BKL-0021", expectClarify: false },
   { utterance: "coconut durum", expectSku: "OAS-AS-BKL-0025", expectClarify: false },
+  // Wave 2B SKUs
+  { utterance: "chocolate pistachio asiyah", expectSku: "OAS-AS-BKL-0012", expectClarify: false },
+  { utterance: "mor pistachio asiyah", expectSku: "OAS-AS-BKL-0015", expectClarify: false },
+  { utterance: "beetroot pistachio asiyah", expectSku: "OAS-AS-BKL-0015", expectClarify: false },
+  { utterance: "OAS-AS-BKL-0016", expectSku: "OAS-AS-BKL-0016", expectClarify: false },
+  { utterance: "almond tart", expectSku: "OAS-AS-BKL-0022", expectClarify: false },
+  { utterance: "need almond tart", expectSku: "OAS-AS-BKL-0022", expectClarify: false },
+  { utterance: "pistachio nut tart", expectSku: "OAS-AS-BKL-0023", expectClarify: false },
+  { utterance: "need pistachio asiyah", expectSku: null, expectClarify: true },
+  { utterance: "pistachio asiyah", expectSku: null, expectClarify: true },
+  { utterance: "pistachio tart", expectSku: "OAS-AS-BKL-0023", expectClarify: false },
   // Ambiguity / safety
   { utterance: "cashew assiyah", expectSku: null, expectClarify: true },
   { utterance: "cashew high gap baklawa", expectSku: null, expectClarify: true },

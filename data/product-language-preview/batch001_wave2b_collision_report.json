@@ -1,0 +1,177 @@
+{
+  "raw_count": 74,
+  "excluded_bare_generic": [
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "term": "Pista Asiyah",
+      "reason": "bare_term"
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "term": "pistachio asiyah",
+      "reason": "bare_term"
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "term": "pista asiyah",
+      "reason": "bare_term"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "pistachio tart",
+      "reason": "bare_term"
+    }
+  ],
+  "excluded_insufficient_context": [
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "Pista Tart",
+      "reason": "insufficient_context"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "Pistachio Baklawa Tart",
+      "reason": "insufficient_context"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "pista tart",
+      "reason": "insufficient_context"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "pistachio baklawa tart",
+      "reason": "insufficient_context"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "need pistachio tart",
+      "reason": "insufficient_context"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "send pistachio tart",
+      "reason": "insufficient_context"
+    }
+  ],
+  "excluded_existing_same_product": [],
+  "excluded_prior_wave_cross_sku": [],
+  "excluded_cross_wave2b": [],
+  "excluded_within_batch_dupe": [
+    {
+      "sku": "OAS-AS-BKL-0012",
+      "term": "chocolate pista asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0012",
+      "term": "chocolate pistachio nut asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0012",
+      "term": "chocolate pistachio asiyah baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0012",
+      "term": "chocolate pistachio asiyah baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0012",
+      "term": "chocolate pistachio asiyah lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0015",
+      "term": "mor pista asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0015",
+      "term": "mor pistachio nut asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0015",
+      "term": "beetroot pistachio asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0015",
+      "term": "purple pistachio asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0015",
+      "term": "mor pistachio asiyah baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "term": "pistachio nut asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "term": "pistachio asiyah baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "term": "pistachio asiyah baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "term": "pistachio asiyah lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0022",
+      "term": "badam tart",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0022",
+      "term": "almond baklawa tart",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0022",
+      "term": "almond tart baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0022",
+      "term": "almond tart baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0022",
+      "term": "almond tart lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "pistachio nut tart",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "pistachio tart baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "pistachio tart baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "term": "pistachio tart lebanese baklava",
+      "reason": "case_variant_dupe"
+    }
+  ]
+}
