@@ -7,6 +7,7 @@ import { ChannelRulesPanel } from "./panels/ChannelRulesPanel";
 import { PreviewCalculatorPanel } from "./panels/PreviewCalculatorPanel";
 import { CentralSyncPreviewPanel } from "@/features/catalogueSnapshot/panels/CentralSyncPreviewPanel";
 import { MediaReadinessPanel } from "@/features/mediaReadiness/panels/MediaReadinessPanel";
+import { ProductLanguageTermsPanel } from "./panels/ProductLanguageTermsPanel";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
 import type { ChannelMoqRule, ChannelPriceRecord } from "./types";
@@ -14,6 +15,8 @@ import type { ChannelMoqRule, ChannelPriceRecord } from "./types";
 type Props = {
   form: Record<string, unknown>;
   productId?: string;
+  productName?: string;
+  onOpenAliasManager?: () => void;
   complianceMetaPending?: boolean;
   complianceApproved?: boolean;
   prices?: ChannelPriceRecord[];
@@ -23,6 +26,8 @@ type Props = {
 export function ProductTruthAdminSection({
   form,
   productId,
+  productName = "",
+  onOpenAliasManager,
   complianceMetaPending = false,
   complianceApproved = false,
   prices = [],
@@ -62,6 +67,7 @@ export function ProductTruthAdminSection({
       <Tabs value={subTab} onValueChange={setSubTab}>
         <TabsList className="flex flex-wrap h-auto gap-1 bg-muted/40 p-1">
           <TabsTrigger value="readiness" className="text-xs">Readiness</TabsTrigger>
+          <TabsTrigger value="language_terms" className="text-xs">Language</TabsTrigger>
           <TabsTrigger value="media_readiness" className="text-xs">Media</TabsTrigger>
           <TabsTrigger value="uom" className="text-xs">UOM</TabsTrigger>
           <TabsTrigger value="packaging" className="text-xs">Packaging</TabsTrigger>
@@ -73,6 +79,15 @@ export function ProductTruthAdminSection({
         <TabsContent value="readiness" className="mt-4">
           <ProductReadinessPanel readiness={readiness} />
         </TabsContent>
+        {productId && (
+          <TabsContent value="language_terms" className="mt-4">
+            <ProductLanguageTermsPanel
+              productId={productId}
+              productName={productName || String(form.product_name ?? form.name ?? "")}
+              onOpenAliasManager={onOpenAliasManager}
+            />
+          </TabsContent>
+        )}
         <TabsContent value="media_readiness" className="mt-4">
           <MediaReadinessPanel form={form} />
         </TabsContent>

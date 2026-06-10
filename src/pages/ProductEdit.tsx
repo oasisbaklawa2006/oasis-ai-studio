@@ -1389,7 +1389,13 @@ const ProductEdit = () => {
                 </div>
               )}
 
-              {!isNew && <AliasManager productId={id!} productName={form.product_name ?? ""} />}
+              {!isNew && (
+                <AliasManager
+                  id="product-language-terms"
+                  productId={id!}
+                  productName={form.product_name ?? ""}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="uom" className="space-y-6">
@@ -1930,6 +1936,13 @@ const ProductEdit = () => {
                 <ProductTruthAdminSection
                   form={form}
                   productId={id}
+                  productName={form.product_name ?? ""}
+                  onOpenAliasManager={() => {
+                    setTab("identity");
+                    requestAnimationFrame(() => {
+                      document.getElementById("product-language-terms")?.scrollIntoView({ behavior: "smooth" });
+                    });
+                  }}
                   complianceApproved={false}
                   complianceMetaPending={false}
                 />
