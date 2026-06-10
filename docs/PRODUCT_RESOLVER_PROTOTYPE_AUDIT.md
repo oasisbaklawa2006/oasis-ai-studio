@@ -2,7 +2,8 @@
 
 **Date:** 2026-06-10  
 **Module:** `src/features/productResolver/`  
-**Mode:** Read-only — no order creation, no Central sync, no production writes
+**Mode:** Read-only — no order creation, no Central sync, no production writes  
+**Coverage:** 12 SKUs (Phase 1 anchors + Wave 2A)
 
 ---
 
@@ -31,21 +32,6 @@ Customer utterance
   → ProductResolverResult
 ```
 
-### Output contract
-
-```typescript
-{
-  input: string;
-  normalized_text: string;
-  matched_sku: string | null;
-  matched_product: string | null;
-  matched_product_id: string | null;
-  confidence: number;
-  clarification_required: boolean;
-  candidates: ResolverCandidate[];  // max 3
-}
-```
-
 ### Configuration
 
 | Parameter | Value |
@@ -56,37 +42,62 @@ Customer utterance
 
 ---
 
-## Files delivered
+## Catalog fixture
 
-| File | Role |
-|------|------|
-| `src/features/productResolver/types.ts` | Types + default config |
-| `src/features/productResolver/normalizeUtterance.ts` | Text normalization |
-| `src/features/productResolver/resolveProduct.ts` | Core resolver (pure, injectable catalog) |
-| `src/features/productResolver/loadResolverCatalog.ts` | Read-only Supabase catalog loader |
-| `src/features/productResolver/productResolver.test.ts` | Unit tests |
-| `scripts/run-resolver-prototype-audit.mjs` | Utterance audit runner |
+| Source | SKUs | Aliases |
+|--------|------|---------|
+| Phase 1 (`batch001_phase1_drafts_payload.json`) | 4 | 82 |
+| Wave 2A (`batch001_wave2a_drafts_payload.json`) | 8 | 78 |
+| **Combined** | **12** | **160** |
+
+### Covered SKUs
+
+| SKU | Product |
+|-----|---------|
+| OAS-AS-BKL-0001 | Cashew Kitta |
+| OAS-AS-BKL-0003 | Cashew Ring |
+| OAS-AS-BKL-0007 | Cashew Finger |
+| OAS-AS-BKL-0010 | Pistachio Ring |
+| OAS-AS-BKL-0013 | Chocolate Cashew Asiyah |
+| OAS-AS-BKL-0014 | Mor Cashew Asiyah |
+| OAS-AS-BKL-0017 | Cashew Asiyah |
+| OAS-AS-BKL-0019 | Pistachio Pyramid |
+| OAS-AS-BKL-0020 | Tart Cashew |
+| OAS-AS-BKL-0021 | Mix Nut Tart |
+| OAS-AS-BKL-0024 | Mor Pistachio Durum |
+| OAS-AS-BKL-0025 | Coconut Durum |
 
 ---
 
-## Utterance test audit (Phase 1 anchor catalog)
-
-**Fixture:** 82 approved aliases across 4 anchor SKUs from `batch001_phase1_drafts_payload.json`
+## Utterance test audit (12-SKU catalog)
 
 | # | Utterance | Expected | Result | Pass |
 |---|-----------|----------|--------|------|
-| 1 | mor kaju asiyah | OAS-AS-BKL-0014 | OAS-AS-BKL-0014 (0.94) | ✓ |
-| 2 | 2 mor kaju asiyah chahiye | OAS-AS-BKL-0014 | OAS-AS-BKL-0014 (0.94) | ✓ |
-| 3 | chocolate kaju asiyah | OAS-AS-BKL-0013 | OAS-AS-BKL-0013 (0.94) | ✓ |
-| 4 | tart kaju | OAS-AS-BKL-0020 | OAS-AS-BKL-0020 (0.94) | ✓ |
-| 5 | mor pistachio durum | OAS-AS-BKL-0024 | OAS-AS-BKL-0024 (0.94) | ✓ |
-| 6 | OAS-AS-BKL-0020 | OAS-AS-BKL-0020 | OAS-AS-BKL-0020 (1.00) | ✓ |
-| 7 | cashew assiyah | clarify | clarification_required | ✓ |
-| 8 | cashew high gap baklawa | clarify | clarification_required | ✓ |
-| 9 | cashew box | clarify | clarification_required | ✓ |
-| 10 | random sweet | clarify | clarification_required | ✓ |
+| 1 | mor kaju asiyah | OAS-AS-BKL-0014 | OAS-AS-BKL-0014 | ✓ |
+| 2 | 2 mor kaju asiyah chahiye | OAS-AS-BKL-0014 | OAS-AS-BKL-0014 | ✓ |
+| 3 | chocolate kaju asiyah | OAS-AS-BKL-0013 | OAS-AS-BKL-0013 | ✓ |
+| 4 | tart kaju | OAS-AS-BKL-0020 | OAS-AS-BKL-0020 | ✓ |
+| 5 | mor pistachio durum | OAS-AS-BKL-0024 | OAS-AS-BKL-0024 | ✓ |
+| 6 | OAS-AS-BKL-0020 | OAS-AS-BKL-0020 | OAS-AS-BKL-0020 | ✓ |
+| 7 | cashew kitta | OAS-AS-BKL-0001 | OAS-AS-BKL-0001 | ✓ |
+| 8 | need cashew kitta | OAS-AS-BKL-0001 | OAS-AS-BKL-0001 | ✓ |
+| 9 | cashew ring | OAS-AS-BKL-0003 | OAS-AS-BKL-0003 | ✓ |
+| 10 | cashew finger | OAS-AS-BKL-0007 | OAS-AS-BKL-0007 | ✓ |
+| 11 | pistachio ring | OAS-AS-BKL-0010 | OAS-AS-BKL-0010 | ✓ |
+| 12 | OAS-AS-BKL-0017 | OAS-AS-BKL-0017 | OAS-AS-BKL-0017 | ✓ |
+| 13 | need cashew asiyah | clarify | clarification_required | ✓ |
+| 14 | pistachio pyramid | OAS-AS-BKL-0019 | OAS-AS-BKL-0019 | ✓ |
+| 15 | mix nut tart | OAS-AS-BKL-0021 | OAS-AS-BKL-0021 | ✓ |
+| 16 | coconut durum | OAS-AS-BKL-0025 | OAS-AS-BKL-0025 | ✓ |
+| 17 | cashew asiyah baklawa | clarify | clarification_required | ✓ |
+| 18 | kaju asiyah | clarify | clarification_required | ✓ |
+| 19 | cashew nut asiyah | clarify | clarification_required | ✓ |
+| 20 | cashew assiyah | clarify | clarification_required | ✓ |
+| 21 | cashew high gap baklawa | clarify | clarification_required | ✓ |
+| 22 | cashew box | clarify | clarification_required | ✓ |
+| 23 | random sweet | clarify | clarification_required | ✓ |
 
-### Readiness score: **100%** (10/10 utterance tests)
+### Readiness score: **100%** (23/23 utterance tests)
 
 ---
 
@@ -96,49 +107,35 @@ Customer utterance
 src/features/productResolver/productResolver.test.ts — 6/6 pass
 ```
 
-Coverage:
-- Filler/quantity stripping
-- Unambiguous keyword resolution
-- SKU direct match
-- Cross-SKU ambiguity flagging
-- Vague utterance handling
-- Empty input handling
-
 ---
 
 ## Behaviour verified
 
-### Unambiguous resolution
+### Wave 2A unambiguous resolution
 
-Customer text with product-specific keywords resolves to a single SKU with confidence ≥ 0.72 and `clarification_required: false`.
+Product-specific keywords (`cashew kitta`, `pistachio pyramid`, `coconut durum`, etc.) resolve to the correct Wave 2A SKU with confidence ≥ 0.72.
 
-### Ambiguity detection
+### Cross-generation asiyah handling
 
-Shared terms (`cashew assiyah`, `cashew high gap baklawa`) correctly return:
-- `clarification_required: true`
-- `matched_sku: null`
-- 2+ candidates with tied confidence (0.94)
+- `OAS-AS-BKL-0017` → direct SKU match (1.0 confidence)
+- `need cashew asiyah` / `cashew asiyah baklawa` / `kaju asiyah` / `cashew nut asiyah` → clarification (asiyah family spans 0013, 0014, 0017)
+- `cashew assiyah` → clarification (Phase 1 shared terms on 0013, 0014)
 
-### SKU preservation
+### Phase 1 regression
 
-SKU-pattern input (`OAS-AS-BKL-0020`) bypasses quantity stripping and resolves with confidence 1.0.
-
-### Vague input safety
-
-`cashew box` and `random sweet` do not silently resolve to a wrong product.
+All Phase 1 anchor utterance tests continue to pass with Wave 2A aliases in catalog.
 
 ---
 
 ## Gaps and limitations (prototype)
 
-| Gap | Impact | Phase 2 action |
-|-----|--------|----------------|
-| No `term_type` weighting | WhatsApp keywords not boosted over official aliases | Add channel-scoped scoring |
-| Case-sensitive alias rows in DB | Duplicate match paths for Title/lowercase | Normalize at approve or dedupe |
-| No live DB integration test | Catalog loader untested against production in CI | Add integration test with SKU filter |
-| Token overlap only | No trigram/fuzzy for typos | Add pg_trgm or Levenshtein |
-| 4-SKU scope only | Cannot resolve Batch 001 remainder | Expand after Batch 002 approval |
-| No quantity extraction output | Qty stripped but not returned | Add `extracted_quantity` field |
+| Gap | Impact | Next action |
+|-----|--------|-------------|
+| No `term_type` weighting | WhatsApp keywords not boosted | Add channel-scoped scoring |
+| Case-sensitive alias rows | Duplicate match paths | Normalize at approve |
+| Token overlap only | No fuzzy typo matching | Add trigram/Levenshtein |
+| 12/25 Batch 001 SKUs | Remainder unresolved | Batch 002 approval wave |
+| Bare `kaju asiyah` ambiguous | Requires clarification | Expected; prefixed forms safer |
 
 ---
 
@@ -150,11 +147,11 @@ SKU-pattern input (`OAS-AS-BKL-0020`) bypasses quantity stripping and resolves w
 | Unit test pass rate | 100% | 20% | 20 |
 | Ambiguity handling | 100% | 20% | 20 |
 | SKU safety | 100% | 10% | 10 |
-| Production gaps (term_type, fuzzy, full catalog) | 40% | 10% | 4 |
+| Production gaps (term_type, fuzzy, full catalog) | 48% | 10% | 4.8 |
 
-### **Overall resolver readiness: 94/100**
+### **Overall resolver readiness: 94.8/100**
 
-Suitable for **Phase 1 anchor SKU prototype** with human clarification fallback. Not yet production-ready for full Batch 001 catalog.
+Suitable for **12-SKU prototype** with human clarification fallback. Not yet production-ready for full Batch 001 catalog.
 
 ---
 
@@ -162,7 +159,7 @@ Suitable for **Phase 1 anchor SKU prototype** with human clarification fallback.
 
 | Constraint | Status |
 |------------|--------|
-| Read-only | Yes — no writes |
+| Read-only | Yes |
 | No order creation | Yes |
 | No Central sync | Yes |
 | No production write path | Yes |
