@@ -1,0 +1,1490 @@
+[
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Square Baklawa Lebanese Baklava",
+      "alias_text": "Square Baklawa Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "89de33c7-e4c1-475e-b711-18258683fdec",
+      "canonical_name": "Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need square baklawa",
+      "alias_text": "need square baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "89de33c7-e4c1-475e-b711-18258683fdec",
+      "canonical_name": "Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send square baklawa",
+      "alias_text": "send square baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "89de33c7-e4c1-475e-b711-18258683fdec",
+      "canonical_name": "Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "square baklawa kg",
+      "alias_text": "square baklawa kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "89de33c7-e4c1-475e-b711-18258683fdec",
+      "canonical_name": "Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Kaju Rosebud",
+      "alias_text": "Kaju Rosebud",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Nut Rosebud",
+      "alias_text": "Cashew Nut Rosebud",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Rosebud Baklawa",
+      "alias_text": "Cashew Rosebud Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Rose Bud Baklava",
+      "alias_text": "Cashew Rose Bud Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Rosebud Baklava",
+      "alias_text": "Cashew Rosebud Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Rosebud Lebanese Baklava",
+      "alias_text": "Cashew Rosebud Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew rosebud",
+      "alias_text": "cashew rosebud",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need cashew rosebud",
+      "alias_text": "need cashew rosebud",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send cashew rosebud",
+      "alias_text": "send cashew rosebud",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew rosebud kg",
+      "alias_text": "cashew rosebud kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+      "canonical_name": "Cashew Rosebud",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Badam Crosole",
+      "alias_text": "Badam Crosole",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Croissant Baklawa",
+      "alias_text": "Almond Croissant Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Croissant Shape Baklava",
+      "alias_text": "Almond Croissant Shape Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Crosole Baklava",
+      "alias_text": "Almond Crosole Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Crosole Baklawa",
+      "alias_text": "Almond Crosole Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Crosole Lebanese Baklava",
+      "alias_text": "Almond Crosole Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need almond crosole",
+      "alias_text": "need almond crosole",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send almond crosole",
+      "alias_text": "send almond crosole",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "almond crosole kg",
+      "alias_text": "almond crosole kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+      "canonical_name": "Almond Crosole",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Kaju Pyramid",
+      "alias_text": "Kaju Pyramid",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Nut Pyramid",
+      "alias_text": "Cashew Nut Pyramid",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Boukaj",
+      "alias_text": "Cashew Boukaj",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Pyramid Baklawa",
+      "alias_text": "Cashew Pyramid Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Pyramid Baklava",
+      "alias_text": "Cashew Pyramid Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Pyramid Lebanese Baklava",
+      "alias_text": "Cashew Pyramid Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew pyramid",
+      "alias_text": "cashew pyramid",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need cashew pyramid",
+      "alias_text": "need cashew pyramid",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send cashew pyramid",
+      "alias_text": "send cashew pyramid",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew pyramid kg",
+      "alias_text": "cashew pyramid kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+      "canonical_name": "Cashew Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Khajoor Baklawa",
+      "alias_text": "Khajoor Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "a6013e20-0fc7-4fe6-b2ab-f7f82d336b0c",
+      "canonical_name": "Date Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Khajur Baklawa",
+      "alias_text": "Khajur Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "a6013e20-0fc7-4fe6-b2ab-f7f82d336b0c",
+      "canonical_name": "Date Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Date Baklawa Lebanese Baklava",
+      "alias_text": "Date Baklawa Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "a6013e20-0fc7-4fe6-b2ab-f7f82d336b0c",
+      "canonical_name": "Date Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need date baklawa",
+      "alias_text": "need date baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "a6013e20-0fc7-4fe6-b2ab-f7f82d336b0c",
+      "canonical_name": "Date Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send date baklawa",
+      "alias_text": "send date baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "a6013e20-0fc7-4fe6-b2ab-f7f82d336b0c",
+      "canonical_name": "Date Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "date baklawa kg",
+      "alias_text": "date baklawa kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "a6013e20-0fc7-4fe6-b2ab-f7f82d336b0c",
+      "canonical_name": "Date Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Special Square Baklava",
+      "alias_text": "Special Square Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c522fa96-9247-4cf5-9699-a20bc316dc55",
+      "canonical_name": "Special Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Special Square Baklawa Lebanese Baklava",
+      "alias_text": "Special Square Baklawa Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c522fa96-9247-4cf5-9699-a20bc316dc55",
+      "canonical_name": "Special Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "special square baklawa",
+      "alias_text": "special square baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c522fa96-9247-4cf5-9699-a20bc316dc55",
+      "canonical_name": "Special Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need special square baklawa",
+      "alias_text": "need special square baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c522fa96-9247-4cf5-9699-a20bc316dc55",
+      "canonical_name": "Special Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send special square baklawa",
+      "alias_text": "send special square baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c522fa96-9247-4cf5-9699-a20bc316dc55",
+      "canonical_name": "Special Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "special square baklawa kg",
+      "alias_text": "special square baklawa kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c522fa96-9247-4cf5-9699-a20bc316dc55",
+      "canonical_name": "Special Square Baklawa",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Pyramid Topping",
+      "alias_text": "Pistachio Pyramid Topping",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pista Pyramid(Topping)",
+      "alias_text": "Pista Pyramid(Topping)",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Nut Pyramid(Topping)",
+      "alias_text": "Pistachio Nut Pyramid(Topping)",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Pyramid(Topping) Baklawa",
+      "alias_text": "Pistachio Pyramid(Topping) Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Pyramid(Topping) Baklava",
+      "alias_text": "Pistachio Pyramid(Topping) Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio pyramid(topping)",
+      "alias_text": "pistachio pyramid(topping)",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio pyramid(topping) lebanese baklava",
+      "alias_text": "pistachio pyramid(topping) lebanese baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need pistachio pyramid(topping)",
+      "alias_text": "need pistachio pyramid(topping)",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send pistachio pyramid(topping)",
+      "alias_text": "send pistachio pyramid(topping)",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio pyramid(topping) kg",
+      "alias_text": "pistachio pyramid(topping) kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+      "canonical_name": "Pistachio Pyramid(Topping)",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Diamond Pista",
+      "alias_text": "Diamond Pista",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Diamond Pistachio Nut",
+      "alias_text": "Diamond Pistachio Nut",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Diamond Baklawa",
+      "alias_text": "Pistachio Diamond Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Diamond Baklava",
+      "alias_text": "Pistachio Diamond Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Diamond Pistachio Baklawa",
+      "alias_text": "Diamond Pistachio Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Diamond Pistachio Baklava",
+      "alias_text": "Diamond Pistachio Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Diamond Pistachio Lebanese Baklava",
+      "alias_text": "Diamond Pistachio Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "diamond pistachio",
+      "alias_text": "diamond pistachio",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need diamond pistachio",
+      "alias_text": "need diamond pistachio",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send diamond pistachio",
+      "alias_text": "send diamond pistachio",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "diamond pistachio kg",
+      "alias_text": "diamond pistachio kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+      "canonical_name": "Diamond Pistachio",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2c"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  }
+]

@@ -1,0 +1,252 @@
+{
+  "raw_count": 113,
+  "excluded_bare_generic": [
+    {
+      "sku": "OAS-AS-BKL-0002",
+      "term": "Square Baklava",
+      "reason": "bare_generic"
+    },
+    {
+      "sku": "OAS-AS-BKL-0002",
+      "term": "square baklawa",
+      "reason": "bare_generic"
+    },
+    {
+      "sku": "OAS-AS-BKL-0002",
+      "term": "square baklava",
+      "reason": "bare_generic"
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "term": "almond crosole",
+      "reason": "bare_generic"
+    },
+    {
+      "sku": "OAS-AS-BKL-0008",
+      "term": "Date Baklava",
+      "reason": "bare_generic"
+    },
+    {
+      "sku": "OAS-AS-BKL-0008",
+      "term": "date baklawa",
+      "reason": "bare_generic"
+    },
+    {
+      "sku": "OAS-AS-BKL-0008",
+      "term": "date baklava",
+      "reason": "bare_generic"
+    }
+  ],
+  "excluded_existing_same_product": [],
+  "excluded_master_cross_sku": [
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "Pistachio Pyramid Baklawa",
+      "reason": "master_cross_sku_collision",
+      "existing_on": [
+        "636b47cb-ea6f-4711-ae29-d6153e565ae3"
+      ]
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "Pistachio Pyramid Baklava",
+      "reason": "master_cross_sku_collision",
+      "existing_on": [
+        "636b47cb-ea6f-4711-ae29-d6153e565ae3"
+      ]
+    }
+  ],
+  "excluded_within_batch_dupe": [
+    {
+      "sku": "OAS-AS-BKL-0002",
+      "term": "square baklawa lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0004",
+      "term": "kaju rosebud",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0004",
+      "term": "cashew nut rosebud",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0004",
+      "term": "cashew rosebud baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0004",
+      "term": "cashew rose bud baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0004",
+      "term": "cashew rosebud baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0004",
+      "term": "cashew rosebud lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "term": "badam crosole",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "term": "almond croissant baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "term": "almond croissant shape baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "term": "almond crosole baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "term": "almond crosole baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "term": "almond crosole lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0006",
+      "term": "kaju pyramid",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0006",
+      "term": "cashew nut pyramid",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0006",
+      "term": "cashew boukaj",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0006",
+      "term": "cashew pyramid baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0006",
+      "term": "cashew pyramid baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0006",
+      "term": "cashew pyramid lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0008",
+      "term": "khajoor baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0008",
+      "term": "khajur baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0008",
+      "term": "date baklawa lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0009",
+      "term": "special square baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0009",
+      "term": "special square baklawa lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "pistachio pyramid topping",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "pista pyramid(topping)",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "pistachio nut pyramid(topping)",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "pistachio pyramid baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "pistachio pyramid baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "pistachio pyramid(topping) baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "term": "pistachio pyramid(topping) baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "term": "diamond pista",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "term": "diamond pistachio nut",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "term": "pistachio diamond baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "term": "pistachio diamond baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "term": "diamond pistachio baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "term": "diamond pistachio baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "term": "diamond pistachio lebanese baklava",
+      "reason": "case_variant_dupe"
+    }
+  ],
+  "excluded_cross_wave2c": []
+}
