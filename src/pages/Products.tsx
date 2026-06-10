@@ -8,7 +8,11 @@ import {
   Plus, Search, Image as ImageIcon, Tag as TagIcon, Copy,
   Filter, X, Package, Layers, Tag, Boxes,
 } from "lucide-react";
-import { searchProductsWithAliases, type ProductSearchResult } from "@/lib/productSearch";
+import {
+  BASIC_SEARCH_FALLBACK_MESSAGE,
+  searchProductsWithAliases,
+  type ProductSearchResult,
+} from "@/lib/productSearch";
 import { toast } from "sonner";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
@@ -87,6 +91,7 @@ const deptSummary = (p: any): string | null => {
 const Products = () => {
   const [items, setItems] = useState<any[]>([]);
   const [results, setResults] = useState<ProductSearchResult[] | null>(null);
+  const [searchBasicFallback, setSearchBasicFallback] = useState(false);
   const [q, setQ] = useState("");
   const [rules, setRules] = useState<any[]>([]);
 
@@ -133,9 +138,16 @@ const Products = () => {
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      if (!q.trim()) { setResults(null); return; }
+      if (!q.trim()) {
+        setResults(null);
+        setSearchBasicFallback(false);
+        return;
+      }
       const r = await searchProductsWithAliases(q);
-      if (!cancelled) setResults(r);
+      if (!cancelled) {
+        setResults(r.results);
+        setSearchBasicFallback(r.usedBasicFallback);
+      }
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
   }, [q]);
@@ -214,6 +226,10 @@ const Products = () => {
               {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
             </select>
           </div>
+
+          {searchBasicFallback && q.trim() && (
+            <p className="text-xs text-warning px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
+          )}
 
           {showFilters && (
             <div className="space-y-3 pt-3 border-t border-border/60 min-w-0">

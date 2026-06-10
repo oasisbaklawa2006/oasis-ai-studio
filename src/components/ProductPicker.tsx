@@ -1,6 +1,10 @@
 import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
-import { searchProductsWithAliases, type ProductSearchResult } from "@/lib/productSearch";
+import {
+  BASIC_SEARCH_FALLBACK_MESSAGE,
+  searchProductsWithAliases,
+  type ProductSearchResult,
+} from "@/lib/productSearch";
 import { Search } from "lucide-react";
 
 interface Props {
@@ -13,12 +17,16 @@ interface Props {
 export function ProductPicker({ onPick, excludeIds = [], placeholder = "Search by name, SKU or alias…", emptyHint }: Props) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<ProductSearchResult[]>([]);
+  const [searchBasicFallback, setSearchBasicFallback] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
       const r = await searchProductsWithAliases(q);
-      if (!cancelled) setResults(r);
+      if (!cancelled) {
+        setResults(r.results);
+        setSearchBasicFallback(r.usedBasicFallback && !!q.trim());
+      }
     }, 150);
     return () => { cancelled = true; clearTimeout(t); };
   }, [q]);
@@ -31,6 +39,9 @@ export function ProductPicker({ onPick, excludeIds = [], placeholder = "Search b
         <Search className="h-4 w-4 text-muted-foreground" />
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} className="border-0 focus-visible:ring-0 px-0" />
       </div>
+      {searchBasicFallback && (
+        <p className="text-[11px] text-warning mb-2 px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
+      )}
       <div className="max-h-80 overflow-auto space-y-1">
         {visible.map((p) => (
           <button

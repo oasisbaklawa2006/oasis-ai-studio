@@ -15,6 +15,7 @@ import {
   isCatalogueContributor,
 } from "@/shared/auth/centralPermissions";
 import type { Role } from "@/lib/permissions";
+import { getAliasText, hasAliasActiveFlag } from "@/lib/aliasDisplay";
 
 const ALIAS_TYPES = ["common_name","misspelling","local_slang","authentic_name","hindi_name","arabic_name","turkish_name","old_name","customer_term","salesman_term","visual_description","ai_generated"];
 
@@ -90,8 +91,27 @@ export function AliasManager({ productId, productName }: Props) {
   const [submitting, setSubmitting] = useState(false);
 
   const load = async () => {
-    const { data } = await supabase.from("product_aliases").select("*").eq("product_id", productId).order("created_at", { ascending: false });
-    setItems(data ?? []);
+    const trimmedName = productName.trim();
+    const byProductId = supabase
+      .from("product_aliases")
+      .select("*")
+      .eq("product_id", productId)
+      .order("created_at", { ascending: false });
+
+    const byCanonical =
+      trimmedName.length > 0
+        ? supabase
+            .from("product_aliases")
+            .select("*")
+            .is("product_id", null)
+            .ilike("canonical_name", trimmedName)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [] as any[] });
+
+    const [linked, legacy] = await Promise.all([byProductId, byCanonical]);
+    const merged = [...(linked.data ?? []), ...(legacy.data ?? [])];
+    const seen = new Set<string>();
+    setItems(merged.filter((row) => (seen.has(row.id) ? false : (seen.add(row.id), true))));
   };
 
   useEffect(() => {
@@ -119,19 +139,32 @@ export function AliasManager({ productId, productName }: Props) {
 
   const addDirect = async (rows: AliasRowInput[]) => {
     if (!rows.length) return;
-    const payload = rows.map((r) => ({
-      product_id: productId,
-      alias: r.alias,
-      language: r.language ?? null,
-      script: r.script ?? null,
-      alias_type: r.alias_type ?? "common_name",
-      source: r.source ?? "manual",
-    }));
-    const { error } = await supabase.from("product_aliases").upsert(payload, { onConflict: "product_id,normalized_alias", ignoreDuplicates: true });
-    if (error) {
-      toast.error(error.message);
+    const canonical = productName.trim() || "Unnamed product";
+    let inserted = 0;
+
+    for (const r of rows) {
+      const aliasText = r.alias.trim();
+      if (!aliasText) continue;
+
+      const { error } = await supabase.from("product_aliases").insert({
+        product_id: productId,
+        alias_text: aliasText,
+        canonical_name: canonical,
+      });
+
+      if (error) {
+        if (/duplicate|unique/i.test(error.message)) continue;
+        toast.error(error.message);
+        return false;
+      }
+      inserted += 1;
+    }
+
+    if (!inserted) {
+      toast.info("No new aliases added (duplicates skipped).");
       return false;
     }
+
     await load();
     return true;
   };
@@ -214,6 +247,10 @@ export function AliasManager({ productId, productName }: Props) {
     setSubmitting(true);
     try {
       if (writeMode === "direct") {
+        if (!hasAliasActiveFlag(item)) {
+          toast.info("Active toggle is not supported on this catalogue schema.");
+          return;
+        }
         const { error } = await supabase.from("product_aliases").update({ is_active: v }).eq("id", item.id);
         if (error) {
           toast.error(error.message);
@@ -228,7 +265,7 @@ export function AliasManager({ productId, productName }: Props) {
         draftType: "alias",
         operation: "update",
         payload: buildMutatePayload(productId, {
-          alias: item.alias,
+          alias: getAliasText(item),
           language: item.language,
           script: item.script,
           alias_type: item.alias_type,
@@ -267,7 +304,7 @@ export function AliasManager({ productId, productName }: Props) {
         draftType: "alias",
         operation: "delete_request",
         payload: buildMutatePayload(productId, {
-          alias: item.alias,
+          alias: getAliasText(item),
           language: item.language,
           script: item.script,
           alias_type: item.alias_type,
@@ -287,7 +324,7 @@ export function AliasManager({ productId, productName }: Props) {
   };
 
   const copyAll = () => {
-    navigator.clipboard.writeText(items.map((i) => i.alias).join("\n"));
+    navigator.clipboard.writeText(items.map((i) => getAliasText(i)).join("\n"));
     toast.success("Copied alias list");
   };
 
@@ -359,28 +396,35 @@ export function AliasManager({ productId, productName }: Props) {
       )}
 
       <div className="border-t pt-3 space-y-1.5 max-h-80 overflow-auto">
-        {items.map((a) => (
-          <div key={a.id} className={`flex items-center gap-3 text-sm py-1.5 px-2 rounded ${a.is_active ? "" : "opacity-50"}`}>
+        {items.map((a) => {
+          const aliasText = getAliasText(a);
+          const active = hasAliasActiveFlag(a) ? a.is_active : true;
+          return (
+          <div key={a.id} className={`flex items-center gap-3 text-sm py-1.5 px-2 rounded ${active ? "" : "opacity-50"}`}>
             <div className="flex-1 min-w-0">
-              <div className="truncate font-medium">{a.alias}</div>
-              <div className="text-[11px] text-muted-foreground">
-                {a.alias_type}{a.language ? ` · ${a.language}` : ""} · {a.source}
-                {a.confidence_score !== 1 ? ` · ${a.confidence_score}` : ""}
-              </div>
+              <div className="truncate font-medium">{aliasText}</div>
+              {(a.alias_type || a.language || a.source) && (
+                <div className="text-[11px] text-muted-foreground">
+                  {[a.alias_type, a.language, a.source].filter(Boolean).join(" · ")}
+                  {a.confidence_score != null && a.confidence_score !== 1 ? ` · ${a.confidence_score}` : ""}
+                </div>
+              )}
             </div>
             {canMutate ? (
               <>
-                <Switch
-                  checked={a.is_active}
-                  onCheckedChange={(v) => toggle(a, v)}
-                  disabled={submitting}
-                />
+                {hasAliasActiveFlag(a) && (
+                  <Switch
+                    checked={!!a.is_active}
+                    onCheckedChange={(v) => toggle(a, v)}
+                    disabled={submitting}
+                  />
+                )}
                 <button
                   type="button"
                   onClick={() => remove(a)}
                   disabled={submitting}
                   className="text-muted-foreground hover:text-destructive disabled:opacity-40"
-                  aria-label={`Remove ${a.alias}`}
+                  aria-label={`Remove ${aliasText}`}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -389,7 +433,8 @@ export function AliasManager({ productId, productName }: Props) {
               <span className="text-[10px] uppercase tracking-wide text-muted-foreground">View only</span>
             )}
           </div>
-        ))}
+        );
+        })}
         {items.length === 0 && <div className="text-xs text-muted-foreground text-center py-3">No aliases yet.</div>}
       </div>
     </div>
