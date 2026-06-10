@@ -1,0 +1,652 @@
+sku,official_name,category,hsn,term_type,term_text,language,script,conflict_risk,clarification_question
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Kaju Kitta,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Cashew Nut Kitta,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Cashew Baklawa Piece,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Cashew Piece Baklawa,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Cashew Kitta Baklawa,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Cashew Kitta Baklava,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Cashew Kitta Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,official_alias,Cashew Diamond,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,customer_term,cashew piece,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,customer_term,kaju piece,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,customer_term,cashew kitta piece,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,customer_term,Cashew Kitta,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,customer_term,Kaju Kitta,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew kitta,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,kaju kitta,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew nut kitta,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew baklawa piece,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew piece baklawa,,,MEDIUM,"Partial token match — prefer full ""Cashew Kitta"" phrase for WhatsApp"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew kitta baklawa,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew kitta baklava,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew kitta lebanese baklava,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,need cashew kitta,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,send cashew kitta,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,whatsapp_keyword,cashew kitta kg,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,regional_term,काजू कित्ता,hi,devanagari,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,search_keyword,kitta,,,HIGH,"Bare ""kitta"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0001"
+OAS-AS-BKL-0001,Cashew Kitta,Baklawa,21069099,search_keyword,diamond baklawa,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,official_alias,Square Baklava,,,MEDIUM,"Partial token match — prefer full ""Square Baklawa"" phrase for WhatsApp"
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,official_alias,Square Baklawa Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,customer_term,square piece,,,MEDIUM,"Partial token match — prefer full ""Square Baklawa"" phrase for WhatsApp"
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,customer_term,square sweet,,,MEDIUM,"Partial token match — prefer full ""Square Baklawa"" phrase for WhatsApp"
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,customer_term,Square Baklawa,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,whatsapp_keyword,square baklawa,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,whatsapp_keyword,square baklava,,,MEDIUM,"Partial token match — prefer full ""Square Baklawa"" phrase for WhatsApp"
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,whatsapp_keyword,square baklawa lebanese baklava,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,whatsapp_keyword,need square baklawa,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,whatsapp_keyword,send square baklawa,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,whatsapp_keyword,square baklawa kg,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,regional_term,مربع بقلاوة,ar,arabic,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0002,Square Baklawa,Baklawa,21069099,search_keyword,square baklawa,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,official_alias,Kaju Ring,,,MEDIUM,"Partial token match — prefer full ""Cashew Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,official_alias,Cashew Nut Ring,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,official_alias,Cashew Ring Baklawa,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,official_alias,Cashew Ring Baklava,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,official_alias,Cashew Ring Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,customer_term,kaju ring,,,MEDIUM,"Partial token match — prefer full ""Cashew Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,customer_term,kaju ring sweet,,,MEDIUM,"Partial token match — prefer full ""Cashew Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,customer_term,Cashew Ring,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,customer_term,Kaju Ring,,,MEDIUM,"Partial token match — prefer full ""Cashew Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,cashew ring,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,kaju ring,,,MEDIUM,"Partial token match — prefer full ""Cashew Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,cashew nut ring,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,cashew ring baklawa,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,cashew ring baklava,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,cashew ring lebanese baklava,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,need cashew ring,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,send cashew ring,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,whatsapp_keyword,cashew ring kg,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0003,Cashew Ring,Baklawa,21069099,search_keyword,ring baklawa,,,MEDIUM,"Partial token match — prefer full ""Cashew Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,official_alias,Kaju Rosebud,,,MEDIUM,"Partial token match — prefer full ""Cashew Rosebud"" phrase for WhatsApp"
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,official_alias,Cashew Nut Rosebud,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,official_alias,Cashew Rosebud Baklawa,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,official_alias,Cashew Rose Bud Baklava,,,MEDIUM,"Partial token match — prefer full ""Cashew Rosebud"" phrase for WhatsApp"
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,official_alias,Cashew Rosebud Baklava,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,official_alias,Cashew Rosebud Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,customer_term,rose sweet,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,customer_term,kaju rose,,,MEDIUM,"Partial token match — prefer full ""Cashew Rosebud"" phrase for WhatsApp"
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,customer_term,Cashew Rosebud,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,customer_term,Kaju Rosebud,,,MEDIUM,"Partial token match — prefer full ""Cashew Rosebud"" phrase for WhatsApp"
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,cashew rosebud,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,kaju rosebud,,,MEDIUM,"Partial token match — prefer full ""Cashew Rosebud"" phrase for WhatsApp"
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,cashew nut rosebud,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,cashew rosebud baklawa,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,cashew rose bud baklava,,,MEDIUM,"Partial token match — prefer full ""Cashew Rosebud"" phrase for WhatsApp"
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,cashew rosebud baklava,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,cashew rosebud lebanese baklava,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,need cashew rosebud,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,send cashew rosebud,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,whatsapp_keyword,cashew rosebud kg,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0004,Cashew Rosebud,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,official_alias,Badam Crosole,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,official_alias,Almond Croissant Baklawa,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,official_alias,Almond Croissant Shape Baklava,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,official_alias,Almond Crosole Baklava,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,official_alias,Almond Crosole Baklawa,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,official_alias,Almond Crosole Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,customer_term,croissant baklava,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,customer_term,almond croissant,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,customer_term,Almond Crosole,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,customer_term,Badam Crosole,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,almond crosole,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,badam crosole,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,almond croissant baklawa,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,almond croissant shape baklava,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,almond crosole baklava,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,almond crosole baklawa,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,almond crosole lebanese baklava,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,need almond crosole,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,send almond crosole,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,whatsapp_keyword,almond crosole kg,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,regional_term,बादाम बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0005,Almond Crosole,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,official_alias,Kaju Pyramid,,,MEDIUM,"Partial token match — prefer full ""Cashew Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,official_alias,Cashew Nut Pyramid,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,official_alias,Cashew Boukaj,,,MEDIUM,"Partial token match — prefer full ""Cashew Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,official_alias,Cashew Pyramid Baklawa,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,official_alias,Cashew Pyramid Baklava,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,official_alias,Cashew Pyramid Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,customer_term,kaju pyramid,,,MEDIUM,"Partial token match — prefer full ""Cashew Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,customer_term,Cashew Pyramid,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,customer_term,Kaju Pyramid,,,MEDIUM,"Partial token match — prefer full ""Cashew Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,cashew pyramid,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,kaju pyramid,,,MEDIUM,"Partial token match — prefer full ""Cashew Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,cashew nut pyramid,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,cashew boukaj,,,MEDIUM,"Partial token match — prefer full ""Cashew Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,cashew pyramid baklawa,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,cashew pyramid baklava,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,cashew pyramid lebanese baklava,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,need cashew pyramid,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,send cashew pyramid,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,whatsapp_keyword,cashew pyramid kg,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,search_keyword,pyramid baklawa,,,HIGH,Pyramid without cashew qualifier — maps to multiple pyramid SKUs
+OAS-AS-BKL-0006,Cashew Pyramid,Baklawa,21069099,search_keyword,boukaj,,,HIGH,"Bare ""boukaj"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0006"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,official_alias,Kaju Finger,,,MEDIUM,"Partial token match — prefer full ""Cashew Finger"" phrase for WhatsApp"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,official_alias,Cashew Nut Finger,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,official_alias,Cashew Asabi,,,MEDIUM,"Partial token match — prefer full ""Cashew Finger"" phrase for WhatsApp"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,official_alias,Cashew Asabeh,,,MEDIUM,"Partial token match — prefer full ""Cashew Finger"" phrase for WhatsApp"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,official_alias,Cashew Finger Baklawa,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,official_alias,Cashew Finger Baklava,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,official_alias,Cashew Finger Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,customer_term,finger sweet,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,customer_term,cashew finger piece,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,customer_term,Cashew Finger,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,customer_term,Kaju Finger,,,MEDIUM,"Partial token match — prefer full ""Cashew Finger"" phrase for WhatsApp"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew finger,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,kaju finger,,,MEDIUM,"Partial token match — prefer full ""Cashew Finger"" phrase for WhatsApp"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew nut finger,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew asabi,,,MEDIUM,"Partial token match — prefer full ""Cashew Finger"" phrase for WhatsApp"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew asabeh,,,MEDIUM,"Partial token match — prefer full ""Cashew Finger"" phrase for WhatsApp"
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew finger baklawa,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew finger baklava,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew finger lebanese baklava,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,need cashew finger,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,send cashew finger,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,whatsapp_keyword,cashew finger kg,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0007,Cashew Finger,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,official_alias,Khajoor Baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,official_alias,Khajur Baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,official_alias,Date Baklava,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,official_alias,Date Baklawa Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,customer_term,date sweet,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,customer_term,khajoor baklava,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,customer_term,Date Baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,customer_term,Khajoor Baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,date baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,khajoor baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,khajur baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,date baklava,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,date baklawa lebanese baklava,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,need date baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,send date baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,whatsapp_keyword,date baklawa kg,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,regional_term,खजूर बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0008,Date Baklawa,Baklawa,21069099,search_keyword,date baklawa,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,official_alias,Special Square Baklava,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,official_alias,Special Square Baklawa Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,customer_term,square piece,,,MEDIUM,"Partial token match — prefer full ""Special Square Baklawa"" phrase for WhatsApp"
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,customer_term,square sweet,,,MEDIUM,"Partial token match — prefer full ""Special Square Baklawa"" phrase for WhatsApp"
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,customer_term,special square piece,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,customer_term,Special Square Baklawa,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,whatsapp_keyword,special square baklawa,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,whatsapp_keyword,special square baklava,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,whatsapp_keyword,special square baklawa lebanese baklava,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,whatsapp_keyword,need special square baklawa,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,whatsapp_keyword,send special square baklawa,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,whatsapp_keyword,special square baklawa kg,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,regional_term,مربع بقلاوة,ar,arabic,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0009,Special Square Baklawa,Baklawa,21069099,search_keyword,square baklawa,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,official_alias,Pista Ring,,,MEDIUM,"Partial token match — prefer full ""Pistachio Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,official_alias,Pistachio Nut Ring,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,official_alias,Pistachio Ring Baklawa,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,official_alias,Pistachio Ring Baklava,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,official_alias,Pistachio Ring Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,customer_term,pista ring,,,MEDIUM,"Partial token match — prefer full ""Pistachio Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,customer_term,pista ring sweet,,,MEDIUM,"Partial token match — prefer full ""Pistachio Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,customer_term,Pistachio Ring,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,customer_term,Pista Ring,,,MEDIUM,"Partial token match — prefer full ""Pistachio Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,pistachio ring,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,pista ring,,,MEDIUM,"Partial token match — prefer full ""Pistachio Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,pistachio nut ring,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,pistachio ring baklawa,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,pistachio ring baklava,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,pistachio ring lebanese baklava,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,need pistachio ring,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,send pistachio ring,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,whatsapp_keyword,pistachio ring kg,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0010,Pistachio Ring,Baklawa,21069099,search_keyword,ring baklawa,,,MEDIUM,"Partial token match — prefer full ""Pistachio Ring"" phrase for WhatsApp"
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pistachio Pyramid Topping,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pista Pyramid(Topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pistachio Nut Pyramid(Topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pistachio Boukaj,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0011
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pistachio Pyramid Baklawa,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pistachio Pyramid Baklava,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pistachio Pyramid(Topping) Baklawa,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,official_alias,Pistachio Pyramid(Topping) Baklava,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,customer_term,pista pyramid,,,MEDIUM,"Partial token match — prefer full ""Pistachio Pyramid(Topping)"" phrase for WhatsApp"
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,customer_term,pista pyramid topping,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,customer_term,pyramid with topping,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,customer_term,Pistachio Pyramid(Topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,customer_term,Pistachio Pyramid Topping,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid(topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid topping,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pista pyramid(topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio nut pyramid(topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio boukaj,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0011
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid baklawa,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid baklava,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid(topping) baklawa,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid(topping) baklava,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid(topping) lebanese baklava,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,need pistachio pyramid(topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,send pistachio pyramid(topping),,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,whatsapp_keyword,pistachio pyramid(topping) kg,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,search_keyword,pyramid baklawa,,,MEDIUM,"Partial token match — prefer full ""Pistachio Pyramid(Topping)"" phrase for WhatsApp"
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),Baklawa,21069099,search_keyword,boukaj,,,HIGH,"Bare ""boukaj"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0011"
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Chocolate Pista Asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Chocolate Pistachio Nut Asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio Assiyah,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0012
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio High Jump Baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0012
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio High Gap Baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0012
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Chocolate Pistachio Asiyah Baklawa,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Chocolate Pistachio Asiyah Baklava,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,official_alias,Chocolate Pistachio Asiyah Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,customer_term,high jump sweet,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,customer_term,pista gap,,,MEDIUM,"Partial token match — prefer full ""Chocolate Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,customer_term,asiyah piece,,,MEDIUM,"Partial token match — prefer full ""Chocolate Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,customer_term,Chocolate Pistachio Asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,customer_term,Chocolate Pista Asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate pistachio asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate pista asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate pistachio nut asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio assiyah,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0012
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio high jump baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0012
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio high gap baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0012
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate pistachio asiyah baklawa,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate pistachio asiyah baklava,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate pistachio asiyah lebanese baklava,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,need chocolate pistachio asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,send chocolate pistachio asiyah,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate pistachio asiyah kg,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,search_keyword,asiyah,,,HIGH,"Bare ""asiyah"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0012"
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,search_keyword,high jump baklawa,,,LOW,
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,Baklawa,21069099,search_keyword,chocolate filo baklawa,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Chocolate Kaju Asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Chocolate Cashew Nut Asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Cashew Assiyah,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Cashew High Jump Baklawa,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Cashew High Gap Baklawa,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Chocolate Cashew Asiyah Baklawa,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Chocolate Cashew Asiyah Baklava,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,official_alias,Chocolate Cashew Asiyah Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,customer_term,high jump sweet,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,customer_term,cashew gap,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,customer_term,asiyah piece,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,customer_term,Chocolate Cashew Asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,customer_term,Chocolate Kaju Asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate cashew asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate kaju asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate cashew nut asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew assiyah,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew high jump baklawa,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew high gap baklawa,,,MEDIUM,"Partial token match — prefer full ""Chocolate Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate cashew asiyah baklawa,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate cashew asiyah baklava,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate cashew asiyah lebanese baklava,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,need chocolate cashew asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,send chocolate cashew asiyah,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,chocolate cashew asiyah kg,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,search_keyword,asiyah,,,HIGH,"Bare ""asiyah"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0013"
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,search_keyword,high jump baklawa,,,LOW,
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,Baklawa,21069099,search_keyword,chocolate filo baklawa,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Mor Kaju Asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Mor Cashew Nut Asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Beetroot Cashew Asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Purple Cashew Asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Cashew Assiyah,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Cashew High Jump Baklawa,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Cashew High Gap Baklawa,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,official_alias,Mor Cashew Asiyah Baklawa,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,customer_term,high jump sweet,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,customer_term,cashew gap,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,customer_term,asiyah piece,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,customer_term,Mor Cashew Asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,customer_term,Mor Kaju Asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,mor cashew asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,mor kaju asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,mor cashew nut asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,beetroot cashew asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,purple cashew asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew assiyah,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew high jump baklawa,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew high gap baklawa,,,MEDIUM,"Partial token match — prefer full ""Mor Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,mor cashew asiyah baklawa,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,mor cashew asiyah baklava,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,mor cashew asiyah lebanese baklava,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,need mor cashew asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,send mor cashew asiyah,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,mor cashew asiyah kg,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,search_keyword,asiyah,,,HIGH,"Bare ""asiyah"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0014"
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,search_keyword,high jump baklawa,,,LOW,
+OAS-AS-BKL-0014,Mor Cashew Asiyah,Baklawa,21069099,search_keyword,beetroot filo,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Mor Pista Asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Mor Pistachio Nut Asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Beetroot Pistachio Asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Purple Pistachio Asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio Assiyah,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0015
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio High Jump Baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0015
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio High Gap Baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0015
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,official_alias,Mor Pistachio Asiyah Baklawa,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,customer_term,high jump sweet,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,customer_term,pista gap,,,MEDIUM,"Partial token match — prefer full ""Mor Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,customer_term,asiyah piece,,,MEDIUM,"Partial token match — prefer full ""Mor Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,customer_term,Mor Pistachio Asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,customer_term,Mor Pista Asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,mor pistachio asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,mor pista asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,mor pistachio nut asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,beetroot pistachio asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,purple pistachio asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio assiyah,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0015
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio high jump baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0015
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio high gap baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0015
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,mor pistachio asiyah baklawa,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,mor pistachio asiyah baklava,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,mor pistachio asiyah lebanese baklava,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,need mor pistachio asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,send mor pistachio asiyah,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,mor pistachio asiyah kg,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,search_keyword,asiyah,,,HIGH,"Bare ""asiyah"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0015"
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,search_keyword,high jump baklawa,,,LOW,
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,Baklawa,21069099,search_keyword,beetroot filo,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pista Asiyah,,,MEDIUM,"Partial token match — prefer full ""Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio Nut Asiyah,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio Assiyah,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0016
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio High Jump Baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0016
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio High Gap Baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0016
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio Asiyah Baklawa,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio Asiyah Baklava,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,official_alias,Pistachio Asiyah Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,customer_term,high jump sweet,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,customer_term,pista gap,,,MEDIUM,"Partial token match — prefer full ""Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,customer_term,asiyah piece,,,MEDIUM,"Partial token match — prefer full ""Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,customer_term,Pistachio Asiyah,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,customer_term,Pista Asiyah,,,MEDIUM,"Partial token match — prefer full ""Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio asiyah,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pista asiyah,,,MEDIUM,"Partial token match — prefer full ""Pistachio Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio nut asiyah,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio assiyah,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0016
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio high jump baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0016
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio high gap baklawa,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0016
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio asiyah baklawa,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio asiyah baklava,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio asiyah lebanese baklava,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,need pistachio asiyah,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,send pistachio asiyah,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,whatsapp_keyword,pistachio asiyah kg,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,search_keyword,asiyah,,,HIGH,"Bare ""asiyah"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0016"
+OAS-AS-BKL-0016,Pistachio Asiyah,Baklawa,21069099,search_keyword,high jump baklawa,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Kaju Asiyah,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Cashew Nut Asiyah,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Cashew Assiyah,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Cashew High Jump Baklawa,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Cashew High Gap Baklawa,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Cashew Asiyah Baklawa,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Cashew Asiyah Baklava,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,official_alias,Cashew Asiyah Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,customer_term,high jump sweet,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,customer_term,cashew gap,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,customer_term,asiyah piece,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,customer_term,Cashew Asiyah,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,customer_term,Kaju Asiyah,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew asiyah,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,kaju asiyah,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew nut asiyah,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew assiyah,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew high jump baklawa,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew high gap baklawa,,,MEDIUM,"Partial token match — prefer full ""Cashew Asiyah"" phrase for WhatsApp"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew asiyah baklawa,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew asiyah baklava,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew asiyah lebanese baklava,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,need cashew asiyah,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,send cashew asiyah,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,whatsapp_keyword,cashew asiyah kg,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,search_keyword,asiyah,,,HIGH,"Bare ""asiyah"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0017"
+OAS-AS-BKL-0017,Cashew Asiyah,Baklawa,21069099,search_keyword,high jump baklawa,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,official_alias,Diamond Pista,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,official_alias,Diamond Pistachio Nut,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,official_alias,Pistachio Diamond Baklawa,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,official_alias,Pistachio Diamond Baklava,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,official_alias,Diamond Pistachio Baklawa,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,official_alias,Diamond Pistachio Baklava,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,official_alias,Diamond Pistachio Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,customer_term,pista diamond,,,MEDIUM,"Partial token match — prefer full ""Diamond Pistachio"" phrase for WhatsApp"
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,customer_term,diamond shape pista,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,customer_term,Diamond Pistachio,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,customer_term,Diamond Pista,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,diamond pistachio,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,diamond pista,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,diamond pistachio nut,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,pistachio diamond baklawa,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,pistachio diamond baklava,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,diamond pistachio baklawa,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,diamond pistachio baklava,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,diamond pistachio lebanese baklava,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,need diamond pistachio,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,send diamond pistachio,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,whatsapp_keyword,diamond pistachio kg,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,regional_term,काजू कित्ता,hi,devanagari,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,search_keyword,kitta,,,HIGH,"Bare ""kitta"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0018"
+OAS-AS-BKL-0018,Diamond Pistachio,Baklawa,21069099,search_keyword,diamond baklawa,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,official_alias,Pista Pyramid,,,MEDIUM,"Partial token match — prefer full ""Pistachio Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,official_alias,Pistachio Nut Pyramid,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,official_alias,Pistachio Boukaj,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0019
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,official_alias,Pistachio Pyramid Baklawa,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,official_alias,Pistachio Pyramid Baklava,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,official_alias,Pistachio Pyramid Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,customer_term,pista pyramid,,,MEDIUM,"Partial token match — prefer full ""Pistachio Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,customer_term,Pistachio Pyramid,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,customer_term,Pista Pyramid,,,MEDIUM,"Partial token match — prefer full ""Pistachio Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pistachio pyramid,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pista pyramid,,,MEDIUM,"Partial token match — prefer full ""Pistachio Pyramid"" phrase for WhatsApp"
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pistachio nut pyramid,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pistachio boukaj,,,HIGH,Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for OAS-AS-BKL-0019
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pistachio pyramid baklawa,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pistachio pyramid baklava,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pistachio pyramid lebanese baklava,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,need pistachio pyramid,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,send pistachio pyramid,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,whatsapp_keyword,pistachio pyramid kg,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,search_keyword,pyramid baklawa,,,HIGH,"Pyramid without nut qualifier — maps to 0006, 0011, or 0019"
+OAS-AS-BKL-0019,Pistachio Pyramid,Baklawa,21069099,search_keyword,boukaj,,,HIGH,"Bare ""boukaj"" matches multiple Batch 001 SKUs — require full product phrase or SKU OAS-AS-BKL-0019"
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Tart Kaju,,,MEDIUM,"Partial token match — prefer full ""Tart Cashew"" phrase for WhatsApp"
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Tart Cashew Nut,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Cashew Baklawa Tart,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Cashew Tart Baklawa,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Tart Cashew Baklawa,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Tart Cashew Baklava,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Tart Cashew Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,official_alias,Cashew Katori,,,MEDIUM,"Partial token match — prefer full ""Tart Cashew"" phrase for WhatsApp"
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,customer_term,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Tart Cashew"" phrase for WhatsApp"
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,customer_term,katori sweet,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,customer_term,Tart Cashew,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,customer_term,Tart Kaju,,,MEDIUM,"Partial token match — prefer full ""Tart Cashew"" phrase for WhatsApp"
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,tart cashew,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,tart kaju,,,MEDIUM,"Partial token match — prefer full ""Tart Cashew"" phrase for WhatsApp"
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,tart cashew nut,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,cashew baklawa tart,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,cashew tart baklawa,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,tart cashew baklawa,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,tart cashew baklava,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,tart cashew lebanese baklava,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,need tart cashew,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,send tart cashew,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,whatsapp_keyword,tart cashew kg,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,regional_term,काजू बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,search_keyword,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Tart Cashew"" phrase for WhatsApp"
+OAS-AS-BKL-0020,Tart Cashew,Baklawa,21069099,search_keyword,katori,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,official_alias,Mix Nut Baklawa Tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,official_alias,Mix Nut Tart Baklawa,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,official_alias,Mix Nut Tart Baklava,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,official_alias,Mix Nut Tart Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,customer_term,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Mix Nut Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,customer_term,katori sweet,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,customer_term,mixed nut tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,customer_term,mix tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,customer_term,Mix Nut Tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,customer_term,Mix Nut Baklawa Tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,mix nut tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,mix nut baklawa tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,mix nut tart baklawa,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,mix nut tart baklava,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,mix nut tart lebanese baklava,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,need mix nut tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,send mix nut tart,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,whatsapp_keyword,mix nut tart kg,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,regional_term,Mix Nut Tart,en,latin,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,search_keyword,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Mix Nut Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0021,Mix Nut Tart,Baklawa,21069099,search_keyword,katori,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,official_alias,Badam Tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,official_alias,Almond Baklawa Tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,official_alias,Almond Tart Baklawa,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,official_alias,Almond Tart Baklava,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,official_alias,Almond Tart Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,customer_term,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Almond Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,customer_term,katori sweet,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,customer_term,Almond Tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,customer_term,Badam Tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,almond tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,badam tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,almond baklawa tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,almond tart baklawa,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,almond tart baklava,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,almond tart lebanese baklava,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,need almond tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,send almond tart,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,whatsapp_keyword,almond tart kg,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,regional_term,बादाम बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,search_keyword,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Almond Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0022,Almond Tart,Baklawa,21069099,search_keyword,katori,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,official_alias,Pista Tart,,,MEDIUM,"Partial token match — prefer full ""Pistachio Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,official_alias,Pistachio Nut Tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,official_alias,Pistachio Baklawa Tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,official_alias,Pistachio Tart Baklawa,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,official_alias,Pistachio Tart Baklava,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,official_alias,Pistachio Tart Lebanese Baklava,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,customer_term,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Pistachio Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,customer_term,katori sweet,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,customer_term,Pistachio Tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,customer_term,Pista Tart,,,MEDIUM,"Partial token match — prefer full ""Pistachio Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pistachio tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pista tart,,,MEDIUM,"Partial token match — prefer full ""Pistachio Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pistachio nut tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pistachio baklawa tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pistachio tart baklawa,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pistachio tart baklava,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pistachio tart lebanese baklava,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,need pistachio tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,send pistachio tart,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,whatsapp_keyword,pistachio tart kg,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,search_keyword,lebanese baklawa,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,search_keyword,lebanese sweet,,,LOW,
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,search_keyword,baklawa tart,,,MEDIUM,"Partial token match — prefer full ""Pistachio Tart"" phrase for WhatsApp"
+OAS-AS-BKL-0023,Pistachio Tart,Baklawa,21069099,search_keyword,katori,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Mor Pista Durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Mor Pistachio Nut Durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Beetroot Pistachio Durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Purple Pistachio Durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Mor Pistachio Durum Baklava,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Mor Pistachio Turkish Roll Baklava,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Mor Pistachio Roll Baklava,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,official_alias,Mor Pistachio Durum Baklawa,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,customer_term,coconut roll,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,customer_term,durum roll,,,MEDIUM,"Partial token match — prefer full ""Mor Pistachio Durum"" phrase for WhatsApp"
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,customer_term,turkish roll,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,customer_term,Mor Pistachio Durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,customer_term,Mor Pista Durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pista durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio nut durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,beetroot pistachio durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,purple pistachio durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio durum baklava,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio turkish roll baklava,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio roll baklava,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio durum baklawa,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio durum turkish baklava,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,need mor pistachio durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,send mor pistachio durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,whatsapp_keyword,mor pistachio durum kg,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,regional_term,पिस्ता बकलावा,hi,devanagari,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,regional_term,Fıstıklı durum,tr,latin,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,search_keyword,turkish baklawa,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,search_keyword,turkish durum,,,LOW,
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,search_keyword,durum roll,,,MEDIUM,"Partial token match — prefer full ""Mor Pistachio Durum"" phrase for WhatsApp"
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,search_keyword,baklawa roll,,,MEDIUM,"Partial token match — prefer full ""Mor Pistachio Durum"" phrase for WhatsApp"
+OAS-AS-BKL-0024,Mor Pistachio Durum,Baklawa,21069099,search_keyword,beetroot filo,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Coconut Roll,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Nariyal Durum,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Coconut Durum Baklava,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Coconut Durum Baklawa,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Coconut Turkish Roll Baklava,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Coconut Roll Baklava,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Coconut Durum Turkish Baklava,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,official_alias,Nariyal Roll,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,customer_term,coconut roll,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,customer_term,durum roll,,,MEDIUM,"Partial token match — prefer full ""Coconut Durum"" phrase for WhatsApp"
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,customer_term,turkish roll,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,customer_term,Coconut Durum,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,customer_term,Coconut Roll,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,coconut durum,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,coconut roll,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,nariyal durum,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,coconut durum baklava,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,coconut durum baklawa,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,need coconut durum,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,send coconut durum,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,whatsapp_keyword,coconut durum kg,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,regional_term,नारियल दुरुम,hi,devanagari,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,regional_term,Fıstıklı durum,tr,latin,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,search_keyword,turkish baklawa,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,search_keyword,turkish durum,,,LOW,
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,search_keyword,durum roll,,,MEDIUM,"Partial token match — prefer full ""Coconut Durum"" phrase for WhatsApp"
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,search_keyword,baklawa roll,,,MEDIUM,"Partial token match — prefer full ""Coconut Durum"" phrase for WhatsApp"
+OAS-AS-BKL-0025,Coconut Durum,Baklawa,21069099,search_keyword,coconut baklawa,,,LOW,
