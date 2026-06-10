@@ -1,0 +1,26 @@
+sku,product_name,readiness,authority_weight_g,authority_primary_packing,authority_secondary_packing,authority_carton_qty,proposed_grams_per_piece,proposed_pcs_per_kg,proposed_primary_pack_weight_kg,proposed_primary_pack_type,proposed_secondary_pack_type,proposed_carton_type,proposed_pcs_per_primary_pack,proposed_retail_pack_qty,proposed_pcs_per_master_carton,proposed_packs_per_master_carton,db_pack_size_current,db_grams_per_piece_current,db_pcs_per_kg_current,moq_current,issue_codes,issue_summary
+OAS-AS-BKL-0001,Cashew Kitta,READY,18,3kg,666,,18,55.56,3,Tray 3kg,666 Tray (3kg),666,167,167,167,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0002,Square Baklawa,READY,20,3kg,666,,20,50,3,Tray 3kg,666 Tray (3kg),666,150,150,150,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0003,Cashew Ring,READY,18,3kg,666,,18,55.56,3,Tray 3kg,666 Tray (3kg),666,167,167,167,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0004,Cashew Rosebud,READY,18,3kg,666,,18,55.56,3,Tray 3kg,666 Tray (3kg),666,167,167,167,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0005,Almond Crosole,READY,14,3kg,666,,14,71.43,3,Tray 3kg,666 Tray (3kg),666,214,214,214,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0006,Cashew Pyramid,READY,25,6kg,888,,25,40,6,Tray 6kg,888 Tray (6kg),888,240,240,240,,6kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0007,Cashew Finger,READY,11,3kg,666,,11,90.91,3,Tray 3kg,666 Tray (3kg),666,273,273,273,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0008,Date Baklawa,READY,18,3kg,666,,18,55.56,3,Tray 3kg,666 Tray (3kg),666,167,167,167,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0009,Special Square Baklawa,READY,20,3kg,666,,20,50,3,Tray 3kg,666 Tray (3kg),666,150,150,150,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0010,Pistachio Ring,READY,18,3kg,666,,18,55.56,3,Tray 3kg,666 Tray (3kg),666,167,167,167,,3kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0011,Pistachio Pyramid(Topping),READY,25,6kg,888,,25,40,6,Tray 6kg,888 Tray (6kg),888,240,240,240,,6kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0012,Chocolate Pistachio Asiyah,REVIEW,25,1kg,Mappet,,25,40,1,Tray 1kg,Mappet Tray (1kg),Mappet,40,40,40,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0013,Chocolate Cashew Asiyah,REVIEW,25,1kg,Mappet,,25,40,1,Tray 1kg,Mappet Tray (1kg),Mappet,40,40,40,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0014,Mor Cashew Asiyah,REVIEW,25,1kg,Mappet,,25,40,1,Tray 1kg,Mappet Tray (1kg),Mappet,40,40,40,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0015,Mor Pistachio Asiyah,REVIEW,25,1kg,Mappet,,25,40,1,Tray 1kg,Mappet Tray (1kg),Mappet,40,40,40,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0016,Pistachio Asiyah,REVIEW,25,1kg,Mappet,,25,40,1,Tray 1kg,Mappet Tray (1kg),Mappet,40,40,40,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0017,Cashew Asiyah,REVIEW,25,1kg,Mappet,,25,40,1,Tray 1kg,Mappet Tray (1kg),Mappet,40,40,40,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0018,Diamond Pistachio,REVIEW,25,1kg,Mappet,,25,40,1,Tray 1kg,Mappet Tray (1kg),Mappet,40,40,40,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0019,Pistachio Pyramid,READY,25,6kg,888,,25,40,6,Tray 6kg,888 Tray (6kg),888,240,240,240,,6kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0020,Tart Cashew,READY,26,6kg,888,,26,38.46,6,Tray 6kg,888 Tray (6kg),888,231,231,231,,6kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0021,Mix Nut Tart,READY,26,6kg,888,,26,38.46,6,Tray 6kg,888 Tray (6kg),888,231,231,231,,6kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0022,Almond Tart,READY,26,6kg,888,,26,38.46,6,Tray 6kg,888 Tray (6kg),888,231,231,231,,6kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0023,Pistachio Tart,READY,26,6kg,888,,26,38.46,6,Tray 6kg,888 Tray (6kg),888,231,231,231,,6kg,,0,1,carton_qty_empty,Carton Qty empty in authority CSV
+OAS-AS-BKL-0024,Mor Pistachio Durum,REVIEW,18,1kg,Mappet,,18,55.56,1,Tray 1kg,Mappet Tray (1kg),Mappet,56,56,56,,1kg,,0,1,mappet_confirm|carton_qty_empty,Mappet tray pcs/carton needs product team confirm; Carton Qty empty in authority CSV
+OAS-AS-BKL-0025,Coconut Durum,NEEDS_HUMAN,,,,,,,,,,,,,,,,,0,1,missing_csv_row|missing_weight|primary_pack_unparsed|secondary_pack_unknown|carton_qty_empty|conversion_invalid,No authority CSV row; Weight issue: missing_weight; Cannot parse primary pack: null; Unknown secondary code: null; Carton Qty empty in authority CSV; piecesPerKg or gramsPerPiece required

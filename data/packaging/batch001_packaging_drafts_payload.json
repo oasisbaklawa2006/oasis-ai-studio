@@ -1,0 +1,1442 @@
+[
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Cashew Kitta"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0001"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 18,
+        "pieces_per_kg": 55.56,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 18,
+        "packaging_scalars": {
+          "grams_per_piece": 18,
+          "weight_per_pc_grams": 18,
+          "pcs_per_kg": 55.56,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 167,
+          "retail_pack_qty": 167,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 167,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 18,
+        "piecesPerKg": 55.56,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "89de33c7-e4c1-475e-b711-18258683fdec",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Square Baklawa"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0002"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 20,
+        "pieces_per_kg": 50,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 20,
+        "packaging_scalars": {
+          "grams_per_piece": 20,
+          "weight_per_pc_grams": 20,
+          "pcs_per_kg": 50,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 150,
+          "retail_pack_qty": 150,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 150,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 20,
+        "piecesPerKg": 50,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Cashew Ring"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0003"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 18,
+        "pieces_per_kg": 55.56,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 18,
+        "packaging_scalars": {
+          "grams_per_piece": 18,
+          "weight_per_pc_grams": 18,
+          "pcs_per_kg": 55.56,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 167,
+          "retail_pack_qty": 167,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 167,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 18,
+        "piecesPerKg": 55.56,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "eb9c7a73-d1df-4bea-bdf1-209a5b386262",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Cashew Rosebud"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0004"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 18,
+        "pieces_per_kg": 55.56,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 18,
+        "packaging_scalars": {
+          "grams_per_piece": 18,
+          "weight_per_pc_grams": 18,
+          "pcs_per_kg": 55.56,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 167,
+          "retail_pack_qty": 167,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 167,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 18,
+        "piecesPerKg": 55.56,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "691f2fe6-2d25-4ce2-a9fd-d4b81ecb694b",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Almond Crosole"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0005"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 14,
+        "pieces_per_kg": 71.43,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 14,
+        "packaging_scalars": {
+          "grams_per_piece": 14,
+          "weight_per_pc_grams": 14,
+          "pcs_per_kg": 71.43,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 214,
+          "retail_pack_qty": 214,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 214,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 14,
+        "piecesPerKg": 71.43,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "da4372b9-e1b3-4b17-bdd0-278bd636ab9a",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Cashew Pyramid"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0006"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 6kg",
+        "pack_size": "6kg",
+        "secondary_pack_type": "888 Tray (6kg)",
+        "carton_type": "888",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 6,
+          "kg_per_primary_pack": 6,
+          "pcs_per_primary_pack": 240,
+          "retail_pack_qty": 240,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 240,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 6,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Cashew Finger"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0007"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 11,
+        "pieces_per_kg": 90.91,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 11,
+        "packaging_scalars": {
+          "grams_per_piece": 11,
+          "weight_per_pc_grams": 11,
+          "pcs_per_kg": 90.91,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 273,
+          "retail_pack_qty": 273,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 273,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 11,
+        "piecesPerKg": 90.91,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "a6013e20-0fc7-4fe6-b2ab-f7f82d336b0c",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Date Baklawa"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0008"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 18,
+        "pieces_per_kg": 55.56,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 18,
+        "packaging_scalars": {
+          "grams_per_piece": 18,
+          "weight_per_pc_grams": 18,
+          "pcs_per_kg": 55.56,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 167,
+          "retail_pack_qty": 167,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 167,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 18,
+        "piecesPerKg": 55.56,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "c522fa96-9247-4cf5-9699-a20bc316dc55",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Special Square Baklawa"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0009"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 20,
+        "pieces_per_kg": 50,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 20,
+        "packaging_scalars": {
+          "grams_per_piece": 20,
+          "weight_per_pc_grams": 20,
+          "pcs_per_kg": 50,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 150,
+          "retail_pack_qty": 150,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 150,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 20,
+        "piecesPerKg": 50,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Pistachio Ring"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0010"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 18,
+        "pieces_per_kg": 55.56,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 3kg",
+        "pack_size": "3kg",
+        "secondary_pack_type": "666 Tray (3kg)",
+        "carton_type": "666",
+        "net_weight_g": 18,
+        "packaging_scalars": {
+          "grams_per_piece": 18,
+          "weight_per_pc_grams": 18,
+          "pcs_per_kg": 55.56,
+          "primary_pack_weight_kg": 3,
+          "kg_per_primary_pack": 3,
+          "pcs_per_primary_pack": 167,
+          "retail_pack_qty": 167,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 167,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 18,
+        "piecesPerKg": 55.56,
+        "kgPerTray": 3,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "2178c1c7-80c2-4ba3-a211-8643dcf57777",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Pistachio Pyramid(Topping)"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0011"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 6kg",
+        "pack_size": "6kg",
+        "secondary_pack_type": "888 Tray (6kg)",
+        "carton_type": "888",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 6,
+          "kg_per_primary_pack": 6,
+          "pcs_per_primary_pack": 240,
+          "retail_pack_qty": 240,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 240,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 6,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Chocolate Pistachio Asiyah"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0012"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 40,
+          "retail_pack_qty": 40,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 40,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Chocolate Cashew Asiyah"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0013"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 40,
+          "retail_pack_qty": 40,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 40,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Mor Cashew Asiyah"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0014"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 40,
+          "retail_pack_qty": 40,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 40,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "73f91572-8844-4fa6-b267-56210d180468",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Mor Pistachio Asiyah"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0015"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 40,
+          "retail_pack_qty": 40,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 40,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Pistachio Asiyah"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0016"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 40,
+          "retail_pack_qty": 40,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 40,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Cashew Asiyah"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0017"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 40,
+          "retail_pack_qty": 40,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 40,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "2cab3d7f-7593-441e-a030-6ac6ad3ed9bc",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Diamond Pistachio"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0018"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 40,
+          "retail_pack_qty": 40,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 40,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Pistachio Pyramid"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0019"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 25,
+        "pieces_per_kg": 40,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 6kg",
+        "pack_size": "6kg",
+        "secondary_pack_type": "888 Tray (6kg)",
+        "carton_type": "888",
+        "net_weight_g": 25,
+        "packaging_scalars": {
+          "grams_per_piece": 25,
+          "weight_per_pc_grams": 25,
+          "pcs_per_kg": 40,
+          "primary_pack_weight_kg": 6,
+          "kg_per_primary_pack": 6,
+          "pcs_per_primary_pack": 240,
+          "retail_pack_qty": 240,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 240,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 25,
+        "piecesPerKg": 40,
+        "kgPerTray": 6,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Tart Cashew"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0020"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 26,
+        "pieces_per_kg": 38.46,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 6kg",
+        "pack_size": "6kg",
+        "secondary_pack_type": "888 Tray (6kg)",
+        "carton_type": "888",
+        "net_weight_g": 26,
+        "packaging_scalars": {
+          "grams_per_piece": 26,
+          "weight_per_pc_grams": 26,
+          "pcs_per_kg": 38.46,
+          "primary_pack_weight_kg": 6,
+          "kg_per_primary_pack": 6,
+          "pcs_per_primary_pack": 231,
+          "retail_pack_qty": 231,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 231,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 26,
+        "piecesPerKg": 38.46,
+        "kgPerTray": 6,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Mix Nut Tart"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0021"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 26,
+        "pieces_per_kg": 38.46,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 6kg",
+        "pack_size": "6kg",
+        "secondary_pack_type": "888 Tray (6kg)",
+        "carton_type": "888",
+        "net_weight_g": 26,
+        "packaging_scalars": {
+          "grams_per_piece": 26,
+          "weight_per_pc_grams": 26,
+          "pcs_per_kg": 38.46,
+          "primary_pack_weight_kg": 6,
+          "kg_per_primary_pack": 6,
+          "pcs_per_primary_pack": 231,
+          "retail_pack_qty": 231,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 231,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 26,
+        "piecesPerKg": 38.46,
+        "kgPerTray": 6,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Almond Tart"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0022"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 26,
+        "pieces_per_kg": 38.46,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 6kg",
+        "pack_size": "6kg",
+        "secondary_pack_type": "888 Tray (6kg)",
+        "carton_type": "888",
+        "net_weight_g": 26,
+        "packaging_scalars": {
+          "grams_per_piece": 26,
+          "weight_per_pc_grams": 26,
+          "pcs_per_kg": 38.46,
+          "primary_pack_weight_kg": 6,
+          "kg_per_primary_pack": 6,
+          "pcs_per_primary_pack": 231,
+          "retail_pack_qty": 231,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 231,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 26,
+        "piecesPerKg": 38.46,
+        "kgPerTray": 6,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "43a25d30-f7d9-426b-b5af-cae7d477468e",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Pistachio Tart"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0023"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 26,
+        "pieces_per_kg": 38.46,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 6kg",
+        "pack_size": "6kg",
+        "secondary_pack_type": "888 Tray (6kg)",
+        "carton_type": "888",
+        "net_weight_g": 26,
+        "packaging_scalars": {
+          "grams_per_piece": 26,
+          "weight_per_pc_grams": 26,
+          "pcs_per_kg": 38.46,
+          "primary_pack_weight_kg": 6,
+          "kg_per_primary_pack": 6,
+          "pcs_per_primary_pack": 231,
+          "retail_pack_qty": 231,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 231,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 26,
+        "piecesPerKg": 38.46,
+        "kgPerTray": 6,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": false,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "products",
+    "target_record_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+    "operation": "update",
+    "payload": {
+      "packaging_authority_republish": true,
+      "source": "batch001_packaging_wave4a",
+      "identity": {
+        "product_name": "Mor Pistachio Durum"
+      },
+      "sku_draft": {
+        "sku": "OAS-AS-BKL-0024"
+      },
+      "uom": {
+        "primary_uom": "KG",
+        "approx_piece_weight_g": 18,
+        "pieces_per_kg": 55.56,
+        "unit_conversion_note": "Wave 4A packaging authority republish"
+      },
+      "packing": {
+        "primary_pack_type": "Tray 1kg",
+        "pack_size": "1kg",
+        "secondary_pack_type": "Mappet Tray (1kg)",
+        "carton_type": "Mappet",
+        "net_weight_g": 18,
+        "packaging_scalars": {
+          "grams_per_piece": 18,
+          "weight_per_pc_grams": 18,
+          "pcs_per_kg": 55.56,
+          "primary_pack_weight_kg": 1,
+          "kg_per_primary_pack": 1,
+          "pcs_per_primary_pack": 56,
+          "retail_pack_qty": 56,
+          "packs_per_carton": 1,
+          "pcs_per_master_carton": 56,
+          "packs_per_master_carton": null
+        }
+      },
+      "packaging_hierarchy": {
+        "gramsPerPiece": 18,
+        "piecesPerKg": 55.56,
+        "kgPerTray": 1,
+        "packsPerCarton": 1,
+        "traysPerMasterCarton": null
+      },
+      "needs_admin_review_flags": {
+        "packaging_conversion": true,
+        "mappet_tray": true,
+        "missing_weight": false
+      },
+      "import_meta": {
+        "batch_id": "batch001_packaging_wave4a",
+        "source_file": "data/category1-preview/CATEGORY1_IMPORT_BATCH_001_uploaded.csv",
+        "submitted_via": "packaging_preview_generator"
+      }
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  }
+]

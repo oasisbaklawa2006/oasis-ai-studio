@@ -1,0 +1,305 @@
+{
+  "generated_at": "2026-06-10T22:58:03.491Z",
+  "batch": "batch001_packaging_wave4a",
+  "total_skus": 25,
+  "ready": 16,
+  "review": 8,
+  "needs_human": 1,
+  "errors": [
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "level": "error",
+      "code": "missing_csv_row",
+      "message": "No authority CSV row"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "level": "error",
+      "code": "missing_weight",
+      "message": "Weight issue: missing_weight"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "level": "error",
+      "code": "conversion_invalid",
+      "message": "piecesPerKg or gramsPerPiece required"
+    }
+  ],
+  "warnings": [
+    {
+      "sku": "OAS-AS-BKL-0012",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0013",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0014",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0015",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0024",
+      "level": "warning",
+      "code": "mappet_confirm",
+      "message": "Mappet tray pcs/carton needs product team confirm"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "level": "warning",
+      "code": "primary_pack_unparsed",
+      "message": "Cannot parse primary pack: null"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "level": "warning",
+      "code": "secondary_pack_unknown",
+      "message": "Unknown secondary code: null"
+    }
+  ],
+  "weight_consistency": [
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "weight_g": 18,
+      "pcs_per_kg": 55.56,
+      "pcs_per_primary": 167,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0002",
+      "weight_g": 20,
+      "pcs_per_kg": 50,
+      "pcs_per_primary": 150,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0003",
+      "weight_g": 18,
+      "pcs_per_kg": 55.56,
+      "pcs_per_primary": 167,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0004",
+      "weight_g": 18,
+      "pcs_per_kg": 55.56,
+      "pcs_per_primary": 167,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0005",
+      "weight_g": 14,
+      "pcs_per_kg": 71.43,
+      "pcs_per_primary": 214,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0006",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 240,
+      "primary_kg": 6,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "weight_g": 11,
+      "pcs_per_kg": 90.91,
+      "pcs_per_primary": 273,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0008",
+      "weight_g": 18,
+      "pcs_per_kg": 55.56,
+      "pcs_per_primary": 167,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0009",
+      "weight_g": 20,
+      "pcs_per_kg": 50,
+      "pcs_per_primary": 150,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0010",
+      "weight_g": 18,
+      "pcs_per_kg": 55.56,
+      "pcs_per_primary": 167,
+      "primary_kg": 3,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0011",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 240,
+      "primary_kg": 6,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0012",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 40,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0013",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 40,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0014",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 40,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0015",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 40,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0016",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 40,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 40,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0018",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 40,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0019",
+      "weight_g": 25,
+      "pcs_per_kg": 40,
+      "pcs_per_primary": 240,
+      "primary_kg": 6,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0020",
+      "weight_g": 26,
+      "pcs_per_kg": 38.46,
+      "pcs_per_primary": 231,
+      "primary_kg": 6,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0021",
+      "weight_g": 26,
+      "pcs_per_kg": 38.46,
+      "pcs_per_primary": 231,
+      "primary_kg": 6,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0022",
+      "weight_g": 26,
+      "pcs_per_kg": 38.46,
+      "pcs_per_primary": 231,
+      "primary_kg": 6,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0023",
+      "weight_g": 26,
+      "pcs_per_kg": 38.46,
+      "pcs_per_primary": 231,
+      "primary_kg": 6,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0024",
+      "weight_g": 18,
+      "pcs_per_kg": 55.56,
+      "pcs_per_primary": 56,
+      "primary_kg": 1,
+      "check_pcs_x_weight": true
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "weight_g": null,
+      "pcs_per_kg": null,
+      "pcs_per_primary": null,
+      "primary_kg": null,
+      "check_pcs_x_weight": false
+    }
+  ],
+  "missing_weights": [
+    "OAS-AS-BKL-0025"
+  ],
+  "mappet_skus": [
+    "OAS-AS-BKL-0012",
+    "OAS-AS-BKL-0013",
+    "OAS-AS-BKL-0014",
+    "OAS-AS-BKL-0015",
+    "OAS-AS-BKL-0016",
+    "OAS-AS-BKL-0017",
+    "OAS-AS-BKL-0018",
+    "OAS-AS-BKL-0024"
+  ]
+}
