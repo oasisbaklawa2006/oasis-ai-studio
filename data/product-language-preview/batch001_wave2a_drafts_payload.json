@@ -1,0 +1,1765 @@
+[
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Kaju Kitta",
+      "alias_text": "Kaju Kitta",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Nut Kitta",
+      "alias_text": "Cashew Nut Kitta",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Baklawa Piece",
+      "alias_text": "Cashew Baklawa Piece",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Piece Baklawa",
+      "alias_text": "Cashew Piece Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Kitta Baklawa",
+      "alias_text": "Cashew Kitta Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Kitta Baklava",
+      "alias_text": "Cashew Kitta Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Kitta Lebanese Baklava",
+      "alias_text": "Cashew Kitta Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Diamond",
+      "alias_text": "Cashew Diamond",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew kitta",
+      "alias_text": "cashew kitta",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need cashew kitta",
+      "alias_text": "need cashew kitta",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send cashew kitta",
+      "alias_text": "send cashew kitta",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew kitta kg",
+      "alias_text": "cashew kitta kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "canonical_name": "Cashew Kitta",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Kaju Ring",
+      "alias_text": "Kaju Ring",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Nut Ring",
+      "alias_text": "Cashew Nut Ring",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Ring Baklawa",
+      "alias_text": "Cashew Ring Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Ring Baklava",
+      "alias_text": "Cashew Ring Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Ring Lebanese Baklava",
+      "alias_text": "Cashew Ring Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew ring",
+      "alias_text": "cashew ring",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need cashew ring",
+      "alias_text": "need cashew ring",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send cashew ring",
+      "alias_text": "send cashew ring",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew ring kg",
+      "alias_text": "cashew ring kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "90e0f9df-d4dc-4ec5-8238-d7a2624e759a",
+      "canonical_name": "Cashew Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Kaju Finger",
+      "alias_text": "Kaju Finger",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Nut Finger",
+      "alias_text": "Cashew Nut Finger",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Asabi",
+      "alias_text": "Cashew Asabi",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Asabeh",
+      "alias_text": "Cashew Asabeh",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Finger Baklawa",
+      "alias_text": "Cashew Finger Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Finger Baklava",
+      "alias_text": "Cashew Finger Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Finger Lebanese Baklava",
+      "alias_text": "Cashew Finger Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew finger",
+      "alias_text": "cashew finger",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need cashew finger",
+      "alias_text": "need cashew finger",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send cashew finger",
+      "alias_text": "send cashew finger",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew finger kg",
+      "alias_text": "cashew finger kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "canonical_name": "Cashew Finger",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pista Ring",
+      "alias_text": "Pista Ring",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Nut Ring",
+      "alias_text": "Pistachio Nut Ring",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Ring Baklawa",
+      "alias_text": "Pistachio Ring Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Ring Baklava",
+      "alias_text": "Pistachio Ring Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Ring Lebanese Baklava",
+      "alias_text": "Pistachio Ring Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio ring",
+      "alias_text": "pistachio ring",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need pistachio ring",
+      "alias_text": "need pistachio ring",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send pistachio ring",
+      "alias_text": "send pistachio ring",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio ring kg",
+      "alias_text": "pistachio ring kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "7d66f253-a179-4a33-b8ba-7b94ec783a3e",
+      "canonical_name": "Pistachio Ring",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Kaju Asiyah",
+      "alias_text": "Kaju Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Nut Asiyah",
+      "alias_text": "Cashew Nut Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Asiyah Baklawa",
+      "alias_text": "Cashew Asiyah Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Asiyah Baklava",
+      "alias_text": "Cashew Asiyah Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Asiyah Lebanese Baklava",
+      "alias_text": "Cashew Asiyah Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need cashew asiyah",
+      "alias_text": "need cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send cashew asiyah",
+      "alias_text": "send cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew asiyah kg",
+      "alias_text": "cashew asiyah kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "0cb6c64c-0529-4dfc-83cd-9b45ab7f9de6",
+      "canonical_name": "Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pista Pyramid",
+      "alias_text": "Pista Pyramid",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Nut Pyramid",
+      "alias_text": "Pistachio Nut Pyramid",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Pyramid Baklawa",
+      "alias_text": "Pistachio Pyramid Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Pyramid Baklava",
+      "alias_text": "Pistachio Pyramid Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Pyramid Lebanese Baklava",
+      "alias_text": "Pistachio Pyramid Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio pyramid",
+      "alias_text": "pistachio pyramid",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need pistachio pyramid",
+      "alias_text": "need pistachio pyramid",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send pistachio pyramid",
+      "alias_text": "send pistachio pyramid",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio pyramid kg",
+      "alias_text": "pistachio pyramid kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "636b47cb-ea6f-4711-ae29-d6153e565ae3",
+      "canonical_name": "Pistachio Pyramid",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mix Nut Baklawa Tart",
+      "alias_text": "Mix Nut Baklawa Tart",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mix Nut Tart Baklawa",
+      "alias_text": "Mix Nut Tart Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mix Nut Tart Baklava",
+      "alias_text": "Mix Nut Tart Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mix Nut Tart Lebanese Baklava",
+      "alias_text": "Mix Nut Tart Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mix nut tart",
+      "alias_text": "mix nut tart",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need mix nut tart",
+      "alias_text": "need mix nut tart",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send mix nut tart",
+      "alias_text": "send mix nut tart",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mix nut tart kg",
+      "alias_text": "mix nut tart kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "6b258e44-69dc-465a-b82a-cbb72f68d723",
+      "canonical_name": "Mix Nut Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Coconut Roll",
+      "alias_text": "Coconut Roll",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Nariyal Durum",
+      "alias_text": "Nariyal Durum",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Coconut Durum Baklava",
+      "alias_text": "Coconut Durum Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Coconut Durum Baklawa",
+      "alias_text": "Coconut Durum Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Coconut Turkish Roll Baklava",
+      "alias_text": "Coconut Turkish Roll Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Coconut Roll Baklava",
+      "alias_text": "Coconut Roll Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Coconut Durum Turkish Baklava",
+      "alias_text": "Coconut Durum Turkish Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Nariyal Roll",
+      "alias_text": "Nariyal Roll",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "coconut durum",
+      "alias_text": "coconut durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need coconut durum",
+      "alias_text": "need coconut durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send coconut durum",
+      "alias_text": "send coconut durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "coconut durum kg",
+      "alias_text": "coconut durum kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "canonical_name": "Coconut Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2a"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  }
+]

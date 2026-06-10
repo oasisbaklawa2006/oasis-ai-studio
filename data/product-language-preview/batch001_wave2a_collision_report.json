@@ -1,0 +1,267 @@
+{
+  "raw_count": 127,
+  "excluded_bare_generic": [],
+  "excluded_existing_same_product": [],
+  "excluded_phase1_cross_sku": [
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "Cashew Assiyah",
+      "reason": "phase1_cross_sku_collision",
+      "existing_on": [
+        "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+        "4af95ba1-ff0f-4740-8869-6a19a41e8c83"
+      ]
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "Cashew High Jump Baklawa",
+      "reason": "phase1_cross_sku_collision",
+      "existing_on": [
+        "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+        "4af95ba1-ff0f-4740-8869-6a19a41e8c83"
+      ]
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "Cashew High Gap Baklawa",
+      "reason": "phase1_cross_sku_collision",
+      "existing_on": [
+        "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+        "4af95ba1-ff0f-4740-8869-6a19a41e8c83"
+      ]
+    }
+  ],
+  "excluded_cross_wave2a": [],
+  "excluded_within_batch_dupe": [
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "term": "kaju kitta",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "term": "cashew nut kitta",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "term": "cashew baklawa piece",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "term": "cashew piece baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "term": "cashew kitta baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "term": "cashew kitta baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "term": "cashew kitta lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0003",
+      "term": "kaju ring",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0003",
+      "term": "cashew nut ring",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0003",
+      "term": "cashew ring baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0003",
+      "term": "cashew ring baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0003",
+      "term": "cashew ring lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "term": "kaju finger",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "term": "cashew nut finger",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "term": "cashew asabi",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "term": "cashew asabeh",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "term": "cashew finger baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "term": "cashew finger baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "term": "cashew finger lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0010",
+      "term": "pista ring",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0010",
+      "term": "pistachio nut ring",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0010",
+      "term": "pistachio ring baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0010",
+      "term": "pistachio ring baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0010",
+      "term": "pistachio ring lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "kaju asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew nut asiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew assiyah",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew high jump baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew high gap baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew asiyah baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew asiyah baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0017",
+      "term": "cashew asiyah lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0019",
+      "term": "pista pyramid",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0019",
+      "term": "pistachio nut pyramid",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0019",
+      "term": "pistachio pyramid baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0019",
+      "term": "pistachio pyramid baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0019",
+      "term": "pistachio pyramid lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0021",
+      "term": "mix nut baklawa tart",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0021",
+      "term": "mix nut tart baklawa",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0021",
+      "term": "mix nut tart baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0021",
+      "term": "mix nut tart lebanese baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "term": "coconut roll",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "term": "nariyal durum",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "term": "coconut durum baklava",
+      "reason": "case_variant_dupe"
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "term": "coconut durum baklawa",
+      "reason": "case_variant_dupe"
+    }
+  ]
+}
