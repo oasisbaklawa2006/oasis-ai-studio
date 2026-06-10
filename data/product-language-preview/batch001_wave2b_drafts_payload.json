@@ -1,0 +1,927 @@
+[
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Pista Asiyah",
+      "alias_text": "Chocolate Pista Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Pistachio Nut Asiyah",
+      "alias_text": "Chocolate Pistachio Nut Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Pistachio Asiyah Baklawa",
+      "alias_text": "Chocolate Pistachio Asiyah Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Pistachio Asiyah Baklava",
+      "alias_text": "Chocolate Pistachio Asiyah Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Pistachio Asiyah Lebanese Baklava",
+      "alias_text": "Chocolate Pistachio Asiyah Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate pistachio asiyah",
+      "alias_text": "chocolate pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need chocolate pistachio asiyah",
+      "alias_text": "need chocolate pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send chocolate pistachio asiyah",
+      "alias_text": "send chocolate pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate pistachio asiyah kg",
+      "alias_text": "chocolate pistachio asiyah kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4baff7d1-bf58-4d0f-b842-c53f99caac61",
+      "canonical_name": "Chocolate Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pista Asiyah",
+      "alias_text": "Mor Pista Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pistachio Nut Asiyah",
+      "alias_text": "Mor Pistachio Nut Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Beetroot Pistachio Asiyah",
+      "alias_text": "Beetroot Pistachio Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Purple Pistachio Asiyah",
+      "alias_text": "Purple Pistachio Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pistachio Asiyah Baklawa",
+      "alias_text": "Mor Pistachio Asiyah Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio asiyah",
+      "alias_text": "mor pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio asiyah baklava",
+      "alias_text": "mor pistachio asiyah baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio asiyah lebanese baklava",
+      "alias_text": "mor pistachio asiyah lebanese baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need mor pistachio asiyah",
+      "alias_text": "need mor pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send mor pistachio asiyah",
+      "alias_text": "send mor pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio asiyah kg",
+      "alias_text": "mor pistachio asiyah kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "73f91572-8844-4fa6-b267-56210d180468",
+      "canonical_name": "Mor Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Nut Asiyah",
+      "alias_text": "Pistachio Nut Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+      "canonical_name": "Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Asiyah Baklawa",
+      "alias_text": "Pistachio Asiyah Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+      "canonical_name": "Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Asiyah Baklava",
+      "alias_text": "Pistachio Asiyah Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+      "canonical_name": "Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Asiyah Lebanese Baklava",
+      "alias_text": "Pistachio Asiyah Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+      "canonical_name": "Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need pistachio asiyah",
+      "alias_text": "need pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+      "canonical_name": "Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send pistachio asiyah",
+      "alias_text": "send pistachio asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+      "canonical_name": "Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio asiyah kg",
+      "alias_text": "pistachio asiyah kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "f3f7a8fd-cea8-4ecb-a258-ef1ea86940b7",
+      "canonical_name": "Pistachio Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Badam Tart",
+      "alias_text": "Badam Tart",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Baklawa Tart",
+      "alias_text": "Almond Baklawa Tart",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Tart Baklawa",
+      "alias_text": "Almond Tart Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Tart Baklava",
+      "alias_text": "Almond Tart Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Almond Tart Lebanese Baklava",
+      "alias_text": "Almond Tart Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "almond tart",
+      "alias_text": "almond tart",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need almond tart",
+      "alias_text": "need almond tart",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send almond tart",
+      "alias_text": "send almond tart",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "almond tart kg",
+      "alias_text": "almond tart kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "8554f5d5-5e46-4ffe-b98a-0ed10ec522ae",
+      "canonical_name": "Almond Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Nut Tart",
+      "alias_text": "Pistachio Nut Tart",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "43a25d30-f7d9-426b-b5af-cae7d477468e",
+      "canonical_name": "Pistachio Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Tart Baklawa",
+      "alias_text": "Pistachio Tart Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "43a25d30-f7d9-426b-b5af-cae7d477468e",
+      "canonical_name": "Pistachio Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Tart Baklava",
+      "alias_text": "Pistachio Tart Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "43a25d30-f7d9-426b-b5af-cae7d477468e",
+      "canonical_name": "Pistachio Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Pistachio Tart Lebanese Baklava",
+      "alias_text": "Pistachio Tart Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "43a25d30-f7d9-426b-b5af-cae7d477468e",
+      "canonical_name": "Pistachio Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "pistachio tart kg",
+      "alias_text": "pistachio tart kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "43a25d30-f7d9-426b-b5af-cae7d477468e",
+      "canonical_name": "Pistachio Tart",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_wave2b"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  }
+]
