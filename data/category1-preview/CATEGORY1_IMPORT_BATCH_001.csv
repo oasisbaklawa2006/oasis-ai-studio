@@ -1,0 +1,26 @@
+product_name,category,primary_uom,gst_rate,net_weight_g,shelf_life_days,main_department,production_department,primary_pack_type,qty_per_pack,is_active
+Assorted Baklawa Tin Pack 600gm,Baklawa,pack,5,600,90,,,Jumbo Master (24 Box),24,true
+Baklawa Ball,Baklawa,kg,5,1000,90,ready_goods_store,fusion_sweets,Large Master (8 Box),8,true
+Baklawa Bite,Baklawa,kg,5,1000,90,ready_goods_store,fusion_sweets,Large Master (8 Box),8,false
+Baklawa Classic Collection - Pack of 4 Pcs,Baklawa,pcs,5,95,90,packing_assembly,,Jumbo Master (45 Box),45,true
+Baklawa Classic Collection - Pack of 6 Pcs,Baklawa,pcs,5,145,90,packing_assembly,,Jumbo Master (24 Box),24,true
+Baklawa Classic Collection - Pack of 9 Pcs,Baklawa,pcs,5,225,90,packing_assembly,,Jumbo Master (42 Box),42,true
+Baklawa Crystal Collection - Pack of 4 Pcs,Baklawa,pcs,5,95,90,packing_assembly,,Jumbo Master (45 Box),45,false
+Baklawa Crystal Collection - Pack of 6 Pcs,Baklawa,pcs,5,145,90,packing_assembly,,Jumbo Master (60 Box),60,false
+Baklawa Crystal Collection - Pack of 9 Pcs,Baklawa,pcs,5,200,90,packing_assembly,,Jumbo Master (20 Box),20,true
+Baklawa Misr Collection - Pack of 15 Pcs,Baklawa,pcs,5,370,90,packing_assembly,,Jumbo Master (18 Box),18,true
+Baklawa Misr Collection - Pack of 24 Pcs,Baklawa,pcs,5,600,90,packing_assembly,,Small Master (4 Box),4,true
+Baklawa Petit Gourmet Collection - Pack of 16 Pcs,Baklawa,pcs,5,350,90,packing_assembly,,Jumbo Master (12 Box),12,true
+Baklawa Petit Gourmet Collection - Pack of 28 Pcs,Baklawa,pcs,5,615,90,packing_assembly,,Jumbo Master (12 Box),12,true
+Baklawa Royal Collection -  250g,Baklawa,pcs,5,250,90,packing_assembly,,Jumbo Master (18 Box),18,true
+Baklawa Royal Collection -  380g,Baklawa,pcs,5,415,90,packing_assembly,,Jumbo Master (12 Box),12,true
+Baklawa Sugar-Free Collection - Pack of 4 Pcs,Baklawa,pcs,5,95,90,packing_assembly,,Jumbo Master (45 Box),45,false
+Baklawa Sugar-Free Collection - Pack of 6 Pcs,Baklawa,pcs,5,145,90,packing_assembly,,Jumbo Master (24 Box),24,false
+Baklawa Sugar-Free Collection - Pack of 9 Pcs,Baklawa,pcs,5,220,90,packing_assembly,,Jumbo Master (42 Box),42,false
+Baklawa Sultan Collection - Pack of 12 Pcs,Baklawa,pcs,5,285,90,packing_assembly,,Jumbo Master (32 Box),32,true
+Baklawa Sultan Collection - Pack of 6 Pcs,Baklawa,pcs,5,145,90,packing_assembly,,Jumbo Master (36 Box),36,false
+Baklawa Vegan Collection - Pack of 4 Pcs,Baklawa,pcs,5,95,90,packing_assembly,,Jumbo Master (45 Box),45,false
+Baklawa Vegan Collection - Pack of 6 Pcs,Baklawa,pcs,5,145,90,packing_assembly,,Jumbo Master (24 Box),24,false
+Baklawa Vegan Collection - Pack of 9 Pcs,Baklawa,pcs,5,220,90,packing_assembly,,Jumbo Master (42 Box),42,true
+Basbousa Almond Baklawa,Baklawa,kg,5,1200,90,ready_goods_store,arabic_sweets,Large Master (8 Box),8,true
+Basbousa Cashew Baklawa,Baklawa,kg,5,1200,90,ready_goods_store,arabic_sweets,Large Master (8 Box),8,false
