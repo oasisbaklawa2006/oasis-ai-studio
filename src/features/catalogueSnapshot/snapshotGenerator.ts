@@ -11,6 +11,7 @@ import {
   mediaAssetsFromForm,
   productMediaContextFromForm,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
 import type {
   GstClassificationStatus,
   CatalogueSnapshotJson,
@@ -147,6 +148,11 @@ export function generateCatalogueSnapshot(
       can_sync_media_to_central: mediaReadiness.canSyncMediaToCentral,
     },
     fulfillment_transform: fulfillmentTransform,
+    language_intelligence: buildSnapshotLanguageIntelligence({
+      productId: input.productId,
+      officialName: String(input.form.product_name ?? ""),
+      aliasRows: input.languageAliasRows,
+    }),
     synced_at: null,
     ready_for_central_sync: readiness.readyForCentralSync && !!input.complianceApproved,
   };
