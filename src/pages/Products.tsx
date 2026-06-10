@@ -8,7 +8,11 @@ import {
   Plus, Search, Image as ImageIcon, Tag as TagIcon, Copy,
   Filter, X, Package, Layers, Tag, Boxes,
 } from "lucide-react";
-import { searchProductsWithAliases, type ProductSearchResult } from "@/lib/productSearch";
+import {
+  BASIC_SEARCH_FALLBACK_MESSAGE,
+  searchProductsWithAliases,
+  type ProductSearchResult,
+} from "@/lib/productSearch";
 import { toast } from "sonner";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
@@ -48,6 +52,9 @@ const SORTS = [
 const labelOf = (list: { v: string; label: string }[], v?: string | null) =>
   list.find((x) => x.v === v)?.label ?? v ?? "";
 
+const productDisplayName = (p: { product_name?: string | null; name?: string | null }) =>
+  p.product_name ?? p.name ?? "Unnamed product";
+
 const Badge = ({ tone = "muted", children, title }: { tone?: "ok" | "warn" | "muted" | "accent" | "primary"; children: React.ReactNode; title?: string }) => {
   const map = {
     ok: "bg-success/10 text-success",
@@ -84,6 +91,7 @@ const deptSummary = (p: any): string | null => {
 const Products = () => {
   const [items, setItems] = useState<any[]>([]);
   const [results, setResults] = useState<ProductSearchResult[] | null>(null);
+  const [searchBasicFallback, setSearchBasicFallback] = useState(false);
   const [q, setQ] = useState("");
   const [rules, setRules] = useState<any[]>([]);
 
@@ -130,9 +138,16 @@ const Products = () => {
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      if (!q.trim()) { setResults(null); return; }
+      if (!q.trim()) {
+        setResults(null);
+        setSearchBasicFallback(false);
+        return;
+      }
       const r = await searchProductsWithAliases(q);
-      if (!cancelled) setResults(r);
+      if (!cancelled) {
+        setResults(r.results);
+        setSearchBasicFallback(r.usedBasicFallback);
+      }
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
   }, [q]);
@@ -163,7 +178,7 @@ const Products = () => {
       return true;
     });
     switch (sort) {
-      case "name": arr = [...arr].sort((a, b) => (a.product_name || "").localeCompare(b.product_name || "")); break;
+      case "name": arr = [...arr].sort((a, b) => productDisplayName(a).localeCompare(productDisplayName(b))); break;
       case "class": arr = [...arr].sort((a, b) => (a.product_class || "").localeCompare(b.product_class || "")); break;
       case "dept": arr = [...arr].sort((a, b) => (a.main_department || "").localeCompare(b.main_department || "")); break;
       case "ready": arr = [...arr].sort((a, b) => Number(!!b.is_catalogue_ready) - Number(!!a.is_catalogue_ready)); break;
@@ -211,6 +226,10 @@ const Products = () => {
               {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
             </select>
           </div>
+
+          {searchBasicFallback && q.trim() && (
+            <p className="text-xs text-warning px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
+          )}
 
           {showFilters && (
             <div className="space-y-3 pt-3 border-t border-border/60 min-w-0">
@@ -291,7 +310,7 @@ const Products = () => {
             <Link to={`/products/${p.id}`} key={p.id} className="luxe-card flex flex-col">
               <div className="luxe-media relative">
                 {p.hero_image_url
-                  ? <img src={p.hero_image_url} alt={p.product_name} loading="lazy" className={p.hero_image_url.includes("/_pdf_pages/") ? "opacity-60" : ""} />
+                  ? <img src={p.hero_image_url} alt={productDisplayName(p)} loading="lazy" className={p.hero_image_url.includes("/_pdf_pages/") ? "opacity-60" : ""} />
                   : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><ImageIcon className="h-10 w-10 text-accent/30" /></div>}
                 {(p.hero_image_url?.includes("/_pdf_pages/") || !p.hero_image_url) && (
                   <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-0.5 rounded-full font-medium">Photo needed</span>
@@ -301,7 +320,7 @@ const Products = () => {
                 <div className="flex items-start justify-between gap-2 min-w-0">
                   <div className="min-w-0 flex-1">
                     <div className="luxe-sub mb-1 truncate">{p.category || p.product_type || "—"}</div>
-                    <div className="font-display text-lg leading-tight truncate">{p.product_name}</div>
+                    <div className="font-display text-lg leading-tight truncate">{productDisplayName(p)}</div>
                     <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 font-mono min-w-0">
                       <span className="truncate">{p.sku}</span>
                       <button onClick={(e) => copy(e, p.sku)} className="hover:text-foreground shrink-0"><Copy className="h-3 w-3" /></button>

@@ -1,4 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+import {
+  assertLocalCatalogueFallbackWrite,
+  isLocalCatalogueFallbackReadEnabled,
+} from "@/lib/catalogueAuthority/localStoragePolicy";
+import {
+  getCollectionsPersistenceSource,
+  setCollectionsPersistenceSource,
+} from "@/lib/catalogueAuthority/dataSource";
 import type {
   CatalogueCollectionItemRow,
   CatalogueCollectionRow,
@@ -10,6 +19,8 @@ const COLLECTIONS_KEY = "oasis_catalogue_collections";
 const ITEMS_KEY = "oasis_catalogue_collection_items";
 const SHARES_KEY = "oasis_catalogue_share_links";
 
+const authorityDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
+
 function readLocal<T>(key: string): T[] {
   try {
     const raw = localStorage.getItem(key);
@@ -20,6 +31,7 @@ function readLocal<T>(key: string): T[] {
 }
 
 function writeLocal<T>(key: string, rows: T[]) {
+  assertLocalCatalogueFallbackWrite("catalogue collections");
   localStorage.setItem(key, JSON.stringify(rows));
 }
 
@@ -36,17 +48,29 @@ function slugify(title: string): string {
   return `${base || "catalogue"}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export { getCollectionsPersistenceSource };
+
 export async function listCollections(): Promise<CatalogueCollectionRow[]> {
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_collections")
       .select("*")
       .order("updated_at", { ascending: false });
-    if (!error && Array.isArray(data) && data.length) return data as CatalogueCollectionRow[];
+    if (!error) {
+      setCollectionsPersistenceSource("supabase");
+      return (data ?? []) as CatalogueCollectionRow[];
+    }
   } catch {
-    /* local */
+    /* fall through */
   }
-  return readLocal<CatalogueCollectionRow>(COLLECTIONS_KEY);
+
+  if (isLocalCatalogueFallbackReadEnabled()) {
+    setCollectionsPersistenceSource("local_only");
+    return readLocal<CatalogueCollectionRow>(COLLECTIONS_KEY);
+  }
+
+  setCollectionsPersistenceSource("supabase_unavailable");
+  return [];
 }
 
 export async function createCollection(input: {
@@ -73,19 +97,24 @@ export async function createCollection(input: {
   };
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_collections")
       .insert(row)
       .select("*")
       .single();
-    if (!error && data) return data as CatalogueCollectionRow;
+    if (!error && data) {
+      setCollectionsPersistenceSource("supabase");
+      return data as CatalogueCollectionRow;
+    }
   } catch {
-    /* local */
+    /* fall through */
   }
 
+  assertLocalCatalogueFallbackWrite("createCollection");
   const all = readLocal<CatalogueCollectionRow>(COLLECTIONS_KEY);
   all.unshift(row);
   writeLocal(COLLECTIONS_KEY, all);
+  setCollectionsPersistenceSource("local_only");
   return row;
 }
 
@@ -93,15 +122,20 @@ export async function listCollectionItems(
   collectionId: string,
 ): Promise<CatalogueCollectionItemRow[]> {
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_collection_items")
       .select("*")
       .eq("collection_id", collectionId)
       .order("sort_order", { ascending: true });
-    if (!error && Array.isArray(data)) return data as CatalogueCollectionItemRow[];
+    if (!error) {
+      return (data ?? []) as CatalogueCollectionItemRow[];
+    }
   } catch {
-    /* local */
+    /* fall through */
   }
+
+  if (!isLocalCatalogueFallbackReadEnabled()) return [];
+
   return readLocal<CatalogueCollectionItemRow>(ITEMS_KEY).filter(
     (i) => i.collection_id === collectionId,
   );
@@ -132,16 +166,17 @@ export async function addProductToCollection(args: {
   };
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_collection_items")
       .insert(row)
       .select("*")
       .single();
     if (!error && data) return data as CatalogueCollectionItemRow;
   } catch {
-    /* local */
+    /* fall through */
   }
 
+  assertLocalCatalogueFallbackWrite("addProductToCollection");
   const all = readLocal<CatalogueCollectionItemRow>(ITEMS_KEY);
   all.push(row);
   writeLocal(ITEMS_KEY, all);
@@ -153,14 +188,17 @@ export async function removeProductFromCollection(
   productId: string,
 ): Promise<void> {
   try {
-    await (supabase as any)
+    await authorityDb
       .from("catalogue_collection_items")
       .delete()
       .eq("collection_id", collectionId)
       .eq("product_id", productId);
+    return;
   } catch {
-    /* local */
+    /* fall through */
   }
+
+  assertLocalCatalogueFallbackWrite("removeProductFromCollection");
   const all = readLocal<CatalogueCollectionItemRow>(ITEMS_KEY).filter(
     (i) => !(i.collection_id === collectionId && i.product_id === productId),
   );
@@ -179,15 +217,17 @@ export async function reorderCollectionItems(
 
   try {
     for (const item of updated) {
-      await (supabase as any)
+      await authorityDb
         .from("catalogue_collection_items")
         .update({ sort_order: item.sort_order })
         .eq("id", item.id);
     }
+    return;
   } catch {
-    /* local */
+    /* fall through */
   }
 
+  assertLocalCatalogueFallbackWrite("reorderCollectionItems");
   const all = readLocal<CatalogueCollectionItemRow>(ITEMS_KEY).filter(
     (i) => i.collection_id !== collectionId,
   );
@@ -209,16 +249,17 @@ export async function createShareLinkPlaceholder(
   };
 
   try {
-    const { data, error } = await (supabase as any)
+    const { data, error } = await authorityDb
       .from("catalogue_share_links")
       .insert(row)
       .select("*")
       .single();
     if (!error && data) return data as CatalogueShareLinkRow;
   } catch {
-    /* local */
+    /* fall through */
   }
 
+  assertLocalCatalogueFallbackWrite("createShareLinkPlaceholder");
   const all = readLocal<CatalogueShareLinkRow>(SHARES_KEY);
   all.push(row);
   writeLocal(SHARES_KEY, all);

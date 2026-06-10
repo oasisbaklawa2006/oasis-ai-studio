@@ -1,0 +1,83 @@
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { AlertTriangle, ExternalLink } from "lucide-react";
+import {
+  PRODUCT_LANGUAGE_TERM_TYPES,
+  TERM_TYPE_LABELS,
+  TERM_TYPE_UI_NOTICE,
+} from "@/features/productLanguage/terms";
+import { countStoredTermTypes } from "@/features/productLanguage/termTypeStorage";
+
+type Props = {
+  productId: string;
+  productName: string;
+  onOpenAliasManager?: () => void;
+};
+
+export function ProductLanguageTermsPanel({
+  productId,
+  productName,
+  onOpenAliasManager,
+}: Props) {
+  const counts = countStoredTermTypes(productId);
+  const totalTracked = Object.values(counts).reduce((n, c) => n + (c ?? 0), 0);
+  const whatsappCount = counts.whatsapp_keyword ?? 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="card-elevated p-4 space-y-3">
+        <div>
+          <h4 className="font-medium">Product language terms</h4>
+          <p className="text-xs text-muted-foreground mt-1">
+            Seven-class Oasis language model — official name plus six editable term types for search and channels.
+          </p>
+        </div>
+
+        <div className="rounded-md border bg-muted/20 p-3">
+          <div className="text-xs text-muted-foreground">Official Name</div>
+          <div className="text-sm font-medium">{productName.trim() || "—"}</div>
+        </div>
+
+        <p className="text-xs text-warning border border-warning/30 bg-warning/5 rounded-md px-2 py-1.5">
+          {TERM_TYPE_UI_NOTICE}
+        </p>
+
+        <div className="rounded-md border border-warning/30 bg-warning/5 p-3 flex gap-2">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <div className="text-xs space-y-1">
+            <p className="font-medium text-foreground">WhatsApp keywords require review</p>
+            <p className="text-muted-foreground">
+              Phrases in the WhatsApp Keyword tab are submitted as drafts and must be approved before they affect
+              order matching or chat flows.
+              {whatsappCount > 0
+                ? ` ${whatsappCount} keyword${whatsappCount === 1 ? "" : "s"} tracked in UI metadata.`
+                : " No WhatsApp keywords tracked yet."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-1">
+          {PRODUCT_LANGUAGE_TERM_TYPES.map((t) => (
+            <Badge key={t} variant="outline" className="text-[10px]">
+              {TERM_TYPE_LABELS[t]}
+              {(counts[t] ?? 0) > 0 ? ` · ${counts[t]}` : ""}
+            </Badge>
+          ))}
+        </div>
+
+        {totalTracked > 0 && (
+          <p className="text-[11px] text-muted-foreground">
+            {totalTracked} term type assignment{totalTracked === 1 ? "" : "s"} stored in browser metadata (not in Central DB).
+          </p>
+        )}
+
+        {onOpenAliasManager && (
+          <Button type="button" variant="outline" size="sm" onClick={onOpenAliasManager}>
+            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+            Manage language terms
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}

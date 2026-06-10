@@ -24,6 +24,9 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
+import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
+import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -695,6 +698,8 @@ const ProductEdit = () => {
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
+  const complianceBaselineRef = useRef<Record<string, unknown>>({});
+  const [complianceMetaMap] = useState<Record<string, { approved?: boolean }>>({});
   const draftKey = isNew
     ? "catalogue_product_form_draft_new"
     : `catalogue_product_form_draft_${id}`;
@@ -1255,6 +1260,18 @@ const ProductEdit = () => {
         </div>
       )}
 
+      {(dirty || isContributorMode) && (
+        <div className="mb-4">
+          <AuthorityStatusBadges
+            show={{
+              authority_draft: dirty || isContributorMode,
+              not_synced_to_central: true,
+              central_live_write_disabled: true,
+            }}
+          />
+        </div>
+      )}
+
       <div className="grid lg:grid-cols-3 gap-6 min-w-0">
         <div className="lg:col-span-2 space-y-6 min-w-0">
           <Tabs value={tab} onValueChange={setTab}>
@@ -1307,6 +1324,11 @@ const ProductEdit = () => {
                 <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
                   Ops Notes
                 </TabsTrigger>
+                {!isNew && (
+                  <TabsTrigger value="product_truth" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                    Product Truth
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
 
@@ -1367,7 +1389,13 @@ const ProductEdit = () => {
                 </div>
               )}
 
-              {!isNew && <AliasManager productId={id!} productName={form.product_name ?? ""} />}
+              {!isNew && (
+                <AliasManager
+                  id="product-language-terms"
+                  productId={id!}
+                  productName={form.product_name ?? ""}
+                />
+              )}
             </TabsContent>
 
             <TabsContent value="uom" className="space-y-6">
@@ -1902,6 +1930,24 @@ const ProductEdit = () => {
                 </div>
               </div>
             </TabsContent>
+
+            {!isNew && (
+              <TabsContent value="product_truth" className="space-y-6">
+                <ProductTruthAdminSection
+                  form={form}
+                  productId={id}
+                  productName={form.product_name ?? ""}
+                  onOpenAliasManager={() => {
+                    setTab("identity");
+                    requestAnimationFrame(() => {
+                      document.getElementById("product-language-terms")?.scrollIntoView({ behavior: "smooth" });
+                    });
+                  }}
+                  complianceApproved={false}
+                  complianceMetaPending={false}
+                />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
 

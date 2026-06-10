@@ -27,6 +27,7 @@ import Settings from "./pages/Settings";
 import Testing from "./pages/Testing";
 import AuditLog from "./pages/AuditLog";
 import DataCorrection from "./pages/DataCorrection";
+import Category1ImportStaging from "./pages/Category1ImportStaging";
 import NotFound from "./pages/NotFound";
 import ApprovalInbox from "./pages/ApprovalInbox";
 
@@ -71,6 +72,7 @@ const App = () => (
                 <Route path="/audit-log" element={<RoleGate page="audit_log"><AuditLog /></RoleGate>} />
                 <Route path="/approvals" element={<ApprovalInbox />} />
                 <Route path="/data-correction" element={<RoleGate page="data_correction"><DataCorrection /></RoleGate>} />
+                <Route path="/admin/import/category-1" element={<RoleGate page="category1_import"><Category1ImportStaging /></RoleGate>} />
               </Route>
             </Route>
             <Route path="*" element={<NotFound />} />

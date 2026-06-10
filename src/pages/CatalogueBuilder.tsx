@@ -18,11 +18,14 @@ import {
   buildShareUrlPlaceholder,
   createCollection,
   createShareLinkPlaceholder,
+  getCollectionsPersistenceSource,
   listCollectionItems,
   listCollections,
   removeProductFromCollection,
   reorderCollectionItems,
 } from "@/features/catalogueBuilder/collectionStore";
+import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
+import { LocalCatalogueFallbackDisabledError } from "@/lib/catalogueAuthority/localStoragePolicy";
 import { evaluateCataloguePublishability } from "@/features/catalogueBuilder/cataloguePublishability";
 import { generateWhatsAppMiniCatalogueText } from "@/features/catalogueBuilder/whatsappPreview";
 import { downloadCataloguePdf, exportCataloguePdf } from "@/features/catalogueBuilder/pdfExport";
@@ -85,12 +88,16 @@ export default function CatalogueBuilder() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [whatsappText, setWhatsappText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [persistenceSource, setPersistenceSource] = useState(
+    getCollectionsPersistenceSource(),
+  );
 
   const selected = collections.find((c) => c.id === selectedId) ?? null;
 
   const refreshCollections = useCallback(async () => {
     const rows = await listCollections();
     setCollections(rows);
+    setPersistenceSource(getCollectionsPersistenceSource());
     if (!selectedId && rows[0]) setSelectedId(rows[0].id);
   }, [selectedId]);
 
@@ -126,15 +133,25 @@ export default function CatalogueBuilder() {
 
   const createNew = async () => {
     if (!newTitle.trim()) return toast.error("Title required");
-    const row = await createCollection({
-      title: newTitle.trim(),
-      catalogue_type: newType,
-      channel: newType.replace("_catalogue", ""),
-    });
-    setNewTitle("");
-    await refreshCollections();
-    setSelectedId(row.id);
-    toast.success("Collection created");
+    try {
+      const row = await createCollection({
+        title: newTitle.trim(),
+        catalogue_type: newType,
+        channel: newType.replace("_catalogue", ""),
+      });
+      setNewTitle("");
+      await refreshCollections();
+      setSelectedId(row.id);
+      toast.success("Collection created");
+    } catch (e) {
+      toast.error(
+        e instanceof LocalCatalogueFallbackDisabledError
+          ? "Supabase required to create collections. Local fallback is disabled."
+          : e instanceof Error
+            ? e.message
+            : "Could not create collection",
+      );
+    }
   };
 
   const addProduct = async (productId: string) => {
@@ -207,6 +224,21 @@ export default function CatalogueBuilder() {
         title="Catalogue Builder"
         subtitle="Curate publishable collections — media readiness, preview cards, WhatsApp & PDF export foundation."
       />
+
+      <div className="mb-4 space-y-2">
+        <AuthorityStatusBadges
+          show={{
+            local_only: persistenceSource === "local_only",
+            not_synced_to_central: true,
+            central_live_write_disabled: true,
+          }}
+        />
+        {persistenceSource === "supabase_unavailable" && (
+          <p className="text-xs text-destructive">
+            Collections could not be loaded from Supabase. Create and edit actions require a live connection.
+          </p>
+        )}
+      </div>
 
       <div className="grid lg:grid-cols-12 gap-6">
         <aside className="lg:col-span-4 space-y-4">

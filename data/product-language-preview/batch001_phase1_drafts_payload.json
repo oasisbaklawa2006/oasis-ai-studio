@@ -1,0 +1,1838 @@
+[
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Kaju Asiyah",
+      "alias_text": "Chocolate Kaju Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Cashew Nut Asiyah",
+      "alias_text": "Chocolate Cashew Nut Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Assiyah",
+      "alias_text": "Cashew Assiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew High Jump Baklawa",
+      "alias_text": "Cashew High Jump Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew High Gap Baklawa",
+      "alias_text": "Cashew High Gap Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Cashew Asiyah Baklawa",
+      "alias_text": "Chocolate Cashew Asiyah Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Cashew Asiyah Baklava",
+      "alias_text": "Chocolate Cashew Asiyah Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Chocolate Cashew Asiyah Lebanese Baklava",
+      "alias_text": "Chocolate Cashew Asiyah Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate cashew asiyah",
+      "alias_text": "chocolate cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate kaju asiyah",
+      "alias_text": "chocolate kaju asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate cashew nut asiyah",
+      "alias_text": "chocolate cashew nut asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew assiyah",
+      "alias_text": "cashew assiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew high jump baklawa",
+      "alias_text": "cashew high jump baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew high gap baklawa",
+      "alias_text": "cashew high gap baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate cashew asiyah baklawa",
+      "alias_text": "chocolate cashew asiyah baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate cashew asiyah baklava",
+      "alias_text": "chocolate cashew asiyah baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate cashew asiyah lebanese baklava",
+      "alias_text": "chocolate cashew asiyah lebanese baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need chocolate cashew asiyah",
+      "alias_text": "need chocolate cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send chocolate cashew asiyah",
+      "alias_text": "send chocolate cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "chocolate cashew asiyah kg",
+      "alias_text": "chocolate cashew asiyah kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "c5e84d04-0d8b-4466-8690-a7e6267b44a8",
+      "canonical_name": "Chocolate Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Kaju Asiyah",
+      "alias_text": "Mor Kaju Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Cashew Nut Asiyah",
+      "alias_text": "Mor Cashew Nut Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Beetroot Cashew Asiyah",
+      "alias_text": "Beetroot Cashew Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Purple Cashew Asiyah",
+      "alias_text": "Purple Cashew Asiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Assiyah",
+      "alias_text": "Cashew Assiyah",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew High Jump Baklawa",
+      "alias_text": "Cashew High Jump Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew High Gap Baklawa",
+      "alias_text": "Cashew High Gap Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Cashew Asiyah Baklawa",
+      "alias_text": "Mor Cashew Asiyah Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor cashew asiyah",
+      "alias_text": "mor cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor kaju asiyah",
+      "alias_text": "mor kaju asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor cashew nut asiyah",
+      "alias_text": "mor cashew nut asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "beetroot cashew asiyah",
+      "alias_text": "beetroot cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "purple cashew asiyah",
+      "alias_text": "purple cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew assiyah",
+      "alias_text": "cashew assiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew high jump baklawa",
+      "alias_text": "cashew high jump baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew high gap baklawa",
+      "alias_text": "cashew high gap baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor cashew asiyah baklawa",
+      "alias_text": "mor cashew asiyah baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor cashew asiyah baklava",
+      "alias_text": "mor cashew asiyah baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor cashew asiyah lebanese baklava",
+      "alias_text": "mor cashew asiyah lebanese baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need mor cashew asiyah",
+      "alias_text": "need mor cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send mor cashew asiyah",
+      "alias_text": "send mor cashew asiyah",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor cashew asiyah kg",
+      "alias_text": "mor cashew asiyah kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "4af95ba1-ff0f-4740-8869-6a19a41e8c83",
+      "canonical_name": "Mor Cashew Asiyah",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Tart Kaju",
+      "alias_text": "Tart Kaju",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Tart Cashew Nut",
+      "alias_text": "Tart Cashew Nut",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Baklawa Tart",
+      "alias_text": "Cashew Baklawa Tart",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Tart Baklawa",
+      "alias_text": "Cashew Tart Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Tart Cashew Baklawa",
+      "alias_text": "Tart Cashew Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Tart Cashew Baklava",
+      "alias_text": "Tart Cashew Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Tart Cashew Lebanese Baklava",
+      "alias_text": "Tart Cashew Lebanese Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Cashew Katori",
+      "alias_text": "Cashew Katori",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "tart cashew",
+      "alias_text": "tart cashew",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "tart kaju",
+      "alias_text": "tart kaju",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "tart cashew nut",
+      "alias_text": "tart cashew nut",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew baklawa tart",
+      "alias_text": "cashew baklawa tart",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "cashew tart baklawa",
+      "alias_text": "cashew tart baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "tart cashew baklawa",
+      "alias_text": "tart cashew baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "tart cashew baklava",
+      "alias_text": "tart cashew baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "tart cashew lebanese baklava",
+      "alias_text": "tart cashew lebanese baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need tart cashew",
+      "alias_text": "need tart cashew",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send tart cashew",
+      "alias_text": "send tart cashew",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "tart cashew kg",
+      "alias_text": "tart cashew kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "canonical_name": "Tart Cashew",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pista Durum",
+      "alias_text": "Mor Pista Durum",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pistachio Nut Durum",
+      "alias_text": "Mor Pistachio Nut Durum",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Beetroot Pistachio Durum",
+      "alias_text": "Beetroot Pistachio Durum",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Purple Pistachio Durum",
+      "alias_text": "Purple Pistachio Durum",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pistachio Durum Baklava",
+      "alias_text": "Mor Pistachio Durum Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pistachio Turkish Roll Baklava",
+      "alias_text": "Mor Pistachio Turkish Roll Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pistachio Roll Baklava",
+      "alias_text": "Mor Pistachio Roll Baklava",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "Mor Pistachio Durum Baklawa",
+      "alias_text": "Mor Pistachio Durum Baklawa",
+      "term_type": "official_alias",
+      "channel_scope": [
+        "central",
+        "catalogue"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio durum",
+      "alias_text": "mor pistachio durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pista durum",
+      "alias_text": "mor pista durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio nut durum",
+      "alias_text": "mor pistachio nut durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "beetroot pistachio durum",
+      "alias_text": "beetroot pistachio durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "purple pistachio durum",
+      "alias_text": "purple pistachio durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio durum baklava",
+      "alias_text": "mor pistachio durum baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio turkish roll baklava",
+      "alias_text": "mor pistachio turkish roll baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio roll baklava",
+      "alias_text": "mor pistachio roll baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio durum baklawa",
+      "alias_text": "mor pistachio durum baklawa",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio durum turkish baklava",
+      "alias_text": "mor pistachio durum turkish baklava",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "need mor pistachio durum",
+      "alias_text": "need mor pistachio durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "send mor pistachio durum",
+      "alias_text": "send mor pistachio durum",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  },
+  {
+    "source_app": "catalogue_app",
+    "target_table": "product_aliases",
+    "target_record_id": null,
+    "operation": "create",
+    "payload": {
+      "scope": "product_alias",
+      "alias": "mor pistachio durum kg",
+      "alias_text": "mor pistachio durum kg",
+      "term_type": "whatsapp_keyword",
+      "channel_scope": [
+        "whatsapp"
+      ],
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "canonical_name": "Mor Pistachio Durum",
+      "language": null,
+      "script": null,
+      "source": "batch001_language_phase1"
+    },
+    "status": "pending_approval",
+    "submitted_by": "a3904c02-3305-4fa7-b0c0-f1a30d7e1fd6"
+  }
+]

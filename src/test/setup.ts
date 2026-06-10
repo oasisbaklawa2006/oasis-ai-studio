@@ -6,6 +6,9 @@ if (!import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY) {
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY = "test-publishable-key";
 }
 
+// Allow catalogue localStorage fallback reads/writes in unit tests only.
+import.meta.env.VITE_ALLOW_LOCAL_CATALOGUE_FALLBACK = "true";
+
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
