@@ -1,6 +1,8 @@
 export const MEDIA_ASSET_TYPES = [
   "primary_image",
   "secondary_image",
+  "catalogue_image",
+  "secondary_angle",
   "transparent_cutout",
   "pack_front_image",
   "pack_back_image",
@@ -13,6 +15,9 @@ export const MEDIA_ASSET_TYPES = [
   "export_pack_image",
   "hamper_arrangement_image",
   "lifestyle_image",
+  "lifestyle_variant",
+  "packaging_reference",
+  "source_reference",
 ] as const;
 
 export type MediaAssetType = (typeof MEDIA_ASSET_TYPES)[number];

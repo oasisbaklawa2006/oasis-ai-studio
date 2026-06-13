@@ -102,7 +102,11 @@ export function ProductTruthAdminSection({
           <PackagingHierarchyPanel form={form} truthInput={truthInput} />
         </TabsContent>
         <TabsContent value="channels" className="mt-4">
-          <ChannelRulesPanel prices={prices} moqRules={moqRules} packaging={truthInput.packaging ?? {}} />
+          <ChannelRulesPanel
+            prices={prices}
+            moqRules={moqRules}
+            packaging={truthInput.packaging ?? {}}
+          />
         </TabsContent>
         <TabsContent value="preview" className="mt-4">
           <PreviewCalculatorPanel packaging={truthInput.packaging ?? {}} moqRules={moqRules} />
@@ -116,6 +120,7 @@ export function ProductTruthAdminSection({
               complianceMetaPending={complianceMetaPending}
               prices={prices}
               moqRules={moqRules}
+              productMediaRows={productMediaRows}
             />
           </TabsContent>
         )}

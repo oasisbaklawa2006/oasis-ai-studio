@@ -1,4 +1,5 @@
 import { resolveProductHeroUrl } from "@/lib/productImage";
+import { MEDIA_UPLOADER_TO_READINESS } from "@/features/productTruth/readinessProfiles";
 import type { MediaAsset, MediaAssetType } from "./types";
 
 /** Row shape from `product_media` table (select *). */
@@ -11,20 +12,6 @@ export type ProductMediaRow = {
   alt_text?: string | null;
   angle?: string | null;
   created_at?: string | null;
-};
-
-const UPLOADER_TYPE_MAP: Record<string, MediaAssetType> = {
-  hero_image: "primary_image",
-  square_image: "transparent_cutout",
-  white_background: "transparent_cutout",
-  lifestyle: "pairing_image",
-  lifestyle_image: "pairing_image",
-  closeup: "close_up_image",
-  detail_image: "close_up_image",
-  hamper_open: "open_pack_image",
-  hamper_closed: "pack_front_image",
-  label_image: "label_front_image",
-  raw_photo: "secondary_image",
 };
 
 function parseStatus(raw: unknown): MediaAsset["status"] {
@@ -44,7 +31,7 @@ function parseSource(raw: unknown): MediaAsset["source"] {
 
 function mapUploaderType(rawType: string): MediaAssetType | null {
   const key = rawType.trim().toLowerCase();
-  return UPLOADER_TYPE_MAP[key] ?? MEDIA_ASSET_TYPE_SAFE(key);
+  return MEDIA_UPLOADER_TO_READINESS[key] ?? MEDIA_ASSET_TYPE_SAFE(key);
 }
 
 function assetFromRow(
@@ -146,6 +133,8 @@ const MEDIA_ASSET_TYPE_SAFE = (t: string): MediaAssetType | null => {
   const allowed: MediaAssetType[] = [
     "primary_image",
     "secondary_image",
+    "catalogue_image",
+    "secondary_angle",
     "transparent_cutout",
     "pack_front_image",
     "pack_back_image",
@@ -158,6 +147,9 @@ const MEDIA_ASSET_TYPE_SAFE = (t: string): MediaAssetType | null => {
     "export_pack_image",
     "hamper_arrangement_image",
     "lifestyle_image",
+    "lifestyle_variant",
+    "packaging_reference",
+    "source_reference",
   ];
   return allowed.includes(key) ? key : null;
 };
@@ -170,7 +162,6 @@ function dedupeByType(assets: MediaAsset[]): MediaAsset[] {
       map.set(a.type, a);
       continue;
     }
-    // Prefer approved; otherwise later row wins (product_media overrides form).
     if (a.status === "approved" && existing.status !== "approved") {
       map.set(a.type, a);
     } else if (existing.status !== "approved") {

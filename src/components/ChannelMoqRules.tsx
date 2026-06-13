@@ -348,9 +348,11 @@ const buildTemplateDefaults = (template: TemplateKey, product: any): MoqRuleRow[
 export const ChannelMoqRules = ({
   productId,
   product,
+  onRulesChange,
 }: {
   productId: string;
   product: any;
+  onRulesChange?: () => void;
 }) => {
   const { roles } = useAuth();
   const [rows, setRows] = useState<MoqRuleRow[]>([]);
@@ -376,6 +378,7 @@ export const ChannelMoqRules = ({
     setRows(data ?? []);
     setStagedEdits({});
     setLocalNewRows([]);
+    onRulesChange?.();
   };
 
   useEffect(() => {

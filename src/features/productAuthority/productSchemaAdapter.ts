@@ -4,11 +4,26 @@
  */
 import type { Database } from "@/integrations/supabase/types";
 import {
+  isChannelPricingFormField,
+} from "@/features/productAuthority/channelPricingMapper";
+import {
   CENTRAL_COMPAT_PRODUCT_COLUMNS,
   LIVE_PRODUCTS_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_FORM_KEYS,
 } from "@/features/productAuthority/liveProductsSchema";
 
-export { CENTRAL_COMPAT_PRODUCT_COLUMNS, LIVE_PRODUCTS_EXCLUDED_COLUMNS };
+export {
+  CENTRAL_COMPAT_PRODUCT_COLUMNS,
+  LIVE_PRODUCTS_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_FORM_KEYS,
+};
+export {
+  CHANNEL_PRICING_FORM_FIELD_KEYS,
+  extractChannelPricingFromForm,
+  isChannelPricingFormField,
+} from "@/features/productAuthority/channelPricingMapper";
 
 export type ProductsInsert = Database["public"]["Tables"]["products"]["Insert"];
 export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
@@ -139,15 +154,11 @@ const NUMERIC_DB_FIELDS = new Set([
   "pcs_per_kg",
   "weight_per_pc_grams",
   "avg_qty_per_tray_g",
-  "b2b_price",
-  "b2b_price_inr",
   "carton_qty",
   "cbm",
   "dimension_h_cm",
   "dimension_l_cm",
   "dimension_w_cm",
-  "export_price",
-  "export_price_usd",
   "grammage_g",
   "gross_weight_g",
   "gross_weight_kg",
@@ -155,7 +166,6 @@ const NUMERIC_DB_FIELDS = new Set([
   "increment_value",
   "master_carton_qty",
   "moq_value",
-  "mrp",
   "net_weight_g",
   "pcs_per_carton",
   "pcs_per_pack",
@@ -213,6 +223,12 @@ function buildDimensionsText(form: Record<string, unknown>): string | null {
   return null;
 }
 
+function isPricingLeakKey(key: string): boolean {
+  if (LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS.has(key)) return true;
+  if (LIVE_PRODUCTS_PRICING_FORM_KEYS.has(key)) return true;
+  return isChannelPricingFormField(key);
+}
+
 /** Strip keys not in products write allowlist (prevents Central-legacy field rejects). */
 export function stripUnknownProductFields(
   payload: Record<string, unknown>,
@@ -220,6 +236,10 @@ export function stripUnknownProductFields(
   const stripped: string[] = [];
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload)) {
+    if (isPricingLeakKey(key)) {
+      stripped.push(key);
+      continue;
+    }
     if (PRODUCTS_WRITE_ALLOWLIST.has(key)) {
       out[key] = value;
     } else {
@@ -227,6 +247,11 @@ export function stripUnknownProductFields(
     }
   }
   return { payload: out, stripped };
+}
+
+/** Detect channel pricing keys that must not be written to products. */
+export function findPricingLeaksInProductPayload(payload: Record<string, unknown>): string[] {
+  return Object.keys(payload).filter(isPricingLeakKey);
 }
 
 export function validateProductSavePayload(
@@ -257,10 +282,19 @@ export function formatProductSaveError(error: unknown): string {
   const columnMatch = msg.match(/Could not find the '([^']+)' column/i);
   if (columnMatch) {
     const field = columnMatch[1];
-    return `AI Studio tried to save a field not present in live products schema. Field: ${field}. This has been blocked from future saves.`;
+    if (isPricingLeakKey(field)) {
+      return `AI Studio tried to save a field not present in live products schema. Field: ${field}. Channel pricing must be saved via product_pricing_rules only.`;
+    }
+    return `AI Studio tried to save a field not present in live products schema. Field: ${field}.`;
   }
-  if (/violates foreign key|violates check|duplicate key/i.test(msg)) {
+  if (/violates foreign key|violates check/i.test(msg)) {
     return `${msg} (constraint — verify SKU uniqueness and department rules)`;
+  }
+  if (/duplicate key.*uq_product_pricing_rules_product_channel|uq_price_rule_product_channel/i.test(msg)) {
+    return "Pricing for this channel already exists. Updating existing row.";
+  }
+  if (/duplicate key/i.test(msg)) {
+    return `${msg} (constraint — verify unique fields)`;
   }
   return msg;
 }
@@ -289,10 +323,6 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     storage_instructions: form.storage_instructions ?? null,
     hsn_code: form.hsn_code ?? null,
     gst_rate: toNum(form.gst_rate),
-    mrp: toNum(form.mrp),
-    b2b_price: toNum(form.b2b_price),
-    export_price: toNum(form.export_price),
-    export_price_usd: toNum(form.export_price_usd),
     currency: form.currency ?? "INR",
     hero_image_url: hero,
     image_url: hero,
@@ -375,7 +405,15 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     if (raw[k] === "") raw[k] = null;
   });
 
-  return stripUnknownProductFields(raw).payload;
+  const { payload, stripped } = stripUnknownProductFields(raw);
+  const pricingLeaks = findPricingLeaksInProductPayload(payload);
+  if (pricingLeaks.length > 0) {
+    for (const key of pricingLeaks) {
+      delete payload[key];
+      stripped.push(key);
+    }
+  }
+  return payload;
 }
 
 /** DB row → UI form (reads Studio + Central legacy column names). */

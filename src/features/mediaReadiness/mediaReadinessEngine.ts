@@ -7,32 +7,11 @@ import type {
   ProductMediaContext,
   ProductMediaProfile,
 } from "./types";
-
-const PROFILE_REQUIREMENTS: Record<ProductMediaProfile, MediaAssetRequirement[]> = {
-  baklawa_small_sweets: [
-    { type: "primary_image", label: "Primary image", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "pairing_image", label: "Pairing / serve image", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "close_up_image", label: "Close-up", requiredForCatalogue: true, requiredForCentralSync: true },
-  ],
-  gift_box: [
-    { type: "pack_front_image", label: "Closed pack (front)", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "open_pack_image", label: "Open pack", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "primary_image", label: "Primary image", requiredForCatalogue: true, requiredForCentralSync: true },
-  ],
-  export_pack: [
-    { type: "label_front_image", label: "Front label", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "label_back_image", label: "Back label / barcode", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "master_carton_image", label: "Master carton", requiredForCatalogue: true, requiredForCentralSync: true },
-  ],
-  hamper: [
-    { type: "hamper_arrangement_image", label: "Full arrangement", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "close_up_image", label: "Close-up", requiredForCatalogue: true, requiredForCentralSync: true },
-    { type: "primary_image", label: "Pack / hero image", requiredForCatalogue: true, requiredForCentralSync: true },
-  ],
-  general: [
-    { type: "primary_image", label: "Primary image", requiredForCatalogue: true, requiredForCentralSync: true },
-  ],
-};
+import {
+  optionalProfileSlots,
+  profileSlots,
+  requiredProfileSlots,
+} from "@/features/productTruth/readinessProfiles";
 
 function norm(s: string | null | undefined): string {
   return String(s ?? "").trim().toLowerCase();
@@ -72,9 +51,28 @@ export function detectProductMediaProfile(product: ProductMediaContext): Product
   return "general";
 }
 
+function toRequirement(slot: {
+  type: MediaAssetType;
+  label: string;
+  requiredForCatalogue: boolean;
+  requiredForCentralSync: boolean;
+}): MediaAssetRequirement {
+  return {
+    type: slot.type,
+    label: slot.label,
+    requiredForCatalogue: slot.requiredForCatalogue,
+    requiredForCentralSync: slot.requiredForCentralSync,
+  };
+}
+
 export function getRequiredMediaAssets(product: ProductMediaContext): MediaAssetRequirement[] {
   const profile = detectProductMediaProfile(product);
-  return PROFILE_REQUIREMENTS[profile];
+  return requiredProfileSlots(profile).map(toRequirement);
+}
+
+export function getOptionalMediaAssets(product: ProductMediaContext): MediaAssetRequirement[] {
+  const profile = detectProductMediaProfile(product);
+  return optionalProfileSlots(profile).map(toRequirement);
 }
 
 function assetForType(assets: MediaAsset[], type: MediaAssetType): MediaAsset | undefined {
@@ -140,40 +138,54 @@ export function canSyncMediaToCentral(
   return evaluateMediaReadiness(product, mediaAssets).canSyncMediaToCentral;
 }
 
+function buildSlot(
+  req: MediaAssetRequirement,
+  asset: MediaAsset | undefined,
+  required: boolean,
+): MediaAssetSlotStatus {
+  const present = !!asset?.url;
+  const approved = isApproved(asset);
+  return {
+    type: req.type,
+    label: req.label,
+    required,
+    requiredForCentralSync: req.requiredForCentralSync,
+    present,
+    approved,
+    url: asset?.url ?? null,
+    status: !present
+      ? "missing"
+      : approved
+        ? "approved"
+        : asset?.status === "pending_approval"
+          ? "pending_approval"
+          : "draft",
+  };
+}
+
 export function evaluateMediaReadiness(
   product: ProductMediaContext,
   mediaAssets: MediaAsset[],
 ): MediaReadinessResult {
   const profile = detectProductMediaProfile(product);
-  const requirements = PROFILE_REQUIREMENTS[profile];
+  const required = requiredProfileSlots(profile).map(toRequirement);
+  const optional = optionalProfileSlots(profile).map(toRequirement);
   const isLegacy = !!product.isLegacy;
 
-  const slots: MediaAssetSlotStatus[] = requirements.map((req) => {
-    const asset = assetForType(mediaAssets, req.type);
-    const present = !!asset?.url;
-    const approved = isApproved(asset);
-    return {
-      type: req.type,
-      label: req.label,
-      required: req.requiredForCatalogue,
-      requiredForCentralSync: req.requiredForCentralSync,
-      present,
-      approved,
-      url: asset?.url ?? null,
-      status: !present
-        ? "missing"
-        : approved
-          ? "approved"
-          : asset?.status === "pending_approval"
-            ? "pending_approval"
-            : "draft",
-    };
-  });
+  const requiredSlots = required.map((req) =>
+    buildSlot(req, assetForType(mediaAssets, req.type), true),
+  );
+  const optionalSlots = optional.map((req) =>
+    buildSlot(req, assetForType(mediaAssets, req.type), false),
+  );
+  const slots = [...requiredSlots, ...optionalSlots];
 
-  const missingAssets = slots.filter((s) => !s.present || !s.approved).map((s) => s.type);
+  const missingAssets = requiredSlots
+    .filter((s) => !s.present || !s.approved)
+    .map((s) => s.type);
   const blockers: string[] = [];
 
-  for (const slot of slots) {
+  for (const slot of requiredSlots) {
     if (!slot.present) {
       blockers.push(`Missing ${slot.label}`);
     } else if (!slot.approved) {
@@ -202,7 +214,7 @@ export function evaluateMediaReadiness(
     profile,
     score,
     maxScore,
-    requiredAssets: requirements.map((r) => r.type),
+    requiredAssets: required.map((r) => r.type),
     slots,
     missingAssets,
     blockers: isLegacy && score === 0 ? ["Legacy product — media incomplete"] : blockers,
@@ -212,3 +224,5 @@ export function evaluateMediaReadiness(
     isLegacy,
   };
 }
+
+export { profileSlots };

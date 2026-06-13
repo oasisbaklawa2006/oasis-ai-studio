@@ -32,8 +32,9 @@ const completeForm: Record<string, unknown> = {
   approximate_piece_weight_g: 25,
   master_carton_qty: 8,
   media_assets: [
-    { type: "pairing_image", url: "https://cdn.example/pair.jpg", status: "approved" },
+    { type: "catalogue_image", url: "https://cdn.example/white.jpg", status: "approved" },
     { type: "close_up_image", url: "https://cdn.example/close.jpg", status: "approved" },
+    { type: "lifestyle_image", url: "https://cdn.example/life.jpg", status: "approved" },
   ],
 };
 
@@ -42,7 +43,10 @@ describe("catalogueBuilder", () => {
     const pub = evaluateCataloguePublishability({
       form: completeForm,
       complianceApproved: true,
-      prices: [{ channel: "retail", priceStatus: "approved", sellingPrice: 1000 }],
+      prices: [
+        { channel: "mrp", priceStatus: "approved", mrp: 1200 },
+        { channel: "b2b", priceStatus: "approved", sellingPrice: 1000 },
+      ],
     });
     expect(pub.contentOk).toBe(true);
     expect(pub.mediaOk).toBe(true);

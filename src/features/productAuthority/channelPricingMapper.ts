@@ -1,0 +1,98 @@
+/**
+ * Channel pricing authority — product_pricing_rules only (never products table).
+ */
+import type { Database } from "@/integrations/supabase/types";
+
+export type ProductPricingRuleInsert =
+  Database["public"]["Tables"]["product_pricing_rules"]["Insert"];
+
+/** Form keys that carry channel price values (UI / legacy — not products columns). */
+export const CHANNEL_PRICING_FORM_FIELD_KEYS = [
+  "b2b_price",
+  "b2b_price_inr",
+  "mrp",
+  "mrp_price",
+  "retail_price",
+  "bulk_price",
+  "wholesale_price",
+  "horeca_price",
+  "export_price",
+  "export_price_usd",
+  "franchisee_price",
+  "own_outlet_price",
+  "special_price",
+  "costing_price",
+] as const;
+
+export type ChannelPricingFormField = (typeof CHANNEL_PRICING_FORM_FIELD_KEYS)[number];
+
+/** Map legacy/compliance form fields → product_pricing_rules.price_channel. */
+export const FORM_FIELD_TO_PRICE_CHANNEL: Record<ChannelPricingFormField, string> = {
+  mrp: "mrp",
+  mrp_price: "mrp",
+  retail_price: "retail",
+  bulk_price: "bulk",
+  wholesale_price: "wholesale",
+  horeca_price: "horeca",
+  b2b_price: "b2b",
+  b2b_price_inr: "b2b",
+  export_price: "export",
+  export_price_usd: "export",
+  franchisee_price: "franchisee",
+  own_outlet_price: "own_outlet",
+  special_price: "special",
+  costing_price: "costing",
+};
+
+const BASIS_SUFFIX = /_price_basis$/;
+
+function toNum(v: unknown): number | null {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** True when a form/payload key is a channel price value (not basis metadata). */
+export function isChannelPricingFormField(key: string): boolean {
+  if (BASIS_SUFFIX.test(key)) return false;
+  if ((CHANNEL_PRICING_FORM_FIELD_KEYS as readonly string[]).includes(key)) return true;
+  if (key.endsWith("_price")) return true;
+  return false;
+}
+
+/**
+ * Extract channel pricing rows for product_pricing_rules upsert.
+ * Ignores empty / non-numeric values. Last write wins per channel.
+ */
+export function extractChannelPricingFromForm(
+  form: Record<string, unknown>,
+  productId: string,
+): ProductPricingRuleInsert[] {
+  const currency = String(form.currency ?? "INR");
+  const uom =
+    (form.retail_uom as string | null | undefined) ??
+    (form.primary_uom as string | null | undefined) ??
+    (form.b2b_uom as string | null | undefined) ??
+    null;
+
+  const byChannel = new Map<string, ProductPricingRuleInsert>();
+
+  for (const field of CHANNEL_PRICING_FORM_FIELD_KEYS) {
+    const price = toNum(form[field]);
+    if (price == null) continue;
+    const channel = FORM_FIELD_TO_PRICE_CHANNEL[field];
+    byChannel.set(channel, {
+      product_id: productId,
+      price_channel: channel,
+      price_type: "fixed_price",
+      base_price: price,
+      calculated_price: price,
+      currency,
+      uom,
+      approval_status: "draft",
+      source: "catalogue_local",
+    });
+  }
+
+  return Array.from(byChannel.values());
+}

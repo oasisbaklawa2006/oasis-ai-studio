@@ -6,7 +6,7 @@ import {
 } from "./mediaAssetsFromForm";
 
 describe("mediaAssetsFromProductMedia", () => {
-  it("maps uploader types to readiness slots", () => {
+  it("maps uploader types to authoritative readiness slots", () => {
     const assets = mediaAssetsFromProductMedia([
       { type: "hero_image", file_url: "https://cdn/a.jpg", status: "raw" },
       { type: "lifestyle", file_url: "https://cdn/b.jpg", status: "raw" },
@@ -16,9 +16,17 @@ describe("mediaAssetsFromProductMedia", () => {
 
     const byType = Object.fromEntries(assets.map((a) => [a.type, a]));
     expect(byType.primary_image?.url).toBe("https://cdn/a.jpg");
+    expect(byType.lifestyle_image?.url).toBeUndefined();
     expect(byType.pairing_image?.url).toBe("https://cdn/b.jpg");
     expect(byType.close_up_image?.url).toBe("https://cdn/c.jpg");
-    expect(byType.transparent_cutout?.url).toBe("https://cdn/d.jpg");
+    expect(byType.catalogue_image?.url).toBe("https://cdn/d.jpg");
+  });
+
+  it("maps angle shots to secondary_angle", () => {
+    const assets = mediaAssetsFromProductMedia([
+      { type: "side_angle", file_url: "https://cdn/s.jpg", status: "approved" },
+    ]);
+    expect(assets[0]?.type).toBe("secondary_angle");
   });
 
   it("treats raw uploads as pending approval, not missing", () => {

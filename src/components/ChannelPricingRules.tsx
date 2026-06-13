@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { formatPricingSaveError } from "@/features/productTruth/pricingErrors";
 import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
 import {
   canSubmitDraft,
@@ -197,9 +197,11 @@ const buildCataloguePricingDraftPayload = (productId: string, row: PricingRuleRo
 export const ChannelPricingRules = ({
   productId,
   product,
+  onRulesChange,
 }: {
   productId: string;
   product: any;
+  onRulesChange?: () => void;
 }) => {
   const { roles } = useAuth();
   const [rows, setRows] = useState<PricingRuleRow[]>([]);
@@ -226,6 +228,7 @@ export const ChannelPricingRules = ({
     setRows(data ?? []);
     setStagedEdits({});
     setLocalNewRows([]);
+    onRulesChange?.();
   };
 
   useEffect(() => {
@@ -486,19 +489,22 @@ export const ChannelPricingRules = ({
 
     const { data, error } = await supabase
       .from("product_pricing_rules")
-      .insert({
-        product_id: productId,
-        price_channel: "retail",
-        price_type: "quotation_based",
-        currency: "INR",
-        approval_status: "draft",
-        source: "catalogue_local",
-      })
+      .upsert(
+        {
+          product_id: productId,
+          price_channel: "retail",
+          price_type: "quotation_based",
+          currency: "INR",
+          approval_status: "draft",
+          source: "catalogue_local",
+        },
+        { onConflict: "product_id,price_channel" },
+      )
       .select("*")
       .single();
 
     if (error) {
-      toast.error(error.message);
+      toast.error(formatPricingSaveError(error));
       return;
     }
 
@@ -508,6 +514,7 @@ export const ChannelPricingRules = ({
       )
     );
     setEditing((prev) => ({ ...prev, [data.id]: true }));
+    onRulesChange?.();
   };
 
   const approve = async (id: string) => {

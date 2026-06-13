@@ -1,8 +1,9 @@
 import { evaluateProductReadiness, productTruthInputFromForm } from "@/features/productTruth/productReadiness";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import {
-  mediaAssetsFromForm,
+  mediaAssetsFromSources,
   productMediaContextFromForm,
+  type ProductMediaRow,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 
@@ -21,6 +22,7 @@ export function evaluateCataloguePublishability(args: {
   complianceApproved?: boolean;
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
+  productMediaRows?: ProductMediaRow[];
   catalogueVersionStatus?: string | null;
 }): CataloguePublishabilityResult {
   const blockers: string[] = [];
@@ -30,12 +32,13 @@ export function evaluateCataloguePublishability(args: {
     isLegacy: !args.form.sku,
     prices: args.prices,
     moqRules: args.moqRules,
+    productMediaRows: args.productMediaRows,
   });
 
   const readiness = evaluateProductReadiness(truthInput);
   const media = evaluateMediaReadiness(
     productMediaContextFromForm(args.form),
-    mediaAssetsFromForm(args.form),
+    mediaAssetsFromSources({ form: args.form, productMediaRows: args.productMediaRows }),
   );
 
   const contentOk = !!(args.form.product_name && String(args.form.product_name).trim());
