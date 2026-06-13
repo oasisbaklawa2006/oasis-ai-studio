@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import {
   evaluateAllPilotSkus,
+  type PilotReadinessReport,
   type PilotSkuReadiness,
 } from "@/features/productAuthority/pilotReadiness";
 import { MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
@@ -24,17 +25,30 @@ function statusBadge(status: string) {
   );
 }
 
+function InfraRow({ label, status, message }: { label: string; status: string; message: string }) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 text-sm border-b py-2 last:border-0">
+      <span className="font-medium">{label}</span>
+      <div className="flex items-center gap-2 text-right">
+        {statusBadge(status)}
+        <span className="text-xs text-muted-foreground max-w-md">{message}</span>
+      </div>
+    </div>
+  );
+}
+
 function PilotSkuCard({ row }: { row: PilotSkuReadiness }) {
   const checks: Array<[string, string]> = [
     ["Structured SKU", row.structuredSku],
     ["Schema save", row.schemaSave],
     ["HSN/GST", row.hsnGst],
-    ["Packaging g/pc", row.packaging],
+    ["Packaging", row.packaging],
     ["Hero image", row.heroImage],
     ["Square image", row.squareImage],
-    ["Alias term types", row.aliasTermTypes],
-    ["Resolver collisions", row.resolverCollisions],
+    ["Alias types", row.aliasTermTypes],
+    ["Resolver", row.resolverCollisions],
     ["Approval RPC", row.approvalRpc],
+    ["Approval ready", row.approvalReady],
   ];
 
   return (
@@ -49,7 +63,17 @@ function PilotSkuCard({ row }: { row: PilotSkuReadiness }) {
         </Badge>
       </div>
 
-      <div className="grid sm:grid-cols-3 gap-2 text-sm">
+      <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+        <div>HSN: {row.hsnCode ?? "—"} · GST: {row.gstRate ?? "—"}</div>
+        <div>
+          g/pc: {row.gramsPerPiece ?? "—"} · pcs/kg: {row.piecesPerKg ?? "—"}
+        </div>
+        <div>
+          Aliases: {row.aliasCount} (WA {row.whatsappAliasCount} · search {row.searchAliasCount})
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-2 text-sm">
         {checks.map(([label, status]) => (
           <div key={label} className="flex items-center justify-between gap-2 rounded border px-2 py-1">
             <span className="text-muted-foreground">{label}</span>
@@ -58,15 +82,15 @@ function PilotSkuCard({ row }: { row: PilotSkuReadiness }) {
         ))}
       </div>
 
-      {row.schemaSaveNotes.length > 0 && (
+      {row.resolverNotes.length > 0 && (
         <div className="text-xs text-muted-foreground">
-          Schema: {row.schemaSaveNotes.join(" · ")}
+          Resolver: {row.resolverNotes.join(" · ")}
         </div>
       )}
 
       {row.blockedReasons.length > 0 && (
         <ul className="text-xs text-destructive list-disc pl-4 space-y-0.5">
-          {[...new Set(row.blockedReasons)].map((r) => (
+          {row.blockedReasons.map((r) => (
             <li key={r}>{r}</li>
           ))}
         </ul>
@@ -86,7 +110,7 @@ function PilotSkuCard({ row }: { row: PilotSkuReadiness }) {
 const PilotReadinessDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<Awaited<ReturnType<typeof evaluateAllPilotSkus>> | null>(null);
+  const [report, setReport] = useState<PilotReadinessReport | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -109,7 +133,7 @@ const PilotReadinessDashboard = () => {
     <>
       <PageHeader
         title="5-SKU Pilot Readiness"
-        subtitle="Live checks for Batch 001 anchor SKUs — schema, media, aliases, packaging"
+        subtitle="Live infra probes + per-SKU authority dimensions"
         actions={
           <div className="flex gap-2">
             <Button variant="outline" asChild>
@@ -130,23 +154,57 @@ const PilotReadinessDashboard = () => {
       )}
 
       {report && (
-        <div className="mb-6 rounded-lg border p-4 space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-2xl font-display">
-              {report.summary.percent}% ready
-            </span>
-            <span className="text-muted-foreground">
-              ({report.summary.ready}/{report.summary.total} SKUs pass pilot gate)
-            </span>
-            {statusBadge(report.bucket.status === "available" ? "pass" : report.bucket.status === "missing" ? "fail" : "partial")}
+        <>
+          <div className="mb-4 rounded-lg border p-4 space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-2xl font-display">{report.summary.percent}% pilot gate</span>
+              <span className="text-muted-foreground">
+                ({report.summary.ready}/{report.summary.total} SKUs fully ready)
+              </span>
+              <span className="text-muted-foreground">
+                · {report.summary.dimensionPercent}% dimensions ({report.summary.dimensionsPassing}/
+                {report.summary.dimensionsTotal})
+              </span>
+            </div>
+            {report.infra.projectRef && (
+              <div className="text-xs text-muted-foreground">
+                Probed {new Date(report.infra.probedAt).toLocaleString()} · project {report.infra.projectRef}
+              </div>
+            )}
           </div>
-          <div className="text-sm">
-            <strong>Media bucket:</strong> {report.bucket.message}
+
+          <div className="mb-6 rounded-lg border p-4">
+            <h3 className="font-display text-lg mb-2">Infrastructure</h3>
+            <InfraRow
+              label="product-media bucket"
+              status={report.bucket.status === "available" ? "pass" : report.bucket.status === "missing" ? "fail" : "partial"}
+              message={report.bucket.message}
+            />
+            <InfraRow
+              label="generate_oasis_sku"
+              status={report.infra.generateOasisSku.status}
+              message={report.infra.generateOasisSku.message}
+            />
+            <InfraRow
+              label="search_products_with_aliases"
+              status={report.infra.searchProductsWithAliases.status}
+              message={report.infra.searchProductsWithAliases.message}
+            />
+            <InfraRow
+              label="approve_catalogue_product_draft"
+              status={report.infra.approveProductDraftRpc.status}
+              message={report.infra.approveProductDraftRpc.message}
+            />
+            <InfraRow
+              label="reject_catalogue_product_draft"
+              status={report.infra.rejectProductDraftRpc.status}
+              message={report.infra.rejectProductDraftRpc.message}
+            />
+            {report.bucket.status !== "available" && (
+              <p className="text-xs text-muted-foreground mt-2">{MEDIA_BUCKET_OWNER_ACTION}</p>
+            )}
           </div>
-          {report.bucket.status !== "available" && (
-            <p className="text-xs text-muted-foreground">{MEDIA_BUCKET_OWNER_ACTION}</p>
-          )}
-        </div>
+        </>
       )}
 
       {loading && !report && (
@@ -165,7 +223,9 @@ const PilotReadinessDashboard = () => {
       )}
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Static report: <code>docs/AI_STUDIO_5SKU_PILOT_READINESS_DASHBOARD.md</code>
+        Reports:{" "}
+        <code>docs/AI_STUDIO_5SKU_PILOT_COMPLETION_REPORT.md</code> ·{" "}
+        <code>data/pilot/ai_studio_5sku_readiness_matrix.csv</code>
       </p>
     </>
   );

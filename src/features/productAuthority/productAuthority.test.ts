@@ -8,6 +8,8 @@ import { assertStructuredSkuForSave, isDraftSku } from "@/features/productAuthor
 import { FAST_CREATE_SKU_BLOCK_MESSAGE } from "@/features/fastCreate/saveFastCreateProduct";
 import { heroUrlWritePayload } from "@/lib/productImage";
 import { applyPrefeedSuggestions, buildCategoryPrefeed } from "@/features/productDefaults/categoryPrefeed";
+import { PILOT_COLLISION_HINTS } from "@/features/productAuthority/pilotCollisionHints";
+import { PILOT_SKUS } from "@/features/productAuthority/skuGuard";
 
 describe("productSchemaAdapter", () => {
   it("maps form to Studio columns (not Central legacy names)", () => {
@@ -93,6 +95,15 @@ describe("heroUrlWritePayload", () => {
       hero_image_url: "https://x/y.png",
       image_url: "https://x/y.png",
     });
+  });
+});
+
+describe("pilotCollisionHints", () => {
+  it("covers all 5 pilot SKUs", () => {
+    for (const sku of PILOT_SKUS) {
+      expect(PILOT_COLLISION_HINTS[sku]).toBeDefined();
+      expect(PILOT_COLLISION_HINTS[sku].notes.length).toBeGreaterThan(0);
+    }
   });
 });
 
