@@ -79,19 +79,22 @@ export function convertOrderedQtyToBaseQty(
       if (!piecesPerKg) return null;
       return qty / piecesPerKg;
     case "tray": {
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
+      const kgPerTray = hierarchy.kgPerTray;
+      if (kgPerTray == null || kgPerTray <= 0) return null;
       return qty * kgPerTray;
     }
     case "carton":
     case "pack":
     case "box": {
-      const traysPerCarton = hierarchy.packsPerCarton ?? hierarchy.traysPerMasterCarton ?? 1;
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
+      const traysPerCarton = hierarchy.packsPerCarton ?? hierarchy.traysPerMasterCarton;
+      const kgPerTray = hierarchy.kgPerTray;
+      if (traysPerCarton == null || kgPerTray == null) return null;
       return qty * traysPerCarton * kgPerTray;
     }
     case "master_carton": {
-      const traysPerMc = hierarchy.traysPerMasterCarton ?? 8;
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
+      const traysPerMc = hierarchy.traysPerMasterCarton;
+      const kgPerTray = hierarchy.kgPerTray;
+      if (traysPerMc == null || kgPerTray == null) return null;
       return qty * traysPerMc * kgPerTray;
     }
     default:
@@ -118,12 +121,14 @@ export function convertBaseKgToUom(
     case "pcs":
       return piecesPerKg ? baseKg * piecesPerKg : null;
     case "tray": {
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
+      const kgPerTray = hierarchy.kgPerTray;
+      if (kgPerTray == null || kgPerTray <= 0) return null;
       return baseKg / kgPerTray;
     }
     case "master_carton": {
-      const traysPerMc = hierarchy.traysPerMasterCarton ?? 8;
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
+      const traysPerMc = hierarchy.traysPerMasterCarton;
+      const kgPerTray = hierarchy.kgPerTray;
+      if (traysPerMc == null || kgPerTray == null) return null;
       return baseKg / (traysPerMc * kgPerTray);
     }
     default:

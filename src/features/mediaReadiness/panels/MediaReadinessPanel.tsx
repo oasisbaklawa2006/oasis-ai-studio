@@ -9,16 +9,11 @@ import {
   slotDisplayLabel,
   type ProductMediaRow,
 } from "../mediaAssetsFromForm";
-import type { MediaAssetType } from "../types";
 
 type Props = {
   form: Record<string, unknown>;
   productMediaRows?: ProductMediaRow[];
 };
-
-const OPTIONAL_CATALOGUE_SLOTS: Array<{ type: MediaAssetType; label: string }> = [
-  { type: "transparent_cutout", label: "Square / catalogue image" },
-];
 
 export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
   const product = useMemo(() => productMediaContextFromForm(form), [form]);
@@ -32,36 +27,10 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
     [product, assets],
   );
 
-  const optionalSlots = useMemo(() => {
-    const requiredTypes = new Set(readiness.slots.map((s) => s.type));
-    return OPTIONAL_CATALOGUE_SLOTS.map((slot) => {
-      const asset = assets.find((a) => a.type === slot.type && a.url);
-      if (!asset || requiredTypes.has(slot.type)) return null;
-      const approved = asset.status === "approved";
-      return {
-        type: slot.type,
-        label: slot.label,
-        present: true,
-        approved,
-        url: asset.url,
-        status: approved ? "approved" : asset.status,
-      };
-    }).filter(Boolean) as Array<{
-      type: MediaAssetType;
-      label: string;
-      present: boolean;
-      approved: boolean;
-      url: string | null;
-      status: string;
-    }>;
-  }, [assets, readiness.slots]);
-
   const centralUrls = useMemo(() => selectApprovedImageUrlsForCentral(assets), [assets]);
   const pct = readiness.maxScore
     ? Math.round((readiness.score / readiness.maxScore) * 100)
     : 0;
-
-  const allSlots = [...readiness.slots, ...optionalSlots];
 
   return (
     <div className="card-elevated p-4 space-y-4">
@@ -101,8 +70,8 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
 
       <p className="text-[11px] text-muted-foreground rounded border border-dashed p-2">
         Media slots combine hero URL, optional <code className="text-[10px]">media_assets</code> on the
-        form, and persisted <code className="text-[10px]">product_media</code> rows. Unapproved uploads
-        show as <strong>draft pending approval</strong>, not missing.
+        form, and persisted <code className="text-[10px]">product_media</code> rows. Requirements are
+        profile-driven from <code className="text-[10px]">readinessProfiles.ts</code>.
       </p>
 
       {readiness.blockers.length > 0 && (
@@ -119,9 +88,14 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
       )}
 
       <div className="grid sm:grid-cols-2 gap-2">
-        {allSlots.map((slot) => (
+        {readiness.slots.map((slot) => (
           <div key={slot.type} className="rounded border p-2 text-xs">
-            <div className="font-medium">{slot.label}</div>
+            <div className="font-medium">
+              {slot.label}
+              {!slot.required && (
+                <span className="text-muted-foreground font-normal"> (optional)</span>
+              )}
+            </div>
             <div className="text-muted-foreground font-mono text-[10px] mt-0.5">{slot.type}</div>
             <Badge
               variant="outline"

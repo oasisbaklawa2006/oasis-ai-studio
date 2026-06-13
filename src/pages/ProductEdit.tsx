@@ -44,6 +44,13 @@ import {
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import {
+  mapMoqRules,
+  mapPricingRules,
+  type MoqRuleRow,
+  type PricingRuleRow,
+} from "@/features/productTruth/channelAuthorityMappers";
+import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
@@ -592,6 +599,8 @@ const ProductEdit = () => {
 
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);
+  const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
+  const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
@@ -691,6 +700,25 @@ const ProductEdit = () => {
     setProductMediaRows(data ?? []);
   };
 
+  const loadChannelAuthority = async (productId: string) => {
+    const [pricingRes, moqRes] = await Promise.all([
+      supabase.from("product_pricing_rules").select("*").eq("product_id", productId),
+      supabase.from("product_moq_rules").select("*").eq("product_id", productId),
+    ]);
+    if (pricingRes.error && import.meta.env.DEV) {
+      console.error("[ProductEdit] pricing rules load failed:", pricingRes.error.message);
+    }
+    if (moqRes.error && import.meta.env.DEV) {
+      console.error("[ProductEdit] moq rules load failed:", moqRes.error.message);
+    }
+    setChannelPrices(mapPricingRules((pricingRes.data ?? []) as PricingRuleRow[]));
+    setChannelMoqRules(mapMoqRules((moqRes.data ?? []) as MoqRuleRow[]));
+  };
+
+  const reloadProductAuthority = async (productId: string) => {
+    await Promise.all([loadProductMedia(productId), loadChannelAuthority(productId)]);
+  };
+
   useEffect(() => {
     if (isNew || !id || loadedId === id) return;
 
@@ -711,7 +739,7 @@ const ProductEdit = () => {
           complianceBaselineRef.current = pickComplianceBaseline(loaded);
           setComplianceMetaMap({});
           setLoadedId(id);
-          void loadProductMedia(id);
+          void reloadProductAuthority(id);
         }
       });
   }, [id, isNew, loadedId]);
@@ -1804,8 +1832,20 @@ const ProductEdit = () => {
 
             {!isNew && (
               <TabsContent value="channels" className="space-y-6">
-                <ChannelMoqRules productId={id!} product={form} />
-                <ChannelPricingRules productId={id!} product={form} />
+                <ChannelMoqRules
+                  productId={id!}
+                  product={form}
+                  onRulesChange={() => {
+                    if (id) void loadChannelAuthority(id);
+                  }}
+                />
+                <ChannelPricingRules
+                  productId={id!}
+                  product={form}
+                  onRulesChange={() => {
+                    if (id) void loadChannelAuthority(id);
+                  }}
+                />
               </TabsContent>
             )}
 
@@ -1934,6 +1974,8 @@ const ProductEdit = () => {
                   productId={id}
                   productName={form.product_name ?? ""}
                   productMediaRows={productMediaRows}
+                  prices={channelPrices}
+                  moqRules={channelMoqRules}
                   onOpenAliasManager={() => {
                     setTab("identity");
                     requestAnimationFrame(() => {

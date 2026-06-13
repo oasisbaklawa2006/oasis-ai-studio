@@ -139,6 +139,7 @@ export type SnapshotGeneratorInput = {
   complianceMetaPending?: boolean;
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
+  productMediaRows?: import("@/features/mediaReadiness/mediaAssetsFromForm").ProductMediaRow[];
   approvedBy?: string | null;
   /** Optional alias rows for language_intelligence section (read-only preview). */
   languageAliasRows?: Array<{

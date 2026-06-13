@@ -13,6 +13,7 @@ import {
   productMediaContextFromForm,
   type ProductMediaRow,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { packagingHierarchyFromForm } from "./packagingTruth";
 
 export type ProductReadinessResult = {
   score: number;
@@ -266,20 +267,7 @@ export function productTruthInputFromForm(
     mainDepartment: (form.main_department as string) ?? null,
     productionDepartment: (form.production_department as string) ?? null,
     bomRequired: !!form.bom_required,
-    packaging: {
-      gramsPerPiece: form.approximate_piece_weight_g
-        ? Number(form.approximate_piece_weight_g)
-        : null,
-      piecesPerKg: form.pieces_per_kg ? Number(form.pieces_per_kg) : form.approximate_piece_weight_g
-        ? 1000 / Number(form.approximate_piece_weight_g)
-        : 40,
-      kgPerTray: 1,
-      traysPerMasterCarton: form.master_carton_qty ? Number(form.master_carton_qty) : 8,
-      allowPartialPack: false,
-      allowPartialCarton: false,
-      roundingRule: "nearest",
-      tolerancePercent: 0,
-    },
+    packaging: packagingHierarchyFromForm(form),
     prices: opts?.prices,
     moqRules: opts?.moqRules,
     mediaAssets,

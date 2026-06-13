@@ -10,6 +10,7 @@ import {
   productTruthInputFromForm,
 } from "@/features/productTruth/productReadiness";
 import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   approveAndPreviewCentralSync,
   listCatalogueVersions,
@@ -28,6 +29,7 @@ type Props = {
   complianceMetaPending?: boolean;
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
+  productMediaRows?: ProductMediaRow[];
 };
 
 export function CentralSyncPreviewPanel({
@@ -37,6 +39,7 @@ export function CentralSyncPreviewPanel({
   complianceMetaPending = false,
   prices = [],
   moqRules = [],
+  productMediaRows = [],
 }: Props) {
   const [versions, setVersions] = useState<CatalogueVersionRow[]>([]);
   const [events, setEvents] = useState<CatalogueSyncEventRow[]>([]);
@@ -51,8 +54,9 @@ export function CentralSyncPreviewPanel({
         isLegacy: !form.sku,
         prices,
         moqRules,
+        productMediaRows,
       }),
-    [form, complianceApproved, complianceMetaPending, prices, moqRules],
+    [form, complianceApproved, complianceMetaPending, prices, moqRules, productMediaRows],
   );
 
   const readiness = useMemo(() => evaluateProductReadiness(truthInput), [truthInput]);
@@ -90,6 +94,7 @@ export function CentralSyncPreviewPanel({
         complianceMetaPending,
         prices,
         moqRules,
+        productMediaRows,
       });
       setBundle(result.bundle);
       await refresh();
@@ -111,6 +116,7 @@ export function CentralSyncPreviewPanel({
         complianceMetaPending,
         prices,
         moqRules,
+        productMediaRows,
       });
       setBundle(result.preview.bundle);
       await refresh();

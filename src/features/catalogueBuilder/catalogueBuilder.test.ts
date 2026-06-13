@@ -32,8 +32,9 @@ const completeForm: Record<string, unknown> = {
   approximate_piece_weight_g: 25,
   master_carton_qty: 8,
   media_assets: [
-    { type: "pairing_image", url: "https://cdn.example/pair.jpg", status: "approved" },
+    { type: "catalogue_image", url: "https://cdn.example/white.jpg", status: "approved" },
     { type: "close_up_image", url: "https://cdn.example/close.jpg", status: "approved" },
+    { type: "lifestyle_image", url: "https://cdn.example/life.jpg", status: "approved" },
   ],
 };
 

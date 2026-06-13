@@ -36,10 +36,11 @@ function asset(
 }
 
 describe("mediaReadinessEngine", () => {
-  it("Baklawa requires pairing image", () => {
+  it("Baklawa requires catalogue image (white background)", () => {
     const assets = [asset("primary_image"), asset("close_up_image")];
     const missing = getMissingMediaAssets(baklawaProduct, assets);
-    expect(missing).toContain("pairing_image");
+    expect(missing).toContain("catalogue_image");
+    expect(missing).not.toContain("lifestyle_image");
   });
 
   it("Gift box requires closed and open pack images", () => {
@@ -52,7 +53,7 @@ describe("mediaReadinessEngine", () => {
   it("Export pack requires label and carton media", () => {
     const assets = [asset("label_front_image")];
     const missing = getMissingMediaAssets(exportProduct, assets);
-    expect(missing).toContain("label_back_image");
+    expect(missing).toContain("packaging_reference");
     expect(missing).toContain("master_carton_image");
   });
 
@@ -66,7 +67,7 @@ describe("mediaReadinessEngine", () => {
   it("approved media URLs selected for Central payload", () => {
     const assets = [
       asset("primary_image"),
-      asset("pairing_image"),
+      asset("catalogue_image"),
       asset("close_up_image"),
     ];
     const urls = selectApprovedImageUrlsForCentral(assets);
@@ -76,18 +77,18 @@ describe("mediaReadinessEngine", () => {
   it("unapproved media excluded from Central payload", () => {
     const assets = [
       asset("primary_image", "approved"),
-      asset("pairing_image", "draft"),
+      asset("catalogue_image", "draft"),
       asset("close_up_image", "approved"),
     ];
     const urls = selectApprovedImageUrlsForCentral(assets);
     expect(urls).toHaveLength(2);
-    expect(urls).not.toContain("https://cdn.example/pairing_image.jpg");
+    expect(urls).not.toContain("https://cdn.example/catalogue_image.jpg");
   });
 
   it("complete Baklawa media passes Central sync gate", () => {
     const assets = [
       asset("primary_image"),
-      asset("pairing_image"),
+      asset("catalogue_image"),
       asset("close_up_image"),
     ];
     expect(canSyncMediaToCentral(baklawaProduct, assets)).toBe(true);

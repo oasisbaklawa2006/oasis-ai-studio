@@ -116,6 +116,7 @@ export function ProductTruthAdminSection({
               complianceMetaPending={complianceMetaPending}
               prices={prices}
               moqRules={moqRules}
+              productMediaRows={productMediaRows}
             />
           </TabsContent>
         )}

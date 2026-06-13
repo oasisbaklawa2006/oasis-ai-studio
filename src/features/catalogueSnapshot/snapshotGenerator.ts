@@ -8,8 +8,9 @@ import {
   selectApprovedImageUrlsForCentral,
 } from "@/features/mediaReadiness/mediaReadinessEngine";
 import {
-  mediaAssetsFromForm,
+  mediaAssetsFromSources,
   productMediaContextFromForm,
+  type ProductMediaRow,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
 import type {
@@ -27,13 +28,13 @@ function conversionRulesFromHierarchy(hierarchy: PackagingHierarchy): Conversion
     rules.push({ fromUom: "pcs", toUom: "kg", factor: 1 / piecesPerKg });
     rules.push({ fromUom: "kg", toUom: "pcs", factor: piecesPerKg });
   }
-  const kgPerTray = hierarchy.kgPerTray ?? 1;
-  if (kgPerTray > 0) {
+  const kgPerTray = hierarchy.kgPerTray;
+  if (kgPerTray != null && kgPerTray > 0) {
     rules.push({ fromUom: "tray", toUom: "kg", factor: kgPerTray });
     rules.push({ fromUom: "kg", toUom: "tray", factor: 1 / kgPerTray });
   }
-  const traysPerMc = hierarchy.traysPerMasterCarton ?? 8;
-  if (traysPerMc > 0 && kgPerTray > 0) {
+  const traysPerMc = hierarchy.traysPerMasterCarton;
+  if (traysPerMc != null && traysPerMc > 0 && kgPerTray != null && kgPerTray > 0) {
     rules.push({
       fromUom: "master_carton",
       toUom: "kg",
@@ -76,13 +77,17 @@ export function generateCatalogueSnapshot(
     isLegacy: !input.form.sku,
     prices: input.prices,
     moqRules: input.moqRules,
+    productMediaRows: input.productMediaRows,
   });
 
   const readiness = evaluateProductReadiness(truthInput);
   const packaging = truthInput.packaging ?? {};
   const conversionRules = conversionRulesFromHierarchy(packaging);
 
-  const mediaAssets = mediaAssetsFromForm(input.form);
+  const mediaAssets = mediaAssetsFromSources({
+    form: input.form,
+    productMediaRows: input.productMediaRows,
+  });
   const mediaContext = productMediaContextFromForm(input.form);
   const mediaReadiness = evaluateMediaReadiness(mediaContext, mediaAssets);
   const approvedImages = selectApprovedImageUrlsForCentral(mediaAssets);
