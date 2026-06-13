@@ -6,8 +6,10 @@ import {
 } from "@/lib/catalogueAuthority/localStoragePolicy";
 import {
   getCollectionsPersistenceSource,
+  setCollectionsLoadFailure,
   setCollectionsPersistenceSource,
 } from "@/lib/catalogueAuthority/dataSource";
+import { diagnoseSupabaseFailure } from "@/lib/supabase/diagnostics";
 import type {
   CatalogueCollectionItemRow,
   CatalogueCollectionRow,
@@ -58,10 +60,22 @@ export async function listCollections(): Promise<CatalogueCollectionRow[]> {
       .order("updated_at", { ascending: false });
     if (!error) {
       setCollectionsPersistenceSource("supabase");
+      setCollectionsLoadFailure(null);
       return (data ?? []) as CatalogueCollectionRow[];
     }
-  } catch {
-    /* fall through */
+
+    const failure = diagnoseSupabaseFailure(error, "catalogue_collections list");
+    setCollectionsLoadFailure(failure);
+    if (import.meta.env.DEV) {
+      console.error("[collectionStore] listCollections:", error);
+    }
+  } catch (err) {
+    setCollectionsLoadFailure(
+      diagnoseSupabaseFailure(
+        err instanceof Error ? { message: err.message } : { message: String(err) },
+        "catalogue_collections list",
+      ),
+    );
   }
 
   if (isLocalCatalogueFallbackReadEnabled()) {

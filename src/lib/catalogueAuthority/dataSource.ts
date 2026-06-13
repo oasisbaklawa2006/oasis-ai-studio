@@ -1,6 +1,9 @@
+import type { SupabaseFailure } from "@/lib/supabase/diagnostics";
+
 export type CataloguePersistenceSource = "supabase" | "local_only" | "supabase_unavailable";
 
 let collectionsSource: CataloguePersistenceSource = "supabase";
+let collectionsLoadFailure: SupabaseFailure | null = null;
 let versionsSourceByProduct: Record<string, CataloguePersistenceSource> = {};
 
 export function setCollectionsPersistenceSource(source: CataloguePersistenceSource) {
@@ -9,6 +12,14 @@ export function setCollectionsPersistenceSource(source: CataloguePersistenceSour
 
 export function getCollectionsPersistenceSource(): CataloguePersistenceSource {
   return collectionsSource;
+}
+
+export function setCollectionsLoadFailure(failure: SupabaseFailure | null) {
+  collectionsLoadFailure = failure;
+}
+
+export function getCollectionsLoadFailure(): SupabaseFailure | null {
+  return collectionsLoadFailure;
 }
 
 export function setVersionsPersistenceSource(

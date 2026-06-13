@@ -1,4 +1,4 @@
-import type { MediaAsset, MediaAssetType } from "./types";
+import { resolveProductHeroUrl } from "@/lib/productImage";
 
 const UPLOADER_TYPE_MAP: Record<string, MediaAssetType> = {
   hero_image: "primary_image",
@@ -34,10 +34,11 @@ export function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[]
   const assets: MediaAsset[] = [];
   const globalStatus = parseStatus(form.media_status);
 
-  if (form.hero_image_url) {
+  const heroUrl = resolveProductHeroUrl(form);
+  if (heroUrl) {
     assets.push({
       type: "primary_image",
-      url: String(form.hero_image_url),
+      url: heroUrl,
       status: globalStatus === "approved" ? "approved" : globalStatus,
       source: "manual",
     });

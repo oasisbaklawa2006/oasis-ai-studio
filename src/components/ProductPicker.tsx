@@ -40,7 +40,7 @@ export function ProductPicker({ onPick, excludeIds = [], placeholder = "Search b
         <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder={placeholder} className="border-0 focus-visible:ring-0 px-0" />
       </div>
       {searchBasicFallback && (
-        <p className="text-[11px] text-warning mb-2 px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
+        <p className="text-[11px] text-muted-foreground mb-2 px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
       )}
       <div className="max-h-80 overflow-auto space-y-1">
         {visible.map((p) => (

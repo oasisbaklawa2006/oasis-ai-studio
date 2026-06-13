@@ -15,6 +15,10 @@ import { isImportLogsTableAvailable } from "@/features/category1Import/importLog
 import { newBatchId, submitCategory1StagingBatch } from "@/features/category1Import/submitStagingBatch";
 import type { ParseFileResult, StagedCategory1Row } from "@/features/category1Import/types";
 
+/** Served from /public — downloadable import template (not auto-loaded). */
+export const CATEGORY1_IMPORT_TEMPLATE_URL = "/templates/category1-import-template.csv";
+export const CATEGORY1_IMPORT_TEMPLATE_FILENAME = "category1-import-template.csv";
+
 export default function Category1ImportStaging() {
   const [parsed, setParsed] = useState<ParseFileResult | null>(null);
   const [staged, setStaged] = useState<StagedCategory1Row[]>([]);
@@ -142,6 +146,25 @@ export default function Category1ImportStaging() {
             onChange={(e) => void onFile(e.target.files?.[0] ?? null)}
           />
           {loading && <span className="text-sm text-muted-foreground">Parsing…</span>}
+        </div>
+        <div className="text-sm text-muted-foreground space-y-2 border-t border-border/40 pt-3">
+          <p>
+            <strong className="text-foreground">No file is bundled with the app.</strong> Upload your
+            Category 1 authority export (CSV or JSON). Rows are validated read-only, then submitted as
+            drafts for approval — never auto-published.
+          </p>
+          <p>
+            <a
+              href={CATEGORY1_IMPORT_TEMPLATE_URL}
+              download={CATEGORY1_IMPORT_TEMPLATE_FILENAME}
+              className="text-accent inline-flex items-center gap-1 hover:underline"
+            >
+              <FileCheck className="h-3 w-3" />
+              Download CSV template ({CATEGORY1_IMPORT_TEMPLATE_FILENAME})
+            </a>
+            {" · "}
+            Preview batch: <code className="text-xs">data/category1-preview/CATEGORY1_IMPORT_BATCH_001.csv</code>
+          </p>
         </div>
         {parsed && (
           <div className="text-sm text-muted-foreground flex flex-wrap gap-3">
@@ -323,11 +346,17 @@ export default function Category1ImportStaging() {
 
       {!staged.length && (
         <div className="card-elevated p-6 text-sm text-muted-foreground flex gap-2">
-          <Upload className="h-4 w-4 mt-0.5" />
-          <div>
-            Upload a Category 1 authority CSV or JSON file. Rows are validated read-only, then
-            submitted as <code className="text-xs">catalogue_product_drafts</code> for reviewer
-            approval. Products are never published automatically.
+          <Upload className="h-4 w-4 mt-0.5 shrink-0" />
+          <div className="space-y-2">
+            <p>
+              Choose a <strong className="text-foreground">CSV or JSON</strong> file above to begin staging.
+              Required column: <code className="text-xs">product_name</code>. Optional: SKU, category, UOM,
+              GST, departments, pack fields — see template.
+            </p>
+            <p>
+              After upload, review mapping and validation tabs, then submit selected rows as{" "}
+              <code className="text-xs">catalogue_product_drafts</code> in the Approval Inbox.
+            </p>
           </div>
         </div>
       )}

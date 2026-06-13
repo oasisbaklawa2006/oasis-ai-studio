@@ -17,7 +17,7 @@ export type ProductSearchOutcome = {
 };
 
 export const BASIC_SEARCH_FALLBACK_MESSAGE =
-  "Advanced alias search unavailable — using Central-compatible basic search.";
+  "Using basic product search (name, SKU, and alias table).";
 
 type ProductRow = {
   id: string;

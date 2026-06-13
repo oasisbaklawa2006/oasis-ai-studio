@@ -27,6 +27,7 @@ import {
   useCatalogueMediaWriteMode,
   type MediaOperationIntent,
 } from "@/features/catalogueDrafts/mediaDraftBoundary";
+import { heroUrlWritePayload } from "@/lib/productImage";
 import type { Role } from "@/lib/permissions";
 
 const MEDIA_TYPES = [
@@ -270,7 +271,7 @@ export function ProductMediaUploader({
   const setAsHeroDirect = async (url: string) => {
     const { error } = await supabase
       .from("products")
-      .update({ hero_image_url: url })
+      .update(heroUrlWritePayload(url))
       .eq("id", productId);
     if (error) return toast.error(error.message);
     onHeroChange?.(url);
@@ -340,7 +341,7 @@ export function ProductMediaUploader({
 
     const { error } = await supabase
       .from("products")
-      .update({ hero_image_url: null })
+      .update(heroUrlWritePayload(null))
       .eq("id", productId);
     if (error) return toast.error(error.message);
     onHeroChange?.(null);
@@ -382,7 +383,7 @@ export function ProductMediaUploader({
     const { error } = await supabase.from("product_media").delete().eq("id", m.id);
     if (error) return toast.error(error.message);
     if (m.file_url === currentHero) {
-      await supabase.from("products").update({ hero_image_url: null }).eq("id", productId);
+      await supabase.from("products").update(heroUrlWritePayload(null)).eq("id", productId);
       onHeroChange?.(null);
     }
     toast.success("Photo deleted");

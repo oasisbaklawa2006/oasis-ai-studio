@@ -25,7 +25,10 @@ import {
   reorderCollectionItems,
 } from "@/features/catalogueBuilder/collectionStore";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
+import { getCollectionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
 import { LocalCatalogueFallbackDisabledError } from "@/lib/catalogueAuthority/localStoragePolicy";
+import { formatSupabaseFailure } from "@/lib/supabase/diagnostics";
+import { resolveProductHeroUrl } from "@/lib/productImage";
 import { evaluateCataloguePublishability } from "@/features/catalogueBuilder/cataloguePublishability";
 import { generateWhatsAppMiniCatalogueText } from "@/features/catalogueBuilder/whatsappPreview";
 import { downloadCataloguePdf, exportCataloguePdf } from "@/features/catalogueBuilder/pdfExport";
@@ -50,7 +53,7 @@ function productToForm(row: ProductRow): Record<string, unknown> {
     sku: row.sku,
     category: row.category,
     short_description: row.short_description,
-    hero_image_url: row.hero_image_url ?? row.image_url,
+    hero_image_url: resolveProductHeroUrl(row),
     media_status: "approved",
   };
 }
@@ -91,6 +94,9 @@ export default function CatalogueBuilder() {
   const [persistenceSource, setPersistenceSource] = useState(
     getCollectionsPersistenceSource(),
   );
+  const [collectionsError, setCollectionsError] = useState(
+    getCollectionsLoadFailure(),
+  );
 
   const selected = collections.find((c) => c.id === selectedId) ?? null;
 
@@ -98,6 +104,7 @@ export default function CatalogueBuilder() {
     const rows = await listCollections();
     setCollections(rows);
     setPersistenceSource(getCollectionsPersistenceSource());
+    setCollectionsError(getCollectionsLoadFailure());
     if (!selectedId && rows[0]) setSelectedId(rows[0].id);
   }, [selectedId]);
 
@@ -110,7 +117,7 @@ export default function CatalogueBuilder() {
     void refreshCollections();
     supabase
       .from("products")
-      .select("id, product_name, sku, category, short_description, image_url")
+      .select("id, product_name, sku, category, short_description, hero_image_url, image_url")
       .eq("is_active", true)
       .order("product_name")
       .then(({ data }) => setProducts((data as ProductRow[]) ?? []));
@@ -234,9 +241,21 @@ export default function CatalogueBuilder() {
           }}
         />
         {persistenceSource === "supabase_unavailable" && (
-          <p className="text-xs text-destructive">
-            Collections could not be loaded from Supabase. Create and edit actions require a live connection.
-          </p>
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-xs text-destructive space-y-1">
+            <p className="font-medium">Catalogue collections unavailable</p>
+            <p>
+              {collectionsError
+                ? formatSupabaseFailure(collectionsError)
+                : "Collections could not be loaded from Supabase. Create and edit actions require a live connection."}
+            </p>
+            {collectionsError?.kind === "missing_table" && (
+              <p className="text-muted-foreground">
+                Tables expected: <code className="text-[10px]">catalogue_collections</code>,{" "}
+                <code className="text-[10px]">catalogue_collection_items</code>,{" "}
+                <code className="text-[10px]">catalogue_share_links</code>.
+              </p>
+            )}
+          </div>
         )}
       </div>
 

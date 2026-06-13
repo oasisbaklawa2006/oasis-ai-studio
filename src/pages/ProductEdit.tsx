@@ -27,6 +27,7 @@ import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner"
 import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
+import { resolveProductHeroUrl } from "@/lib/productImage";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -541,7 +542,7 @@ const dbProductToForm = (data: any) => {
     short_description: toBlank(data?.short_description),
     pack_size: toBlank(data?.pack_size),
 
-    hero_image_url: toBlank(data?.image_url),
+    hero_image_url: toBlank(resolveProductHeroUrl(data)),
     main_department: mainDepartment,
     production_department:
       mainDepartment === "ready_goods_store"
@@ -630,6 +631,7 @@ const formToProductRow = (form: any) => {
     sku: form.sku ?? null,
     description: form.description ?? form.short_description ?? null,
     image_url: form.hero_image_url ?? null,
+    hero_image_url: form.hero_image_url ?? null,
 
     hsn_code: form.hsn_code ?? null,
     gst_rate: form.gst_rate ?? null,

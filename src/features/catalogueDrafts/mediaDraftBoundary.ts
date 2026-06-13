@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { AI_STUDIO_MEDIA_BUCKET } from "@/lib/productImage";
 import { submitCatalogueDraft } from "./draftService";
 import { draftTableMap } from "./draftTableMap";
 import {
@@ -70,13 +71,13 @@ export const mapIntentToDraftOperation = (
 };
 
 export const uploadMediaFileToStorage = async (path: string, file: File) =>
-  supabase.storage.from("product-media").upload(path, file, {
+  supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).upload(path, file, {
     cacheControl: "3600",
     upsert: false,
   });
 
 export const getMediaPublicUrl = (path: string) =>
-  supabase.storage.from("product-media").getPublicUrl(path).data.publicUrl;
+  supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
 
 export const submitMediaCatalogueDraft = async (
   intent: MediaOperationIntent,

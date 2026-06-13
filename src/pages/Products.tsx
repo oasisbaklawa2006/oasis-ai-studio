@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { resolveProductHeroUrl } from "@/lib/productImage";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose" },
@@ -228,7 +229,7 @@ const Products = () => {
           </div>
 
           {searchBasicFallback && q.trim() && (
-            <p className="text-xs text-warning px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
+            <p className="text-xs text-muted-foreground px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
           )}
 
           {showFilters && (
@@ -306,13 +307,14 @@ const Products = () => {
           const dept = deptSummary(p);
           const uomS = uomSummary(p);
           const moqS = moqSummary(p);
+          const heroUrl = resolveProductHeroUrl(p);
           return (
             <Link to={`/products/${p.id}`} key={p.id} className="luxe-card flex flex-col">
               <div className="luxe-media relative">
-                {p.hero_image_url
-                  ? <img src={p.hero_image_url} alt={productDisplayName(p)} loading="lazy" className={p.hero_image_url.includes("/_pdf_pages/") ? "opacity-60" : ""} />
+                {heroUrl
+                  ? <img src={heroUrl} alt={productDisplayName(p)} loading="lazy" className={heroUrl.includes("/_pdf_pages/") ? "opacity-60" : ""} />
                   : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><ImageIcon className="h-10 w-10 text-accent/30" /></div>}
-                {(p.hero_image_url?.includes("/_pdf_pages/") || !p.hero_image_url) && (
+                {(heroUrl?.includes("/_pdf_pages/") || !heroUrl) && (
                   <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-0.5 rounded-full font-medium">Photo needed</span>
                 )}
               </div>
@@ -355,8 +357,8 @@ const Products = () => {
                     {priceCounts[p.id].approved > 0 ? "Approved price" : "Draft price"} · {priceCounts[p.id].total}
                   </Badge>
                 )}
-                <Badge tone={p.media_status === "approved" || p.hero_image_url ? "ok" : "warn"}>
-                  <ImageIcon className="h-3 w-3" />{p.hero_image_url ? "image" : (p.media_status || "missing")}
+                <Badge tone={p.media_status === "approved" || heroUrl ? "ok" : "warn"}>
+                  <ImageIcon className="h-3 w-3" />{heroUrl ? "image" : (p.media_status || "missing")}
                 </Badge>
                 <Badge tone={p.label_status === "approved" || p.label_status === "locked" ? "ok" : "warn"}>
                   <TagIcon className="h-3 w-3" />{p.label_status || "draft"}
