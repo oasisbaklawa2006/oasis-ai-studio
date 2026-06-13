@@ -257,10 +257,16 @@ export function formatProductSaveError(error: unknown): string {
   const columnMatch = msg.match(/Could not find the '([^']+)' column/i);
   if (columnMatch) {
     const field = columnMatch[1];
-    return `AI Studio tried to save a field not present in live products schema. Field: ${field}. This has been blocked from future saves.`;
+    return `This field is not supported by the live product schema and was not saved: ${field}.`;
   }
-  if (/violates foreign key|violates check|duplicate key/i.test(msg)) {
+  if (/violates foreign key|violates check/i.test(msg)) {
     return `${msg} (constraint — verify SKU uniqueness and department rules)`;
+  }
+  if (/duplicate key.*uq_product_pricing_rules_product_channel|uq_price_rule_product_channel/i.test(msg)) {
+    return "Pricing for this channel already exists. Updating existing row.";
+  }
+  if (/duplicate key/i.test(msg)) {
+    return `${msg} (constraint — verify unique fields)`;
   }
   return msg;
 }

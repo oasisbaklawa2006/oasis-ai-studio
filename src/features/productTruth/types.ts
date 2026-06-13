@@ -82,6 +82,7 @@ export type ChannelPriceRecord = {
   mrp?: number | null;
   sellingPrice?: number | null;
   currency?: string;
+  uom?: string | null;
   priceStatus?: "draft" | "pending_approval" | "approved" | "archived";
   effectiveFrom?: string | null;
   effectiveTo?: string | null;

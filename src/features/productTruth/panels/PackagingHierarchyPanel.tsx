@@ -1,6 +1,10 @@
 import type { ProductTruthInput } from "../types";
 import { calculateDispatchPackagingQty } from "../uomPackagingEngine";
-import { formatPackagingValue, NOT_CONFIGURED, productMoqFromForm } from "../packagingTruth";
+import {
+  formatPackagingValue,
+  NOT_CONFIGURED,
+  packagingFieldsFromForm,
+} from "../packagingTruth";
 
 type Props = {
   form: Record<string, unknown>;
@@ -9,7 +13,7 @@ type Props = {
 
 export function PackagingHierarchyPanel({ form, truthInput }: Props) {
   const h = truthInput.packaging ?? {};
-  const moq = productMoqFromForm(form);
+  const fields = packagingFieldsFromForm(form);
   const mc =
     h.traysPerMasterCarton != null && h.kgPerTray != null
       ? calculateDispatchPackagingQty(3, "master_carton", h)
@@ -27,42 +31,58 @@ export function PackagingHierarchyPanel({ form, truthInput }: Props) {
         <div>
           <dt className="text-muted-foreground text-xs">Product MOQ</dt>
           <dd>
-            {moq.moqValue != null && moq.moqUom
-              ? `${moq.moqValue} ${moq.moqUom}`
+            {fields.moq.moqValue != null && fields.moq.moqUom
+              ? `${fields.moq.moqValue} ${fields.moq.moqUom}`
               : NOT_CONFIGURED}
           </dd>
         </div>
         <div>
           <dt className="text-muted-foreground text-xs">MOQ increment</dt>
           <dd>
-            {moq.incrementValue != null && moq.incrementUom
-              ? `${moq.incrementValue} ${moq.incrementUom}`
+            {fields.moq.incrementValue != null && fields.moq.incrementUom
+              ? `${fields.moq.incrementValue} ${fields.moq.incrementUom}`
               : NOT_CONFIGURED}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Primary pack</dt>
-          <dd>{formatPackagingValue(form.primary_pack_type as string | null)}</dd>
+          <dt className="text-muted-foreground text-xs">MOQ rule type</dt>
+          <dd>{formatPackagingValue(fields.moq.moqRuleType)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Qty per pack</dt>
-          <dd>{formatPackagingValue((form.qty_per_pack ?? form.pcs_per_pack) as string | number | null)}</dd>
+          <dt className="text-muted-foreground text-xs">Carton type / UOM</dt>
+          <dd>{formatPackagingValue(fields.cartonType)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Pieces per kg</dt>
-          <dd>{formatPackagingValue(h.piecesPerKg)}</dd>
+          <dt className="text-muted-foreground text-xs">Pcs per pack</dt>
+          <dd>{formatPackagingValue(fields.pcsPerPack)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Pcs per carton</dt>
+          <dd>{formatPackagingValue(fields.pcsPerCarton)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Packs per carton</dt>
+          <dd>{formatPackagingValue(fields.packsPerCarton)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Pcs per master carton</dt>
+          <dd>{formatPackagingValue(fields.pcsPerMasterCarton)}</dd>
+        </div>
+        <div>
+          <dt className="text-muted-foreground text-xs">Packs / trays per master carton</dt>
+          <dd>{formatPackagingValue(fields.packsPerMasterCarton)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground text-xs">Grams per piece</dt>
-          <dd>{formatPackagingValue(h.gramsPerPiece)}</dd>
+          <dd>{formatPackagingValue(fields.gramsPerPiece)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Trays / master carton</dt>
-          <dd>{formatPackagingValue(h.traysPerMasterCarton)}</dd>
+          <dt className="text-muted-foreground text-xs">Pcs per kg</dt>
+          <dd>{formatPackagingValue(fields.piecesPerKg)}</dd>
         </div>
         <div>
-          <dt className="text-muted-foreground text-xs">Kg per tray</dt>
-          <dd>{formatPackagingValue(h.kgPerTray)}</dd>
+          <dt className="text-muted-foreground text-xs">Primary pack weight (kg)</dt>
+          <dd>{formatPackagingValue(fields.primaryPackWeightKg)}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground text-xs">Example dispatch (3 kg)</dt>

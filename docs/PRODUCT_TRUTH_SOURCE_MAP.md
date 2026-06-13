@@ -60,12 +60,16 @@ Every Product Truth value must originate from the **same authoritative source** 
 
 | Field | Source table | Source column | Fallback |
 |-------|--------------|---------------|----------|
-| Channel list | union of configured rows | `price_channel`, `channel` | "No channel rules configured" |
-| Price | `product_pricing_rules` | `calculated_price` / `base_price` | — |
-| Status | same | `approval_status` | — |
+| Ladder channels | `product_pricing_rules` + `pricingLadder.ts` | `price_channel`, `calculated_price`, `base_price`, `uom` | Derived per ladder |
+| Manual price | `product_pricing_rules` | `calculated_price` / `base_price` | — |
+| Effective price | computed | `computePricingLadder()` | inherited/derived |
+| Source label | computed | manual / derived / inherited / missing | — |
+| B2B required | computed | manual B2B only | blocks if missing |
 | MOQ / increment | `product_moq_rules` | `moq_value`, `moq_uom`, etc. | — |
+| Unit conversion | `priceUnitConversion.ts` | uses `grams_per_piece` / `pcs_per_kg` | Conversion unavailable |
 
-**Fix:** `ProductEdit` loads pricing/MOQ on mount and passes to `ProductTruthAdminSection`. Channel components call `onRulesChange` to refresh.
+**Pricing ladder:** `src/features/productTruth/pricingLadder.ts`  
+Retail←MRP, Bulk←MRP−20%, Wholesale←MRP−30%, HoReCa←Wholesale, B2B manual required, Export/Franchisee/Own Outlet/Special←B2B.
 
 ---
 

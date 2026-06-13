@@ -116,7 +116,7 @@ describe("productSchemaAdapter", () => {
       code: "PGRST204",
     });
     expect(message).toContain("approximate_piece_weight_g");
-    expect(message).toContain("blocked from future saves");
+    expect(message).toContain("not supported by the live product schema");
   });
 });
 

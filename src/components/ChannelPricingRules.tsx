@@ -17,7 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { formatPricingSaveError } from "@/features/productTruth/pricingErrors";
 import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
 import {
   canSubmitDraft,
@@ -504,7 +504,7 @@ export const ChannelPricingRules = ({
       .single();
 
     if (error) {
-      toast.error(error.message);
+      toast.error(formatPricingSaveError(error));
       return;
     }
 
@@ -514,6 +514,7 @@ export const ChannelPricingRules = ({
       )
     );
     setEditing((prev) => ({ ...prev, [data.id]: true }));
+    onRulesChange?.();
   };
 
   const approve = async (id: string) => {

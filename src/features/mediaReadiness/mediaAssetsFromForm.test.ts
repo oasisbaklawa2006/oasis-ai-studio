@@ -16,7 +16,8 @@ describe("mediaAssetsFromProductMedia", () => {
 
     const byType = Object.fromEntries(assets.map((a) => [a.type, a]));
     expect(byType.primary_image?.url).toBe("https://cdn/a.jpg");
-    expect(byType.lifestyle_image?.url).toBe("https://cdn/b.jpg");
+    expect(byType.lifestyle_image?.url).toBeUndefined();
+    expect(byType.pairing_image?.url).toBe("https://cdn/b.jpg");
     expect(byType.close_up_image?.url).toBe("https://cdn/c.jpg");
     expect(byType.catalogue_image?.url).toBe("https://cdn/d.jpg");
   });

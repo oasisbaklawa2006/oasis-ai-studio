@@ -15,7 +15,7 @@ Single source: `MEDIA_UPLOADER_TO_READINESS` in `readinessProfiles.ts`
 | `hero_image` | `primary_image` | **Yes** |
 | `white_background`, `square_image` | `catalogue_image` | **Yes** |
 | `closeup`, `detail_image` | `close_up_image` | **Yes** |
-| `lifestyle`, `lifestyle_image` | `lifestyle_image` | Optional |
+| `lifestyle`, `lifestyle_image` | `pairing_image` | Optional (Baklawa) |
 | `side_angle`, `top_angle`, `45_angle` | `secondary_angle` | Optional |
 | `hamper_open`, `hamper_closed` | `lifestyle_variant` | Profile-specific |
 | `label_image` | `packaging_reference` | Profile-specific |

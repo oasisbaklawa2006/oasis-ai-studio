@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formToDbProductPayload } from "@/features/productAuthority/productSchemaAdapter";
 import {
+  configuredChannels,
   mapMoqRules,
   mapPricingRules,
 } from "@/features/productTruth/channelAuthorityMappers";
@@ -12,7 +13,8 @@ import {
   productMoqFromForm,
 } from "@/features/productTruth/packagingTruth";
 import { productTruthInputFromForm } from "@/features/productTruth/productReadiness";
-import { configuredChannels } from "@/features/productTruth/channelAuthorityMappers";
+import { computePricingLadder } from "@/features/productTruth/pricingLadder";
+import { convertPricePerKgToPiece } from "@/features/productTruth/priceUnitConversion";
 
 /**
  * Save → reload consistency (unit-level, no mocks).
@@ -62,6 +64,15 @@ describe("product truth reconciliation save/display", () => {
       calculated_price: 2450,
       currency: "INR",
       approval_status: "approved",
+      uom: "kg",
+    },
+    {
+      product_id: productId,
+      price_channel: "b2b",
+      calculated_price: 2800,
+      currency: "INR",
+      approval_status: "approved",
+      uom: "kg",
     },
   ];
   const moqRows = [
@@ -99,15 +110,24 @@ describe("product truth reconciliation save/display", () => {
     expect(packaging.traysPerMasterCarton).not.toBe(8);
   });
 
-  it("reload: channel summary matches pricing authority table", () => {
+  it("reload: channel summary matches pricing authority table and ladder", () => {
     const prices = mapPricingRules(pricingRows);
     const channels = configuredChannels(prices, mapMoqRules(moqRows));
     expect(channels).toContain("bulk");
     expect(channels).toContain("mrp");
     expect(channels).toContain("wholesale");
+    expect(channels).toContain("b2b");
     expect(prices.find((p) => p.channel === "bulk")?.sellingPrice).toBe(2800);
     expect(prices.find((p) => p.channel === "mrp")?.mrp).toBe(3600);
     expect(prices.find((p) => p.channel === "wholesale")?.sellingPrice).toBe(2450);
+
+    const ladder = computePricingLadder({ pricingRows, priceRecords: prices });
+    const horeca = ladder.find((r) => r.channel === "horeca");
+    expect(horeca?.effectivePrice).toBe(2450);
+    expect(horeca?.source).toBe("inherited");
+
+    const perPiece = convertPricePerKgToPiece(3600, { piecesPerKg: 55.56 });
+    expect(perPiece).toBeCloseTo(64.8, 0);
   });
 
   it("reload: media readiness sees all four product_media assets", () => {
@@ -115,6 +135,7 @@ describe("product truth reconciliation save/display", () => {
     const ctx = productMediaContextFromForm(editForm);
     const readiness = evaluateMediaReadiness(ctx, assets);
     expect(assets).toHaveLength(4);
+    expect(assets.some((a) => a.type === "pairing_image")).toBe(true);
     expect(readiness.canPublishMedia).toBe(true);
     expect(readiness.score).toBe(readiness.maxScore);
   });
@@ -127,7 +148,7 @@ describe("product truth reconciliation save/display", () => {
       complianceApproved: true,
     });
     expect(truth.packaging?.traysPerMasterCarton).toBe(12);
-    expect(truth.prices?.length).toBe(3);
+    expect(truth.prices?.length).toBe(4);
     expect(truth.mediaAssets?.length).toBe(4);
   });
 });

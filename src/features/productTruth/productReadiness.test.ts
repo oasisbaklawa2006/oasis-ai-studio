@@ -13,7 +13,10 @@ const completeInput: ProductTruthInput = {
   mainDepartment: "ready_goods_store",
   productionDepartment: "dragees",
   packaging: { piecesPerKg: 40, kgPerTray: 1, traysPerMasterCarton: 8 },
-  prices: [{ channel: "retail", priceStatus: "approved", sellingPrice: 100, currency: "INR" }],
+  prices: [
+    { channel: "mrp", priceStatus: "approved", mrp: 3600, currency: "INR" },
+    { channel: "b2b", priceStatus: "approved", sellingPrice: 2800, currency: "INR" },
+  ],
 };
 
 describe("productReadiness", () => {

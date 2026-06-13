@@ -139,7 +139,7 @@ describe("media authority parity", () => {
     expect(types.has("primary_image")).toBe(true);
     expect(types.has("catalogue_image")).toBe(true);
     expect(types.has("close_up_image")).toBe(true);
-    expect(types.has("lifestyle_image")).toBe(true);
+    expect(types.has("pairing_image")).toBe(true);
     expect(assets).toHaveLength(4);
   });
 

@@ -8,6 +8,7 @@ import { PreviewCalculatorPanel } from "./panels/PreviewCalculatorPanel";
 import { CentralSyncPreviewPanel } from "@/features/catalogueSnapshot/panels/CentralSyncPreviewPanel";
 import { MediaReadinessPanel } from "@/features/mediaReadiness/panels/MediaReadinessPanel";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import type { PricingRuleRow } from "./channelAuthorityMappers";
 import { ProductLanguageTermsPanel } from "./panels/ProductLanguageTermsPanel";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
@@ -23,6 +24,7 @@ type Props = {
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
   productMediaRows?: ProductMediaRow[];
+  pricingRows?: PricingRuleRow[];
 };
 
 export function ProductTruthAdminSection({
@@ -35,6 +37,7 @@ export function ProductTruthAdminSection({
   prices = [],
   moqRules = [],
   productMediaRows = [],
+  pricingRows = [],
 }: Props) {
   const [subTab, setSubTab] = useState("readiness");
 
@@ -102,7 +105,12 @@ export function ProductTruthAdminSection({
           <PackagingHierarchyPanel form={form} truthInput={truthInput} />
         </TabsContent>
         <TabsContent value="channels" className="mt-4">
-          <ChannelRulesPanel prices={prices} moqRules={moqRules} packaging={truthInput.packaging ?? {}} />
+          <ChannelRulesPanel
+            prices={prices}
+            moqRules={moqRules}
+            packaging={truthInput.packaging ?? {}}
+            pricingRows={pricingRows}
+          />
         </TabsContent>
         <TabsContent value="preview" className="mt-4">
           <PreviewCalculatorPanel packaging={truthInput.packaging ?? {}} moqRules={moqRules} />

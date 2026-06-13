@@ -8,6 +8,7 @@ export type PricingRuleRow = {
   base_price?: number | null;
   calculated_price?: number | null;
   currency?: string | null;
+  uom?: string | null;
   approval_status?: string | null;
   valid_from?: string | null;
   valid_until?: string | null;
@@ -51,6 +52,7 @@ export function pricingRuleRowToChannelPrice(row: PricingRuleRow): ChannelPriceR
     mrp: isMrpChannel ? (calculated ?? base) : null,
     sellingPrice: isMrpChannel ? null : (calculated ?? base),
     currency: row.currency ?? "INR",
+    uom: row.uom ?? null,
     priceStatus: normalizePriceStatus(row.approval_status),
     effectiveFrom: row.valid_from ?? null,
     effectiveTo: row.valid_until ?? null,

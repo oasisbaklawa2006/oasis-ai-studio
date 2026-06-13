@@ -43,7 +43,10 @@ describe("catalogueBuilder", () => {
     const pub = evaluateCataloguePublishability({
       form: completeForm,
       complianceApproved: true,
-      prices: [{ channel: "retail", priceStatus: "approved", sellingPrice: 1000 }],
+      prices: [
+        { channel: "mrp", priceStatus: "approved", mrp: 1200 },
+        { channel: "b2b", priceStatus: "approved", sellingPrice: 1000 },
+      ],
     });
     expect(pub.contentOk).toBe(true);
     expect(pub.mediaOk).toBe(true);
