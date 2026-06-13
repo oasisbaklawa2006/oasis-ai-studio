@@ -3,25 +3,65 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, CheckCircle2, ImageIcon } from "lucide-react";
 import { evaluateMediaReadiness, selectApprovedImageUrlsForCentral } from "../mediaReadinessEngine";
-import { mediaAssetsFromForm, productMediaContextFromForm } from "../mediaAssetsFromForm";
+import {
+  mediaAssetsFromSources,
+  productMediaContextFromForm,
+  slotDisplayLabel,
+  type ProductMediaRow,
+} from "../mediaAssetsFromForm";
+import type { MediaAssetType } from "../types";
 
 type Props = {
   form: Record<string, unknown>;
+  productMediaRows?: ProductMediaRow[];
 };
 
-export function MediaReadinessPanel({ form }: Props) {
+const OPTIONAL_CATALOGUE_SLOTS: Array<{ type: MediaAssetType; label: string }> = [
+  { type: "transparent_cutout", label: "Square / catalogue image" },
+];
+
+export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
   const product = useMemo(() => productMediaContextFromForm(form), [form]);
-  const assets = useMemo(() => mediaAssetsFromForm(form), [form]);
+  const assets = useMemo(
+    () => mediaAssetsFromSources({ form, productMediaRows }),
+    [form, productMediaRows],
+  );
 
   const readiness = useMemo(
     () => evaluateMediaReadiness(product, assets),
     [product, assets],
   );
 
+  const optionalSlots = useMemo(() => {
+    const requiredTypes = new Set(readiness.slots.map((s) => s.type));
+    return OPTIONAL_CATALOGUE_SLOTS.map((slot) => {
+      const asset = assets.find((a) => a.type === slot.type && a.url);
+      if (!asset || requiredTypes.has(slot.type)) return null;
+      const approved = asset.status === "approved";
+      return {
+        type: slot.type,
+        label: slot.label,
+        present: true,
+        approved,
+        url: asset.url,
+        status: approved ? "approved" : asset.status,
+      };
+    }).filter(Boolean) as Array<{
+      type: MediaAssetType;
+      label: string;
+      present: boolean;
+      approved: boolean;
+      url: string | null;
+      status: string;
+    }>;
+  }, [assets, readiness.slots]);
+
   const centralUrls = useMemo(() => selectApprovedImageUrlsForCentral(assets), [assets]);
   const pct = readiness.maxScore
     ? Math.round((readiness.score / readiness.maxScore) * 100)
     : 0;
+
+  const allSlots = [...readiness.slots, ...optionalSlots];
 
   return (
     <div className="card-elevated p-4 space-y-4">
@@ -60,14 +100,15 @@ export function MediaReadinessPanel({ form }: Props) {
       </div>
 
       <p className="text-[11px] text-muted-foreground rounded border border-dashed p-2">
-        Media list is derived from hero image and optional <code className="text-[10px]">media_assets</code> on the
-        product form. Full product_media DB persistence is a future phase.
+        Media slots combine hero URL, optional <code className="text-[10px]">media_assets</code> on the
+        form, and persisted <code className="text-[10px]">product_media</code> rows. Unapproved uploads
+        show as <strong>draft pending approval</strong>, not missing.
       </p>
 
       {readiness.blockers.length > 0 && (
         <div>
           <div className="text-xs font-medium text-destructive flex items-center gap-1 mb-1">
-            <AlertTriangle className="h-3 w-3" /> Missing media blockers
+            <AlertTriangle className="h-3 w-3" /> Media blockers
           </div>
           <ul className="text-sm list-disc pl-4 space-y-0.5">
             {readiness.blockers.map((b) => (
@@ -78,12 +119,25 @@ export function MediaReadinessPanel({ form }: Props) {
       )}
 
       <div className="grid sm:grid-cols-2 gap-2">
-        {readiness.slots.map((slot) => (
+        {allSlots.map((slot) => (
           <div key={slot.type} className="rounded border p-2 text-xs">
             <div className="font-medium">{slot.label}</div>
             <div className="text-muted-foreground font-mono text-[10px] mt-0.5">{slot.type}</div>
-            <Badge variant="outline" className="mt-1 text-[10px]">
-              {slot.status === "missing" ? "missing" : slot.status}
+            <Badge
+              variant="outline"
+              className={`mt-1 text-[10px] ${
+                !slot.present
+                  ? ""
+                  : !slot.approved
+                    ? "border-warning/50 text-warning"
+                    : "border-success/50 text-success"
+              }`}
+            >
+              {slotDisplayLabel({
+                present: slot.present,
+                approved: slot.approved,
+                status: slot.status as "missing" | "draft" | "pending_approval" | "approved",
+              })}
             </Badge>
             {slot.url && (
               <img

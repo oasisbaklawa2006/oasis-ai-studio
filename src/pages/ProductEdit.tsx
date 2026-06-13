@@ -43,6 +43,7 @@ import {
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
@@ -590,6 +591,7 @@ const ProductEdit = () => {
   });
 
   const [loadedId, setLoadedId] = useState<string | null>(null);
+  const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
@@ -674,6 +676,21 @@ const ProductEdit = () => {
     } catch {}
   }, [tab, tabKey]);
 
+  const loadProductMedia = async (productId: string) => {
+    const { data, error } = await supabase
+      .from("product_media")
+      .select("*")
+      .eq("product_id", productId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error("[ProductEdit] product_media load failed:", error.message);
+      }
+      return;
+    }
+    setProductMediaRows(data ?? []);
+  };
+
   useEffect(() => {
     if (isNew || !id || loadedId === id) return;
 
@@ -694,6 +711,7 @@ const ProductEdit = () => {
           complianceBaselineRef.current = pickComplianceBaseline(loaded);
           setComplianceMetaMap({});
           setLoadedId(id);
+          void loadProductMedia(id);
         }
       });
   }, [id, isNew, loadedId]);
@@ -1596,6 +1614,9 @@ const ProductEdit = () => {
                     set("hero_image_url", url);
                     set("image_url", url);
                   }}
+                  onMediaChange={() => {
+                    if (id) void loadProductMedia(id);
+                  }}
                 />
 
                 <div className="card-elevated p-4">
@@ -1912,6 +1933,7 @@ const ProductEdit = () => {
                   form={form}
                   productId={id}
                   productName={form.product_name ?? ""}
+                  productMediaRows={productMediaRows}
                   onOpenAliasManager={() => {
                     setTab("identity");
                     requestAnimationFrame(() => {

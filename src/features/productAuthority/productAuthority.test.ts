@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   formToDbProductPayload,
+  formatProductSaveError,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -61,6 +62,61 @@ describe("productSchemaAdapter", () => {
       "create",
     );
     expect(good.ok).toBe(true);
+  });
+
+  it("does not send Studio-only approximate_piece_weight_g to Supabase", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Mor Pistachio Durum",
+      sku: "OAS-AS-BKL-0024",
+      approximate_piece_weight_g: "18",
+      pieces_per_kg: "55.56",
+      pack_size: "500g",
+      moq_value: "1",
+      moq_uom: "KG",
+    });
+    expect(payload.approximate_piece_weight_g).toBeUndefined();
+    expect(payload.pieces_per_kg).toBeUndefined();
+    expect(payload.grams_per_piece).toBe(18);
+    expect(payload.pcs_per_kg).toBe(55.56);
+  });
+
+  it("derives pcs_per_kg from grams_per_piece when pieces_per_kg omitted", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Mor Pistachio Durum",
+      sku: "OAS-AS-BKL-0024",
+      approximate_piece_weight_g: "20",
+    });
+    expect(payload.grams_per_piece).toBe(20);
+    expect(payload.pcs_per_kg).toBe(50);
+  });
+
+  it("maps packaging MOQ fields only to live columns", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Mor Pistachio Durum",
+      sku: "OAS-AS-BKL-0024",
+      moq_value: "2",
+      moq_uom: "KG",
+      increment_value: "0.5",
+      increment_uom: "KG",
+      pcs_per_pack: "12",
+      pcs_per_carton: "50",
+      carton_qty: "6",
+    });
+    expect(payload.moq_value).toBe(2);
+    expect(payload.moq_uom).toBe("KG");
+    expect(payload.pcs_per_pack).toBe(12);
+    expect(payload.pcs_per_carton).toBe(50);
+    expect(payload.carton_qty).toBe(6);
+  });
+
+  it("formats PGRST204 schema mismatch with actionable message", () => {
+    const message = formatProductSaveError({
+      message:
+        "Could not find the 'approximate_piece_weight_g' column of 'products' in the schema cache",
+      code: "PGRST204",
+    });
+    expect(message).toContain("approximate_piece_weight_g");
+    expect(message).toContain("blocked from future saves");
   });
 });
 

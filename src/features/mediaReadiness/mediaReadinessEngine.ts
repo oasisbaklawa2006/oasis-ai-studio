@@ -160,7 +160,13 @@ export function evaluateMediaReadiness(
       present,
       approved,
       url: asset?.url ?? null,
-      status: !present ? "missing" : (asset?.status ?? "draft"),
+      status: !present
+        ? "missing"
+        : approved
+          ? "approved"
+          : asset?.status === "pending_approval"
+            ? "pending_approval"
+            : "draft",
     };
   });
 
@@ -171,7 +177,7 @@ export function evaluateMediaReadiness(
     if (!slot.present) {
       blockers.push(`Missing ${slot.label}`);
     } else if (!slot.approved) {
-      blockers.push(`${slot.label} pending human approval`);
+      blockers.push(`${slot.label} — draft pending approval`);
     }
   }
 

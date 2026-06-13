@@ -1,10 +1,26 @@
 import { resolveProductHeroUrl } from "@/lib/productImage";
+import type { MediaAsset, MediaAssetType } from "./types";
+
+/** Row shape from `product_media` table (select *). */
+export type ProductMediaRow = {
+  id?: string;
+  product_id?: string | null;
+  type?: string | null;
+  file_url?: string | null;
+  status?: string | null;
+  alt_text?: string | null;
+  angle?: string | null;
+  created_at?: string | null;
+};
 
 const UPLOADER_TYPE_MAP: Record<string, MediaAssetType> = {
   hero_image: "primary_image",
+  square_image: "transparent_cutout",
   white_background: "transparent_cutout",
-  lifestyle: "lifestyle_image",
+  lifestyle: "pairing_image",
+  lifestyle_image: "pairing_image",
   closeup: "close_up_image",
+  detail_image: "close_up_image",
   hamper_open: "open_pack_image",
   hamper_closed: "pack_front_image",
   label_image: "label_front_image",
@@ -14,7 +30,7 @@ const UPLOADER_TYPE_MAP: Record<string, MediaAssetType> = {
 function parseStatus(raw: unknown): MediaAsset["status"] {
   const s = String(raw ?? "draft").toLowerCase();
   if (s === "approved") return "approved";
-  if (s === "pending_approval" || s === "pending") return "pending_approval";
+  if (s === "pending_approval" || s === "pending" || s === "raw") return "pending_approval";
   if (s === "rejected") return "rejected";
   return "draft";
 }
@@ -26,9 +42,49 @@ function parseSource(raw: unknown): MediaAsset["source"] {
   return "manual";
 }
 
+function mapUploaderType(rawType: string): MediaAssetType | null {
+  const key = rawType.trim().toLowerCase();
+  return UPLOADER_TYPE_MAP[key] ?? MEDIA_ASSET_TYPE_SAFE(key);
+}
+
+function assetFromRow(
+  mapped: MediaAssetType,
+  url: string,
+  status: MediaAsset["status"],
+  source: MediaAsset["source"],
+  label?: string,
+): MediaAsset {
+  return { type: mapped, url, status, source, label };
+}
+
+/**
+ * Maps persisted `product_media` rows to readiness asset slots.
+ */
+export function mediaAssetsFromProductMedia(rows: ProductMediaRow[]): MediaAsset[] {
+  const assets: MediaAsset[] = [];
+
+  for (const row of rows) {
+    const rawType = String(row.type ?? "");
+    const mapped = mapUploaderType(rawType);
+    const url = row.file_url ? String(row.file_url) : null;
+    if (!mapped || !url) continue;
+
+    assets.push(
+      assetFromRow(
+        mapped,
+        url,
+        parseStatus(row.status),
+        "manual",
+        row.alt_text ? String(row.alt_text) : rawType || undefined,
+      ),
+    );
+  }
+
+  return dedupeByType(assets);
+}
+
 /**
  * Derives media assets from product form + optional persisted media_assets JSON.
- * Persistence to product_media table is future — form/local only for MVP.
  */
 export function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[] {
   const assets: MediaAsset[] = [];
@@ -49,9 +105,7 @@ export function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[]
     for (const row of raw) {
       if (!row || typeof row !== "object") continue;
       const r = row as Record<string, unknown>;
-      const mapped =
-        UPLOADER_TYPE_MAP[String(r.media_type ?? r.type ?? "")] ??
-        (MEDIA_ASSET_TYPE_SAFE(String(r.type ?? r.asset_type ?? "")) ?? null);
+      const mapped = mapUploaderType(String(r.media_type ?? r.type ?? ""));
       if (!mapped || !r.url) continue;
       assets.push({
         type: mapped,
@@ -64,6 +118,27 @@ export function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[]
   }
 
   return dedupeByType(assets);
+}
+
+/**
+ * Merges form-derived and DB `product_media` assets.
+ * DB rows win when both sources provide the same slot type.
+ */
+export function mergeMediaAssets(...groups: MediaAsset[][]): MediaAsset[] {
+  const merged: MediaAsset[] = [];
+  for (const group of groups) {
+    merged.push(...group);
+  }
+  return dedupeByType(merged);
+}
+
+export function mediaAssetsFromSources(input: {
+  form: Record<string, unknown>;
+  productMediaRows?: ProductMediaRow[];
+}): MediaAsset[] {
+  const fromForm = mediaAssetsFromForm(input.form);
+  const fromDb = mediaAssetsFromProductMedia(input.productMediaRows ?? []);
+  return mergeMediaAssets(fromForm, fromDb);
 }
 
 const MEDIA_ASSET_TYPE_SAFE = (t: string): MediaAssetType | null => {
@@ -91,7 +166,14 @@ function dedupeByType(assets: MediaAsset[]): MediaAsset[] {
   const map = new Map<MediaAssetType, MediaAsset>();
   for (const a of assets) {
     const existing = map.get(a.type);
-    if (!existing || (a.status === "approved" && existing.status !== "approved")) {
+    if (!existing) {
+      map.set(a.type, a);
+      continue;
+    }
+    // Prefer approved; otherwise later row wins (product_media overrides form).
+    if (a.status === "approved" && existing.status !== "approved") {
+      map.set(a.type, a);
+    } else if (existing.status !== "approved") {
       map.set(a.type, a);
     }
   }
@@ -116,4 +198,12 @@ export function productMediaContextFromForm(form: Record<string, unknown>): {
     productType: form.product_type ? String(form.product_type) : null,
     isLegacy: !form.sku,
   };
+}
+
+export function slotDisplayLabel(
+  slot: { present: boolean; approved: boolean; status: MediaAsset["status"] | "missing" },
+): string {
+  if (!slot.present) return "missing";
+  if (!slot.approved) return "draft pending approval";
+  return slot.status === "approved" ? "approved" : String(slot.status);
 }

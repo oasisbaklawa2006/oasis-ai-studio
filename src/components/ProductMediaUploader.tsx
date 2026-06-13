@@ -53,6 +53,7 @@ interface Props {
   productSku?: string | null;
   currentHero?: string | null;
   onHeroChange?: (url: string | null) => void;
+  onMediaChange?: () => void;
 }
 
 const isPdfPage = (url?: string | null) => !!url && url.includes("/_pdf_pages/");
@@ -65,6 +66,7 @@ export function ProductMediaUploader({
   productSku,
   currentHero,
   onHeroChange,
+  onMediaChange,
 }: Props) {
   const { roles } = useAuth();
   const { writeMode, canMutate } = useCatalogueMediaWriteMode(roles as Role[]);
@@ -88,6 +90,7 @@ export function ProductMediaUploader({
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
     setMedia(data ?? []);
+    onMediaChange?.();
   };
 
   useEffect(() => {

@@ -7,6 +7,7 @@ import { ChannelRulesPanel } from "./panels/ChannelRulesPanel";
 import { PreviewCalculatorPanel } from "./panels/PreviewCalculatorPanel";
 import { CentralSyncPreviewPanel } from "@/features/catalogueSnapshot/panels/CentralSyncPreviewPanel";
 import { MediaReadinessPanel } from "@/features/mediaReadiness/panels/MediaReadinessPanel";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { ProductLanguageTermsPanel } from "./panels/ProductLanguageTermsPanel";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
@@ -21,6 +22,7 @@ type Props = {
   complianceApproved?: boolean;
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
+  productMediaRows?: ProductMediaRow[];
 };
 
 export function ProductTruthAdminSection({
@@ -32,6 +34,7 @@ export function ProductTruthAdminSection({
   complianceApproved = false,
   prices = [],
   moqRules = [],
+  productMediaRows = [],
 }: Props) {
   const [subTab, setSubTab] = useState("readiness");
 
@@ -43,8 +46,9 @@ export function ProductTruthAdminSection({
         isLegacy: !form.sku,
         prices,
         moqRules,
+        productMediaRows,
       }),
-    [form, complianceMetaPending, complianceApproved, prices, moqRules],
+    [form, complianceMetaPending, complianceApproved, prices, moqRules, productMediaRows],
   );
 
   const readiness = useMemo(() => evaluateProductReadiness(truthInput), [truthInput]);
@@ -89,7 +93,7 @@ export function ProductTruthAdminSection({
           </TabsContent>
         )}
         <TabsContent value="media_readiness" className="mt-4">
-          <MediaReadinessPanel form={form} />
+          <MediaReadinessPanel form={form} productMediaRows={productMediaRows} />
         </TabsContent>
         <TabsContent value="uom" className="mt-4">
           <UomConversionPanel form={form} truthInput={truthInput} />

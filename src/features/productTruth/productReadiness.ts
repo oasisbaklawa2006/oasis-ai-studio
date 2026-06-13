@@ -8,7 +8,11 @@ import { READINESS_DIMENSIONS } from "./types";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { validateConversionRuleChain } from "./uomPackagingEngine";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
-import { mediaAssetsFromForm, productMediaContextFromForm } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import {
+  mediaAssetsFromSources,
+  productMediaContextFromForm,
+  type ProductMediaRow,
+} from "@/features/mediaReadiness/mediaAssetsFromForm";
 
 export type ProductReadinessResult = {
   score: number;
@@ -236,9 +240,13 @@ export function productTruthInputFromForm(
     isLegacy?: boolean;
     prices?: ProductTruthInput["prices"];
     moqRules?: ProductTruthInput["moqRules"];
+    productMediaRows?: ProductMediaRow[];
   },
 ): ProductTruthInput {
-  const mediaAssets = mediaAssetsFromForm(form);
+  const mediaAssets = mediaAssetsFromSources({
+    form,
+    productMediaRows: opts?.productMediaRows,
+  });
   const mediaContext = productMediaContextFromForm(form);
 
   return {

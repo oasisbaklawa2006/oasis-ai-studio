@@ -181,14 +181,26 @@ export async function evaluatePilotSku(
   const hsnGst: PilotCheckStatus = hsnCode && gstRate ? "pass" : hsnCode || gstRate ? "partial" : "fail";
   if (hsnGst !== "pass") blockedReasons.push("HSN and/or GST missing on product row");
 
-  const gramsPerPiece = row?.approximate_piece_weight_g != null ? Number(row.approximate_piece_weight_g) : null;
-  const piecesPerKg = row?.pieces_per_kg != null ? Number(row.pieces_per_kg) : null;
+  const gramsPerPiece =
+    row?.grams_per_piece != null
+      ? Number(row.grams_per_piece)
+      : row?.weight_per_pc_grams != null
+        ? Number(row.weight_per_pc_grams)
+        : row?.approximate_piece_weight_g != null
+          ? Number(row.approximate_piece_weight_g)
+          : null;
+  const piecesPerKg =
+    row?.pcs_per_kg != null
+      ? Number(row.pcs_per_kg)
+      : row?.pieces_per_kg != null
+        ? Number(row.pieces_per_kg)
+        : null;
   const gpp = gramsPerPiece ?? 0;
   const ppk = piecesPerKg ?? 0;
   const packaging: PilotCheckStatus = gpp > 0 && ppk > 0 ? "pass" : gpp > 0 || ppk > 0 ? "partial" : "fail";
   if (packaging !== "pass") {
     blockedReasons.push(
-      `Packaging: approximate_piece_weight_g=${gpp || "null"}, pieces_per_kg=${ppk || "null"}`,
+      `Packaging: grams_per_piece=${gpp || "null"}, pcs_per_kg=${ppk || "null"}`,
     );
   }
 

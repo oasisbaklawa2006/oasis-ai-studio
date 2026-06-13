@@ -24,9 +24,11 @@ Fast Create and ProductEdit previously built save payloads with **Central legacy
 
 ### Allowlist source
 
-`PRODUCTS_INSERT_ALLOWLIST` is derived from `Database["public"]["Tables"]["products"]["Insert"]` in `src/integrations/supabase/types.ts`.
+`PRODUCTS_INSERT_ALLOWLIST` is derived from `Database["public"]["Tables"]["products"]["Insert"]` in `src/integrations/supabase/types.ts`, **minus** live-excluded Studio-only columns in `liveProductsSchema.ts`.
 
-**Central compat column (optional on shared DB):** `image_url` — included in `PRODUCTS_WRITE_ALLOWLIST` for dual-write with `hero_image_url`.
+**Live-excluded Studio columns:** `approximate_piece_weight_g`, `pieces_per_kg` — absent on shared Central `products` (PGRST204).
+
+**Central compat columns (live write):** `image_url`, `grams_per_piece`, `pcs_per_kg`, `weight_per_pc_grams` — included in `PRODUCTS_WRITE_ALLOWLIST`.
 
 ### Fields intentionally NOT written to `products`
 
@@ -35,6 +37,8 @@ Fast Create and ProductEdit previously built save payloads with **Central legacy
 | `ingredients` | UI-only until `product_ingredients` / nutrition authority path |
 | `allergen_warnings` | UI-only until structured allergen table |
 | `nutritional_info` | Belongs on `nutrition_panels` |
+| `approximate_piece_weight_g` | UI-only — maps to live `grams_per_piece` on save |
+| `pieces_per_kg` | UI-only — maps to live `pcs_per_kg` on save |
 | `name`, `price_b2b`, `visible_in_catalog`, etc. | Central legacy — stripped |
 
 ## Integration points
@@ -70,7 +74,7 @@ image_url: hero,  // Central catalogue compat when column exists
 | `subcategory` | `sub_category` | `subcategory` |
 | `b2b_price` | `price_b2b` | `b2b_price` |
 | `is_catalogue_ready` | `visible_in_catalog` | `is_catalogue_ready` |
-| `approximate_piece_weight_g` | `grams_per_piece`, `weight_per_pc_grams` | `approximate_piece_weight_g` |
+| `approximate_piece_weight_g` | `grams_per_piece`, `weight_per_pc_grams` | `grams_per_piece` (+ derived `pcs_per_kg`) |
 | `hero_image_url` | `image_url` only | `hero_image_url` + `image_url` |
 
 ## Tests

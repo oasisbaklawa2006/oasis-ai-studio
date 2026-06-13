@@ -1,8 +1,14 @@
 /**
  * Canonical products-table column allowlist (Studio schema + documented Central compat).
- * Source: src/integrations/supabase/types.ts products Insert + shared DB image_url.
+ * Source: src/integrations/supabase/types.ts products Insert + live Central compat columns.
  */
 import type { Database } from "@/integrations/supabase/types";
+import {
+  CENTRAL_COMPAT_PRODUCT_COLUMNS,
+  LIVE_PRODUCTS_EXCLUDED_COLUMNS,
+} from "@/features/productAuthority/liveProductsSchema";
+
+export { CENTRAL_COMPAT_PRODUCT_COLUMNS, LIVE_PRODUCTS_EXCLUDED_COLUMNS };
 
 export type ProductsInsert = Database["public"]["Tables"]["products"]["Insert"];
 export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
@@ -117,14 +123,8 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
   } satisfies Record<keyof ProductsInsert, true>),
 );
 
-/**
- * Optional on shared Oasis Supabase (Central writes `image_url`).
- * Not in Studio migration — owner must confirm column exists before relying on dual-write.
- */
-export const CENTRAL_COMPAT_PRODUCT_COLUMNS = ["image_url"] as const;
-
 export const PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = new Set([
-  ...PRODUCTS_INSERT_ALLOWLIST,
+  ...[...PRODUCTS_INSERT_ALLOWLIST].filter((key) => !LIVE_PRODUCTS_EXCLUDED_COLUMNS.has(key)),
   ...CENTRAL_COMPAT_PRODUCT_COLUMNS,
 ]);
 
@@ -135,7 +135,9 @@ export type ProductSaveValidation = {
 };
 
 const NUMERIC_DB_FIELDS = new Set([
-  "approximate_piece_weight_g",
+  "grams_per_piece",
+  "pcs_per_kg",
+  "weight_per_pc_grams",
   "avg_qty_per_tray_g",
   "b2b_price",
   "b2b_price_inr",
@@ -157,7 +159,6 @@ const NUMERIC_DB_FIELDS = new Set([
   "net_weight_g",
   "pcs_per_carton",
   "pcs_per_pack",
-  "pieces_per_kg",
   "private_label_cost_per_unit",
   "private_label_moq",
   "private_label_upfront_cost",
@@ -253,8 +254,10 @@ export function formatProductSaveError(error: unknown): string {
   const e = error as { message?: string; code?: string; details?: string; hint?: string };
   const parts = [e.message, e.details, e.hint, e.code].filter(Boolean);
   const msg = parts.join(" — ") || "Product save failed.";
-  if (/Could not find the '([^']+)' column/i.test(msg)) {
-    return `${msg} (schema mismatch — field not on products table; check AI_STUDIO_SCHEMA_WRITE_CONTRACT.md)`;
+  const columnMatch = msg.match(/Could not find the '([^']+)' column/i);
+  if (columnMatch) {
+    const field = columnMatch[1];
+    return `AI Studio tried to save a field not present in live products schema. Field: ${field}. This has been blocked from future saves.`;
   }
   if (/violates foreign key|violates check|duplicate key/i.test(msg)) {
     return `${msg} (constraint — verify SKU uniqueness and department rules)`;
@@ -328,8 +331,12 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     dimension_w_cm: toNum(form.dimension_w_cm),
     dimension_h_cm: toNum(form.dimension_h_cm),
     product_dimensions_cm: dims,
-    approximate_piece_weight_g: toNum(form.approximate_piece_weight_g),
-    pieces_per_kg: toNum(form.pieces_per_kg),
+    grams_per_piece: toNum(form.approximate_piece_weight_g),
+    pcs_per_kg:
+      toNum(form.pieces_per_kg) ??
+      (form.approximate_piece_weight_g
+        ? Number((1000 / Number(form.approximate_piece_weight_g)).toFixed(2))
+        : null),
     pcs_per_pack: toNum(form.pcs_per_pack),
     pcs_per_carton: toNum(form.pcs_per_carton),
     private_label_allowed: toBool(form.private_label_allowed, false),
