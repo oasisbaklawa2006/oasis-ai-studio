@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -130,7 +131,15 @@ const Testing = () => {
 
   return (
     <>
-      <PageHeader title="Testing Checklist" subtitle={`Walk through every flow — ${done}/${total} complete. State is saved locally on this device.`} />
+      <PageHeader
+        title="Testing Checklist"
+        subtitle={`Walk through every flow — ${done}/${total} complete. State is saved locally on this device.`}
+        actions={
+          <Button variant="secondary" asChild>
+            <Link to="/testing/pilot-readiness">5-SKU Pilot Readiness</Link>
+          </Button>
+        }
+      />
 
       <div className="card-elevated p-4 sm:p-5 mb-6 space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">

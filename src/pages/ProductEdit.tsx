@@ -35,6 +35,14 @@ import {
 import { createManualFieldMeta, canApproveComplianceFields } from "@/shared/ai/complianceApproval";
 import { ComplianceAiPanel, trackManualComplianceEdit } from "@/features/compliance/ComplianceAiPanel";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
+import {
+  dbRowToProductForm,
+  formToDbProductPayload,
+  formatProductSaveError,
+  stripUnknownProductFields,
+  validateProductSavePayload,
+} from "@/features/productAuthority/productSchemaAdapter";
+import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
@@ -534,155 +542,21 @@ const inferProductClass = (data: any) => {
 };
 
 const dbProductToForm = (data: any) => {
-  const weightPerPiece = data?.weight_per_pc_grams ?? data?.grams_per_piece;
-  const mainDepartment = normalizeMainDepartment(data);
-  const primaryPackUom = data?.settlement_unit || data?.uom || "";
-  const qtyPerPack = data?.pcs_per_master_carton || data?.packs_per_carton || "";
-
+  const loaded = dbRowToProductForm(data, empty);
+  const mainDepartment = loaded.main_department || normalizeMainDepartment(data);
   return {
-    ...empty,
-    ...data,
-
-    product_name: toBlank(data?.name),
-    short_name: toBlank(data?.short_name),
-    category: toBlank(data?.category),
-    subcategory: toBlank(data?.sub_category),
-    product_type: toBlank(data?.product_family || data?.category),
-    description: toBlank(data?.description),
-    short_description: toBlank(data?.short_description),
-    pack_size: toBlank(data?.pack_size),
-
-    hero_image_url: toBlank(resolveProductHeroUrl(data)),
+    ...loaded,
     main_department: mainDepartment,
     production_department:
       mainDepartment === "ready_goods_store"
-        ? normalizeProductionDepartment(data)
+        ? loaded.production_department || normalizeProductionDepartment(data)
         : "",
-
-    net_weight_g: toBlank(data?.net_weight_grams),
-    gross_weight_g: toBlank(data?.gross_weight_grams),
-    shelf_life_days: toBlank(data?.shelf_life_days),
-    storage_instructions: toBlank(data?.storage_instructions),
-
-    hsn_code: toBlank(data?.hsn_code),
-    gst_rate: toBlank(data?.gst_rate ?? data?.gst_percentage),
-    mrp: toBlank(data?.mrp),
-    b2b_price: toBlank(data?.price_b2b ?? data?.base_price),
-    export_price: toBlank(data?.export_price),
-
-    sku: data?.sku ?? null,
-    legacy_sku: data?.barcode_sku ?? null,
-    is_active: data?.is_active ?? true,
-    is_catalogue_ready: data?.visible_in_catalog ?? false,
-
-    primary_uom: toBlank(data?.uom),
-    b2b_uom: toBlank(data?.uom),
-    retail_uom: toBlank(data?.uom),
-
-    approximate_piece_weight_g: toBlank(weightPerPiece),
-    pieces_per_kg: weightPerPiece
-      ? Number((1000 / Number(weightPerPiece)).toFixed(2))
-      : "",
-
-    primary_pack_type: toBlank(data?.carton_type || ""),
-    primary_pack_uom: toBlank(primaryPackUom),
-    qty_per_pack: toBlank(qtyPerPack),
-    qty_content_uom: toBlank(data?.uom || ""),
-    pcs_per_pack: toBlank(qtyPerPack),
-
-    moq_value: toBlank(data?.moq ?? data?.moq_packs),
-    moq_uom: toBlank(primaryPackUom || data?.uom),
-    increment_uom: toBlank(primaryPackUom || data?.uom),
-
-    private_label_moq: toBlank(data?.private_label_moq),
-    private_label_cost_per_unit: toBlank(data?.private_label_price),
-
-    ingredients: toBlank(data?.ingredients),
-    allergen_warnings: toBlank(data?.allergen_warnings),
-    nutritional_info: data?.nutritional_info ?? data?.nutrition_facts ?? "",
-    nutrition_facts: data?.nutrition_facts ?? "",
-    material_type: toBlank(data?.material),
-    material: toBlank(data?.material),
-    dimensions: toBlank(data?.dimensions),
-    product_family: toBlank(data?.product_family),
-    product_class: toBlank(data?.product_class) || inferProductClass(data),
-    bom_required: mainDepartment === "packing_assembly" ? true : !!data?.bom_required,
+    product_class: loaded.product_class || inferProductClass(data),
+    bom_required: mainDepartment === "packing_assembly" ? true : !!loaded.bom_required,
   };
 };
 
-const buildDimensionsText = (form: any) => {
-  if (form.dimensions) return form.dimensions;
-
-  const l = form.dimension_l_cm;
-  const w = form.dimension_w_cm;
-  const h = form.dimension_h_cm;
-
-  if (l || w || h) {
-    return [l ? `L ${l} cm` : null, w ? `W ${w} cm` : null, h ? `H ${h} cm` : null]
-      .filter(Boolean)
-      .join(" × ");
-  }
-
-  return null;
-};
-
-const formToProductRow = (form: any) => {
-  const nutritional =
-    typeof form.nutritional_info === "object"
-      ? form.nutritional_info
-      : form.nutritional_info
-        ? { text: String(form.nutritional_info) }
-        : null;
-
-  return {
-    name: form.product_name ?? null,
-    category: form.category ?? null,
-    sub_category: form.subcategory ?? null,
-    sku: form.sku ?? null,
-    description: form.description ?? form.short_description ?? null,
-    image_url: form.hero_image_url ?? null,
-    hero_image_url: form.hero_image_url ?? null,
-
-    hsn_code: form.hsn_code ?? null,
-    gst_rate: form.gst_rate ?? null,
-    gst_percentage: form.gst_rate ?? null,
-    mrp: form.mrp ?? null,
-    price_b2b: form.b2b_price ?? null,
-    price_bulk: form.mrp ? Math.round((Number(form.mrp) * 0.8) / 10) * 10 : null,
-    price_wholesale: form.mrp ? Math.round((Number(form.mrp) * 0.7) / 10) * 10 : null,
-    wholesale_price: form.mrp ? Math.round((Number(form.mrp) * 0.7) / 10) * 10 : null,
-
-    department: form.main_department ?? null,
-    production_department:
-      form.main_department === "ready_goods_store"
-        ? form.production_department ?? null
-        : null,
-    uom: form.primary_uom || form.b2b_uom || form.retail_uom || null,
-
-    ingredients: form.ingredients ?? null,
-    nutritional_info: nutritional,
-    allergen_warnings: form.allergen_warnings ?? null,
-    shelf_life_days: form.shelf_life_days ?? null,
-    storage_instructions: form.storage_instructions ?? null,
-    visible_in_catalog: !!form.is_catalogue_ready,
-
-    weight_per_pc_grams: form.approximate_piece_weight_g ?? null,
-    grams_per_piece: form.approximate_piece_weight_g ?? null,
-    net_weight_grams: form.net_weight_g ?? null,
-    gross_weight_grams: form.gross_weight_g ?? null,
-
-    moq: form.moq_value ?? null,
-    private_label_moq: form.private_label_moq ?? null,
-    private_label_price: form.private_label_cost_per_unit ?? null,
-
-    material: form.material_type || form.material || null,
-    dimensions: buildDimensionsText(form),
-    product_family: form.product_type || form.product_family || null,
-
-    is_active: !!form.is_active,
-    pack_size: form.pack_size ?? null,
-  };
-};
+const formToProductRow = (form: any) => formToDbProductPayload(form);
 
 const pickComplianceBaseline = (form: Record<string, unknown>) => {
   const baseline: Record<string, unknown> = {};
@@ -1079,7 +953,24 @@ const ProductEdit = () => {
         complianceBaselineRef.current,
         complianceMetaMap,
       );
+
+      const skuGuard = assertStructuredSkuForSave(safePayload.sku);
+      if (!skuGuard.ok) {
+        setLoading(false);
+        setSubmitError(skuGuard.reason);
+        toast.error(skuGuard.reason);
+        return;
+      }
+
       const productRow = formToProductRow(safePayload);
+      const validation = validateProductSavePayload(productRow, isNew ? "create" : "update");
+      if (!validation.ok) {
+        const message = `Missing required fields: ${validation.missing.join(", ")}`;
+        setLoading(false);
+        setSubmitError(message);
+        toast.error(message);
+        return;
+      }
 
       const res = isNew
         ? await (supabase as any).from("products").insert(productRow).select().single()
@@ -1088,7 +979,9 @@ const ProductEdit = () => {
       setLoading(false);
 
       if (res.error) {
-        toast.error(res.error.message);
+        const message = formatProductSaveError(res.error);
+        setSubmitError(message);
+        toast.error(message);
         return;
       }
 
@@ -1692,7 +1585,18 @@ const ProductEdit = () => {
 
             {!isNew && (
               <TabsContent value="media" className="space-y-6">
-                <ProductMediaUploader productId={id!} productSku={form.sku} currentHero={form.hero_image_url} onHeroChange={(url) => set("hero_image_url", url)} />
+                <ProductMediaUploader
+                  productId={id!}
+                  productSku={form.sku}
+                  currentHero={resolveProductHeroUrl({
+                    hero_image_url: form.hero_image_url,
+                    image_url: form.image_url,
+                  })}
+                  onHeroChange={(url) => {
+                    set("hero_image_url", url);
+                    set("image_url", url);
+                  }}
+                />
 
                 <div className="card-elevated p-4">
                   <Field label="Hero image URL (advanced)">

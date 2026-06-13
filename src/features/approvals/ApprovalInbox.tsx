@@ -5,6 +5,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import {
+  blockPilotApprovalMessage,
+  isDraftSku,
+  isStructuredOasisSku,
+} from "@/features/productAuthority/skuGuard";
 
 type ApprovalStatus = "pending_approval" | "approved" | "rejected";
 
@@ -172,6 +177,22 @@ export default function ApprovalInbox() {
   }, [items]);
 
   const approve = async (r: ApprovalItem) => {
+    if (r.draftType === "product") {
+      const sku =
+        read(r.payload, "sku_draft.sku", "identity.sku", "sku") ??
+        read(r.payload, "sku_draft", "sku");
+      const skuStr = typeof sku === "string" ? sku : null;
+      if (isDraftSku(skuStr)) {
+        const msg = blockPilotApprovalMessage(skuStr) ?? "DRAFT-* SKU cannot be approved.";
+        toast.error(msg);
+        return;
+      }
+      if (skuStr && !isStructuredOasisSku(skuStr)) {
+        toast.error("Product approval blocked: assign structured OAS SKU before approve.");
+        return;
+      }
+    }
+
     const { error } = await (supabase as any).rpc(r.approveFn, { draft_id: r.id });
     if (error) {
       if (/not finalized/i.test(error.message)) toast.warning(error.message);

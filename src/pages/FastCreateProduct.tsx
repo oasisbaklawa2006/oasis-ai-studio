@@ -19,7 +19,13 @@ import {
   type FastCreateSuggestions,
 } from "@/features/fastCreate/fastCreateSuggestions";
 import { uploadFastCreateHero } from "@/features/fastCreate/uploadFastCreateHero";
-import { saveFastCreateProduct } from "@/features/fastCreate/saveFastCreateProduct";
+import {
+  FAST_CREATE_SKU_BLOCK_MESSAGE,
+  requireFastCreateSku,
+  saveFastCreateProduct,
+} from "@/features/fastCreate/saveFastCreateProduct";
+import { probeProductMediaBucket, MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
+import { CATEGORY_PREFEED_DISCLAIMER } from "@/features/productDefaults/categoryPrefeed";
 
 const FastCreateProduct = () => {
   const nav = useNavigate();
@@ -32,6 +38,17 @@ const FastCreateProduct = () => {
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<FastCreateSuggestions | null>(null);
+  const [resolvedSku, setResolvedSku] = useState<string | null>(null);
+  const [skuError, setSkuError] = useState<string | null>(null);
+  const [bucketStatus, setBucketStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    probeProductMediaBucket().then((r) => {
+      if (r.status !== "available") {
+        setBucketStatus(r.message);
+      }
+    });
+  }, []);
 
   const categoryLabel = useMemo(
     () => FAST_CREATE_CATEGORIES.find((c) => c.key === categoryKey)?.label ?? categoryKey,
@@ -60,6 +77,20 @@ const FastCreateProduct = () => {
     }
   };
 
+  const resolveSkuPreview = async () => {
+    setSkuError(null);
+    try {
+      const sku = await requireFastCreateSku(resolvedSku);
+      setResolvedSku(sku);
+      return sku;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : FAST_CREATE_SKU_BLOCK_MESSAGE;
+      setSkuError(msg);
+      setResolvedSku(null);
+      return null;
+    }
+  };
+
   const generate = async () => {
     if (!productName.trim()) {
       toast.error("Enter a product name first.");
@@ -74,7 +105,8 @@ const FastCreateProduct = () => {
         String(base.formPatch.category ?? categoryLabel),
       );
       setSuggestions(enriched);
-      toast.success("Suggestions ready — review and create.");
+      await resolveSkuPreview();
+      toast.success("Suggestions ready — review SKU and create.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not generate suggestions");
     } finally {
@@ -94,12 +126,16 @@ const FastCreateProduct = () => {
 
     setSaving(true);
     try {
+      const sku = await requireFastCreateSku(resolvedSku);
+      setResolvedSku(sku);
+
       const payload =
         suggestions ?? buildHeuristicSuggestions(productName.trim(), categoryKey);
       const result = await saveFastCreateProduct({
         suggestions: payload,
         heroUrl,
         roles,
+        resolvedSku: sku,
       });
 
       if ("draft" in result) {
@@ -108,7 +144,7 @@ const FastCreateProduct = () => {
         return;
       }
 
-      toast.success("Product created — opening full editor.");
+      toast.success(`Product created (${result.sku}) — opening full editor.`);
       nav(`/products/${result.id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Create failed");
@@ -117,11 +153,17 @@ const FastCreateProduct = () => {
     }
   };
 
-  const readyToCreate = !!productName.trim() && !!heroUrl;
+  const readyToCreate = !!productName.trim() && !!heroUrl && !skuError;
 
   return (
     <>
       <CatalogueWriteModeBanner />
+      {bucketStatus && (
+        <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+          <strong>Media bucket:</strong> {bucketStatus}
+          <div className="text-xs mt-1 text-muted-foreground">{MEDIA_BUCKET_OWNER_ACTION}</div>
+        </div>
+      )}
       <PageHeader
         title="Fast Create"
         subtitle="Name · category · image — system fills compliance, search, and packaging defaults."
@@ -194,6 +236,24 @@ const FastCreateProduct = () => {
               )}
             </div>
           </div>
+
+          <div className="rounded-md border border-dashed p-3 text-sm space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-muted-foreground">Structured SKU (before save)</span>
+              <Button type="button" size="sm" variant="outline" onClick={resolveSkuPreview} disabled={generating}>
+                Refresh SKU
+              </Button>
+            </div>
+            {resolvedSku ? (
+              <div className="font-mono font-medium text-foreground">{resolvedSku}</div>
+            ) : skuError ? (
+              <p className="text-destructive text-xs">{skuError}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">Generate suggestions or click Refresh to resolve via RPC.</p>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">{CATEGORY_PREFEED_DISCLAIMER}</p>
 
           <div className="flex flex-wrap gap-2 pt-2">
             <Button type="button" variant="secondary" disabled={generating || !productName.trim()} onClick={generate}>

@@ -1,5 +1,4 @@
 import { supabase } from "@/integrations/supabase/client";
-import { heroUrlWritePayload } from "@/lib/productImage";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 import {
   canWriteProductsDirectly,
@@ -9,67 +8,47 @@ import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import type { FastCreateSuggestions } from "./fastCreateSuggestions";
 import { generateFastCreateSku } from "./fastCreateSuggestions";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
+import {
+  formToDbProductPayload,
+  formatProductSaveError,
+  validateProductSavePayload,
+} from "@/features/productAuthority/productSchemaAdapter";
+import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 
-function buildDimensionsText(form: Record<string, unknown>) {
-  const l = form.dimension_l_cm;
-  const w = form.dimension_w_cm;
-  const h = form.dimension_h_cm;
-  if (l || w || h) {
-    return [l ? `L ${l} cm` : null, w ? `W ${w} cm` : null, h ? `H ${h} cm` : null]
-      .filter(Boolean)
-      .join(" × ");
+export const FAST_CREATE_SKU_BLOCK_MESSAGE =
+  "Structured SKU could not be generated. Ensure sku_code_rules are configured and generate_oasis_sku RPC is deployed. Placeholder SKUs (DRAFT-*, OAS-FC-*) are blocked.";
+
+/** Resolve structured Oasis SKU for Fast Create — throws if RPC/rules unavailable. */
+export async function requireFastCreateSku(existing?: string | null): Promise<string> {
+  const trimmed = existing?.trim();
+  if (trimmed) {
+    const existingCheck = assertStructuredSkuForSave(trimmed);
+    if (existingCheck.ok) return existingCheck.sku;
   }
-  return form.dimensions ?? null;
-}
 
-export function formPatchToProductRow(form: Record<string, unknown>) {
-  const nutritional =
-    typeof form.nutritional_info === "object"
-      ? form.nutritional_info
-      : form.nutritional_info
-        ? { text: String(form.nutritional_info) }
-        : null;
+  const generated = await generateFastCreateSku();
+  if (!generated) {
+    throw new Error(FAST_CREATE_SKU_BLOCK_MESSAGE);
+  }
 
-  const hero = (form.hero_image_url as string) ?? null;
-
-  return {
-    name: form.product_name ?? null,
-    category: form.category ?? null,
-    sub_category: form.subcategory ?? null,
-    sku: form.sku ?? null,
-    description: form.description ?? form.short_description ?? null,
-    ...heroUrlWritePayload(hero),
-    hsn_code: form.hsn_code ?? null,
-    gst_rate: form.gst_rate ?? null,
-    gst_percentage: form.gst_rate ?? null,
-    department: form.main_department ?? null,
-    production_department:
-      form.main_department === "ready_goods_store" ? form.production_department ?? null : null,
-    uom: form.primary_uom || form.b2b_uom || form.retail_uom || null,
-    ingredients: form.ingredients ?? null,
-    nutritional_info: nutritional,
-    allergen_warnings: form.allergen_warnings ?? null,
-    shelf_life_days: form.shelf_life_days ?? null,
-    storage_instructions: form.storage_instructions ?? null,
-    visible_in_catalog: !!form.is_catalogue_ready,
-    weight_per_pc_grams: form.approximate_piece_weight_g ?? null,
-    grams_per_piece: form.approximate_piece_weight_g ?? null,
-    moq: form.moq_value ?? null,
-    product_family: form.product_type || form.product_family || null,
-    product_class: form.product_class ?? null,
-    is_active: form.is_active !== false,
-    pack_size: form.pack_size ?? null,
-    dimensions: buildDimensionsText(form),
-  };
+  const check = assertStructuredSkuForSave(generated);
+  if (!check.ok) {
+    throw new Error(check.reason || FAST_CREATE_SKU_BLOCK_MESSAGE);
+  }
+  return check.sku;
 }
 
 export type FastCreateSaveInput = {
   suggestions: FastCreateSuggestions;
   heroUrl: string | null;
   roles: string[];
+  /** Pre-resolved SKU shown in UI before save (optional). */
+  resolvedSku?: string | null;
 };
 
-export async function saveFastCreateProduct(input: FastCreateSaveInput): Promise<{ id: string } | { draft: true }> {
+export async function saveFastCreateProduct(
+  input: FastCreateSaveInput,
+): Promise<{ id: string; sku: string } | { draft: true }> {
   const form: Record<string, unknown> = {
     ...input.suggestions.formPatch,
     hero_image_url: input.heroUrl,
@@ -85,25 +64,37 @@ export async function saveFastCreateProduct(input: FastCreateSaveInput): Promise
   const contributor = input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
 
   if (direct) {
-    if (!form.sku) {
-      form.sku = (await generateFastCreateSku()) ?? `OAS-FC-${Date.now().toString(36).toUpperCase()}`;
-    }
     if (!form.product_class) form.product_class = "bulk_loose_product";
     if (!form.main_department) form.main_department = "ready_goods_store";
 
-    const safePayload = stripUnapprovedComplianceFields(
-      form,
-      input.roles,
-      {},
-      {},
+    form.sku = await requireFastCreateSku(input.resolvedSku ?? (form.sku as string | null));
+
+    const safePayload = stripUnapprovedComplianceFields(form, input.roles, {}, {});
+    const productRow = formToDbProductPayload(safePayload);
+
+    const validation = validateProductSavePayload(productRow, "create");
+    if (!validation.ok) {
+      throw new Error(`Cannot create product: missing ${validation.missing.join(", ")}`);
+    }
+
+    const skuGuard = assertStructuredSkuForSave(productRow.sku as string);
+    if (!skuGuard.ok) {
+      throw new Error(skuGuard.reason);
+    }
+
+    const res = await (supabase as any).from("products").insert(productRow).select("id, sku").single();
+    if (res.error) {
+      throw new Error(formatProductSaveError(res.error));
+    }
+
+    await persistFastCreateAliases(
+      res.data.id,
+      input.suggestions.aliases,
+      input.suggestions.whatsappKeywords,
+      input.suggestions.searchKeywords,
     );
-    const productRow = formPatchToProductRow(safePayload);
 
-    const res = await (supabase as any).from("products").insert(productRow).select("id").single();
-    if (res.error) throw new Error(res.error.message);
-
-    await persistFastCreateAliases(res.data.id, String(form.product_name), input.suggestions.aliases);
-    return { id: res.data.id };
+    return { id: res.data.id, sku: String(res.data.sku ?? form.sku) };
   }
 
   if (contributor) {
@@ -135,6 +126,9 @@ export async function saveFastCreateProduct(input: FastCreateSaveInput): Promise
         whatsapp_keywords: input.suggestions.whatsappKeywords,
         search_keywords: input.suggestions.searchKeywords,
       },
+      sku_draft: {
+        note: "SKU must be finalized via generate_oasis_sku during admin approval — DRAFT-* blocked.",
+      },
     };
 
     const draftRes = await submitCatalogueDraft({
@@ -152,22 +146,52 @@ export async function saveFastCreateProduct(input: FastCreateSaveInput): Promise
 
 async function persistFastCreateAliases(
   productId: string,
-  productName: string,
   aliases: AliasSeed[],
+  whatsappKeywords: string[],
+  searchKeywords: string[],
 ) {
-  if (!aliases.length) return;
+  const seen = new Set<string>();
+  const rows: Array<{
+    product_id: string;
+    alias: string;
+    alias_type: string;
+    language: string | null;
+    script: string | null;
+    is_active: boolean;
+    source: string;
+    confidence_score: number;
+  }> = [];
 
-  const rows = aliases.slice(0, 8).map((a) => ({
-    product_id: productId,
-    canonical_name: productName,
-    alias: a.alias,
-    alias_text: a.alias,
-    alias_type: a.alias_type ?? "search_term",
-    language: a.language ?? null,
-    script: a.script ?? null,
-    is_active: true,
-    source: "fast_create",
-  }));
+  const push = (alias: string, alias_type: string, language?: string | null, script?: string | null) => {
+    const key = alias.trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    rows.push({
+      product_id: productId,
+      alias: alias.trim(),
+      alias_type,
+      language: language ?? null,
+      script: script ?? null,
+      is_active: true,
+      source: "fast_create",
+      confidence_score: 0.85,
+    });
+  };
 
-  await supabase.from("product_aliases").insert(rows);
+  for (const a of aliases.slice(0, 6)) {
+    push(a.alias, a.alias_type ?? "official_alias", a.language, a.script);
+  }
+  for (const k of whatsappKeywords.slice(0, 4)) {
+    push(k, "whatsapp_keyword");
+  }
+  for (const k of searchKeywords.slice(0, 4)) {
+    push(k, "search_keyword");
+  }
+
+  if (!rows.length) return;
+
+  const { error } = await supabase.from("product_aliases").insert(rows);
+  if (error) {
+    console.warn("[FastCreate] alias insert failed:", error.message);
+  }
 }
