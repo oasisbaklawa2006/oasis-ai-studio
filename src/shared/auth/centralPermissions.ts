@@ -58,6 +58,15 @@ export async function canWriteMasterDirectly(): Promise<boolean> {
   return isSuperAdmin();
 }
 
+const PRODUCTS_DIRECT_WRITE_ROLES = ["super_admin", "owner", "admin", "product_manager"] as const;
+
+/** Owner/admin/PM direct product master writes (permissions.ts products_write parity). */
+export async function canWriteProductsDirectly(rolesFromContext?: string[]): Promise<boolean> {
+  const roles = rolesFromContext ?? (await getMyRoleKeys());
+  if (PRODUCTS_DIRECT_WRITE_ROLES.some((r) => roles.includes(r))) return true;
+  return hasPermission("products_write");
+}
+
 export async function canSubmitDraft(permissionKey: string): Promise<boolean> {
   const contributor = await isCatalogueContributor();
 

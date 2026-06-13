@@ -19,15 +19,25 @@ import { ChannelMoqRules } from "@/components/ChannelMoqRules";
 import { ChannelPricingRules } from "@/components/ChannelPricingRules";
 import { AlertTriangle } from "lucide-react";
 import {
-  canWriteMasterDirectly,
+  canWriteProductsDirectly,
   isCatalogueContributor,
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
-import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
+import {
+  stripUnapprovedComplianceFields,
+  COMPLIANCE_SENSITIVE_FIELDS,
+  type ComplianceSensitiveField,
+  type ComplianceFieldMetaMap,
+} from "@/lib/compliance/aiComplianceSafety";
+import { createManualFieldMeta, canApproveComplianceFields } from "@/shared/ai/complianceApproval";
+import { ComplianceAiPanel, trackManualComplianceEdit } from "@/features/compliance/ComplianceAiPanel";
+import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { resolveProductHeroUrl } from "@/lib/productImage";
+import { Link } from "react-router-dom";
+import { Zap } from "lucide-react";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -674,6 +684,14 @@ const formToProductRow = (form: any) => {
   };
 };
 
+const pickComplianceBaseline = (form: Record<string, unknown>) => {
+  const baseline: Record<string, unknown> = {};
+  for (const field of COMPLIANCE_SENSITIVE_FIELDS) {
+    baseline[field] = form[field] ?? null;
+  }
+  return baseline;
+};
+
 const ProductEdit = () => {
   const { id } = useParams();
   const isNew = !id || id === "new";
@@ -701,12 +719,38 @@ const ProductEdit = () => {
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
-  const [complianceMetaMap] = useState<Record<string, { approved?: boolean }>>({});
+  const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
   const draftKey = isNew
     ? "catalogue_product_form_draft_new"
     : `catalogue_product_form_draft_${id}`;
 
   const isContributorMode = authContextContributor || rpcContributorRole;
+
+  const setComplianceField = (field: ComplianceSensitiveField, value: unknown) => {
+    if (canApproveComplianceFields(roles)) {
+      setComplianceMetaMap((prev) => ({ ...prev, [field]: createManualFieldMeta() }));
+    } else {
+      trackManualComplianceEdit(field, setComplianceMetaMap, () => {});
+    }
+    set(field, value);
+  };
+
+  const complianceMetaPending = useMemo(
+    () =>
+      Object.values(complianceMetaMap).some(
+        (m) => m?.source === "ai_suggestion" && !m?.approved,
+      ),
+    [complianceMetaMap],
+  );
+
+  const complianceApproved = useMemo(() => {
+    if (complianceMetaPending) return false;
+    return COMPLIANCE_SENSITIVE_FIELDS.every((field) => {
+      const meta = complianceMetaMap[field];
+      if (!meta) return true;
+      return !!meta.approved;
+    });
+  }, [complianceMetaMap, complianceMetaPending]);
 
   const primaryPackPreview = getPrimaryPackPreview(form);
 
@@ -722,6 +766,15 @@ const ProductEdit = () => {
     !!form.moq_uom &&
     !!form.increment_uom &&
     form.moq_uom !== form.increment_uom;
+
+  useEffect(() => {
+    if (!isNew) return;
+    setForm((f: any) => {
+      const next = applyCreationBaselineDefaults(f);
+      complianceBaselineRef.current = pickComplianceBaseline(next);
+      return next;
+    });
+  }, [isNew]);
 
   useEffect(() => {
     let mounted = true;
@@ -762,7 +815,10 @@ const ProductEdit = () => {
         }
 
         if (data) {
-          setForm(dbProductToForm(data));
+          const loaded = dbProductToForm(data);
+          setForm(loaded);
+          complianceBaselineRef.current = pickComplianceBaseline(loaded);
+          setComplianceMetaMap({});
           setLoadedId(id);
         }
       });
@@ -1013,7 +1069,7 @@ const ProductEdit = () => {
       payload[k] = k === "bom_required" ? isPackingAssembly || !!form[k] : !!form[k];
     });
 
-    const direct = await canWriteMasterDirectly();
+    const direct = await canWriteProductsDirectly(roles);
     const contributor = isContributorMode || (await isCatalogueContributor());
 
     if (direct) {
@@ -1829,6 +1885,19 @@ const ProductEdit = () => {
             )}
 
             <TabsContent value="compliance" className="space-y-6">
+              <ComplianceAiPanel
+                form={form}
+                set={set}
+                roles={roles}
+                metaMap={complianceMetaMap}
+                setMetaMap={setComplianceMetaMap}
+                onManualEdit={(field) => {
+                  if (canApproveComplianceFields(roles)) {
+                    setComplianceMetaMap((prev) => ({ ...prev, [field]: createManualFieldMeta() }));
+                  }
+                }}
+              />
+
               <div className="card-elevated p-6">
                 <h3 className="font-display text-xl mb-4">Pack & shelf</h3>
 
@@ -1843,24 +1912,24 @@ const ProductEdit = () => {
                     <Input type="number" value={form.gross_weight_g ?? ""} onChange={(e) => set("gross_weight_g", e.target.value)} />
                   </Field>
                   <Field label="Shelf life (days)">
-                    <Input type="number" value={form.shelf_life_days ?? ""} onChange={(e) => set("shelf_life_days", e.target.value)} />
+                    <Input type="number" value={form.shelf_life_days ?? ""} onChange={(e) => setComplianceField("shelf_life_days", e.target.value)} />
                   </Field>
 
                   <div className="sm:col-span-3">
                     <Field label="Storage instructions">
-                      <Textarea rows={2} value={form.storage_instructions ?? ""} onChange={(e) => set("storage_instructions", e.target.value)} placeholder="Example: Store in cool, dry place away from sunlight." />
+                      <Textarea rows={2} value={form.storage_instructions ?? ""} onChange={(e) => setComplianceField("storage_instructions", e.target.value)} placeholder="Example: Store in cool, dry place away from sunlight." />
                     </Field>
                   </div>
 
                   <div className="sm:col-span-3">
                     <Field label="Ingredients">
-                      <Textarea rows={2} value={form.ingredients ?? ""} onChange={(e) => set("ingredients", e.target.value)} placeholder="Example: Cashew, sugar, clarified butter, filo pastry." />
+                      <Textarea rows={2} value={form.ingredients ?? ""} onChange={(e) => setComplianceField("ingredients", e.target.value)} placeholder="Example: Cashew, sugar, clarified butter, filo pastry." />
                     </Field>
                   </div>
 
                   <div className="sm:col-span-3">
                     <Field label="Allergen warnings">
-                      <Textarea rows={2} value={form.allergen_warnings ?? ""} onChange={(e) => set("allergen_warnings", e.target.value)} placeholder="Example: Contains nuts, gluten, dairy." />
+                      <Textarea rows={2} value={form.allergen_warnings ?? ""} onChange={(e) => setComplianceField("allergen_warnings", e.target.value)} placeholder="Example: Contains nuts, gluten, dairy." />
                     </Field>
                   </div>
 
@@ -1873,7 +1942,7 @@ const ProductEdit = () => {
                             ? form.nutritional_info
                             : JSON.stringify(form.nutritional_info ?? "", null, 2)
                         }
-                        onChange={(e) => set("nutritional_info", e.target.value)}
+                        onChange={(e) => setComplianceField("nutritional_info", e.target.value)}
                       />
                     </Field>
                   </div>
@@ -1886,10 +1955,10 @@ const ProductEdit = () => {
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="HSN">
-                    <Input value={form.hsn_code ?? ""} onChange={(e) => set("hsn_code", e.target.value)} />
+                    <Input value={form.hsn_code ?? ""} onChange={(e) => setComplianceField("hsn_code", e.target.value)} />
                   </Field>
                   <Field label="GST %">
-                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => set("gst_rate", e.target.value)} />
+                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => setComplianceField("gst_rate", e.target.value)} />
                   </Field>
                   <Field label="Currency">
                     <Input value={form.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} />
@@ -1945,8 +2014,8 @@ const ProductEdit = () => {
                       document.getElementById("product-language-terms")?.scrollIntoView({ behavior: "smooth" });
                     });
                   }}
-                  complianceApproved={false}
-                  complianceMetaPending={false}
+                  complianceApproved={complianceApproved}
+                  complianceMetaPending={complianceMetaPending}
                 />
               </TabsContent>
             )}

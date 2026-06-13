@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { canWriteMasterDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
+import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 
 export function CatalogueWriteModeBanner() {
   const [mode, setMode] = useState<"direct"|"draft"|"readonly">("readonly");
   useEffect(() => { (async () => {
-    if (await canWriteMasterDirectly()) return setMode("direct");
+    if (await canWriteProductsDirectly()) return setMode("direct");
     if (await isCatalogueContributor()) return setMode("draft");
     setMode("readonly");
   })(); }, []);

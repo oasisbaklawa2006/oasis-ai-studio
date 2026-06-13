@@ -10,6 +10,7 @@ import { RoleGate } from "@/components/RoleGate";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
+import FastCreateProduct from "./pages/FastCreateProduct";
 import ProductEdit from "./pages/ProductEdit";
 import Media from "./pages/Media";
 import Tags from "./pages/Tags";
@@ -55,6 +56,7 @@ const App = () => (
               <Route element={<AppLayout />}>
                 <Route path="/" element={<RoleGate page="dashboard"><Dashboard /></RoleGate>} />
                 <Route path="/products" element={<RoleGate page="products"><Products /></RoleGate>} />
+                <Route path="/products/new/fast" element={<RoleGate page="products"><FastCreateProduct /></RoleGate>} />
                 <Route path="/products/:id" element={<RoleGate page="products"><ProductEdit /></RoleGate>} />
                 <Route path="/media" element={<RoleGate page="media"><Media /></RoleGate>} />
                 <Route path="/tags" element={<RoleGate page="tags"><Tags /></RoleGate>} />

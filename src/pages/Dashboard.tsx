@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Package, Image, BookOpen, Tag, Sparkles, Plus, Upload, Gift, Wand2 } from "lucide-react";
+import { Package, Image, BookOpen, Tag, Sparkles, Plus, Upload, Gift, Wand2, Zap } from "lucide-react";
 
 const StatCard = ({ label, value, hint }: { label: string; value: string | number; hint?: string }) => (
   <div className="card-elevated p-6">
@@ -52,7 +52,8 @@ const Dashboard = () => {
       <h2 className="font-display text-2xl mb-3">Quick actions</h2>
       <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-10">
         {[
-          { to: "/products/new", label: "Add Product", icon: Plus },
+          { to: "/products/new/fast", label: "Fast Create", icon: Zap },
+          { to: "/products/new", label: "Full editor", icon: Plus },
           { to: "/media", label: "Upload Media", icon: Upload },
           { to: "/catalogues", label: "Create Catalogue", icon: BookOpen },
           { to: "/hampers", label: "Create Hamper", icon: Gift },

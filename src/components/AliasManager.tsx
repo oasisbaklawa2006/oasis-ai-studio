@@ -47,37 +47,7 @@ type AliasRowInput = {
   term_type?: ProductLanguageTermType;
 };
 
-const SEED_RULES: { match: RegExp; aliases: { alias: string; language?: string; script?: string; alias_type?: string }[] }[] = [
-  { match: /kunafa|kadayif|kataifi|knafe|shredded filo/i, aliases: [
-    { alias: "Kunafa" }, { alias: "Knafeh" }, { alias: "Kanafeh" }, { alias: "Konafa" },
-    { alias: "Kunefe" }, { alias: "Künefe", language: "tr" }, { alias: "Kadayif", language: "tr" },
-    { alias: "Kadayıf", language: "tr" }, { alias: "Kadaif" }, { alias: "Kataifi" },
-    { alias: "Kadaifi" }, { alias: "Katayef" }, { alias: "Kataïf" },
-    { alias: "Shredded filo", alias_type: "visual_description" },
-    { alias: "Shredded phyllo", alias_type: "visual_description" },
-    { alias: "Kadaifi pastry" }, { alias: "Kataifi pastry" },
-    { alias: "Arabic seviyan", language: "hi", alias_type: "local_slang" },
-    { alias: "Tel kadayıf", language: "tr" },
-    { alias: "قطايف", language: "ar", script: "arabic", alias_type: "arabic_name" },
-    { alias: "كنافة", language: "ar", script: "arabic", alias_type: "arabic_name" },
-  ]},
-  { match: /pyramid.*baklawa|cashew pyramid|boukaj/i, aliases: [
-    { alias: "Cashew Pyramid" }, { alias: "Pyramid Baklawa" }, { alias: "Plain Pyramid" },
-    { alias: "Boukaj", alias_type: "authentic_name" }, { alias: "Bokaj" },
-    { alias: "Baklava Pyramid" }, { alias: "Baklawa Pyramid" },
-    { alias: "Cashew Boukaj" }, { alias: "Cashew Baklava Pyramid" },
-    { alias: "Kaju Pyramid", language: "hi", alias_type: "hindi_name" },
-    { alias: "Kaju Baklawa", language: "hi", alias_type: "hindi_name" },
-    { alias: "काजू पिरामिड", language: "hi", script: "devanagari", alias_type: "hindi_name" },
-  ]},
-  { match: /katori|cashew tart|cashew cup/i, aliases: [
-    { alias: "Cashew Tart" }, { alias: "Katori Baklawa" }, { alias: "Katori" },
-    { alias: "Cashew Katori" }, { alias: "Kaju Katori", language: "hi", alias_type: "hindi_name" },
-    { alias: "Baklava Tart" }, { alias: "Baklawa Tart" }, { alias: "Cashew Cup" },
-    { alias: "Kaju Cup", language: "hi", alias_type: "hindi_name" },
-    { alias: "काजू कटोरी", language: "hi", script: "devanagari", alias_type: "hindi_name" },
-  ]},
-];
+import { ALIAS_SEED_RULES } from "@/features/productLanguage/aliasSeedRules";
 
 function resolveTermType(productId: string, item: Record<string, unknown>): ProductLanguageTermType {
   const id = String(item.id ?? "");
@@ -276,7 +246,7 @@ export function AliasManager({ productId, productName, id: sectionId }: Props) {
   const generate = async () => {
     if (submitting || !canMutate) return;
 
-    const matches = SEED_RULES.filter((r) => r.match.test(productName));
+    const matches = ALIAS_SEED_RULES.filter((r) => r.match.test(productName));
     const rows = matches.flatMap((m) => m.aliases.map((a) => ({ ...a, source: "system_generated" })));
     if (!rows.length) {
       toast.info("No starter aliases matched. Add them manually.");

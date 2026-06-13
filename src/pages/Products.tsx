@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Plus, Search, Image as ImageIcon, Tag as TagIcon, Copy,
-  Filter, X, Package, Layers, Tag, Boxes,
+  Filter, X, Package, Layers, Tag, Boxes, Zap,
 } from "lucide-react";
 import {
   BASIC_SEARCH_FALLBACK_MESSAGE,
@@ -206,7 +206,16 @@ const Products = () => {
       <PageHeader
         title="Product Master"
         subtitle="The single source of truth for every Oasis product."
-        actions={<Button asChild><Link to="/products/new"><Plus className="h-4 w-4 mr-1" />New Product</Link></Button>}
+        actions={
+          <div className="flex gap-2">
+            <Button asChild variant="default">
+              <Link to="/products/new/fast"><Zap className="h-4 w-4 mr-1" />Fast Create</Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link to="/products/new"><Plus className="h-4 w-4 mr-1" />Full editor</Link>
+            </Button>
+          </div>
+        }
       />
 
       <div className="sticky top-0 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 mb-6 bg-background/85 backdrop-blur-md py-3">
