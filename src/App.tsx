@@ -32,6 +32,7 @@ import Category1ImportStaging from "./pages/Category1ImportStaging";
 import NotFound from "./pages/NotFound";
 import ApprovalInbox from "./pages/ApprovalInbox";
 import PilotReadinessDashboard from "./pages/PilotReadinessDashboard";
+import PilotAliasReview from "./pages/PilotAliasReview";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -72,6 +73,7 @@ const App = () => (
                 <Route path="/ai-studio" element={<RoleGate page="ai_studio"><AIStudio /></RoleGate>} />
                 <Route path="/testing" element={<RoleGate page="testing"><Testing /></RoleGate>} />
                 <Route path="/testing/pilot-readiness" element={<RoleGate page="testing"><PilotReadinessDashboard /></RoleGate>} />
+                <Route path="/testing/pilot-aliases" element={<RoleGate page="testing"><PilotAliasReview /></RoleGate>} />
                 <Route path="/settings" element={<RoleGate page="settings"><Settings /></RoleGate>} />
                 <Route path="/audit-log" element={<RoleGate page="audit_log"><AuditLog /></RoleGate>} />
                 <Route path="/approvals" element={<ApprovalInbox />} />

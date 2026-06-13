@@ -137,6 +137,9 @@ const PilotReadinessDashboard = () => {
         actions={
           <div className="flex gap-2">
             <Button variant="outline" asChild>
+              <Link to="/testing/pilot-aliases">Alias term review</Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link to="/testing">Testing hub</Link>
             </Button>
             <Button variant="secondary" onClick={load} disabled={loading}>

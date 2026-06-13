@@ -1,0 +1,2477 @@
+{
+  "generated_at": "2026-06-13T16:13:40.841Z",
+  "bundles": [
+    {
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "terms": [
+        {
+          "id": "OAS-AS-BKL-0024::official::mor_pista_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "Mor Pista Durum",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::official::beetroot_pistachio_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "Beetroot Pistachio Durum",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::official::mor_pistachio_durum_baklawa",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "Mor Pistachio Durum Baklawa",
+          "alias_type": "official",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::search_keyword::turkish_mor_pistachio_roll",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "Turkish mor pistachio roll",
+          "alias_type": "search_keyword",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::search_keyword::purple_pistachio_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "Purple pistachio durum",
+          "alias_type": "search_keyword",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::whatsapp_keyword::mor_pistachio_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "mor pistachio durum",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::whatsapp_keyword::mor_pista_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "mor pista durum",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::whatsapp_keyword::beetroot_pistachio_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "beetroot pistachio durum",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::whatsapp_keyword::need_mor_pistachio_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "need mor pistachio durum",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::whatsapp_keyword::mor_pistachio_durum_kg",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "mor pistachio durum kg",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::phonetic::mor_pista_duram",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "mor pista duram",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::phonetic::mor_pistashio_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "mor pistashio durum",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::phonetic::mor_pista_dorum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "mor pista dorum",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::sales_term::mpd_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "MPD durum",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::sales_term::mor_pista_roll",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "Mor pista roll",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0024::sales_term::beetroot_durum",
+          "sku": "OAS-AS-BKL-0024",
+          "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+          "product_name": "Mor Pistachio Durum",
+          "alias_text": "Beetroot durum",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        }
+      ],
+      "summary": {
+        "total": 16,
+        "suggested": 16,
+        "approved": 0,
+        "rejected": 0,
+        "collisions": 0
+      }
+    },
+    {
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "terms": [
+        {
+          "id": "OAS-AS-BKL-0020::official::tart_kaju",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "Tart Kaju",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::official::cashew_baklawa_tart",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "Cashew Baklawa Tart",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::official::tart_cashew_baklawa",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "Tart Cashew Baklawa",
+          "alias_type": "official",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::search_keyword::cashew_katori_tart",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "Cashew katori tart",
+          "alias_type": "search_keyword",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::search_keyword::lebanese_tart_cashew",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "Lebanese tart cashew",
+          "alias_type": "search_keyword",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::whatsapp_keyword::tart_cashew",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "tart cashew",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::whatsapp_keyword::tart_kaju",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "tart kaju",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::whatsapp_keyword::cashew_tart_baklawa",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "cashew tart baklawa",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::whatsapp_keyword::need_tart_cashew",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "need tart cashew",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::whatsapp_keyword::tart_cashew_kg",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "tart cashew kg",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::phonetic::tart_cashoo",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "tart cashoo",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::phonetic::tart_kajoo",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "tart kajoo",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::phonetic::cashew_tartt",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "cashew tartt",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::sales_term::tc_tart",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "TC tart",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::sales_term::tart_cashew_loose",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "Tart cashew loose",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0020::sales_term::katori_tart_cashew",
+          "sku": "OAS-AS-BKL-0020",
+          "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+          "product_name": "Tart Cashew",
+          "alias_text": "Katori tart cashew",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        }
+      ],
+      "summary": {
+        "total": 16,
+        "suggested": 16,
+        "approved": 0,
+        "rejected": 0,
+        "collisions": 0
+      }
+    },
+    {
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "terms": [
+        {
+          "id": "OAS-AS-BKL-0001::official::kaju_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "Kaju Kitta",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::official::cashew_nut_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "Cashew Nut Kitta",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::official::cashew_kitta_baklawa",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "Cashew Kitta Baklawa",
+          "alias_type": "official",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::search_keyword::lebanese_cashew_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "Lebanese Cashew Kitta",
+          "alias_type": "search_keyword",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::search_keyword::cashew_diamond_piece",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "Cashew Diamond Piece",
+          "alias_type": "search_keyword",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::whatsapp_keyword::cashew_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "cashew kitta",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::whatsapp_keyword::kaju_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "kaju kitta",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::whatsapp_keyword::need_cashew_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "need cashew kitta",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::whatsapp_keyword::send_cashew_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "send cashew kitta",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::whatsapp_keyword::cashew_kitta_kg",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "cashew kitta kg",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::phonetic::cashoo_kitta",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "cashoo kitta",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::phonetic::cashew_kita",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "cashew kita",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::phonetic::kaju_kita",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "kaju kita",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::sales_term::kitta_cashew",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "Kitta cashew",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::sales_term::ck_kitta_loose",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "CK kitta loose",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0001::sales_term::kitta_bulk_piece",
+          "sku": "OAS-AS-BKL-0001",
+          "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+          "product_name": "Cashew Kitta",
+          "alias_text": "Kitta bulk piece",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        }
+      ],
+      "summary": {
+        "total": 16,
+        "suggested": 16,
+        "approved": 0,
+        "rejected": 0,
+        "collisions": 0
+      }
+    },
+    {
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "terms": [
+        {
+          "id": "OAS-AS-BKL-0025::official::nariyal_durum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "Nariyal Durum",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::official::coconut_roll_baklava",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "Coconut Roll Baklava",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::official::coconut_durum_baklawa",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "Coconut Durum Baklawa",
+          "alias_type": "official",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::search_keyword::turkish_coconut_durum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "Turkish coconut durum",
+          "alias_type": "search_keyword",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::search_keyword::nariyal_roll_baklawa",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "Nariyal roll baklawa",
+          "alias_type": "search_keyword",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::whatsapp_keyword::coconut_durum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "coconut durum",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::whatsapp_keyword::nariyal_durum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "nariyal durum",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::whatsapp_keyword::coconut_durum_baklawa",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "coconut durum baklawa",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::whatsapp_keyword::need_coconut_durum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "need coconut durum",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::whatsapp_keyword::coconut_durum_kg",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "coconut durum kg",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::phonetic::cocunut_durum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "cocunut durum",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::phonetic::nariyal_duram",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "nariyal duram",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::phonetic::coconut_dorum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "coconut dorum",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::sales_term::cd_coconut_durum",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "CD coconut durum",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::sales_term::nariyal_durum_loose",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "Nariyal durum loose",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0025::sales_term::coco_durum_roll",
+          "sku": "OAS-AS-BKL-0025",
+          "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+          "product_name": "Coconut Durum",
+          "alias_text": "Coco durum roll",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        }
+      ],
+      "summary": {
+        "total": 16,
+        "suggested": 16,
+        "approved": 0,
+        "rejected": 0,
+        "collisions": 0
+      }
+    },
+    {
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "terms": [
+        {
+          "id": "OAS-AS-BKL-0007::official::kaju_finger",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "Kaju Finger",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::official::cashew_asabi",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "Cashew Asabi",
+          "alias_type": "official",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::official::cashew_finger_baklawa",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "Cashew Finger Baklawa",
+          "alias_type": "official",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::search_keyword::lebanese_cashew_finger",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "Lebanese Cashew Finger",
+          "alias_type": "search_keyword",
+          "channel_scope": "catalogue",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::search_keyword::cashew_finger_sweet",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "Cashew finger sweet",
+          "alias_type": "search_keyword",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::whatsapp_keyword::cashew_finger",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "cashew finger",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::whatsapp_keyword::kaju_finger",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "kaju finger",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::whatsapp_keyword::cashew_asabi",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "cashew asabi",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::whatsapp_keyword::need_cashew_finger",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "need cashew finger",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::whatsapp_keyword::cashew_finger_kg",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "cashew finger kg",
+          "alias_type": "whatsapp_keyword",
+          "channel_scope": "whatsapp",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::phonetic::cashew_fingar",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "cashew fingar",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::phonetic::kaju_fingar",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "kaju fingar",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "warning",
+            "reason": "Weak product anchor — confirm term is specific enough before approval."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::phonetic::cashew_asabeh",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "cashew asabeh",
+          "alias_type": "phonetic",
+          "channel_scope": "both",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::sales_term::finger_cashew",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "Finger cashew",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::sales_term::cf_finger_loose",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "CF finger loose",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        },
+        {
+          "id": "OAS-AS-BKL-0007::sales_term::asabi_piece",
+          "sku": "OAS-AS-BKL-0007",
+          "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+          "product_name": "Cashew Finger",
+          "alias_text": "Asabi piece",
+          "alias_type": "sales_term",
+          "channel_scope": "internal",
+          "review_status": "suggested",
+          "collision": {
+            "level": "none",
+            "reason": "No collision detected."
+          },
+          "source": "authority_preview"
+        }
+      ],
+      "summary": {
+        "total": 16,
+        "suggested": 16,
+        "approved": 0,
+        "rejected": 0,
+        "collisions": 1
+      }
+    }
+  ],
+  "rows": [
+    {
+      "id": "OAS-AS-BKL-0024::official::mor_pista_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "Mor Pista Durum",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::official::beetroot_pistachio_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "Beetroot Pistachio Durum",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::official::mor_pistachio_durum_baklawa",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "Mor Pistachio Durum Baklawa",
+      "alias_type": "official",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::search_keyword::turkish_mor_pistachio_roll",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "Turkish mor pistachio roll",
+      "alias_type": "search_keyword",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::search_keyword::purple_pistachio_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "Purple pistachio durum",
+      "alias_type": "search_keyword",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::whatsapp_keyword::mor_pistachio_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "mor pistachio durum",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::whatsapp_keyword::mor_pista_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "mor pista durum",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::whatsapp_keyword::beetroot_pistachio_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "beetroot pistachio durum",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::whatsapp_keyword::need_mor_pistachio_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "need mor pistachio durum",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::whatsapp_keyword::mor_pistachio_durum_kg",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "mor pistachio durum kg",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::phonetic::mor_pista_duram",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "mor pista duram",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::phonetic::mor_pistashio_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "mor pistashio durum",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::phonetic::mor_pista_dorum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "mor pista dorum",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::sales_term::mpd_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "MPD durum",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::sales_term::mor_pista_roll",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "Mor pista roll",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0024::sales_term::beetroot_durum",
+      "sku": "OAS-AS-BKL-0024",
+      "product_id": "cea65af8-129c-4838-988f-30955fa5bc22",
+      "product_name": "Mor Pistachio Durum",
+      "alias_text": "Beetroot durum",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::official::tart_kaju",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "Tart Kaju",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::official::cashew_baklawa_tart",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "Cashew Baklawa Tart",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::official::tart_cashew_baklawa",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "Tart Cashew Baklawa",
+      "alias_type": "official",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::search_keyword::cashew_katori_tart",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "Cashew katori tart",
+      "alias_type": "search_keyword",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::search_keyword::lebanese_tart_cashew",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "Lebanese tart cashew",
+      "alias_type": "search_keyword",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::whatsapp_keyword::tart_cashew",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "tart cashew",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::whatsapp_keyword::tart_kaju",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "tart kaju",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::whatsapp_keyword::cashew_tart_baklawa",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "cashew tart baklawa",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::whatsapp_keyword::need_tart_cashew",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "need tart cashew",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::whatsapp_keyword::tart_cashew_kg",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "tart cashew kg",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::phonetic::tart_cashoo",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "tart cashoo",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::phonetic::tart_kajoo",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "tart kajoo",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::phonetic::cashew_tartt",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "cashew tartt",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::sales_term::tc_tart",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "TC tart",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::sales_term::tart_cashew_loose",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "Tart cashew loose",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0020::sales_term::katori_tart_cashew",
+      "sku": "OAS-AS-BKL-0020",
+      "product_id": "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+      "product_name": "Tart Cashew",
+      "alias_text": "Katori tart cashew",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::official::kaju_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "Kaju Kitta",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::official::cashew_nut_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "Cashew Nut Kitta",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::official::cashew_kitta_baklawa",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "Cashew Kitta Baklawa",
+      "alias_type": "official",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::search_keyword::lebanese_cashew_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "Lebanese Cashew Kitta",
+      "alias_type": "search_keyword",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::search_keyword::cashew_diamond_piece",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "Cashew Diamond Piece",
+      "alias_type": "search_keyword",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::whatsapp_keyword::cashew_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "cashew kitta",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::whatsapp_keyword::kaju_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "kaju kitta",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::whatsapp_keyword::need_cashew_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "need cashew kitta",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::whatsapp_keyword::send_cashew_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "send cashew kitta",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::whatsapp_keyword::cashew_kitta_kg",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "cashew kitta kg",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::phonetic::cashoo_kitta",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "cashoo kitta",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::phonetic::cashew_kita",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "cashew kita",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::phonetic::kaju_kita",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "kaju kita",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::sales_term::kitta_cashew",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "Kitta cashew",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::sales_term::ck_kitta_loose",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "CK kitta loose",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0001::sales_term::kitta_bulk_piece",
+      "sku": "OAS-AS-BKL-0001",
+      "product_id": "c7c0c5aa-1d2f-4088-88f1-1e5aacd321a0",
+      "product_name": "Cashew Kitta",
+      "alias_text": "Kitta bulk piece",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::official::nariyal_durum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "Nariyal Durum",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::official::coconut_roll_baklava",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "Coconut Roll Baklava",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::official::coconut_durum_baklawa",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "Coconut Durum Baklawa",
+      "alias_type": "official",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::search_keyword::turkish_coconut_durum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "Turkish coconut durum",
+      "alias_type": "search_keyword",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::search_keyword::nariyal_roll_baklawa",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "Nariyal roll baklawa",
+      "alias_type": "search_keyword",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::whatsapp_keyword::coconut_durum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "coconut durum",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::whatsapp_keyword::nariyal_durum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "nariyal durum",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::whatsapp_keyword::coconut_durum_baklawa",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "coconut durum baklawa",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::whatsapp_keyword::need_coconut_durum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "need coconut durum",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::whatsapp_keyword::coconut_durum_kg",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "coconut durum kg",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::phonetic::cocunut_durum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "cocunut durum",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::phonetic::nariyal_duram",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "nariyal duram",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::phonetic::coconut_dorum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "coconut dorum",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::sales_term::cd_coconut_durum",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "CD coconut durum",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::sales_term::nariyal_durum_loose",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "Nariyal durum loose",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0025::sales_term::coco_durum_roll",
+      "sku": "OAS-AS-BKL-0025",
+      "product_id": "f58e0a78-53a9-400b-8768-7af09b68ba38",
+      "product_name": "Coconut Durum",
+      "alias_text": "Coco durum roll",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::official::kaju_finger",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "Kaju Finger",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::official::cashew_asabi",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "Cashew Asabi",
+      "alias_type": "official",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::official::cashew_finger_baklawa",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "Cashew Finger Baklawa",
+      "alias_type": "official",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::search_keyword::lebanese_cashew_finger",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "Lebanese Cashew Finger",
+      "alias_type": "search_keyword",
+      "channel_scope": "catalogue",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::search_keyword::cashew_finger_sweet",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "Cashew finger sweet",
+      "alias_type": "search_keyword",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::whatsapp_keyword::cashew_finger",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "cashew finger",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::whatsapp_keyword::kaju_finger",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "kaju finger",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::whatsapp_keyword::cashew_asabi",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "cashew asabi",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::whatsapp_keyword::need_cashew_finger",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "need cashew finger",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::whatsapp_keyword::cashew_finger_kg",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "cashew finger kg",
+      "alias_type": "whatsapp_keyword",
+      "channel_scope": "whatsapp",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::phonetic::cashew_fingar",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "cashew fingar",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::phonetic::kaju_fingar",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "kaju fingar",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "warning",
+        "reason": "Weak product anchor — confirm term is specific enough before approval."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::phonetic::cashew_asabeh",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "cashew asabeh",
+      "alias_type": "phonetic",
+      "channel_scope": "both",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::sales_term::finger_cashew",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "Finger cashew",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::sales_term::cf_finger_loose",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "CF finger loose",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    },
+    {
+      "id": "OAS-AS-BKL-0007::sales_term::asabi_piece",
+      "sku": "OAS-AS-BKL-0007",
+      "product_id": "2390ea3d-19ba-43bb-8624-d6b033153c2f",
+      "product_name": "Cashew Finger",
+      "alias_text": "Asabi piece",
+      "alias_type": "sales_term",
+      "channel_scope": "internal",
+      "review_status": "suggested",
+      "collision": {
+        "level": "none",
+        "reason": "No collision detected."
+      },
+      "source": "authority_preview"
+    }
+  ]
+}
