@@ -3,12 +3,28 @@
  * Studio migrations may define columns absent from the shared DB — exclude those here.
  * See docs/AI_STUDIO_SCHEMA_WRITE_CONTRACT.md
  */
+import { CHANNEL_PRICING_FORM_FIELD_KEYS } from "@/features/productAuthority/channelPricingMapper";
+
+/** Channel pricing columns on Studio types but absent on live shared products — never write. */
+export const LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS: ReadonlySet<string> = new Set([
+  "b2b_price",
+  "b2b_price_inr",
+  "mrp",
+  "export_price",
+  "export_price_usd",
+]);
 
 /** Studio-only columns confirmed absent on live shared products table. */
 export const LIVE_PRODUCTS_EXCLUDED_COLUMNS: ReadonlySet<string> = new Set([
   "approximate_piece_weight_g",
   "pieces_per_kg",
+  ...LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
 ]);
+
+/** UI form keys that must never be sent on products insert/update (pricing authority). */
+export const LIVE_PRODUCTS_PRICING_FORM_KEYS: ReadonlySet<string> = new Set(
+  CHANNEL_PRICING_FORM_FIELD_KEYS,
+);
 
 /**
  * Live Central columns supported for write but missing from Studio generated Insert types.

@@ -11,6 +11,7 @@ export const PRODUCT_MEDIA_ROLES = [
   "label_image",
   "raw_photo",
   "white_background",
+  "lifestyle",
   "closeup",
   "side_angle",
   "top_angle",
@@ -20,6 +21,8 @@ export const PRODUCT_MEDIA_ROLES = [
   "video",
   "source_pdf_page",
 ] as const;
+
+export { MEDIA_TYPE_LABELS, mediaTypeLabel } from "@/features/productAuthority/productMediaPersistence";
 
 export type ProductMediaRole = (typeof PRODUCT_MEDIA_ROLES)[number];
 

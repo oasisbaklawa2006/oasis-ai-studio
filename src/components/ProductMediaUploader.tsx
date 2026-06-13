@@ -27,6 +27,12 @@ import {
   useCatalogueMediaWriteMode,
   type MediaOperationIntent,
 } from "@/features/catalogueDrafts/mediaDraftBoundary";
+import {
+  formatMediaInsertError,
+  formatMediaStorageError,
+  insertProductMediaRow,
+  mediaTypeLabel,
+} from "@/features/productAuthority/productMediaPersistence";
 import { heroUrlWritePayload } from "@/lib/productImage";
 import type { Role } from "@/lib/permissions";
 
@@ -129,6 +135,28 @@ export function ProductMediaUploader({
     );
   };
 
+  const persistMediaRow = async (
+    file: File,
+    url: string,
+    mediaType: MediaType,
+    status: string,
+    asHero = false,
+  ): Promise<boolean> => {
+    const insertRes = await insertProductMediaRow({
+      product_id: productId,
+      file_url: url,
+      type: mediaType,
+      angle: type.includes("angle") || type === "closeup" ? type : null,
+      alt_text: file.name,
+      status: asHero ? "approved" : status,
+    });
+    if (!insertRes.ok) {
+      toast.error(insertRes.message);
+      return false;
+    }
+    return true;
+  };
+
   const uploadFileDirect = async (
     file: File,
     asHero = false,
@@ -137,23 +165,13 @@ export function ProductMediaUploader({
     const path = buildDirectMediaPath(storageFolder, file.name);
     const { error: upErr } = await uploadMediaFileToStorage(path, file);
     if (upErr) {
-      toast.error(upErr.message);
+      toast.error(formatMediaStorageError(upErr));
       return null;
     }
     const url = getMediaPublicUrl(path);
     const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
-    const { error: insErr } = await supabase.from("product_media").insert({
-      product_id: productId,
-      file_url: url,
-      type: mediaType,
-      angle: type.includes("angle") || type === "closeup" ? type : null,
-      status: asHero ? "approved" : "raw",
-      alt_text: file.name,
-    });
-    if (insErr) {
-      toast.error(insErr.message);
-      return null;
-    }
+    const saved = await persistMediaRow(file, url, mediaType, asHero ? "approved" : "raw", asHero);
+    if (!saved) return null;
     return url;
   };
 
@@ -169,11 +187,19 @@ export function ProductMediaUploader({
     const path = buildStagingMediaPath(storageFolder, file.name);
     const { error: upErr } = await uploadMediaFileToStorage(path, file);
     if (upErr) {
-      toast.error(upErr.message);
+      toast.error(formatMediaStorageError(upErr));
       return false;
     }
     const url = getMediaPublicUrl(path);
     const mediaType = opts.isVideo ? "video" : opts.asHeroType ? "hero_image" : type;
+    const saved = await persistMediaRow(
+      file,
+      url,
+      mediaType as MediaType,
+      "raw",
+      opts.asHeroType,
+    );
+    if (!saved) return false;
     const res = await submitDraft(
       intent,
       {
@@ -193,12 +219,14 @@ export function ProductMediaUploader({
     );
     if (!res.ok) {
       toast.error(res.message);
+      await load();
       return false;
     }
     setPendingNotices((prev) => [
       ...prev,
-      `${file.name} — submitted for approval (not live yet)`,
+      `${file.name} — submitted for approval (visible below until review)`,
     ]);
+    await load();
     return true;
   };
 
@@ -215,8 +243,9 @@ export function ProductMediaUploader({
         }
         if (submitted > 0) {
           toast.success(
-            `${submitted} media submission${submitted === 1 ? "" : "s"} submitted for approval.`
+            `${submitted} media submission${submitted === 1 ? "" : "s"} uploaded and submitted for approval.`
           );
+          await load();
         }
         return;
       }
@@ -432,6 +461,17 @@ export function ProductMediaUploader({
       setUploading(true);
       try {
         const wantsHero = !currentHero || isPdfPage(currentHero);
+        const insertRes = await insertProductMediaRow({
+          product_id: productId,
+          file_url: url,
+          type,
+          status: "raw",
+          alt_text: "url_import",
+        });
+        if (!insertRes.ok) {
+          toast.error(insertRes.message);
+          return;
+        }
         const res = await submitDraft("url_import", {
           fileUrl: url,
           type,
@@ -442,27 +482,33 @@ export function ProductMediaUploader({
         });
         if (!res.ok) {
           toast.error(res.message);
+          await load();
           return;
         }
         setUrlInput("");
-        setPendingNotices((prev) => [...prev, `URL import — submitted for approval (not live yet)`]);
+        setPendingNotices((prev) => [
+          ...prev,
+          `URL import — submitted for approval (visible below until review)`,
+        ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
+        await load();
       } finally {
         setUploading(false);
       }
       return;
     }
 
-    const { error } = await supabase.from("product_media").insert({
+    const { error } = await insertProductMediaRow({
       product_id: productId,
       file_url: url,
       type,
       status: "raw",
       alt_text: "url_import",
-    });
+    }).then((res) => (res.ok ? { error: null } : { error: res.error }));
+
     if (error) {
       if (import.meta.env.DEV) console.error("[media-url-add]", error, url);
-      return toast.error(error.message);
+      return toast.error(formatMediaInsertError(error));
     }
     setUrlInput("");
     if (!currentHero || isPdfPage(currentHero)) await setAsHeroDirect(url);
@@ -574,7 +620,7 @@ export function ProductMediaUploader({
             >
               {MEDIA_TYPES.filter((t) => t !== "video").map((t) => (
                 <option key={t} value={t}>
-                  {t.replace(/_/g, " ")}
+                  {mediaTypeLabel(t)}
                 </option>
               ))}
             </select>
@@ -696,7 +742,9 @@ export function ProductMediaUploader({
                   )}
                 </div>
                 <div className="absolute top-1 left-1 right-1 flex flex-wrap gap-1">
-                  <span className="text-[10px] bg-background/90 px-1.5 py-0.5 rounded">{m.type}</span>
+                  <span className="text-[10px] bg-background/90 px-1.5 py-0.5 rounded">
+                    {mediaTypeLabel(m.type)}
+                  </span>
                   {isHero && (
                     <Badge variant="default" className="text-[10px] h-5 px-1.5">
                       <Star className="h-2.5 w-2.5 mr-0.5" />

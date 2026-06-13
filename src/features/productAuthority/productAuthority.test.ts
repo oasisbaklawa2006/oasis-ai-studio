@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractChannelPricingFromForm,
   formToDbProductPayload,
   formatProductSaveError,
+  findPricingLeaksInProductPayload,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -18,6 +20,7 @@ describe("productSchemaAdapter", () => {
       product_name: "Cashew Kitta",
       subcategory: "Baklawa",
       b2b_price: "100",
+      mrp: "250",
       gst_rate: "18",
       main_department: "ready_goods_store",
       production_department: "arabic_sweets",
@@ -26,12 +29,74 @@ describe("productSchemaAdapter", () => {
     });
     expect(payload.product_name).toBe("Cashew Kitta");
     expect(payload.subcategory).toBe("Baklawa");
-    expect(payload.b2b_price).toBe(100);
+    expect(payload.b2b_price).toBeUndefined();
+    expect(payload.mrp).toBeUndefined();
     expect(payload.name).toBeUndefined();
     expect(payload.price_b2b).toBeUndefined();
     expect(payload.sub_category).toBeUndefined();
     expect(payload.hero_image_url).toBe("https://example.com/h.jpg");
     expect(payload.image_url).toBe("https://example.com/h.jpg");
+  });
+
+  it("strips all channel pricing fields from products payload", () => {
+    const form = {
+      product_name: "Mor Pistachio Durum",
+      sku: "OAS-AS-BKL-0024",
+      b2b_price: "1200",
+      mrp: "1500",
+      mrp_price: "1500",
+      retail_price: "1400",
+      bulk_price: "1200",
+      wholesale_price: "1050",
+      horeca_price: "1000",
+      export_price: "18",
+      franchisee_price: "1100",
+      own_outlet_price: "1150",
+      special_price: "1080",
+      costing_price: "800",
+    };
+    const payload = formToDbProductPayload(form);
+    expect(findPricingLeaksInProductPayload(payload)).toEqual([]);
+    for (const key of [
+      "b2b_price",
+      "mrp",
+      "mrp_price",
+      "retail_price",
+      "bulk_price",
+      "wholesale_price",
+      "horeca_price",
+      "export_price",
+      "franchisee_price",
+      "own_outlet_price",
+      "special_price",
+      "costing_price",
+    ]) {
+      expect(payload[key]).toBeUndefined();
+    }
+  });
+
+  it("maps channel pricing form fields to product_pricing_rules separately", () => {
+    const productId = "prod-uuid-0024";
+    const rules = extractChannelPricingFromForm(
+      {
+        mrp: "1500",
+        b2b_price: "1200",
+        bulk_price: "1200",
+        wholesale_price: "1050",
+        export_price: "18",
+        currency: "INR",
+        primary_uom: "KG",
+      },
+      productId,
+    );
+    const channels = rules.map((r) => r.price_channel).sort();
+    expect(channels).toEqual(["b2b", "bulk", "export", "mrp", "wholesale"]);
+    const mrpRule = rules.find((r) => r.price_channel === "mrp");
+    expect(mrpRule?.product_id).toBe(productId);
+    expect(mrpRule?.base_price).toBe(1500);
+    expect(mrpRule?.calculated_price).toBe(1500);
+    expect(mrpRule?.price_type).toBe("fixed_price");
+    expect(mrpRule?.uom).toBe("KG");
   });
 
   it("strips unknown fields", () => {
@@ -116,7 +181,16 @@ describe("productSchemaAdapter", () => {
       code: "PGRST204",
     });
     expect(message).toContain("approximate_piece_weight_g");
-    expect(message).toContain("not supported by the live product schema");
+    expect(message).toContain("not present in live products schema");
+  });
+
+  it("formats pricing column PGRST204 with product_pricing_rules guidance", () => {
+    const message = formatProductSaveError({
+      message: "Could not find the 'b2b_price' column of 'products' in the schema cache",
+      code: "PGRST204",
+    });
+    expect(message).toContain("b2b_price");
+    expect(message).toContain("product_pricing_rules");
   });
 });
 

@@ -22,6 +22,12 @@ import {
   uploadMediaFileToStorage,
   useCatalogueMediaWriteMode,
 } from "@/features/catalogueDrafts/mediaDraftBoundary";
+import {
+  formatMediaInsertError,
+  formatMediaStorageError,
+  insertProductMediaRow,
+  mediaTypeLabel,
+} from "@/features/productAuthority/productMediaPersistence";
 import type { Role } from "@/lib/permissions";
 
 const MEDIA_DRAFT_SUCCESS =
@@ -83,10 +89,22 @@ const Media = () => {
           const path = buildStagingMediaPath(folder, file.name);
           const { error: upErr } = await uploadMediaFileToStorage(path, file);
           if (upErr) {
-            toast.error(upErr.message);
+            toast.error(formatMediaStorageError(upErr));
             continue;
           }
           const url = getMediaPublicUrl(path);
+          const insertRes = await insertProductMediaRow({
+            product_id: form.product_id,
+            file_url: url,
+            type: form.type,
+            angle: form.angle,
+            alt_text: form.alt_text || file.name,
+            status: form.status,
+          });
+          if (!insertRes.ok) {
+            toast.error(insertRes.message);
+            continue;
+          }
           const res = await submitMediaCatalogueDraft(
             "create",
             {
@@ -106,7 +124,7 @@ const Media = () => {
             submitted += 1;
             setPendingNotices((prev) => [
               ...prev,
-              `${file.name} — submitted for approval (not live yet)`,
+              `${file.name} — submitted for approval (visible in library)`,
             ]);
           } else {
             toast.error(res.message);
@@ -114,8 +132,9 @@ const Media = () => {
         }
         if (submitted > 0) {
           toast.success(
-            `${submitted} media submission${submitted === 1 ? "" : "s"} submitted for approval.`
+            `${submitted} media submission${submitted === 1 ? "" : "s"} uploaded and submitted for approval.`
           );
+          load();
           setOpen(false);
           setForm({
             file_url: "",
@@ -132,9 +151,12 @@ const Media = () => {
       for (const file of Array.from(files)) {
         const path = buildDirectMediaPath(folder, file.name);
         const { error: upErr } = await uploadMediaFileToStorage(path, file);
-        if (upErr) throw upErr;
+        if (upErr) {
+          toast.error(formatMediaStorageError(upErr));
+          continue;
+        }
         const url = getMediaPublicUrl(path);
-        const { error: insErr } = await supabase.from("product_media").insert({
+        const insertRes = await insertProductMediaRow({
           file_url: url,
           type: form.type,
           angle: form.angle,
@@ -142,7 +164,10 @@ const Media = () => {
           product_id: form.product_id || null,
           status: "raw",
         });
-        if (insErr) throw insErr;
+        if (!insertRes.ok) {
+          toast.error(insertRes.message);
+          continue;
+        }
       }
       toast.success(`${files.length} file(s) uploaded`);
       setOpen(false);
@@ -168,8 +193,6 @@ const Media = () => {
     if (!canMutate || uploading) return;
     if (!form.file_url) return toast.error("URL required (or use upload buttons above)");
 
-    const payload = { ...form, product_id: form.product_id || null };
-
     if (writeMode === "draft") {
       if (!form.product_id) {
         toast.error("Select a product before submitting a URL for approval.");
@@ -177,6 +200,18 @@ const Media = () => {
       }
       setUploading(true);
       try {
+        const insertRes = await insertProductMediaRow({
+          product_id: form.product_id,
+          file_url: form.file_url,
+          type: form.type,
+          angle: form.angle,
+          alt_text: form.alt_text || "url_import",
+          status: form.status,
+        });
+        if (!insertRes.ok) {
+          toast.error(insertRes.message);
+          return;
+        }
         const res = await submitMediaCatalogueDraft(
           "url_import",
           {
@@ -193,9 +228,13 @@ const Media = () => {
         );
         if (!res.ok) {
           toast.error(res.message);
+          load();
           return;
         }
-        setPendingNotices((prev) => [...prev, `URL import — submitted for approval (not live yet)`]);
+        setPendingNotices((prev) => [
+          ...prev,
+          `URL import — submitted for approval (visible in library)`,
+        ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
         setOpen(false);
         setForm({
@@ -206,14 +245,22 @@ const Media = () => {
           product_id: "",
           status: "raw",
         });
+        load();
       } finally {
         setUploading(false);
       }
       return;
     }
 
-    const { error } = await supabase.from("product_media").insert(payload);
-    if (error) return toast.error(error.message);
+    const insertRes = await insertProductMediaRow({
+      product_id: form.product_id || null,
+      file_url: form.file_url,
+      type: form.type,
+      angle: form.angle,
+      alt_text: form.alt_text || "url_import",
+      status: form.status,
+    });
+    if (!insertRes.ok) return toast.error(insertRes.message);
     toast.success("Media added");
     setOpen(false);
     setForm({
@@ -275,7 +322,9 @@ const Media = () => {
                           "video",
                           "label_image",
                         ].map((t) => (
-                          <option key={t}>{t}</option>
+                          <option key={t} value={t}>
+                            {mediaTypeLabel(t)}
+                          </option>
                         ))}
                       </select>
                     </div>
