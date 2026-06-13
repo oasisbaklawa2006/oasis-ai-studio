@@ -1,0 +1,122 @@
+{
+  "generatedAt": "2026-06-13T12:36:06.333Z",
+  "studioUrl": "https://oasis-ai-studio.vercel.app",
+  "centralUrl": "https://cursor-central-vercel.vercel.app",
+  "hasStudioAuth": false,
+  "hasCentralAuth": false,
+  "flows": [
+    {
+      "system": "ai-studio",
+      "mode": "gate",
+      "authenticated": false,
+      "finalUrl": "https://oasis-ai-studio.vercel.app/auth",
+      "clickCount": 0,
+      "manualFieldsEntered": 0,
+      "visibleFormControls": 2,
+      "prefilledControls": 0,
+      "tabOrSectionNavigations": 0,
+      "timeToFormReadyMs": 1975,
+      "timeToMinFillMs": null,
+      "savedProduct": false,
+      "screenshots": [
+        "audit-artifacts/product-authoring/screenshots/ai-studio-01-products-redirect.png",
+        "audit-artifacts/product-authoring/screenshots/ai-studio-02-new-product-redirect.png"
+      ],
+      "notes": [
+        "Redirects to /auth when unauthenticated (expected)."
+      ]
+    },
+    {
+      "system": "central",
+      "mode": "gate",
+      "authenticated": false,
+      "finalUrl": "https://cursor-central-vercel.vercel.app/login",
+      "clickCount": 0,
+      "manualFieldsEntered": 0,
+      "visibleFormControls": 0,
+      "prefilledControls": 0,
+      "tabOrSectionNavigations": 0,
+      "timeToFormReadyMs": 1519,
+      "timeToMinFillMs": null,
+      "savedProduct": false,
+      "screenshots": [
+        "audit-artifacts/product-authoring/screenshots/central-01-admin-products-redirect.png"
+      ],
+      "notes": [
+        "Redirects to /login when unauthenticated (expected)."
+      ]
+    }
+  ],
+  "referencePath": {
+    "central": {
+      "route": "/admin/products",
+      "createControl": "Add New Product",
+      "layout": "single slide-out panel, 6 scroll sections",
+      "emptyFormFieldCount": 47,
+      "prefilledDefaults": [
+        "category (first option)",
+        "storage_type ambient",
+        "shelf_life 90",
+        "hsn_code 19059090",
+        "gst_percentage 18",
+        "dietary_tags Eggless",
+        "uom Kg",
+        "settlement_unit KG",
+        "moq 1",
+        "is_active true",
+        "visible_in_catalog true",
+        "product_family bulk_sweets"
+      ],
+      "minAdminSaveFields": [
+        "name",
+        "wholesale_price",
+        "production_department"
+      ],
+      "activeKgExtras": [
+        "grams_per_piece",
+        "weight_per_box_kg"
+      ],
+      "aiFeatures": [
+        "Generate AI Details (HSN, GST, allergens, ingredients)",
+        "Generate AI Aliases (oasis-ai-chat)",
+        "AI description stub",
+        "Nutrition placeholder template"
+      ],
+      "estimatedMinClicks": 3,
+      "estimatedMinManualFields": 5,
+      "estimatedTypicalManualFields": 12
+    },
+    "aiStudio": {
+      "route": "/products/new",
+      "createControl": "New Product",
+      "layout": "full-page editor, up to 12 tabs (class-dependent)",
+      "emptyFormFieldCount": 72,
+      "prefilledDefaults": [
+        "currency INR",
+        "is_active true",
+        "is_catalogue_ready false",
+        "sku_locked true"
+      ],
+      "minAdminSaveFields": [
+        "product_name",
+        "product_class",
+        "sku (4 code picks + generate)",
+        "main_department",
+        "production_department (if ready_goods_store)"
+      ],
+      "contributorMinFields": [
+        "product_name",
+        "product_class",
+        "product_type or category"
+      ],
+      "aiFeatures": [
+        "SkuBuilder RPC generate_oasis_sku",
+        "AliasManager heuristic seed (not LLM)",
+        "ComplianceAiPanel exists but unwired on ProductEdit"
+      ],
+      "estimatedMinClicks": 11,
+      "estimatedMinManualFields": 8,
+      "estimatedTypicalManualFields": 18
+    }
+  }
+}
