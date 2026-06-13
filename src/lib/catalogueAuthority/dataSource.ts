@@ -5,6 +5,7 @@ export type CataloguePersistenceSource = "supabase" | "local_only" | "supabase_u
 let collectionsSource: CataloguePersistenceSource = "supabase";
 let collectionsLoadFailure: SupabaseFailure | null = null;
 let versionsSourceByProduct: Record<string, CataloguePersistenceSource> = {};
+let versionsLoadFailureByProduct: Record<string, SupabaseFailure | null> = {};
 
 export function setCollectionsPersistenceSource(source: CataloguePersistenceSource) {
   collectionsSource = source;
@@ -33,4 +34,12 @@ export function getVersionsPersistenceSource(
   productId: string,
 ): CataloguePersistenceSource {
   return versionsSourceByProduct[productId] ?? "supabase";
+}
+
+export function setVersionsLoadFailure(productId: string, failure: SupabaseFailure | null) {
+  versionsLoadFailureByProduct[productId] = failure;
+}
+
+export function getVersionsLoadFailure(productId: string): SupabaseFailure | null {
+  return versionsLoadFailureByProduct[productId] ?? null;
 }

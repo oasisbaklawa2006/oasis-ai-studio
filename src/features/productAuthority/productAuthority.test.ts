@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   extractChannelPricingFromForm,
   formToDbProductPayload,
   formatProductSaveError,
@@ -36,6 +37,34 @@ describe("productSchemaAdapter", () => {
     expect(payload.sub_category).toBeUndefined();
     expect(payload.hero_image_url).toBe("https://example.com/h.jpg");
     expect(payload.image_url).toBe("https://example.com/h.jpg");
+  });
+
+  it("strips b2b_price_basis from products payload", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Mor Pistachio Durum",
+      sku: "OAS-AS-BKL-0024",
+      b2b_price_basis: "per kg",
+      retail_price_basis: "per pc",
+      price_basis: "per kg",
+    });
+    expect(payload.b2b_price_basis).toBeUndefined();
+    expect(payload.retail_price_basis).toBeUndefined();
+    expect(payload.price_basis).toBeUndefined();
+    expect(findPricingLeaksInProductPayload(payload)).toEqual([]);
+  });
+
+  it("strips all price_basis fields from products payload", () => {
+    const form = Object.fromEntries(
+      CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS.map((k) => [k, "per kg"]),
+    );
+    const payload = formToDbProductPayload({
+      product_name: "Mor Pistachio Durum",
+      sku: "OAS-AS-BKL-0024",
+      ...form,
+    });
+    for (const key of CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS) {
+      expect(payload[key]).toBeUndefined();
+    }
   });
 
   it("strips b2b_price from products payload", () => {
@@ -191,16 +220,16 @@ describe("productSchemaAdapter", () => {
       code: "PGRST204",
     });
     expect(message).toContain("approximate_piece_weight_g");
-    expect(message).toContain("not present in live products schema");
+    expect(message).toContain("Live schema mismatch");
   });
 
-  it("formats pricing column PGRST204 with product_pricing_rules guidance", () => {
+  it("formats pricing basis PGRST204 with field and table", () => {
     const message = formatProductSaveError({
-      message: "Could not find the 'b2b_price' column of 'products' in the schema cache",
+      message: "Could not find the 'b2b_price_basis' column of 'products' in the schema cache",
       code: "PGRST204",
     });
-    expect(message).toContain("b2b_price");
-    expect(message).toContain("product_pricing_rules");
+    expect(message).toContain("b2b_price_basis");
+    expect(message).toContain("products");
   });
 });
 

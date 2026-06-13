@@ -4,25 +4,33 @@
  */
 import type { Database } from "@/integrations/supabase/types";
 import {
-  isChannelPricingFormField,
+  isProductsPricingOrBasisField,
 } from "@/features/productAuthority/channelPricingMapper";
 import {
   CENTRAL_COMPAT_PRODUCT_COLUMNS,
+  isLiveProductsBlockedColumn,
   LIVE_PRODUCTS_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_BASIS_FORM_KEYS,
   LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
   LIVE_PRODUCTS_PRICING_FORM_KEYS,
 } from "@/features/productAuthority/liveProductsSchema";
+import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 
 export {
   CENTRAL_COMPAT_PRODUCT_COLUMNS,
   LIVE_PRODUCTS_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_BASIS_FORM_KEYS,
   LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
   LIVE_PRODUCTS_PRICING_FORM_KEYS,
+  isLiveProductsBlockedColumn,
 };
 export {
+  CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   CHANNEL_PRICING_FORM_FIELD_KEYS,
   extractChannelPricingFromForm,
   isChannelPricingFormField,
+  isPriceBasisFormField,
+  isProductsPricingOrBasisField,
 } from "@/features/productAuthority/channelPricingMapper";
 
 export type ProductsInsert = Database["public"]["Tables"]["products"]["Insert"];
@@ -138,10 +146,13 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
   } satisfies Record<keyof ProductsInsert, true>),
 );
 
-export const PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = new Set([
-  ...[...PRODUCTS_INSERT_ALLOWLIST].filter((key) => !LIVE_PRODUCTS_EXCLUDED_COLUMNS.has(key)),
+export const LIVE_PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = new Set([
+  ...[...PRODUCTS_INSERT_ALLOWLIST].filter((key) => !isLiveProductsBlockedColumn(key)),
   ...CENTRAL_COMPAT_PRODUCT_COLUMNS,
 ]);
+
+/** @deprecated Use LIVE_PRODUCTS_WRITE_ALLOWLIST — strict live products contract. */
+export const PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = LIVE_PRODUCTS_WRITE_ALLOWLIST;
 
 export type ProductSaveValidation = {
   ok: boolean;
@@ -224,29 +235,30 @@ function buildDimensionsText(form: Record<string, unknown>): string | null {
 }
 
 function isPricingLeakKey(key: string): boolean {
-  if (LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS.has(key)) return true;
-  if (LIVE_PRODUCTS_PRICING_FORM_KEYS.has(key)) return true;
-  return isChannelPricingFormField(key);
+  return isLiveProductsBlockedColumn(key);
 }
 
-/** Strip keys not in products write allowlist (prevents Central-legacy field rejects). */
-export function stripUnknownProductFields(
+/** Strict allowlist sanitizer — only confirmed live products columns survive. */
+export function sanitizeLiveProductsPayload(
   payload: Record<string, unknown>,
 ): { payload: Record<string, unknown>; stripped: string[] } {
   const stripped: string[] = [];
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload)) {
-    if (isPricingLeakKey(key)) {
-      stripped.push(key);
-      continue;
-    }
-    if (PRODUCTS_WRITE_ALLOWLIST.has(key)) {
+    if (LIVE_PRODUCTS_WRITE_ALLOWLIST.has(key)) {
       out[key] = value;
     } else {
       stripped.push(key);
     }
   }
   return { payload: out, stripped };
+}
+
+/** Strip keys not in live products write allowlist. */
+export function stripUnknownProductFields(
+  payload: Record<string, unknown>,
+): { payload: Record<string, unknown>; stripped: string[] } {
+  return sanitizeLiveProductsPayload(payload);
 }
 
 /** Detect channel pricing keys that must not be written to products. */
@@ -275,28 +287,7 @@ export function validateProductSavePayload(
 }
 
 export function formatProductSaveError(error: unknown): string {
-  if (!error || typeof error !== "object") return "Product save failed.";
-  const e = error as { message?: string; code?: string; details?: string; hint?: string };
-  const parts = [e.message, e.details, e.hint, e.code].filter(Boolean);
-  const msg = parts.join(" — ") || "Product save failed.";
-  const columnMatch = msg.match(/Could not find the '([^']+)' column/i);
-  if (columnMatch) {
-    const field = columnMatch[1];
-    if (isPricingLeakKey(field)) {
-      return `AI Studio tried to save a field not present in live products schema. Field: ${field}. Channel pricing must be saved via product_pricing_rules only.`;
-    }
-    return `AI Studio tried to save a field not present in live products schema. Field: ${field}.`;
-  }
-  if (/violates foreign key|violates check/i.test(msg)) {
-    return `${msg} (constraint — verify SKU uniqueness and department rules)`;
-  }
-  if (/duplicate key.*uq_product_pricing_rules_product_channel|uq_price_rule_product_channel/i.test(msg)) {
-    return "Pricing for this channel already exists. Updating existing row.";
-  }
-  if (/duplicate key/i.test(msg)) {
-    return `${msg} (constraint — verify unique fields)`;
-  }
-  return msg;
+  return formatSupabaseDiagnostic(error, "Product save");
 }
 
 /**
@@ -342,9 +333,6 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     primary_uom: form.primary_uom || form.b2b_uom || form.retail_uom || null,
     b2b_uom: form.b2b_uom ?? form.primary_uom ?? null,
     retail_uom: form.retail_uom ?? form.primary_uom ?? null,
-    price_basis: form.price_basis ?? null,
-    b2b_price_basis: form.b2b_price_basis ?? null,
-    retail_price_basis: form.retail_price_basis ?? null,
     unit_conversion_note: form.unit_conversion_note ?? null,
     moq_rule_type: form.moq_rule_type ?? null,
     moq_value: toNum(form.moq_value),
@@ -405,14 +393,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     if (raw[k] === "") raw[k] = null;
   });
 
-  const { payload, stripped } = stripUnknownProductFields(raw);
-  const pricingLeaks = findPricingLeaksInProductPayload(payload);
-  if (pricingLeaks.length > 0) {
-    for (const key of pricingLeaks) {
-      delete payload[key];
-      stripped.push(key);
-    }
-  }
+  const { payload, stripped } = sanitizeLiveProductsPayload(raw);
   return payload;
 }
 
