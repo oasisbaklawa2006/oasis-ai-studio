@@ -27,7 +27,7 @@ import {
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { getCollectionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
 import { LocalCatalogueFallbackDisabledError } from "@/lib/catalogueAuthority/localStoragePolicy";
-import { formatSupabaseFailure } from "@/lib/supabase/diagnostics";
+import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { evaluateCataloguePublishability } from "@/features/catalogueBuilder/cataloguePublishability";
 import { generateWhatsAppMiniCatalogueText } from "@/features/catalogueBuilder/whatsappPreview";
@@ -245,8 +245,8 @@ export default function CatalogueBuilder() {
             <p className="font-medium">Catalogue collections unavailable</p>
             <p>
               {collectionsError
-                ? formatSupabaseFailure(collectionsError)
-                : "Collections could not be loaded from Supabase. Create and edit actions require a live connection."}
+                ? formatSupabaseDiagnostic(collectionsError, "Catalogue collections query failed")
+                : "Catalogue collections query failed. This may be caused by a missing table, RLS policy, or deployment mismatch. Supabase itself is reachable."}
             </p>
             {collectionsError?.kind === "missing_table" && (
               <p className="text-muted-foreground">

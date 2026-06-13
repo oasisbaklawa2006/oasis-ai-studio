@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle2, Copy, Eye, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { CentralSyncReadOnlyBanner } from "@/components/catalogueAuthority/AuthorityStatusBadges";
-import { getVersionsPersistenceSource } from "../catalogueVersionStore";
+import { getVersionsLoadFailure, getVersionsPersistenceSource } from "../catalogueVersionStore";
+import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 import {
   evaluateProductReadiness,
   productTruthInputFromForm,
@@ -150,6 +151,7 @@ export function CentralSyncPreviewPanel({
   };
 
   const persistenceSource = getVersionsPersistenceSource(productId);
+  const versionsLoadFailure = getVersionsLoadFailure(productId);
 
   return (
     <div className="space-y-4">
@@ -161,7 +163,9 @@ export function CentralSyncPreviewPanel({
       )}
       {persistenceSource === "supabase_unavailable" && (
         <p className="text-xs text-destructive">
-          Catalogue versions could not be loaded from Supabase. Preview actions may fail until connectivity is restored.
+          {versionsLoadFailure
+            ? formatSupabaseDiagnostic(versionsLoadFailure, "Catalogue versions query failed")
+            : "Catalogue versions query failed. This may be caused by a missing table, RLS policy, or deployment mismatch. Supabase itself is reachable."}
         </p>
       )}
 

@@ -24,7 +24,24 @@ export const CHANNEL_PRICING_FORM_FIELD_KEYS = [
   "costing_price",
 ] as const;
 
+/** Form keys for channel price basis metadata — never products columns. */
+export const CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS = [
+  "price_basis",
+  "b2b_price_basis",
+  "mrp_price_basis",
+  "retail_price_basis",
+  "bulk_price_basis",
+  "wholesale_price_basis",
+  "horeca_price_basis",
+  "export_price_basis",
+  "franchisee_price_basis",
+  "own_outlet_price_basis",
+  "special_price_basis",
+  "costing_price_basis",
+] as const;
+
 export type ChannelPricingFormField = (typeof CHANNEL_PRICING_FORM_FIELD_KEYS)[number];
+export type ChannelPricingBasisFormField = (typeof CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS)[number];
 
 /** Map legacy/compliance form fields → product_pricing_rules.price_channel. */
 export const FORM_FIELD_TO_PRICE_CHANNEL: Record<ChannelPricingFormField, string> = {
@@ -44,20 +61,30 @@ export const FORM_FIELD_TO_PRICE_CHANNEL: Record<ChannelPricingFormField, string
   costing_price: "costing",
 };
 
-const BASIS_SUFFIX = /_price_basis$/;
-
 function toNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);
   return Number.isFinite(n) ? n : null;
 }
 
-/** True when a form/payload key is a channel price value (not basis metadata). */
+/** True when a form/payload key is a channel price basis field. */
+export function isPriceBasisFormField(key: string): boolean {
+  if (key === "price_basis") return true;
+  if (key.endsWith("_price_basis")) return true;
+  return (CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS as readonly string[]).includes(key);
+}
+
+/** True when a form/payload key is a channel price value. */
 export function isChannelPricingFormField(key: string): boolean {
-  if (BASIS_SUFFIX.test(key)) return false;
+  if (isPriceBasisFormField(key)) return false;
   if ((CHANNEL_PRICING_FORM_FIELD_KEYS as readonly string[]).includes(key)) return true;
   if (key.endsWith("_price")) return true;
   return false;
+}
+
+/** Any pricing value or basis field that must never be written to products. */
+export function isProductsPricingOrBasisField(key: string): boolean {
+  return isChannelPricingFormField(key) || isPriceBasisFormField(key);
 }
 
 /**

@@ -6,8 +6,10 @@ import {
 } from "@/lib/catalogueAuthority/localStoragePolicy";
 import {
   getVersionsPersistenceSource,
+  setVersionsLoadFailure,
   setVersionsPersistenceSource,
 } from "@/lib/catalogueAuthority/dataSource";
+import { diagnoseSupabaseFailure } from "@/lib/supabase/diagnostics";
 import {
   IMMUTABLE_VERSION_STATUSES,
   type CatalogueSnapshotJson,
@@ -64,7 +66,7 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
-export { getVersionsPersistenceSource };
+export { getVersionsPersistenceSource, getVersionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
 
 export function nextVersionNumber(existing: CatalogueVersionRow[]): number {
   if (!existing.length) return 1;
@@ -92,10 +94,18 @@ export async function listCatalogueVersions(
 
     if (!error) {
       setVersionsPersistenceSource(productId, "supabase");
+      setVersionsLoadFailure(productId, null);
       return (data ?? []) as CatalogueVersionRow[];
     }
-  } catch {
-    /* fall through */
+    setVersionsLoadFailure(productId, diagnoseSupabaseFailure(error, "catalogue_versions"));
+  } catch (err) {
+    setVersionsLoadFailure(
+      productId,
+      diagnoseSupabaseFailure(
+        err instanceof Error ? { message: err.message } : { message: String(err) },
+        "catalogue_versions",
+      ),
+    );
   }
 
   if (isLocalCatalogueFallbackReadEnabled()) {
@@ -211,7 +221,8 @@ export async function approveCatalogueVersion(args: {
   } catch (err) {
     return {
       ok: false,
-      message: err instanceof Error ? err.message : "Supabase unavailable; local fallback disabled",
+      message:
+        err instanceof Error ? err.message : "Local catalogue fallback is disabled for this action.",
     };
   }
 
@@ -267,7 +278,8 @@ export async function updateCatalogueVersionSnapshot(args: {
   } catch (err) {
     return {
       ok: false,
-      message: err instanceof Error ? err.message : "Supabase unavailable; local fallback disabled",
+      message:
+        err instanceof Error ? err.message : "Local catalogue fallback is disabled for this action.",
     };
   }
 
