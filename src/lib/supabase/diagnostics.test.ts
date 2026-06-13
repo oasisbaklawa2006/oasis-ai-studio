@@ -41,7 +41,23 @@ describe("formatSupabaseDiagnostic", () => {
       { message: "Bucket not found: product-media" },
       "media upload",
     );
-    expect(msg).toContain("Storage bucket missing");
+    expect(msg).toContain("missing or inaccessible");
+    expect(msg).toContain("product-media");
+    expect(msg).toContain("20260613130000_live_central_product_media_bucket_and_bom_required");
+  });
+
+  it("formats bom_required PGRST204 with live central migration owner action", () => {
+    const msg = formatSupabaseDiagnostic(
+      {
+        code: "PGRST204",
+        message: "Could not find the 'bom_required' column of 'products' in the schema cache",
+      },
+      "Product save",
+    );
+    expect(msg).toContain("bom_required");
+    expect(msg).toContain("products");
+    expect(msg).toContain("20260613130000_live_central_product_media_bucket_and_bom_required");
+    expect(msg).toContain("tcxvcatsqqertcnycuop");
   });
 
   it("formats network failure diagnostic", () => {

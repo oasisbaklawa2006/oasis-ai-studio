@@ -33,6 +33,7 @@ describe("productMediaPersistence", () => {
     const msg = formatMediaStorageError({ message: "Bucket not found" });
     expect(msg).toContain("product-media");
     expect(msg).toContain("missing or inaccessible");
+    expect(msg).toContain("20260613130000_live_central_product_media_bucket_and_bom_required");
   });
 
   it("surfaces upload-success insert-failure message", () => {

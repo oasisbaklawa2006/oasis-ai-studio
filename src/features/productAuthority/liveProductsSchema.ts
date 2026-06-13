@@ -51,6 +51,15 @@ export const CENTRAL_COMPAT_PRODUCT_COLUMNS = [
 
 export type CentralCompatProductColumn = (typeof CENTRAL_COMPAT_PRODUCT_COLUMNS)[number];
 
+/**
+ * Idempotent migration that must be applied on live Central (tcxvcatsqqertcnycuop)
+ * before product-media uploads and products.bom_required writes succeed.
+ */
+export const LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM =
+  "20260613130000_live_central_product_media_bucket_and_bom_required";
+
+export const LIVE_CENTRAL_SUPABASE_PROJECT_REF = "tcxvcatsqqertcnycuop";
+
 /** UI form keys that map to live DB columns (never sent under UI key names). */
 export const UI_TO_LIVE_PRODUCT_FIELD_MAP = {
   approximate_piece_weight_g: "grams_per_piece",

@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
-import { AI_STUDIO_MEDIA_BUCKET } from "@/lib/productImage";
+import { LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM } from "@/features/productAuthority/liveProductsSchema";
+import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
+import { getSupabaseProjectRef } from "@/shared/supabase/health";
 
 /** Canonical uploader media type → human label (single source for UI). */
 export const MEDIA_TYPE_LABELS: Record<string, string> = {
@@ -25,11 +27,14 @@ export function mediaTypeLabel(type: string | null | undefined): string {
 
 export function formatMediaStorageError(error: { message?: string } | null): string {
   const msg = error?.message?.trim() || "Storage upload failed";
+  const projectRef = getSupabaseProjectRef();
   if (/bucket not found|not exist|404/i.test(msg)) {
-    return `Storage bucket "${AI_STUDIO_MEDIA_BUCKET}" is missing or inaccessible: ${msg}`;
+    const diagnostic = formatSupabaseDiagnostic({ message: msg }, "Media storage upload");
+    const projectHint = projectRef ? ` Supabase project: ${projectRef}.` : "";
+    return `${diagnostic}${projectHint} Owner action: apply migration ${LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM}.sql on live Central.`;
   }
   if (/row-level security|\bRLS\b|policy/i.test(msg)) {
-    return `Storage upload blocked by security policy: ${msg}`;
+    return `Permission/RLS blocked media upload: ${msg}`;
   }
   if (/payload too large|entity too large/i.test(msg)) {
     return `File too large for storage: ${msg}`;

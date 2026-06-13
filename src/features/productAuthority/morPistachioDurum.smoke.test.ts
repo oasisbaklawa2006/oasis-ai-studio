@@ -2,7 +2,7 @@
  * Mor Pistachio Durum (OAS-AS-BKL-0024) smoke contract — unit-level QA gates.
  * Manual production retest: save, reload, pricing rules, media upload after merge.
  */
-import { describe, expect, it } from "vitest";
+import { inferBomRequiredFromProduct } from "@/features/productAuthority/bomAuthority";
 import {
   CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   CHANNEL_PRICING_FORM_FIELD_KEYS,
@@ -89,5 +89,28 @@ describe("Mor Pistachio Durum smoke contract", () => {
     );
     expect(msg).toContain("missing");
     expect(msg).not.toContain("connectivity is restored");
+  });
+
+  it("bom_required schema mismatch points to live central migration", () => {
+    const msg = formatSupabaseDiagnostic(
+      {
+        code: "PGRST204",
+        message: "Could not find the 'bom_required' column of 'products' in the schema cache",
+      },
+      "Product save",
+    );
+    expect(msg).toContain("bom_required");
+    expect(msg).toContain("products");
+    expect(msg).toContain("20260613130000_live_central_product_media_bucket_and_bom_required");
+  });
+
+  it("infers BOM requirement from product class when column unreadable", () => {
+    expect(
+      inferBomRequiredFromProduct({
+        main_department: "ready_goods_store",
+        product_class: "gift_hamper",
+        bom_required: null,
+      }),
+    ).toBe(true);
   });
 });

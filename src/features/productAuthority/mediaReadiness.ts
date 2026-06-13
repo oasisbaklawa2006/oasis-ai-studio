@@ -1,3 +1,4 @@
+import { LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM } from "@/features/productAuthority/liveProductsSchema";
 import { AI_STUDIO_MEDIA_BUCKET, resolveProductHeroUrl } from "@/lib/productImage";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -30,7 +31,7 @@ export async function probeProductMediaBucket(): Promise<{
       if (/bucket not found|not exist|404/i.test(msg)) {
         return {
           status: "missing",
-          message: `Storage bucket "${AI_STUDIO_MEDIA_BUCKET}" not found. Owner action: apply migration 20260506093134 (product-media) in Supabase Dashboard.`,
+          message: `Storage bucket "${AI_STUDIO_MEDIA_BUCKET}" not found. Apply migration ${LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM} on project tcxvcatsqqertcnycuop.`,
         };
       }
       return { status: "error", message: msg };
@@ -69,4 +70,4 @@ export async function evaluatePilotMediaForProduct(
 
 export const MEDIA_UPLOAD_PATH_DOC = UPLOAD_PATH_PATTERN;
 
-export const MEDIA_BUCKET_OWNER_ACTION = `Create or verify Supabase Storage bucket "${AI_STUDIO_MEDIA_BUCKET}" (public read, team write). See supabase/migrations for product-media policies. Central legacy bucket "product-images" is read-compatible via image_url sync when column exists on shared DB.`;
+export const MEDIA_BUCKET_OWNER_ACTION = `Apply migration ${LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM} on live Central (tcxvcatsqqertcnycuop) to create bucket "${AI_STUDIO_MEDIA_BUCKET}" with public read and team-member write policies.`;

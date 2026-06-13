@@ -1,3 +1,8 @@
+import {
+  LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM,
+  LIVE_CENTRAL_SUPABASE_PROJECT_REF,
+} from "@/features/productAuthority/liveProductsSchema";
+
 export type SupabaseFailureKind =
   | "missing_table"
   | "missing_column"
@@ -47,6 +52,14 @@ export function diagnoseSupabaseFailure(
   if (code === "PGRST204" || columnMatch) {
     const field = columnMatch?.[1];
     const table = columnMatch?.[2] ?? "products";
+    let ownerAction = "Verify live schema contract in liveProductsSchema.ts.";
+    if (field && /_price|price_basis/i.test(field)) {
+      ownerAction =
+        "Channel pricing and price basis belong on product_pricing_rules, not products.";
+    } else if (field === "bom_required") {
+      ownerAction =
+        "Apply migration 20260613130000_live_central_product_media_bucket_and_bom_required on live Central (tcxvcatsqqertcnycuop).";
+    }
     return {
       kind: "missing_column",
       code,
@@ -54,10 +67,7 @@ export function diagnoseSupabaseFailure(
       hint,
       field,
       table,
-      ownerAction:
-        field && /_price|price_basis/i.test(field)
-          ? "Channel pricing and price basis belong on product_pricing_rules, not products."
-          : "Verify live schema contract in liveProductsSchema.ts.",
+      ownerAction,
     };
   }
 
@@ -117,7 +127,7 @@ export function diagnoseSupabaseFailure(
       message,
       hint,
       bucket: bucketMatch?.[1] ?? "product-media",
-      ownerAction: "Create or verify the storage bucket and policies in Supabase.",
+      ownerAction: `Apply migration ${LIVE_CENTRAL_MIGRATION_PRODUCT_MEDIA_AND_BOM} on live Central (${LIVE_CENTRAL_SUPABASE_PROJECT_REF}).`,
     };
   }
 
@@ -155,18 +165,35 @@ export function diagnoseSupabaseFailure(
   };
 }
 
+function withOwnerAction(message: string, ownerAction?: string): string {
+  if (!ownerAction) return message;
+  return `${message} → ${ownerAction}`;
+}
+
 export function formatSupabaseFailure(failure: SupabaseFailure): string {
   switch (failure.kind) {
     case "missing_column":
-      return `Live schema mismatch: field ${failure.field ?? "unknown"} is not present on ${failure.table ?? "table"}.`;
+      return withOwnerAction(
+        `Live schema mismatch: field ${failure.field ?? "unknown"} is not present on ${failure.table ?? "table"}.`,
+        failure.ownerAction,
+      );
     case "missing_table":
-      return `Required table/view is missing or not deployed: ${failure.table ?? "unknown"}.`;
+      return withOwnerAction(
+        `Required table/view is missing or not deployed: ${failure.table ?? "unknown"}.`,
+        failure.ownerAction,
+      );
     case "missing_rpc":
-      return `Required RPC is missing or not deployed: ${failure.field ?? "unknown"}.`;
+      return withOwnerAction(
+        `Required RPC is missing or not deployed: ${failure.field ?? "unknown"}.`,
+        failure.ownerAction,
+      );
     case "rls_denied":
       return "Permission/RLS blocked this action.";
     case "bucket_missing":
-      return `Storage bucket missing: ${failure.bucket ?? "unknown"}.`;
+      return withOwnerAction(
+        `Storage bucket "${failure.bucket ?? "unknown"}" is missing or inaccessible.`,
+        failure.ownerAction,
+      );
     case "network":
       return "Supabase network connection failed.";
     case "auth":
