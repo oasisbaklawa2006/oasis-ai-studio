@@ -1,3 +1,5 @@
+import { COMPLIANCE_APPROVER_ROLES } from "@/shared/ai/complianceConstants";
+
 export type Role =
   | "owner"
   | "admin"
@@ -39,11 +41,11 @@ const MATRIX: Record<PageKey, Role[]> = {
   audit_log:         ["owner","admin"],
   data_correction:   ["owner","admin","product_manager"],
   category1_import:  ["owner","admin","product_manager","catalogue_contributor"],
-  compliance_approve: COMPLIANCE_APPROVER,
+  compliance_approve: [...COMPLIANCE_APPROVER_ROLES],
 };
 
 export const canApproveComplianceFields = (roles: Role[] | string[]) =>
-  COMPLIANCE_APPROVER.some((r) => (roles as string[]).includes(r));
+  COMPLIANCE_APPROVER_ROLES.some((r) => (roles as string[]).includes(r));
 
 export const hasRole = (roles: Role[] | string[], role: Role) => roles.includes(role as any);
 
