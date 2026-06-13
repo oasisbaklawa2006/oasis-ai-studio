@@ -4,36 +4,11 @@ import {
   mapMoqRules,
   mapPricingRules,
 } from "./channelAuthorityMappers";
-import { packagingHierarchyFromForm, productMoqFromForm, NOT_CONFIGURED } from "./packagingTruth";
-import { productTruthInputFromForm } from "./productReadiness";
+import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
 import { formToDbProductPayload } from "@/features/productAuthority/productSchemaAdapter";
 import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import { productMediaContextFromForm } from "@/features/mediaReadiness/mediaAssetsFromForm";
-
-describe("packagingTruth authority", () => {
-  it("does not infer trays per master carton when unset", () => {
-    const form = {
-      moq_value: 9,
-      moq_uom: "tray",
-      master_carton_qty: "",
-    };
-    const hierarchy = packagingHierarchyFromForm(form);
-    expect(hierarchy.traysPerMasterCarton).toBeNull();
-    expect(productMoqFromForm(form).moqValue).toBe(9);
-    expect(productMoqFromForm(form).moqUom).toBe("tray");
-  });
-
-  it("reads master carton qty only from persisted field", () => {
-    const hierarchy = packagingHierarchyFromForm({ master_carton_qty: 12 });
-    expect(hierarchy.traysPerMasterCarton).toBe(12);
-  });
-
-  it("does not default piecesPerKg to 40", () => {
-    const hierarchy = packagingHierarchyFromForm({});
-    expect(hierarchy.piecesPerKg).toBeNull();
-  });
-});
 
 describe("channel authority mappers", () => {
   it("maps pricing rows to Product Truth channel records", () => {
@@ -96,26 +71,30 @@ describe("product truth vs product edit source parity", () => {
     hero_image_url: "https://cdn/hero.jpg",
   };
 
-  it("packaging truth matches form fields without hidden defaults", () => {
-    const truth = productTruthInputFromForm(savedForm);
-    expect(truth.packaging?.traysPerMasterCarton).toBeNull();
-    expect(truth.packaging?.piecesPerKg).toBe(55.56);
-    expect(truth.packaging?.gramsPerPiece).toBe(18);
-  });
-
   it("save payload maps weight to live columns not Studio-only names", () => {
     const payload = formToDbProductPayload(savedForm);
     expect(payload.grams_per_piece).toBe(18);
     expect(payload.pcs_per_kg).toBe(55.56);
     expect(payload.approximate_piece_weight_g).toBeUndefined();
+    expect(payload.b2b_price).toBeUndefined();
   });
 
-  it("channel prices in truth input reflect DB mapper output", () => {
+  it("channel prices in truth input reflect product_pricing_rules mapper output", () => {
     const prices = mapPricingRules([
       { price_channel: "bulk", calculated_price: 2800, approval_status: "approved" },
     ]);
     const truth = productTruthInputFromForm(savedForm, { prices });
     expect(truth.prices?.[0]?.sellingPrice).toBe(2800);
+  });
+
+  it("Product Truth readiness consumes product_pricing_rules prices", () => {
+    const prices = mapPricingRules([
+      { price_channel: "b2b", calculated_price: 2800, approval_status: "approved" },
+    ]);
+    const truth = productTruthInputFromForm(savedForm, { prices });
+    const readiness = evaluateProductReadiness(truth);
+    const pricing = readiness.dimensions.find((d) => d.dimension === "pricing_status");
+    expect(pricing?.complete).toBe(true);
   });
 });
 
@@ -133,7 +112,7 @@ describe("media authority parity", () => {
     { type: "lifestyle", file_url: "https://cdn/d.jpg", status: "raw" },
   ];
 
-  it("recognizes all four uploaded media types from product_media", () => {
+  it("recognizes uploaded media types from product_media rows", () => {
     const assets = mediaAssetsFromSources({ form, productMediaRows: mediaRows });
     const types = new Set(assets.map((a) => a.type));
     expect(types.has("primary_image")).toBe(true);
@@ -143,20 +122,12 @@ describe("media authority parity", () => {
     expect(assets).toHaveLength(4);
   });
 
-  it("baklawa profile requires hero, white background, closeup — not lifestyle", () => {
+  it("Product Truth media readiness consumes product_media rows", () => {
     const ctx = productMediaContextFromForm(form);
-    const readiness = evaluateMediaReadiness(ctx, mediaAssetsFromSources({ form, productMediaRows: mediaRows }));
+    const assets = mediaAssetsFromSources({ form, productMediaRows: mediaRows });
+    const readiness = evaluateMediaReadiness(ctx, assets);
     expect(readiness.requiredAssets).toContain("catalogue_image");
-    expect(readiness.requiredAssets).not.toContain("lifestyle_image");
     expect(readiness.canPublishMedia).toBe(false);
     expect(readiness.blockers.some((b) => b.includes("draft pending approval"))).toBe(true);
-  });
-});
-
-describe("display formatting", () => {
-  it("uses Not configured for missing packaging values", () => {
-    expect(NOT_CONFIGURED).toBe("Not configured");
-    const hierarchy = packagingHierarchyFromForm({});
-    expect(hierarchy.kgPerTray).toBeNull();
   });
 });

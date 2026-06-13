@@ -38,6 +38,16 @@ describe("productSchemaAdapter", () => {
     expect(payload.image_url).toBe("https://example.com/h.jpg");
   });
 
+  it("strips b2b_price from products payload", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Mor Pistachio Durum",
+      sku: "OAS-AS-BKL-0024",
+      b2b_price: "1200",
+    });
+    expect(payload.b2b_price).toBeUndefined();
+    expect(findPricingLeaksInProductPayload(payload)).toEqual([]);
+  });
+
   it("strips all channel pricing fields from products payload", () => {
     const form = {
       product_name: "Mor Pistachio Durum",

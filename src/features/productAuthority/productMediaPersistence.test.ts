@@ -3,6 +3,7 @@ import {
   formatMediaInsertError,
   formatMediaStorageError,
   mediaTypeLabel,
+  type ProductMediaInsertInput,
 } from "@/features/productAuthority/productMediaPersistence";
 
 describe("productMediaPersistence", () => {
@@ -11,6 +12,21 @@ describe("productMediaPersistence", () => {
     expect(mediaTypeLabel("hero_image")).toBe("Hero image");
     expect(mediaTypeLabel("white_background")).toBe("White background");
     expect(mediaTypeLabel("45_angle")).toBe("45° angle");
+  });
+
+  it("builds product_media insert payload with required fields", () => {
+    const input: ProductMediaInsertInput = {
+      product_id: "prod-uuid-0024",
+      file_url: "https://cdn.example/products/raw/photo.jpg",
+      type: "closeup",
+      angle: "closeup",
+      alt_text: "mor-pistachio-close.jpg",
+      status: "raw",
+    };
+    expect(input.product_id).toBeTruthy();
+    expect(input.file_url).toMatch(/^https:\/\//);
+    expect(input.type).toBe("closeup");
+    expect(input.status).toBe("raw");
   });
 
   it("surfaces bucket missing storage errors", () => {

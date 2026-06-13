@@ -2,7 +2,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ProductTruthInput } from "../types";
 import { describeConversion, validateConversionRuleChain } from "../uomPackagingEngine";
-import { formatPackagingValue } from "../packagingTruth";
 
 type Props = {
   form: Record<string, unknown>;
@@ -37,11 +36,11 @@ export function UomConversionPanel({ form, truthInput }: Props) {
         </div>
         <div>
           <Label className="text-xs">Pieces per kg</Label>
-          <Input readOnly value={formatPackagingValue(hierarchy.piecesPerKg)} className="h-8 text-xs" />
+          <Input readOnly value={String(hierarchy.piecesPerKg ?? "—")} className="h-8 text-xs" />
         </div>
         <div>
           <Label className="text-xs">Kg per tray</Label>
-          <Input readOnly value={formatPackagingValue(hierarchy.kgPerTray)} className="h-8 text-xs" />
+          <Input readOnly value={String(hierarchy.kgPerTray ?? 1)} className="h-8 text-xs" />
         </div>
       </div>
 
@@ -49,14 +48,12 @@ export function UomConversionPanel({ form, truthInput }: Props) {
         <p className="text-xs text-destructive">{chain.messages.join(" · ")}</p>
       )}
 
-      {hierarchy.piecesPerKg != null && hierarchy.kgPerTray != null && (
-        <div className="rounded border p-3 bg-muted/20 text-xs space-y-1">
-          <div className="font-medium">Quick examples</div>
-          <p>{describeConversion(40, "pcs", hierarchy)}</p>
-          <p>{describeConversion(120, "pcs", hierarchy)}</p>
-          <p>{describeConversion(3, "kg", hierarchy)}</p>
-        </div>
-      )}
+      <div className="rounded border p-3 bg-muted/20 text-xs space-y-1">
+        <div className="font-medium">Quick examples</div>
+        <p>{describeConversion(40, "pcs", hierarchy)}</p>
+        <p>{describeConversion(120, "pcs", hierarchy)}</p>
+        <p>{describeConversion(3, "kg", hierarchy)}</p>
+      </div>
     </div>
   );
 }

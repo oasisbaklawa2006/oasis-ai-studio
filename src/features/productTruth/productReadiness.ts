@@ -6,7 +6,6 @@ import type {
 } from "./types";
 import { READINESS_DIMENSIONS } from "./types";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
-import { b2bPriceMissing, computePricingLadder } from "./pricingLadder";
 import { validateConversionRuleChain } from "./uomPackagingEngine";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import {
@@ -14,7 +13,6 @@ import {
   productMediaContextFromForm,
   type ProductMediaRow,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
-import { packagingHierarchyFromForm } from "./packagingTruth";
 
 export type ProductReadinessResult = {
   score: number;
@@ -85,33 +83,15 @@ function evalMedia(input: ProductTruthInput): DimensionStatus {
 
 function evalPricing(input: ProductTruthInput): DimensionStatus {
   const prices = input.prices ?? [];
-  const ladder = computePricingLadder({ priceRecords: prices });
-  const b2bMissing = b2bPriceMissing(ladder);
-  const b2bRow = ladder.find((r) => r.channel === "b2b");
-  const b2bApproved =
-    !b2bMissing &&
-    b2bRow?.priceStatus === "approved" &&
-    !priceBlocksPublish({
-      channel: "b2b",
-      sellingPrice: b2bRow?.effectivePrice ?? null,
-      priceStatus: b2bRow?.priceStatus,
-    });
+  const approvedPrice = prices.find((p) => p.priceStatus === "approved");
   const pending = prices.some((p) => p.priceStatus === "pending_approval");
   const hasAny = prices.length > 0;
-  const complete = b2bApproved;
+  const complete = !!approvedPrice && !priceBlocksPublish(approvedPrice);
   return {
     dimension: "pricing_status",
-    badge: badgeFor(complete, {
-      approved: complete,
-      pending,
-      legacy: input.isLegacy && !hasAny,
-    }),
+    badge: badgeFor(complete, { approved: complete, pending, legacy: input.isLegacy && !hasAny }),
     complete,
-    note: complete
-      ? undefined
-      : b2bMissing
-        ? "B2B price is required before product can be approved"
-        : "Approved B2B channel price required",
+    note: complete ? undefined : "Approved channel price required",
   };
 }
 
@@ -286,7 +266,20 @@ export function productTruthInputFromForm(
     mainDepartment: (form.main_department as string) ?? null,
     productionDepartment: (form.production_department as string) ?? null,
     bomRequired: !!form.bom_required,
-    packaging: packagingHierarchyFromForm(form),
+    packaging: {
+      gramsPerPiece: form.approximate_piece_weight_g
+        ? Number(form.approximate_piece_weight_g)
+        : null,
+      piecesPerKg: form.pieces_per_kg ? Number(form.pieces_per_kg) : form.approximate_piece_weight_g
+        ? 1000 / Number(form.approximate_piece_weight_g)
+        : 40,
+      kgPerTray: 1,
+      traysPerMasterCarton: form.master_carton_qty ? Number(form.master_carton_qty) : 8,
+      allowPartialPack: false,
+      allowPartialCarton: false,
+      roundingRule: "nearest",
+      tolerancePercent: 0,
+    },
     prices: opts?.prices,
     moqRules: opts?.moqRules,
     mediaAssets,

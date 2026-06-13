@@ -600,7 +600,6 @@ const ProductEdit = () => {
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);
   const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
-  const [channelPricingRows, setChannelPricingRows] = useState<PricingRuleRow[]>([]);
   const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
@@ -713,7 +712,6 @@ const ProductEdit = () => {
       console.error("[ProductEdit] moq rules load failed:", moqRes.error.message);
     }
     setChannelPrices(mapPricingRules((pricingRes.data ?? []) as PricingRuleRow[]));
-    setChannelPricingRows((pricingRes.data ?? []) as PricingRuleRow[]);
     setChannelMoqRules(mapMoqRules((moqRes.data ?? []) as MoqRuleRow[]));
   };
 
@@ -1978,7 +1976,6 @@ const ProductEdit = () => {
                   productMediaRows={productMediaRows}
                   prices={channelPrices}
                   moqRules={channelMoqRules}
-                  pricingRows={channelPricingRows}
                   onOpenAliasManager={() => {
                     setTab("identity");
                     requestAnimationFrame(() => {

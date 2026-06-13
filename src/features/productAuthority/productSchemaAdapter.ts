@@ -405,7 +405,15 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     if (raw[k] === "") raw[k] = null;
   });
 
-  return stripUnknownProductFields(raw).payload;
+  const { payload, stripped } = stripUnknownProductFields(raw);
+  const pricingLeaks = findPricingLeaksInProductPayload(payload);
+  if (pricingLeaks.length > 0) {
+    for (const key of pricingLeaks) {
+      delete payload[key];
+      stripped.push(key);
+    }
+  }
+  return payload;
 }
 
 /** DB row → UI form (reads Studio + Central legacy column names). */
