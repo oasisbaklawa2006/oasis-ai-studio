@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,7 +24,13 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
-import { ProductTruthAdminSection } from "@/features/productTruth/ProductTruthAdminSection";
+import { ProductTruthTabSkeleton } from "@/features/productTruth/ProductTruthTabSkeleton";
+
+const ProductTruthAdminSection = lazy(() =>
+  import("@/features/productTruth/ProductTruthAdminSection").then((m) => ({
+    default: m.ProductTruthAdminSection,
+  })),
+);
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import {
   stripUnapprovedComplianceFields,
@@ -1271,7 +1277,12 @@ const ProductEdit = () => {
 
       <div className="grid lg:grid-cols-3 gap-6 min-w-0">
         <div className="lg:col-span-2 space-y-6 min-w-0">
-          <Tabs value={tab} onValueChange={setTab}>
+          <Tabs
+            value={tab}
+            onValueChange={(value) => {
+              startTransition(() => setTab(value));
+            }}
+          >
             <div className="-mx-3 sm:mx-0 overflow-x-auto border-b border-border/60 mb-4">
               <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 bg-transparent px-3 sm:px-0 py-0">
                 <TabsTrigger value="identity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
@@ -1969,22 +1980,24 @@ const ProductEdit = () => {
 
             {!isNew && (
               <TabsContent value="product_truth" className="space-y-6">
-                <ProductTruthAdminSection
-                  form={form}
-                  productId={id}
-                  productName={form.product_name ?? ""}
-                  productMediaRows={productMediaRows}
-                  prices={channelPrices}
-                  moqRules={channelMoqRules}
-                  onOpenAliasManager={() => {
-                    setTab("identity");
-                    requestAnimationFrame(() => {
-                      document.getElementById("product-language-terms")?.scrollIntoView({ behavior: "smooth" });
-                    });
-                  }}
-                  complianceApproved={complianceApproved}
-                  complianceMetaPending={complianceMetaPending}
-                />
+                <Suspense fallback={<ProductTruthTabSkeleton />}>
+                  <ProductTruthAdminSection
+                    form={form}
+                    productId={id}
+                    productName={form.product_name ?? ""}
+                    productMediaRows={productMediaRows}
+                    prices={channelPrices}
+                    moqRules={channelMoqRules}
+                    onOpenAliasManager={() => {
+                      startTransition(() => setTab("identity"));
+                      requestAnimationFrame(() => {
+                        document.getElementById("product-language-terms")?.scrollIntoView({ behavior: "smooth" });
+                      });
+                    }}
+                    complianceApproved={complianceApproved}
+                    complianceMetaPending={complianceMetaPending}
+                  />
+                </Suspense>
               </TabsContent>
             )}
           </Tabs>
