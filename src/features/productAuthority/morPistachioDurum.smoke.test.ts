@@ -71,7 +71,7 @@ describe("Mor Pistachio Durum smoke contract", () => {
     expect(mapped.find((p) => p.channel === "b2b")?.sellingPrice).toBe(2800);
   });
 
-  it("hero upload shows draft pending approval in media readiness", () => {
+  it("hero upload shows draft pending approval in media readiness for contributor raw rows", () => {
     const form = { category: "Baklawa", subcategory: "Durum", sku: MOR_SKU };
     const mediaRows = [
       { type: "hero_image", file_url: "https://cdn/hero.jpg", status: "raw" },

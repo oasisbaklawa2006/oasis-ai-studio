@@ -39,7 +39,19 @@ describe("mediaAssetsFromProductMedia", () => {
     );
   });
 
-  it("merges product_media over form hero for the same slot", () => {
+  it("prefers higher-readiness asset when form and DB disagree", () => {
+    const assets = mediaAssetsFromSources({
+      form: { hero_image_url: "https://form/hero.jpg", media_status: "approved" },
+      productMediaRows: [
+        { type: "hero_image", file_url: "https://db/hero.jpg", status: "raw" },
+      ],
+    });
+    const primary = assets.find((a) => a.type === "primary_image");
+    expect(primary?.url).toBe("https://form/hero.jpg");
+    expect(primary?.status).toBe("approved");
+  });
+
+  it("merges product_media over form hero for the same slot when readiness matches", () => {
     const assets = mediaAssetsFromSources({
       form: { hero_image_url: "https://form/hero.jpg" },
       productMediaRows: [
@@ -48,6 +60,15 @@ describe("mediaAssetsFromProductMedia", () => {
     });
     const primary = assets.find((a) => a.type === "primary_image");
     expect(primary?.url).toBe("https://db/hero.jpg");
+    expect(primary?.status).toBe("approved");
+  });
+
+  it("treats hero URL as approved when products.media_status is missing", () => {
+    const assets = mediaAssetsFromSources({
+      form: { hero_image_url: "https://cdn/hero.jpg", media_status: "missing" },
+      productMediaRows: [],
+    });
+    const primary = assets.find((a) => a.type === "primary_image");
     expect(primary?.status).toBe("approved");
   });
 });

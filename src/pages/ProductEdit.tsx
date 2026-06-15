@@ -1642,8 +1642,13 @@ const ProductEdit = () => {
                     set("hero_image_url", url);
                     set("image_url", url);
                   }}
-                  onMediaChange={() => {
+                  onMediaChange={(opts) => {
                     if (id) void loadProductMedia(id);
+                    if (opts?.synced) {
+                      setForm((f: any) =>
+                        f.media_status === "approved" ? f : { ...f, media_status: "approved" },
+                      );
+                    }
                   }}
                 />
 

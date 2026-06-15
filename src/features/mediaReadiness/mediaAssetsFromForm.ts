@@ -79,10 +79,15 @@ export function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[]
 
   const heroUrl = resolveProductHeroUrl(form);
   if (heroUrl) {
+    // Hero on the product row counts as approved unless explicitly pending/rejected.
+    const heroStatus: MediaAsset["status"] =
+      globalStatus === "pending_approval" || globalStatus === "rejected"
+        ? globalStatus
+        : "approved";
     assets.push({
       type: "primary_image",
       url: heroUrl,
-      status: globalStatus === "approved" ? "approved" : globalStatus,
+      status: heroStatus,
       source: "manual",
     });
   }
@@ -154,6 +159,13 @@ const MEDIA_ASSET_TYPE_SAFE = (t: string): MediaAssetType | null => {
   return allowed.includes(key) ? key : null;
 };
 
+function assetReadinessRank(status: MediaAsset["status"]): number {
+  if (status === "approved") return 3;
+  if (status === "pending_approval") return 2;
+  if (status === "draft") return 1;
+  return 0;
+}
+
 function dedupeByType(assets: MediaAsset[]): MediaAsset[] {
   const map = new Map<MediaAssetType, MediaAsset>();
   for (const a of assets) {
@@ -162,9 +174,12 @@ function dedupeByType(assets: MediaAsset[]): MediaAsset[] {
       map.set(a.type, a);
       continue;
     }
-    if (a.status === "approved" && existing.status !== "approved") {
+    const rankA = assetReadinessRank(a.status);
+    const rankExisting = assetReadinessRank(existing.status);
+    if (rankA > rankExisting) {
       map.set(a.type, a);
-    } else if (existing.status !== "approved") {
+    } else if (rankA === rankExisting) {
+      // Same readiness — later source (typically DB) wins when URLs differ.
       map.set(a.type, a);
     }
   }

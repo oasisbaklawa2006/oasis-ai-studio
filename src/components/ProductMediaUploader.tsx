@@ -34,6 +34,7 @@ import {
   mediaTypeLabel,
 } from "@/features/productAuthority/productMediaPersistence";
 import { heroUrlWritePayload } from "@/lib/productImage";
+import { withTimeout } from "@/lib/supabase/withTimeout";
 import type { Role } from "@/lib/permissions";
 
 const MEDIA_TYPES = [
@@ -59,7 +60,8 @@ interface Props {
   productSku?: string | null;
   currentHero?: string | null;
   onHeroChange?: (url: string | null) => void;
-  onMediaChange?: () => void;
+  /** Called after gallery reload; `synced` true when direct master media was committed. */
+  onMediaChange?: (opts?: { synced?: boolean }) => void;
 }
 
 const isPdfPage = (url?: string | null) => !!url && url.includes("/_pdf_pages/");
@@ -78,6 +80,7 @@ export function ProductMediaUploader({
   const { writeMode, canMutate } = useCatalogueMediaWriteMode(roles as Role[]);
   const [media, setMedia] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [type, setType] = useState<MediaType>("raw_photo");
   const [urlInput, setUrlInput] = useState("");
   const [pendingNotices, setPendingNotices] = useState<string[]>([]);
@@ -88,15 +91,25 @@ export function ProductMediaUploader({
   const replaceCamRef = useRef<HTMLInputElement>(null);
 
   const storageFolder = productSku || productId;
+  const busy = uploading || !!deletingId;
+  const directMasterWrite = writeMode === "direct";
+
+  const notifyMediaChange = (synced = false) => {
+    onMediaChange?.({ synced: synced && directMasterWrite });
+  };
 
   const load = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("product_media")
       .select("*")
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     setMedia(data ?? []);
-    onMediaChange?.();
+    notifyMediaChange();
   };
 
   useEffect(() => {
@@ -142,13 +155,15 @@ export function ProductMediaUploader({
     status: string,
     asHero = false,
   ): Promise<boolean> => {
+    const persistedStatus =
+      directMasterWrite || asHero || status === "approved" ? "approved" : status;
     const insertRes = await insertProductMediaRow({
       product_id: productId,
       file_url: url,
       type: mediaType,
       angle: type.includes("angle") || type === "closeup" ? type : null,
       alt_text: file.name,
-      status: asHero ? "approved" : status,
+      status: persistedStatus,
     });
     if (!insertRes.ok) {
       toast.error(insertRes.message);
@@ -170,7 +185,7 @@ export function ProductMediaUploader({
     }
     const url = getMediaPublicUrl(path);
     const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
-    const saved = await persistMediaRow(file, url, mediaType, asHero ? "approved" : "raw", asHero);
+    const saved = await persistMediaRow(file, url, mediaType, "raw", asHero);
     if (!saved) return null;
     return url;
   };
@@ -256,6 +271,7 @@ export function ProductMediaUploader({
       }
       toast.success(`${files.length} file(s) uploaded`);
       await load();
+      notifyMediaChange(true);
       if (!isVideo && (!currentHero || isPdfPage(currentHero)) && lastUrl) {
         await setAsHeroDirect(lastUrl);
       }
@@ -301,12 +317,28 @@ export function ProductMediaUploader({
   };
 
   const setAsHeroDirect = async (url: string) => {
-    const { error } = await supabase
-      .from("products")
-      .update(heroUrlWritePayload(url))
-      .eq("id", productId);
+    const { error } = await withTimeout(
+      supabase.from("products").update({
+        ...heroUrlWritePayload(url),
+        media_status: "approved",
+      }).eq("id", productId),
+      15000,
+      "Set hero image",
+    );
     if (error) return toast.error(error.message);
+
+    await withTimeout(
+      supabase
+        .from("product_media")
+        .update({ status: "approved", type: "hero_image" })
+        .eq("product_id", productId)
+        .eq("file_url", url),
+      15000,
+      "Approve hero media row",
+    ).catch(() => undefined);
+
     onHeroChange?.(url);
+    notifyMediaChange(true);
   };
 
   const setAsHero = async (m: any) => {
@@ -381,7 +413,7 @@ export function ProductMediaUploader({
   };
 
   const remove = async (m: any) => {
-    if (!canMutate || uploading) return;
+    if (!canMutate || busy) return;
     if (!confirm("Delete this photo permanently?")) return;
 
     if (writeMode === "draft") {
@@ -412,14 +444,40 @@ export function ProductMediaUploader({
       return;
     }
 
-    const { error } = await supabase.from("product_media").delete().eq("id", m.id);
-    if (error) return toast.error(error.message);
-    if (m.file_url === currentHero) {
-      await supabase.from("products").update(heroUrlWritePayload(null)).eq("id", productId);
-      onHeroChange?.(null);
+    const previous = media;
+    setDeletingId(m.id);
+    setMedia((rows) => rows.filter((row) => row.id !== m.id));
+
+    try {
+      const { error } = await withTimeout(
+        supabase.from("product_media").delete().eq("id", m.id),
+        15000,
+        "Delete media row",
+      );
+      if (error) throw new Error(error.message);
+
+      if (m.file_url === currentHero) {
+        const { error: heroErr } = await withTimeout(
+          supabase
+            .from("products")
+            .update({ ...heroUrlWritePayload(null), media_status: "missing" })
+            .eq("id", productId),
+          15000,
+          "Clear hero image",
+        );
+        if (heroErr) throw new Error(heroErr.message);
+        onHeroChange?.(null);
+      }
+
+      toast.success("Photo deleted");
+      await load();
+      notifyMediaChange(true);
+    } catch (err) {
+      setMedia(previous);
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
     }
-    toast.success("Photo deleted");
-    await load();
   };
 
   const normalizeImageUrl = (raw: string): { url: string; warning?: string } => {
@@ -498,22 +556,22 @@ export function ProductMediaUploader({
       return;
     }
 
-    const { error } = await insertProductMediaRow({
+    const insertRes = await insertProductMediaRow({
       product_id: productId,
       file_url: url,
       type,
-      status: "raw",
+      status: directMasterWrite ? "approved" : "raw",
       alt_text: "url_import",
-    }).then((res) => (res.ok ? { error: null } : { error: res.error }));
-
-    if (error) {
-      if (import.meta.env.DEV) console.error("[media-url-add]", error, url);
-      return toast.error(formatMediaInsertError(error));
+    });
+    if (!insertRes.ok) {
+      if (import.meta.env.DEV) console.error("[media-url-add]", insertRes.error, url);
+      return toast.error(insertRes.message);
     }
     setUrlInput("");
     if (!currentHero || isPdfPage(currentHero)) await setAsHeroDirect(url);
     toast.success("Image added from URL");
     await load();
+    notifyMediaChange(true);
   };
 
   const heroIsPdf = isPdfPage(currentHero);
@@ -762,7 +820,7 @@ export function ProductMediaUploader({
                     {m.type !== "video" && !isHero && (
                       <button
                         type="button"
-                        disabled={uploading}
+                        disabled={busy || deletingId === m.id}
                         onClick={() => setAsHero(m)}
                         className="bg-background/90 hover:bg-background rounded p-1.5 disabled:opacity-50"
                         title="Set as hero"
@@ -773,7 +831,7 @@ export function ProductMediaUploader({
                     {isHero && (
                       <button
                         type="button"
-                        disabled={uploading}
+                        disabled={busy}
                         onClick={removeAsHero}
                         className="bg-background/90 hover:bg-background rounded p-1.5 disabled:opacity-50"
                         title="Remove as hero"
@@ -783,7 +841,7 @@ export function ProductMediaUploader({
                     )}
                     <button
                       type="button"
-                      disabled={uploading}
+                      disabled={busy || deletingId === m.id}
                       onClick={() => remove(m)}
                       className="bg-background/90 hover:bg-destructive hover:text-destructive-foreground rounded p-1.5 disabled:opacity-50"
                       title="Delete"
