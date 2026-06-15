@@ -46,6 +46,7 @@ type Props = {
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
   productMediaRows?: ProductMediaRow[];
+  languageTermsRefreshKey?: number;
 };
 
 type TruthBundle = {
@@ -63,6 +64,7 @@ export function ProductTruthAdminSection({
   prices = [],
   moqRules = [],
   productMediaRows = [],
+  languageTermsRefreshKey = 0,
 }: Props) {
   const [subTab, setSubTab] = useState("readiness");
   const [truthBundle, setTruthBundle] = useState<TruthBundle | null>(null);
@@ -168,6 +170,7 @@ export function ProductTruthAdminSection({
               productId={productId}
               productName={resolvedProductName}
               onOpenAliasManager={onOpenAliasManager}
+              refreshKey={languageTermsRefreshKey}
             />
           </Suspense>
         )}

@@ -39,6 +39,23 @@ import {
   type ComplianceFieldMetaMap,
 } from "@/lib/compliance/aiComplianceSafety";
 import { createManualFieldMeta, canApproveComplianceFields } from "@/shared/ai/complianceApproval";
+import {
+  buildComplianceMetaFromSavedProduct,
+  isPersistedComplianceApproved,
+} from "@/shared/ai/compliancePersistence";
+import {
+  repairDirectMasterMediaRows,
+  syncProductMediaAuthority,
+} from "@/features/mediaReadiness/mediaAuthorityContract";
+import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
+import {
+  mergeDraftOverAuthorityForm,
+  stripAuthorityFieldsFromDraft,
+} from "@/lib/formDraftAuthority";
+import {
+  repairDirectMasterPricingRows,
+  syncChannelPricingFromForm,
+} from "@/features/productAuthority/syncChannelPricingFromForm";
 import { ComplianceAiPanel, trackManualComplianceEdit } from "@/features/compliance/ComplianceAiPanel";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import {
@@ -593,6 +610,7 @@ const ProductEdit = () => {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [rpcContributorRole, setRpcContributorRole] = useState(false);
+  const [languageTermsRefreshKey, setLanguageTermsRefreshKey] = useState(0);
 
   const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
   const [tab, setTab] = useState<string>(() => {
@@ -605,6 +623,8 @@ const ProductEdit = () => {
 
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);
+  const [pricingRuleRows, setPricingRuleRows] = useState<PricingRuleRow[]>([]);
+  const [moqRuleRows, setMoqRuleRows] = useState<MoqRuleRow[]>([]);
   const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
   const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
   const [dirty, setDirty] = useState(false);
@@ -634,14 +654,10 @@ const ProductEdit = () => {
     [complianceMetaMap],
   );
 
-  const complianceApproved = useMemo(() => {
-    if (complianceMetaPending) return false;
-    return COMPLIANCE_SENSITIVE_FIELDS.every((field) => {
-      const meta = complianceMetaMap[field];
-      if (!meta) return true;
-      return !!meta.approved;
-    });
-  }, [complianceMetaMap, complianceMetaPending]);
+  const complianceApproved = useMemo(
+    () => isPersistedComplianceApproved(complianceMetaMap, complianceMetaPending),
+    [complianceMetaMap, complianceMetaPending],
+  );
 
   const primaryPackPreview = getPrimaryPackPreview(form);
 
@@ -691,6 +707,50 @@ const ProductEdit = () => {
     } catch {}
   }, [tab, tabKey]);
 
+  const readinessSnapshot = useMemo(() => {
+    if (isNew || !id) return null;
+    return buildProductReadinessSnapshot(
+      { ...form, id },
+      {
+        productMediaRows,
+        pricingRows: pricingRuleRows,
+        moqRows: moqRuleRows,
+      },
+      { complianceApproved, complianceMetaPending },
+    );
+  }, [
+    isNew,
+    id,
+    form,
+    productMediaRows,
+    pricingRuleRows,
+    moqRuleRows,
+    channelMoqRules,
+    complianceApproved,
+    complianceMetaPending,
+  ]);
+
+  const applyMediaAuthority = async (productId: string, rows: ProductMediaRow[]) => {
+    let authoritative = rows;
+    if (await canWriteProductsDirectly(roles)) {
+      authoritative = await repairDirectMasterMediaRows(productId, rows);
+      try {
+        const synced = await syncProductMediaAuthority(productId, authoritative);
+        setForm((f: Record<string, unknown>) => ({
+          ...f,
+          media_status: synced.media_status,
+          hero_image_url: synced.hero_image_url,
+          image_url: synced.hero_image_url,
+        }));
+      } catch (err) {
+        if (import.meta.env.DEV) {
+          console.warn("[ProductEdit] media authority sync failed:", err);
+        }
+      }
+    }
+    setProductMediaRows(authoritative);
+  };
+
   const loadProductMedia = async (productId: string) => {
     const { data, error } = await supabase
       .from("product_media")
@@ -703,7 +763,7 @@ const ProductEdit = () => {
       }
       return;
     }
-    setProductMediaRows(data ?? []);
+    await applyMediaAuthority(productId, data ?? []);
   };
 
   const loadChannelAuthority = async (productId: string) => {
@@ -718,7 +778,21 @@ const ProductEdit = () => {
       console.error("[ProductEdit] moq rules load failed:", moqRes.error.message);
     }
     setChannelPrices(mapPricingRules((pricingRes.data ?? []) as PricingRuleRow[]));
+    setPricingRuleRows((pricingRes.data ?? []) as PricingRuleRow[]);
     setChannelMoqRules(mapMoqRules((moqRes.data ?? []) as MoqRuleRow[]));
+    setMoqRuleRows((moqRes.data ?? []) as MoqRuleRow[]);
+    if (await canWriteProductsDirectly(roles)) {
+      const repair = await repairDirectMasterPricingRows(productId);
+      if (repair.repaired > 0) {
+        const { data: refreshed } = await supabase
+          .from("product_pricing_rules")
+          .select("*")
+          .eq("product_id", productId);
+        const rows = (refreshed ?? []) as PricingRuleRow[];
+        setPricingRuleRows(rows);
+        setChannelPrices(mapPricingRules(rows));
+      }
+    }
   };
 
   const reloadProductAuthority = async (productId: string) => {
@@ -741,10 +815,10 @@ const ProductEdit = () => {
 
         if (data) {
           const loaded = dbProductToForm(data);
-          setForm(loaded);
           complianceBaselineRef.current = pickComplianceBaseline(loaded);
-          setComplianceMetaMap({});
+          setComplianceMetaMap(buildComplianceMetaFromSavedProduct(loaded));
           setLoadedId(id);
+          setForm(loaded);
           void reloadProductAuthority(id);
         }
       });
@@ -768,7 +842,8 @@ const ProductEdit = () => {
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
-        setForm((f: any) => ({ ...f, ...JSON.parse(raw) }));
+        const draft = JSON.parse(raw) as Record<string, unknown>;
+        setForm((f: Record<string, unknown>) => mergeDraftOverAuthorityForm(f, draft));
       }
     } catch {}
 
@@ -779,7 +854,7 @@ const ProductEdit = () => {
     if (!restored.current) return;
 
     try {
-      localStorage.setItem(draftKey, JSON.stringify(form));
+      localStorage.setItem(draftKey, JSON.stringify(stripAuthorityFieldsFromDraft(form)));
     } catch {}
   }, [draftKey, form]);
 
@@ -1036,6 +1111,18 @@ const ProductEdit = () => {
         toast.error(message);
         return;
       }
+
+      const savedId = res.data.id as string;
+      const pricingSync = await syncChannelPricingFromForm(safePayload, savedId, "direct");
+      if (!pricingSync.ok && pricingSync.message) {
+        toast.warning(`Product saved; channel pricing sync failed: ${pricingSync.message}`);
+      } else if (pricingSync.count > 0) {
+        await loadChannelAuthority(savedId);
+      }
+
+      const reloaded = dbProductToForm(res.data);
+      complianceBaselineRef.current = pickComplianceBaseline(reloaded);
+      setComplianceMetaMap(buildComplianceMetaFromSavedProduct(reloaded));
 
       try {
         localStorage.removeItem(draftKey);
@@ -1402,6 +1489,7 @@ const ProductEdit = () => {
                   id="product-language-terms"
                   productId={id!}
                   productName={form.product_name ?? ""}
+                  onAliasesChange={() => setLanguageTermsRefreshKey((n) => n + 1)}
                 />
               )}
             </TabsContent>
@@ -1982,12 +2070,13 @@ const ProductEdit = () => {
               <TabsContent value="product_truth" className="space-y-6">
                 <Suspense fallback={<ProductTruthTabSkeleton />}>
                   <ProductTruthAdminSection
-                    form={form}
+                    form={readinessSnapshot?.authorityForm ?? form}
                     productId={id}
                     productName={form.product_name ?? ""}
                     productMediaRows={productMediaRows}
                     prices={channelPrices}
                     moqRules={channelMoqRules}
+                    languageTermsRefreshKey={languageTermsRefreshKey}
                     onOpenAliasManager={() => {
                       startTransition(() => setTab("identity"));
                       requestAnimationFrame(() => {
@@ -2017,10 +2106,26 @@ const ProductEdit = () => {
               <Switch checked={!!form.is_catalogue_ready} onCheckedChange={(v) => set("is_catalogue_ready", v)} />
             </div>
 
-            <div className="text-xs text-muted-foreground border-t pt-3">
-              Label status: <span className="font-medium text-foreground">{form.label_status ?? "draft"}</span>
-              <br />
-              Media status: <span className="font-medium text-foreground">{form.media_status ?? "missing"}</span>
+            <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
+              <div>
+                Label status:{" "}
+                <span className="font-medium text-foreground">{form.label_status ?? "draft"}</span>
+              </div>
+              <div>
+                Media status (from product_media):{" "}
+                <span className="font-medium text-foreground">
+                  {readinessSnapshot?.derivedMediaStatus ?? form.media_status ?? "missing"}
+                </span>
+              </div>
+              {readinessSnapshot && (
+                <div>
+                  Product Truth:{" "}
+                  <span className="font-medium text-foreground">
+                    {readinessSnapshot.readiness.score}/{readinessSnapshot.readiness.maxScore}
+                    {readinessSnapshot.readiness.readyForCentralSync ? " · ready" : ""}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 

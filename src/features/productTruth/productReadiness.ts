@@ -9,10 +9,14 @@ import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { validateConversionRuleChain } from "./uomPackagingEngine";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import {
-  mediaAssetsFromSources,
+  authoritativeMediaAssets,
+  deriveMediaStatusFromRows,
+} from "@/features/mediaReadiness/mediaAuthorityContract";
+import {
   productMediaContextFromForm,
   type ProductMediaRow,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import type { MediaAsset } from "@/features/mediaReadiness/types";
 
 export type ProductReadinessResult = {
   score: number;
@@ -51,13 +55,14 @@ function evalContent(input: ProductTruthInput): DimensionStatus {
 
 function evalMedia(input: ProductTruthInput): DimensionStatus {
   const assets = input.mediaAssets ?? [];
+  const ctx =
+    input.mediaContext ??
+    ({
+      productName: input.productName,
+      isLegacy: input.isLegacy,
+    } as import("@/features/mediaReadiness/types").ProductMediaContext);
+
   if (assets.length > 0) {
-    const ctx =
-      input.mediaContext ??
-      ({
-        productName: input.productName,
-        isLegacy: input.isLegacy,
-      } as import("@/features/mediaReadiness/types").ProductMediaContext);
     const mr = evaluateMediaReadiness(ctx, assets);
     const pending = assets.some(
       (a) => a.url && (a.status === "pending_approval" || a.status === "draft"),
@@ -65,19 +70,19 @@ function evalMedia(input: ProductTruthInput): DimensionStatus {
     const complete = mr.canPublishMedia;
     return {
       dimension: "media_status",
-      badge: badgeFor(complete, { pending, legacy: input.isLegacy && !complete }),
+      badge: badgeFor(complete, { pending, approved: complete, legacy: input.isLegacy && !complete }),
       complete,
       note: complete ? undefined : mr.blockers[0] ?? "Required media missing or not approved",
     };
   }
 
-  const complete = !!(input.heroImageUrl || input.mediaStatus === "approved");
+  const complete = input.mediaStatus === "approved";
   const pending = input.mediaStatus === "pending_approval";
   return {
     dimension: "media_status",
     badge: badgeFor(complete, { pending, legacy: input.isLegacy }),
     complete,
-    note: complete ? undefined : "Hero image or approved media required",
+    note: complete ? undefined : "Approved product_media rows required for catalogue slots",
   };
 }
 
@@ -241,12 +246,17 @@ export function productTruthInputFromForm(
     prices?: ProductTruthInput["prices"];
     moqRules?: ProductTruthInput["moqRules"];
     productMediaRows?: ProductMediaRow[];
+    /** Pre-computed authority assets (from buildProductReadinessSnapshot). */
+    mediaAssets?: MediaAsset[];
+    derivedMediaStatus?: string;
   },
 ): ProductTruthInput {
-  const mediaAssets = mediaAssetsFromSources({
-    form,
-    productMediaRows: opts?.productMediaRows,
-  });
+  const mediaRows = opts?.productMediaRows ?? [];
+  const mediaAssets =
+    opts?.mediaAssets ?? authoritativeMediaAssets(mediaRows, form);
+  const derivedStatus =
+    opts?.derivedMediaStatus ??
+    (mediaRows.length > 0 ? deriveMediaStatusFromRows(mediaRows) : null);
   const mediaContext = productMediaContextFromForm(form);
 
   return {
@@ -254,7 +264,7 @@ export function productTruthInputFromForm(
     productName: (form.product_name as string) ?? null,
     isLegacy: opts?.isLegacy ?? !form.sku,
     heroImageUrl: (form.hero_image_url as string) ?? null,
-    mediaStatus: (form.media_status as string) ?? null,
+    mediaStatus: derivedStatus ?? (form.media_status as string) ?? null,
     hsnCode: (form.hsn_code as string) ?? null,
     gstRate: (form.gst_rate as string | number) ?? null,
     ingredients: (form.ingredients as string) ?? null,

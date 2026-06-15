@@ -67,6 +67,53 @@ function toNum(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+const RETAIL_LIKE_CHANNELS = new Set([
+  "retail",
+  "mrp",
+  "own_outlet",
+  "modern_trade",
+  "promotional",
+  "b2c",
+]);
+
+const B2B_LIKE_CHANNELS = new Set([
+  "b2b",
+  "bulk",
+  "wholesale",
+  "horeca",
+  "distributor",
+  "export",
+  "private_label",
+  "corporate_gifting",
+  "special_customer",
+  "franchisee",
+]);
+
+/** Derive per-channel UOM label from product UOM tab fields. */
+export function resolveChannelUom(
+  channel: string,
+  product: Record<string, unknown>,
+): string | null {
+  const ch = String(channel ?? "").toLowerCase();
+  if (RETAIL_LIKE_CHANNELS.has(ch)) {
+    return (
+      (product.retail_uom as string | null | undefined) ??
+      (product.retail_price_basis as string | null | undefined) ??
+      (product.primary_uom as string | null | undefined) ??
+      null
+    );
+  }
+  if (B2B_LIKE_CHANNELS.has(ch)) {
+    return (
+      (product.b2b_uom as string | null | undefined) ??
+      (product.b2b_price_basis as string | null | undefined) ??
+      (product.primary_uom as string | null | undefined) ??
+      null
+    );
+  }
+  return (product.primary_uom as string | null | undefined) ?? null;
+}
+
 /** True when a form/payload key is a channel price basis field. */
 export function isPriceBasisFormField(key: string): boolean {
   if (key === "price_basis") return true;
@@ -94,14 +141,10 @@ export function isProductsPricingOrBasisField(key: string): boolean {
 export function extractChannelPricingFromForm(
   form: Record<string, unknown>,
   productId: string,
+  writeMode: "direct" | "draft" = "draft",
 ): ProductPricingRuleInsert[] {
   const currency = String(form.currency ?? "INR");
-  const uom =
-    (form.retail_uom as string | null | undefined) ??
-    (form.primary_uom as string | null | undefined) ??
-    (form.b2b_uom as string | null | undefined) ??
-    null;
-
+  const approval_status = writeMode === "direct" ? "approved" : "draft";
   const byChannel = new Map<string, ProductPricingRuleInsert>();
 
   for (const field of CHANNEL_PRICING_FORM_FIELD_KEYS) {
@@ -115,8 +158,8 @@ export function extractChannelPricingFromForm(
       base_price: price,
       calculated_price: price,
       currency,
-      uom,
-      approval_status: "draft",
+      uom: resolveChannelUom(channel, form),
+      approval_status,
       source: "catalogue_local",
     });
   }

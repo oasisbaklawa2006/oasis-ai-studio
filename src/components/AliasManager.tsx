@@ -65,9 +65,10 @@ interface Props {
   productId: string;
   productName: string;
   id?: string;
+  onAliasesChange?: () => void;
 }
 
-export function AliasManager({ productId, productName, id: sectionId }: Props) {
+export function AliasManager({ productId, productName, id: sectionId, onAliasesChange }: Props) {
   const { roles } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [activeTermType, setActiveTermType] = useState<ProductLanguageTermType>("official_alias");
@@ -100,6 +101,7 @@ export function AliasManager({ productId, productName, id: sectionId }: Props) {
     const merged = [...(linked.data ?? []), ...(legacy.data ?? [])];
     const seen = new Set<string>();
     setItems(merged.filter((row) => (seen.has(row.id) ? false : (seen.add(row.id), true))));
+    onAliasesChange?.();
   };
 
   useEffect(() => {

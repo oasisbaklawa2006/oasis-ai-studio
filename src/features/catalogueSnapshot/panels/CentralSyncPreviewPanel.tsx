@@ -18,6 +18,9 @@ import {
   listSyncPreviewEvents,
   previewCentralSync,
 } from "../centralSyncPreviewService";
+import { LIVE_CENTRAL_WRITE_ENABLED } from "../centralSyncPayload";
+import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
+import { isLocalCatalogueFallbackWriteEnabled } from "@/lib/catalogueAuthority/localStoragePolicy";
 import { validateSnapshotGate } from "../snapshotValidation";
 import type { CatalogueSyncEventRow, CatalogueVersionRow, CentralSyncPreviewBundle } from "../types";
 import { isImmutableVersion } from "../catalogueVersionStore";
@@ -65,9 +68,10 @@ export function CentralSyncPreviewPanel({
   const validation = useMemo(
     () =>
       validateSnapshotGate(readiness, {
-        complianceManuallyApproved: complianceApproved && !complianceMetaPending,
+        complianceManuallyApproved:
+          deriveComplianceApprovedForReadiness(form) && !complianceMetaPending,
       }),
-    [readiness, complianceApproved, complianceMetaPending],
+    [readiness, form, complianceMetaPending],
   );
 
   const headVersion = versions[0] ?? null;
@@ -85,7 +89,24 @@ export function CentralSyncPreviewPanel({
     void refresh();
   }, [refresh]);
 
+  const persistenceSource = getVersionsPersistenceSource(productId);
+  const versionsLoadFailure = getVersionsLoadFailure(productId);
+  const versionsInfraReady =
+    persistenceSource === "supabase" || persistenceSource === "local_only";
+  const previewBlocked = !versionsInfraReady;
+  const previewBlockMessage = previewBlocked
+    ? versionsLoadFailure
+      ? formatSupabaseDiagnostic(versionsLoadFailure, "Catalogue versions query failed")
+      : !isLocalCatalogueFallbackWriteEnabled()
+        ? "Catalogue versions table is not deployed on this Supabase project. Central Sync preview is disabled until migration 20260602140000_catalogue_versions_and_sync_events.sql is applied."
+        : "Catalogue versions are unavailable."
+    : null;
+
   const runPreview = async () => {
+    if (previewBlocked) {
+      toast.error(previewBlockMessage ?? "Central Sync preview is unavailable.");
+      return;
+    }
     setLoading(true);
     try {
       const result = await previewCentralSync({
@@ -108,6 +129,10 @@ export function CentralSyncPreviewPanel({
   };
 
   const runApprovePreview = async () => {
+    if (previewBlocked) {
+      toast.error(previewBlockMessage ?? "Central Sync preview is unavailable.");
+      return;
+    }
     setLoading(true);
     try {
       const result = await approveAndPreviewCentralSync({
@@ -150,12 +175,15 @@ export function CentralSyncPreviewPanel({
     URL.revokeObjectURL(url);
   };
 
-  const persistenceSource = getVersionsPersistenceSource(productId);
-  const versionsLoadFailure = getVersionsLoadFailure(productId);
-
   return (
     <div className="space-y-4">
       <CentralSyncReadOnlyBanner />
+      {!LIVE_CENTRAL_WRITE_ENABLED && (
+        <p className="text-xs text-muted-foreground rounded border border-dashed p-2">
+          Outbound live write to Oasis Central is <strong>disabled by design</strong> in this build.
+          Preview/export JSON only — no webhook or production sync is attempted.
+        </p>
+      )}
       {persistenceSource === "local_only" && (
         <p className="text-xs text-orange-700 dark:text-orange-300">
           Version history is being read from browser local storage — not authoritative.
@@ -163,9 +191,8 @@ export function CentralSyncPreviewPanel({
       )}
       {persistenceSource === "supabase_unavailable" && (
         <p className="text-xs text-destructive">
-          {versionsLoadFailure
-            ? formatSupabaseDiagnostic(versionsLoadFailure, "Catalogue versions query failed")
-            : "Catalogue versions query failed. This may be caused by a missing table, RLS policy, or deployment mismatch. Supabase itself is reachable."}
+          {previewBlockMessage ??
+            "Catalogue versions query failed. This may be caused by a missing table, RLS policy, or deployment mismatch. Supabase itself is reachable."}
         </p>
       )}
 
@@ -178,11 +205,11 @@ export function CentralSyncPreviewPanel({
         </div>
         {validation.allowed && readiness.readyForCentralSync ? (
           <Badge className="bg-success/10 text-success border-success/20">
-            <CheckCircle2 className="h-3 w-3 mr-1" /> Ready for Central Sync
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Ready for Central Sync preview
           </Badge>
         ) : (
           <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-            <Lock className="h-3 w-3 mr-1" /> Blocked
+            <Lock className="h-3 w-3 mr-1" /> Preview blocked ({validation.blockers.length})
           </Badge>
         )}
       </div>
@@ -199,10 +226,21 @@ export function CentralSyncPreviewPanel({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button size="sm" variant="secondary" onClick={() => void runPreview()} disabled={loading}>
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => void runPreview()}
+          disabled={loading || previewBlocked}
+          title={previewBlocked ? previewBlockMessage ?? undefined : undefined}
+        >
           <Eye className="h-3 w-3 mr-1" /> Generate preview
         </Button>
-        <Button size="sm" onClick={() => void runApprovePreview()} disabled={loading || !validation.allowed}>
+        <Button
+          size="sm"
+          onClick={() => void runApprovePreview()}
+          disabled={loading || previewBlocked || !validation.allowed}
+          title={previewBlocked ? previewBlockMessage ?? undefined : undefined}
+        >
           Approve snapshot (preview)
         </Button>
         <Button size="sm" variant="outline" onClick={() => void copyJson()} disabled={!bundle}>
