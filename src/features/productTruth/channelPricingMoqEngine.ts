@@ -1,6 +1,27 @@
 import { convertOrderedQtyToBaseQty, normalizeUom } from "./uomPackagingEngine";
 import type { ChannelMoqRule, ChannelPriceRecord, PackagingHierarchy, ProductTruthChannel } from "./types";
 
+/** Channel name groups used when matching pricing rules to Product Truth channels. */
+const CHANNEL_EQUIVALENCE_GROUPS: string[][] = [
+  ["retail", "mrp", "own_outlet", "modern_trade", "promotional", "b2c"],
+  ["b2b", "bulk", "distributor", "private_label"],
+  ["wholesale"],
+  ["horeca"],
+  ["export"],
+  ["franchise", "franchisee"],
+  ["corporate", "corporate_gifting"],
+  ["wedding"],
+  ["internal", "internal_sales"],
+];
+
+export function channelsEquivalent(a: string, b: string): boolean {
+  const al = a.trim().toLowerCase();
+  const bl = b.trim().toLowerCase();
+  if (!al || !bl) return false;
+  if (al === bl) return true;
+  return CHANNEL_EQUIVALENCE_GROUPS.some((group) => group.includes(al) && group.includes(bl));
+}
+
 export function isPriceEffective(price: ChannelPriceRecord, at = new Date()): boolean {
   if (price.priceStatus === "archived") return false;
   const now = at.getTime();
@@ -22,7 +43,7 @@ export function getChannelPrice(
 ): ChannelPriceRecord | null {
   const normalized = channel.toLowerCase();
   const matches = prices.filter(
-    (p) => p.channel?.toLowerCase() === normalized && isPriceEffective(p, at),
+    (p) => channelsEquivalent(String(p.channel ?? ""), normalized) && isPriceEffective(p, at),
   );
   const approved = matches.filter((p) => p.priceStatus === "approved");
   const pool = approved.length ? approved : matches.filter((p) => p.priceStatus !== "archived");

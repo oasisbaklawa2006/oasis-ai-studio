@@ -23,6 +23,7 @@ type Props = {
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
   productMediaRows?: ProductMediaRow[];
+  languageTermsRefreshKey?: number;
 };
 
 export function ProductTruthAdminSection({
@@ -35,6 +36,7 @@ export function ProductTruthAdminSection({
   prices = [],
   moqRules = [],
   productMediaRows = [],
+  languageTermsRefreshKey = 0,
 }: Props) {
   const [subTab, setSubTab] = useState("readiness");
 
@@ -89,6 +91,7 @@ export function ProductTruthAdminSection({
               productId={productId}
               productName={productName || String(form.product_name ?? form.name ?? "")}
               onOpenAliasManager={onOpenAliasManager}
+              refreshKey={languageTermsRefreshKey}
             />
           </TabsContent>
         )}

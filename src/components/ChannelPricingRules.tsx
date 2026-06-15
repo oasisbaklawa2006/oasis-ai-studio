@@ -19,6 +19,8 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPricingSaveError } from "@/features/productTruth/pricingErrors";
 import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
+import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { resolveChannelUom } from "@/features/productAuthority/channelPricingMapper";
 import {
   canSubmitDraft,
   canWriteMasterDirectly,
@@ -362,6 +364,10 @@ export const ChannelPricingRules = ({
   };
 
   const applyFieldChange = (id: string, patch: Record<string, any>) => {
+    if ("price_channel" in patch && !("uom" in patch)) {
+      const derived = resolveChannelUom(String(patch.price_channel ?? ""), product ?? {});
+      if (derived) patch = { ...patch, uom: derived };
+    }
     if (writeMode === "direct") {
       void persistPatch(id, patch);
       return;
@@ -471,6 +477,8 @@ export const ChannelPricingRules = ({
       return;
     }
 
+    const defaultUom = resolveChannelUom("retail", product ?? {});
+
     if (writeMode === "draft") {
       const tempId = `local-${crypto.randomUUID()}`;
       const newRule: PricingRuleRow = {
@@ -479,6 +487,7 @@ export const ChannelPricingRules = ({
         price_channel: "retail",
         price_type: "quotation_based",
         currency: "INR",
+        uom: defaultUom,
         approval_status: "draft",
         source: "catalogue_local",
       };
@@ -495,6 +504,7 @@ export const ChannelPricingRules = ({
           price_channel: "retail",
           price_type: "quotation_based",
           currency: "INR",
+          uom: defaultUom,
           approval_status: "draft",
           source: "catalogue_local",
         },
@@ -556,6 +566,74 @@ export const ChannelPricingRules = ({
     load();
   };
 
+  const seedRetailB2bFromUom = async () => {
+    if (!canMutate || submitting) return;
+    const seeds = [
+      { channel: "retail", uom: resolveChannelUom("retail", product ?? {}) },
+      { channel: "b2b", uom: resolveChannelUom("b2b", product ?? {}) },
+    ].filter((s) => s.uom);
+
+    if (!seeds.length) {
+      toast.error("Set retail_uom / b2b_uom on the UOM tab first.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      let created = 0;
+      for (const seed of seeds) {
+        if (allDisplayRows.some((r) => normalizeText(r.price_channel) === seed.channel)) continue;
+
+        if (writeMode === "draft") {
+          const tempId = `local-${crypto.randomUUID()}`;
+          setLocalNewRows((prev) => [
+            ...prev,
+            {
+              id: tempId,
+              product_id: productId,
+              price_channel: seed.channel,
+              price_type: "quotation_based",
+              currency: "INR",
+              uom: seed.uom,
+              approval_status: "draft",
+              source: "catalogue_local",
+            },
+          ]);
+          created += 1;
+          continue;
+        }
+
+        const { error } = await supabase.from("product_pricing_rules").upsert(
+          {
+            product_id: productId,
+            price_channel: seed.channel,
+            price_type: "quotation_based",
+            currency: "INR",
+            uom: seed.uom,
+            approval_status: "draft",
+            source: "catalogue_local",
+          },
+          { onConflict: "product_id,price_channel" },
+        );
+        if (error) {
+          toast.error(formatPricingSaveError(error));
+          return;
+        }
+        created += 1;
+      }
+
+      if (created > 0) {
+        toast.success(`Seeded ${created} channel row(s) with UOM from product`);
+        await load();
+        onRulesChange?.();
+      } else {
+        toast.info("Retail and B2B pricing rows already exist.");
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="card-elevated p-6 space-y-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -574,6 +652,9 @@ export const ChannelPricingRules = ({
 
         {canMutate && (
           <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" onClick={() => void seedRetailB2bFromUom()} disabled={submitting}>
+              Seed retail/B2B UOM
+            </Button>
             <Button size="sm" onClick={add} disabled={submitting}>
               <Plus className="h-3.5 w-3.5 mr-1" />
               Add Price

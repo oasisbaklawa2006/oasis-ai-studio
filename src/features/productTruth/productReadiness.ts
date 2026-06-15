@@ -270,11 +270,13 @@ export function productTruthInputFromForm(
       gramsPerPiece: form.approximate_piece_weight_g
         ? Number(form.approximate_piece_weight_g)
         : null,
-      piecesPerKg: form.pieces_per_kg ? Number(form.pieces_per_kg) : form.approximate_piece_weight_g
-        ? 1000 / Number(form.approximate_piece_weight_g)
-        : 40,
-      kgPerTray: 1,
-      traysPerMasterCarton: form.master_carton_qty ? Number(form.master_carton_qty) : 8,
+      piecesPerKg: form.pieces_per_kg
+        ? Number(form.pieces_per_kg)
+        : form.approximate_piece_weight_g
+          ? 1000 / Number(form.approximate_piece_weight_g)
+          : null,
+      kgPerTray: form.kg_per_tray ? Number(form.kg_per_tray) : null,
+      traysPerMasterCarton: form.master_carton_qty ? Number(form.master_carton_qty) : null,
       allowPartialPack: false,
       allowPartialCarton: false,
       roundingRule: "nearest",

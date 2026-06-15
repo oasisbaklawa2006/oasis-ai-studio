@@ -33,6 +33,11 @@ import {
   type ComplianceFieldMetaMap,
 } from "@/lib/compliance/aiComplianceSafety";
 import { createManualFieldMeta, canApproveComplianceFields } from "@/shared/ai/complianceApproval";
+import {
+  buildComplianceMetaFromSavedProduct,
+  isPersistedComplianceApproved,
+} from "@/shared/ai/compliancePersistence";
+import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
 import { ComplianceAiPanel, trackManualComplianceEdit } from "@/features/compliance/ComplianceAiPanel";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import {
@@ -601,6 +606,7 @@ const ProductEdit = () => {
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);
   const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
   const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
+  const [languageTermsRefreshKey, setLanguageTermsRefreshKey] = useState(0);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
@@ -628,14 +634,10 @@ const ProductEdit = () => {
     [complianceMetaMap],
   );
 
-  const complianceApproved = useMemo(() => {
-    if (complianceMetaPending) return false;
-    return COMPLIANCE_SENSITIVE_FIELDS.every((field) => {
-      const meta = complianceMetaMap[field];
-      if (!meta) return true;
-      return !!meta.approved;
-    });
-  }, [complianceMetaMap, complianceMetaPending]);
+  const complianceApproved = useMemo(
+    () => isPersistedComplianceApproved(complianceMetaMap, complianceMetaPending),
+    [complianceMetaMap, complianceMetaPending],
+  );
 
   const primaryPackPreview = getPrimaryPackPreview(form);
 
@@ -737,7 +739,7 @@ const ProductEdit = () => {
           const loaded = dbProductToForm(data);
           setForm(loaded);
           complianceBaselineRef.current = pickComplianceBaseline(loaded);
-          setComplianceMetaMap({});
+          setComplianceMetaMap(buildComplianceMetaFromSavedProduct(loaded));
           setLoadedId(id);
           void reloadProductAuthority(id);
         }
@@ -1031,13 +1033,25 @@ const ProductEdit = () => {
         return;
       }
 
+      const savedId = res.data.id as string;
+      const pricingSync = await syncChannelPricingFromForm(safePayload, savedId);
+      if (!pricingSync.ok && pricingSync.message) {
+        toast.warning(`Product saved; channel pricing sync failed: ${pricingSync.message}`);
+      } else if (pricingSync.count > 0) {
+        await loadChannelAuthority(savedId);
+      }
+
+      const reloaded = dbProductToForm(res.data);
+      complianceBaselineRef.current = pickComplianceBaseline(reloaded);
+      setComplianceMetaMap(buildComplianceMetaFromSavedProduct(reloaded));
+
       try {
         localStorage.removeItem(draftKey);
       } catch {}
 
       setDirty(false);
       toast.success("Saved");
-      nav(`/products/${res.data.id}`);
+      nav(`/products/${savedId}`);
       return;
     }
 
@@ -1391,6 +1405,7 @@ const ProductEdit = () => {
                   id="product-language-terms"
                   productId={id!}
                   productName={form.product_name ?? ""}
+                  onAliasesChange={() => setLanguageTermsRefreshKey((n) => n + 1)}
                 />
               )}
             </TabsContent>
@@ -1981,6 +1996,7 @@ const ProductEdit = () => {
                   productMediaRows={productMediaRows}
                   prices={channelPrices}
                   moqRules={channelMoqRules}
+                  languageTermsRefreshKey={languageTermsRefreshKey}
                   onOpenAliasManager={() => {
                     setTab("identity");
                     requestAnimationFrame(() => {

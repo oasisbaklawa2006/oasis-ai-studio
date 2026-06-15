@@ -16,12 +16,14 @@ type Props = {
   productId: string;
   productName: string;
   onOpenAliasManager?: () => void;
+  refreshKey?: number;
 };
 
 export function ProductLanguageTermsPanel({
   productId,
   productName,
   onOpenAliasManager,
+  refreshKey = 0,
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [readiness, setReadiness] = useState<ProductLanguageReadinessResult | null>(null);
@@ -45,7 +47,7 @@ export function ProductLanguageTermsPanel({
     return () => {
       cancelled = true;
     };
-  }, [productId, productName]);
+  }, [productId, productName, refreshKey]);
 
   const capability = readiness
     ? capabilityReadinessScore(readiness, {

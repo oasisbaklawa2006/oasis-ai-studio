@@ -17,6 +17,14 @@ import { toast } from "sonner";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 import { resolveProductHeroUrl } from "@/lib/productImage";
+import {
+  dimensionBadgeLabel,
+  evaluateListProductReadiness,
+  groupRowsByProductId,
+} from "@/features/productTruth/productListReadiness";
+import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose" },
@@ -116,16 +124,20 @@ const Products = () => {
 
   const [moqCounts, setMoqCounts] = useState<Record<string, number>>({});
   const [priceCounts, setPriceCounts] = useState<Record<string, { total: number; approved: number }>>({});
+  const [mediaByProduct, setMediaByProduct] = useState<Record<string, ProductMediaRow[]>>({});
+  const [pricingByProduct, setPricingByProduct] = useState<Record<string, PricingRuleRow[]>>({});
+  const [moqByProduct, setMoqByProduct] = useState<Record<string, MoqRuleRow[]>>({});
 
   useEffect(() => {
     supabase.from("products").select("*").order("created_at", { ascending: false }).then(({ data }) => setItems(data ?? []));
     supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order").then(({ data }) => setRules(data ?? []));
-    supabase.from("product_moq_rules").select("product_id").then(({ data }) => {
+    supabase.from("product_moq_rules").select("*").then(({ data }) => {
       const m: Record<string, number> = {};
       (data ?? []).forEach((r: any) => { m[r.product_id] = (m[r.product_id] || 0) + 1; });
       setMoqCounts(m);
+      setMoqByProduct(groupRowsByProductId((data ?? []) as MoqRuleRow[]));
     });
-    supabase.from("product_pricing_rules").select("product_id, approval_status").then(({ data }) => {
+    supabase.from("product_pricing_rules").select("*").then(({ data }) => {
       const m: Record<string, { total: number; approved: number }> = {};
       (data ?? []).forEach((r: any) => {
         if (!m[r.product_id]) m[r.product_id] = { total: 0, approved: 0 };
@@ -133,8 +145,30 @@ const Products = () => {
         if (r.approval_status === "approved") m[r.product_id].approved += 1;
       });
       setPriceCounts(m);
+      setPricingByProduct(groupRowsByProductId((data ?? []) as PricingRuleRow[]));
     });
+    supabase
+      .from("product_media")
+      .select("id, product_id, type, file_url, status, alt_text, angle, created_at")
+      .then(({ data }) => {
+        setMediaByProduct(groupRowsByProductId((data ?? []) as ProductMediaRow[]));
+      });
   }, []);
+
+  const readinessByProduct = useMemo(() => {
+    const map = new Map<string, ProductReadinessResult>();
+    for (const p of items) {
+      map.set(
+        p.id,
+        evaluateListProductReadiness(p, {
+          productMediaRows: mediaByProduct[p.id] ?? [],
+          pricingRows: pricingByProduct[p.id] ?? [],
+          moqRows: moqByProduct[p.id] ?? [],
+        }),
+      );
+    }
+    return map;
+  }, [items, mediaByProduct, pricingByProduct, moqByProduct]);
 
   useEffect(() => {
     let cancelled = false;
@@ -317,6 +351,10 @@ const Products = () => {
           const uomS = uomSummary(p);
           const moqS = moqSummary(p);
           const heroUrl = resolveProductHeroUrl(p);
+          const readiness = readinessByProduct.get(p.id) ?? null;
+          const mediaDim = readiness ? dimensionBadgeLabel(readiness, "media_status") : null;
+          const pricingDim = readiness ? dimensionBadgeLabel(readiness, "pricing_status") : null;
+          const complianceDim = readiness ? dimensionBadgeLabel(readiness, "compliance_status") : null;
           return (
             <Link to={`/products/${p.id}`} key={p.id} className="luxe-card flex flex-col">
               <div className="luxe-media relative">
@@ -362,17 +400,29 @@ const Products = () => {
                 {p.fixed_carton_required && <Badge tone="muted"><Package className="h-3 w-3" />Closed carton</Badge>}
                 {moqCounts[p.id] > 0 && <Badge tone="primary" title={`${moqCounts[p.id]} channel MOQ rules`}>MOQ rules · {moqCounts[p.id]}</Badge>}
                 {priceCounts[p.id]?.total > 0 && (
-                  <Badge tone={priceCounts[p.id].approved > 0 ? "ok" : "warn"} title={`${priceCounts[p.id].approved}/${priceCounts[p.id].total} approved`}>
-                    {priceCounts[p.id].approved > 0 ? "Approved price" : "Draft price"} · {priceCounts[p.id].total}
+                  <Badge
+                    tone={pricingDim === "approved" ? "ok" : "warn"}
+                    title={pricingDim ?? `${priceCounts[p.id].approved}/${priceCounts[p.id].total} approved`}
+                  >
+                    {pricingDim === "approved" ? "Approved price" : "Draft price"} · {priceCounts[p.id].total}
                   </Badge>
                 )}
-                <Badge tone={p.media_status === "approved" || heroUrl ? "ok" : "warn"}>
-                  <ImageIcon className="h-3 w-3" />{heroUrl ? "image" : (p.media_status || "missing")}
+                <Badge
+                  tone={mediaDim === "approved" || heroUrl ? "ok" : "warn"}
+                  title={mediaDim ?? (heroUrl ? "hero present" : p.media_status || "missing")}
+                >
+                  <ImageIcon className="h-3 w-3" />
+                  {mediaDim ?? (heroUrl ? "image" : p.media_status || "missing")}
                 </Badge>
+                {complianceDim && (
+                  <Badge tone={complianceDim === "approved" ? "ok" : "warn"} title="HSN/GST compliance">
+                    GST/HSN · {complianceDim}
+                  </Badge>
+                )}
                 <Badge tone={p.label_status === "approved" || p.label_status === "locked" ? "ok" : "warn"}>
                   <TagIcon className="h-3 w-3" />{p.label_status || "draft"}
                 </Badge>
-                <ReadinessBadge product={p} compact />
+                <ReadinessBadge product={p} readiness={readiness} compact />
               </div>
               </div>
             </Link>

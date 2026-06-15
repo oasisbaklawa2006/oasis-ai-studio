@@ -13,7 +13,8 @@ import {
   createAiSuggestionFieldMeta,
   type ComplianceFieldMetaMap,
 } from "@/shared/ai/complianceApproval";
-import type { AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
+import { buildHeuristicComplianceSuggestions, type AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
+import { PERSISTED_COMPLIANCE_PRODUCT_COLUMNS, UI_ONLY_COMPLIANCE_FIELDS } from "@/shared/ai/compliancePersistence";
 import { toast } from "sonner";
 
 type Props = {
@@ -75,23 +76,49 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
   };
 
   const generateSuggestions = async () => {
+    const productName = String(form.product_name ?? "").trim();
+    if (!productName) {
+      toast.error("Enter a product name before generating compliance suggestions.");
+      return;
+    }
+
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
-        body: {
-          product_name: form.product_name,
-          category: form.category,
-        },
-      });
+      let response: AiComplianceResponse | null = null;
+      let usedFallback = false;
 
-      if (error) throw error;
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
+          body: {
+            product_name: form.product_name,
+            category: form.category,
+          },
+        });
 
-      const response = data as AiComplianceResponse;
-      if (!response?.suggestion_only || response.approved !== false) {
-        throw new Error("Invalid AI compliance response contract");
+        if (!error && data?.suggestion_only && data.approved === false) {
+          response = data as AiComplianceResponse;
+        } else if (error) {
+          usedFallback = true;
+        } else {
+          usedFallback = true;
+        }
+      } catch {
+        usedFallback = true;
+      }
+
+      if (!response) {
+        response = buildHeuristicComplianceSuggestions({
+          product_name: productName,
+          category: String(form.category ?? ""),
+        });
       }
 
       applyAiResponse(response);
+      if (usedFallback) {
+        toast.message(
+          "Edge function unavailable — applied on-device heuristic suggestions (still require approval).",
+        );
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : "AI suggestion request failed";
       toast.error(message);
@@ -125,12 +152,25 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       </Alert>
 
       <div className="flex flex-wrap gap-2 items-center">
-        <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={generateSuggestions}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={loading || !String(form.product_name ?? "").trim()}
+          onClick={generateSuggestions}
+          title={!String(form.product_name ?? "").trim() ? "Product name required" : undefined}
+        >
           <Sparkles className="h-4 w-4 mr-1" />
           {loading ? "Generating…" : "Generate AI compliance suggestions"}
         </Button>
         <span className="text-xs text-muted-foreground">Apply fills the form only — does not approve for catalogue truth.</span>
       </div>
+
+      <p className="text-[11px] text-muted-foreground rounded border border-dashed p-2">
+        Persisted on save to <code className="text-[10px]">products</code>:{" "}
+        {PERSISTED_COMPLIANCE_PRODUCT_COLUMNS.join(", ")}.{" "}
+        {UI_ONLY_COMPLIANCE_FIELDS.join(", ")} are form-only until structured tables are wired.
+      </p>
 
       {pendingFields.length > 0 && (
         <div className="rounded-md border p-3 space-y-2">

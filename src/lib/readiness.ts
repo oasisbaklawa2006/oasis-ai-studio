@@ -9,6 +9,7 @@ export interface Product {
   category?: string | null;
   short_description?: string | null;
   hero_image_url?: string | null;
+  image_url?: string | null;
   media_status?: string | null;
   label_status?: string | null;
   is_active?: boolean | null;
@@ -22,7 +23,8 @@ export const skuReadiness = (p: Product): ReadinessLevel => {
 };
 
 export const mediaReadiness = (p: Product): ReadinessLevel => {
-  if (p.hero_image_url || p.media_status === "approved") return "ready";
+  const hero = p.hero_image_url ?? p.image_url;
+  if (hero || p.media_status === "approved") return "ready";
   if (p.media_status && p.media_status !== "missing") return "partial";
   return "missing";
 };
