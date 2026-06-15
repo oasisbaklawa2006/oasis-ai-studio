@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { evaluateListProductReadiness } from "./productListReadiness";
+import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 
 describe("productListReadiness", () => {
   it("matches detail readiness for saved product with media and pricing", () => {
@@ -20,7 +20,7 @@ describe("productListReadiness", () => {
       master_carton_qty: 8,
     };
 
-    const readiness = evaluateListProductReadiness(product, {
+    const { readiness } = buildProductReadinessSnapshot(product, {
       productMediaRows: [
         { type: "hero_image", file_url: "https://cdn/hero.jpg", status: "approved" },
       ],

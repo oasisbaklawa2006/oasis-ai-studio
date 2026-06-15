@@ -2,9 +2,9 @@ import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, CheckCircle2, ImageIcon } from "lucide-react";
+import { authoritativeMediaAssets } from "../mediaAuthorityContract";
 import { evaluateMediaReadiness, selectApprovedImageUrlsForCentral } from "../mediaReadinessEngine";
 import {
-  mediaAssetsFromSources,
   productMediaContextFromForm,
   slotDisplayLabel,
   type ProductMediaRow,
@@ -23,7 +23,7 @@ const OPTIONAL_CATALOGUE_SLOTS: Array<{ type: MediaAssetType; label: string }> =
 export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
   const product = useMemo(() => productMediaContextFromForm(form), [form]);
   const assets = useMemo(
-    () => mediaAssetsFromSources({ form, productMediaRows }),
+    () => authoritativeMediaAssets(productMediaRows, form),
     [form, productMediaRows],
   );
 
@@ -100,9 +100,9 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
       </div>
 
       <p className="text-[11px] text-muted-foreground rounded border border-dashed p-2">
-        Media slots combine hero URL, optional <code className="text-[10px]">media_assets</code> on the
-        form, and persisted <code className="text-[10px]">product_media</code> rows. Unapproved uploads
-        show as <strong>draft pending approval</strong>, not missing.
+        Readiness uses persisted <code className="text-[10px]">product_media</code> rows only
+        (matched by <code className="text-[10px]">type</code>: hero_image, white_background, closeup, etc.).
+        Upload each required slot with the correct media type selected before upload.
       </p>
 
       {readiness.blockers.length > 0 && (

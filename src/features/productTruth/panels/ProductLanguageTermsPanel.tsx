@@ -76,7 +76,9 @@ export function ProductLanguageTermsPanel({
         </div>
 
         <p className="text-xs text-warning border border-warning/30 bg-warning/5 rounded-md px-2 py-1.5">
-          {TERM_TYPE_UI_NOTICE}
+          Language discoverability is informational only — it does <strong>not</strong> block catalogue
+          publish or Central Sync until <code className="text-[10px]">product_language_terms</code> is
+          deployed. Term types in localStorage are not durable across devices.
         </p>
 
         {loading ? (

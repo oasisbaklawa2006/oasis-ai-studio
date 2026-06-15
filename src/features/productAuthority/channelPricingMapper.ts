@@ -141,8 +141,10 @@ export function isProductsPricingOrBasisField(key: string): boolean {
 export function extractChannelPricingFromForm(
   form: Record<string, unknown>,
   productId: string,
+  writeMode: "direct" | "draft" = "draft",
 ): ProductPricingRuleInsert[] {
   const currency = String(form.currency ?? "INR");
+  const approval_status = writeMode === "direct" ? "approved" : "draft";
   const byChannel = new Map<string, ProductPricingRuleInsert>();
 
   for (const field of CHANNEL_PRICING_FORM_FIELD_KEYS) {
@@ -157,7 +159,7 @@ export function extractChannelPricingFromForm(
       calculated_price: price,
       currency,
       uom: resolveChannelUom(channel, form),
-      approval_status: "draft",
+      approval_status,
       source: "catalogue_local",
     });
   }

@@ -259,6 +259,8 @@ export const ChannelPricingRules = ({
 
   const canMutate = writeMode === "direct" || writeMode === "draft";
   const showMasterApproveArchive = writeMode === "direct" && canDirectPricing;
+  const masterPricingApproval = (): string =>
+    writeMode === "direct" && canDirectPricing ? "approved" : "draft";
 
   const allDisplayRows = useMemo(() => {
     const mergedMaster = rows.map((row) => ({
@@ -325,6 +327,17 @@ export const ChannelPricingRules = ({
     }
 
     const { normalizedPatch } = normalizePricingPatch(current, patch, product?.mrp);
+    if (writeMode === "direct" && canDirectPricing) {
+      const hasPrice =
+        normalizedPatch.base_price != null ||
+        normalizedPatch.calculated_price != null ||
+        current.base_price != null ||
+        current.calculated_price != null;
+      if (hasPrice && !normalizedPatch.approval_status) {
+        normalizedPatch.approval_status = "approved";
+        normalizedPatch.approved_at = new Date().toISOString();
+      }
+    }
 
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...normalizedPatch } : r)));
 
@@ -488,7 +501,7 @@ export const ChannelPricingRules = ({
         price_type: "quotation_based",
         currency: "INR",
         uom: defaultUom,
-        approval_status: "draft",
+        approval_status: masterPricingApproval(),
         source: "catalogue_local",
       };
       setLocalNewRows((prev) => [...prev, newRule]);
@@ -505,7 +518,7 @@ export const ChannelPricingRules = ({
           price_type: "quotation_based",
           currency: "INR",
           uom: defaultUom,
-          approval_status: "draft",
+          approval_status: masterPricingApproval(),
           source: "catalogue_local",
         },
         { onConflict: "product_id,price_channel" },
@@ -595,7 +608,7 @@ export const ChannelPricingRules = ({
               price_type: "quotation_based",
               currency: "INR",
               uom: seed.uom,
-              approval_status: "draft",
+              approval_status: masterPricingApproval(),
               source: "catalogue_local",
             },
           ]);
@@ -610,7 +623,7 @@ export const ChannelPricingRules = ({
             price_type: "quotation_based",
             currency: "INR",
             uom: seed.uom,
-            approval_status: "draft",
+            approval_status: masterPricingApproval(),
             source: "catalogue_local",
           },
           { onConflict: "product_id,price_channel" },

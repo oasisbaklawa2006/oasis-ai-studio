@@ -5,6 +5,17 @@ import type { ProductTruthInput } from "./types";
 const completeInput: ProductTruthInput = {
   productName: "Test Product",
   heroImageUrl: "https://example.com/img.jpg",
+  mediaStatus: "approved",
+  mediaAssets: [
+    { type: "primary_image", url: "https://example.com/img.jpg", status: "approved", source: "manual" },
+    { type: "catalogue_image", url: "https://example.com/w.jpg", status: "approved", source: "manual" },
+    { type: "close_up_image", url: "https://example.com/c.jpg", status: "approved", source: "manual" },
+  ],
+  mediaContext: {
+    productName: "Test Product",
+    category: "baklawa",
+    isLegacy: false,
+  },
   hsnCode: "18069090",
   gstRate: "5",
   complianceApproved: true,

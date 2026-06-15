@@ -18,11 +18,11 @@ import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import {
+  buildProductReadinessSnapshot,
   dimensionBadgeLabel,
-  evaluateListProductReadiness,
   groupRowsByProductId,
-} from "@/features/productTruth/productListReadiness";
-import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
+  readinessSummaryLabel,
+} from "@/features/readiness/productReadinessSnapshot";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 
@@ -156,11 +156,11 @@ const Products = () => {
   }, []);
 
   const readinessByProduct = useMemo(() => {
-    const map = new Map<string, ProductReadinessResult>();
+    const map = new Map<string, ReturnType<typeof buildProductReadinessSnapshot>>();
     for (const p of items) {
       map.set(
         p.id,
-        evaluateListProductReadiness(p, {
+        buildProductReadinessSnapshot(p, {
           productMediaRows: mediaByProduct[p.id] ?? [],
           pricingRows: pricingByProduct[p.id] ?? [],
           moqRows: moqByProduct[p.id] ?? [],
@@ -351,7 +351,7 @@ const Products = () => {
           const uomS = uomSummary(p);
           const moqS = moqSummary(p);
           const heroUrl = resolveProductHeroUrl(p);
-          const readiness = readinessByProduct.get(p.id) ?? null;
+          const readiness = readinessByProduct.get(p.id)?.readiness ?? null;
           const mediaDim = readiness ? dimensionBadgeLabel(readiness, "media_status") : null;
           const pricingDim = readiness ? dimensionBadgeLabel(readiness, "pricing_status") : null;
           const complianceDim = readiness ? dimensionBadgeLabel(readiness, "compliance_status") : null;

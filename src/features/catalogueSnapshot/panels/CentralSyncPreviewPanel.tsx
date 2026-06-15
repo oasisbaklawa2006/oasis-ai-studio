@@ -19,6 +19,7 @@ import {
   previewCentralSync,
 } from "../centralSyncPreviewService";
 import { LIVE_CENTRAL_WRITE_ENABLED } from "../centralSyncPayload";
+import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 import { isLocalCatalogueFallbackWriteEnabled } from "@/lib/catalogueAuthority/localStoragePolicy";
 import { validateSnapshotGate } from "../snapshotValidation";
 import type { CatalogueSyncEventRow, CatalogueVersionRow, CentralSyncPreviewBundle } from "../types";
@@ -67,9 +68,10 @@ export function CentralSyncPreviewPanel({
   const validation = useMemo(
     () =>
       validateSnapshotGate(readiness, {
-        complianceManuallyApproved: complianceApproved && !complianceMetaPending,
+        complianceManuallyApproved:
+          deriveComplianceApprovedForReadiness(form) && !complianceMetaPending,
       }),
-    [readiness, complianceApproved, complianceMetaPending],
+    [readiness, form, complianceMetaPending],
   );
 
   const headVersion = versions[0] ?? null;
@@ -203,11 +205,11 @@ export function CentralSyncPreviewPanel({
         </div>
         {validation.allowed && readiness.readyForCentralSync ? (
           <Badge className="bg-success/10 text-success border-success/20">
-            <CheckCircle2 className="h-3 w-3 mr-1" /> Ready for Central Sync
+            <CheckCircle2 className="h-3 w-3 mr-1" /> Ready for Central Sync preview
           </Badge>
         ) : (
           <Badge variant="outline" className="bg-warning/10 text-warning border-warning/20">
-            <Lock className="h-3 w-3 mr-1" /> Blocked
+            <Lock className="h-3 w-3 mr-1" /> Preview blocked ({validation.blockers.length})
           </Badge>
         )}
       </div>
