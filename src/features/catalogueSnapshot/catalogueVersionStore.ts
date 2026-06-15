@@ -3,7 +3,12 @@ import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions"
 import {
   assertLocalCatalogueFallbackWrite,
   isLocalCatalogueFallbackReadEnabled,
+  isLocalCatalogueFallbackWriteEnabled,
 } from "@/lib/catalogueAuthority/localStoragePolicy";
+import {
+  supabaseAuthorityErrorMessage,
+  throwSupabaseAuthorityError,
+} from "@/lib/catalogueAuthority/supabaseAuthorityError";
 import {
   getVersionsPersistenceSource,
   setVersionsLoadFailure,
@@ -159,8 +164,17 @@ export async function createCatalogueVersionDraft(args: {
       setVersionsPersistenceSource(args.productId, "supabase");
       return data as CatalogueVersionRow;
     }
-  } catch {
-    /* fall through */
+    if (error) {
+      if (!isLocalCatalogueFallbackWriteEnabled()) {
+        throwSupabaseAuthorityError("createCatalogueVersionDraft", error);
+      }
+    }
+  } catch (err) {
+    if (!isLocalCatalogueFallbackWriteEnabled()) {
+      throw err instanceof Error && err.message.includes("createCatalogueVersionDraft")
+        ? err
+        : new Error(supabaseAuthorityErrorMessage("createCatalogueVersionDraft", err));
+    }
   }
 
   assertLocalCatalogueFallbackWrite("createCatalogueVersionDraft");
@@ -212,8 +226,19 @@ export async function approveCatalogueVersion(args: {
       setVersionsPersistenceSource(args.productId, "supabase");
       return { ok: true, row: data as CatalogueVersionRow, message: "Version approved" };
     }
-  } catch {
-    /* fall through */
+    if (error && !isLocalCatalogueFallbackWriteEnabled()) {
+      return {
+        ok: false,
+        message: supabaseAuthorityErrorMessage("approveCatalogueVersion", error),
+      };
+    }
+  } catch (err) {
+    if (!isLocalCatalogueFallbackWriteEnabled()) {
+      return {
+        ok: false,
+        message: supabaseAuthorityErrorMessage("approveCatalogueVersion", err),
+      };
+    }
   }
 
   try {
@@ -269,8 +294,19 @@ export async function updateCatalogueVersionSnapshot(args: {
       setVersionsPersistenceSource(args.productId, "supabase");
       return { ok: true, message: "Draft snapshot updated" };
     }
-  } catch {
-    /* fall through */
+    if (error && !isLocalCatalogueFallbackWriteEnabled()) {
+      return {
+        ok: false,
+        message: supabaseAuthorityErrorMessage("updateCatalogueVersionSnapshot", error),
+      };
+    }
+  } catch (err) {
+    if (!isLocalCatalogueFallbackWriteEnabled()) {
+      return {
+        ok: false,
+        message: supabaseAuthorityErrorMessage("updateCatalogueVersionSnapshot", err),
+      };
+    }
   }
 
   try {
@@ -328,8 +364,15 @@ export async function recordSyncPreviewEvent(args: {
       setVersionsPersistenceSource(args.productId, "supabase");
       return data as CatalogueSyncEventRow;
     }
-  } catch {
-    /* fall through */
+    if (error && !isLocalCatalogueFallbackWriteEnabled()) {
+      throwSupabaseAuthorityError("recordSyncPreviewEvent", error);
+    }
+  } catch (err) {
+    if (!isLocalCatalogueFallbackWriteEnabled()) {
+      throw err instanceof Error && err.message.includes("recordSyncPreviewEvent")
+        ? err
+        : new Error(supabaseAuthorityErrorMessage("recordSyncPreviewEvent", err));
+    }
   }
 
   try {

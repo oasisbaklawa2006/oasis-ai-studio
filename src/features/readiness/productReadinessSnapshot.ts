@@ -111,6 +111,25 @@ export function dimensionBadgeLabel(
   return dim.badge.replace(/_/g, " ");
 }
 
+export function dimensionIsComplete(
+  readiness: ProductReadinessResult,
+  dimension: string,
+): boolean {
+  return readiness.dimensions.find((d) => d.dimension === dimension)?.complete ?? false;
+}
+
+/** User-facing card label — uses complete flag, not internal badge names like "human edited". */
+export function dimensionCardLabel(
+  readiness: ProductReadinessResult,
+  dimension: string,
+): string {
+  const dim = readiness.dimensions.find((d) => d.dimension === dimension);
+  if (!dim) return "—";
+  if (dim.complete) return "complete";
+  if (dim.badge === "pending_approval") return "pending";
+  return "missing";
+}
+
 /** @deprecated Use buildProductReadinessSnapshot */
 export function evaluateListProductReadiness(
   productRow: Record<string, unknown>,

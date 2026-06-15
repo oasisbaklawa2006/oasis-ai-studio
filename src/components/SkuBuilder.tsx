@@ -40,20 +40,34 @@ const Sel = ({ label, value, options, onChange }: any) => (
 
 export function SkuBuilder({ value, canOverride, onChange }: Props) {
   const [rules, setRules] = useState<Rule[]>([]);
+  const [rulesLoaded, setRulesLoaded] = useState(false);
   const [overriding, setOverriding] = useState(false);
   const [overrideSku, setOverrideSku] = useState("");
   const [reason, setReason] = useState("");
+  const [typingIn, setTypingIn] = useState(false);
+  const [manualSku, setManualSku] = useState("");
 
   useEffect(() => {
-    supabase.from("sku_code_rules").select("code,label,code_type").eq("is_active", true).order("sort_order")
-      .then(({ data }) => setRules(data ?? []));
+    supabase
+      .from("sku_code_rules")
+      .select("code,label,code_type")
+      .eq("is_active", true)
+      .order("sort_order")
+      .then(({ data }) => {
+        setRules(data ?? []);
+        setRulesLoaded(true);
+      });
   }, []);
 
   const by = (t: string) => rules.filter((r) => r.code_type === t);
   const ready = value.division_code && value.category_code && value.subcategory_code && value.packaging_code;
   const preview = ready ? `OAS-${value.division_code}-${value.category_code}-${value.subcategory_code}-${value.packaging_code}-XXXX` : "—";
+  const rulesMissing = rulesLoaded && rules.length === 0;
 
   const generate = async () => {
+    if (rulesMissing) {
+      return toast.error("sku_code_rules has no active rows — use Type SKU below or ask admin to seed rules.");
+    }
     if (!ready) return toast.error("Pick all four codes first.");
     const { data, error } = await supabase.rpc("generate_oasis_sku", {
       _division_code: value.division_code, _category_code: value.category_code,
@@ -78,6 +92,19 @@ export function SkuBuilder({ value, canOverride, onChange }: Props) {
     });
     setOverriding(false); setOverrideSku(""); setReason("");
     toast.success("SKU overridden — remember to save.");
+  };
+
+  const applyManualSku = () => {
+    const sku = manualSku.trim();
+    if (!sku) return toast.error("Enter a SKU code.");
+    onChange({
+      sku,
+      sku_locked: true,
+      sku_generated_at: null,
+    });
+    setTypingIn(false);
+    setManualSku("");
+    toast.success("SKU set — remember to save.");
   };
 
   return (
@@ -109,12 +136,31 @@ export function SkuBuilder({ value, canOverride, onChange }: Props) {
 
       <div className="text-xs text-muted-foreground">Preview: <code className="font-mono">{preview}</code></div>
 
+      {rulesMissing && (
+        <p className="text-xs text-warning border border-warning/30 bg-warning/5 rounded-md px-2 py-1.5">
+          sku_code_rules table has no active rows — Generate SKU is disabled. You can still type a SKU manually below.
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2">
-        <Button onClick={generate} disabled={!ready}>Generate SKU</Button>
-        {canOverride && !overriding && (
+        <Button onClick={generate} disabled={!ready || rulesMissing}>Generate SKU</Button>
+        {!value.sku_locked && !typingIn && (
+          <Button variant="outline" onClick={() => setTypingIn(true)}>Type SKU</Button>
+        )}
+        {canOverride && !overriding && value.sku_locked && (
           <Button variant="outline" onClick={() => setOverriding(true)}>Override SKU</Button>
         )}
       </div>
+
+      {typingIn && (
+        <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
+          <Input placeholder="Enter SKU code" value={manualSku} onChange={(e) => setManualSku(e.target.value)} />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={applyManualSku}>Save SKU to form</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setTypingIn(false); setManualSku(""); }}>Cancel</Button>
+          </div>
+        </div>
+      )}
 
       {overriding && (
         <div className="border rounded-lg p-3 space-y-2 bg-warning/5">

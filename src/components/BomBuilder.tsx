@@ -516,13 +516,41 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
 
   const selectedTypeMeta = BOM_TYPES.find((type) => type.v === selectedBomType)!;
 
+  const bomAuthority = useMemo(() => {
+    if (visibleItems.length > 0) {
+      return {
+        label: "Saved",
+        detail: `${visibleItems.length} component line(s) persisted in product_bom`,
+        className: "border-success/40 bg-success/10",
+        iconClass: "text-success",
+      };
+    }
+    if (bomRequired) {
+      return {
+        label: "Missing",
+        detail: "BOM is required for this product class but no lines are saved yet",
+        className: "border-destructive/40 bg-destructive/10",
+        iconClass: "text-destructive",
+      };
+    }
+    return {
+      label: "Optional",
+      detail: "No BOM lines saved — not required for this product class",
+      className: "border-muted bg-muted/20",
+      iconClass: "text-muted-foreground",
+    };
+  }, [bomRequired, visibleItems.length]);
+
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-warning/10 border-warning/40 p-3 text-xs flex gap-2 items-start">
-        <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
+      <div className={`rounded-lg border p-3 text-xs flex gap-2 items-start ${bomAuthority.className}`}>
+        <AlertTriangle className={`h-4 w-4 mt-0.5 shrink-0 ${bomAuthority.iconClass}`} />
         <div>
-          Packing & Assembly products must use BOM. Internal BOM makes one ready pack.
-          Hamper BOM assembles one hamper from ready packs, loose products, and packaging items.
+          <div className="font-medium text-foreground">BOM authority: {bomAuthority.label}</div>
+          <div className="text-muted-foreground mt-0.5">{bomAuthority.detail}</div>
+          <div className="text-muted-foreground mt-1">
+            Internal BOM builds one ready pack. Hamper BOM assembles hampers from ready packs and packaging.
+          </div>
         </div>
       </div>
 

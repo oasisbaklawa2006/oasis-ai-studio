@@ -47,6 +47,7 @@ type Props = {
   moqRules?: ChannelMoqRule[];
   productMediaRows?: ProductMediaRow[];
   languageTermsRefreshKey?: number;
+  onMoqRulesChange?: () => void;
 };
 
 type TruthBundle = {
@@ -65,6 +66,7 @@ export function ProductTruthAdminSection({
   moqRules = [],
   productMediaRows = [],
   languageTermsRefreshKey = 0,
+  onMoqRulesChange,
 }: Props) {
   const [subTab, setSubTab] = useState("readiness");
   const [truthBundle, setTruthBundle] = useState<TruthBundle | null>(null);
@@ -206,7 +208,14 @@ export function ProductTruthAdminSection({
             {!truthBundle || inputsPending ? (
               <ProductTruthPanelSkeleton />
             ) : (
-              <ChannelRulesPanel prices={prices} moqRules={moqRules} packaging={packaging} />
+              <ChannelRulesPanel
+                prices={prices}
+                moqRules={moqRules}
+                packaging={packaging}
+                productId={productId}
+                product={form}
+                onMoqSeeded={onMoqRulesChange}
+              />
             )}
           </Suspense>
         )}
@@ -216,7 +225,14 @@ export function ProductTruthAdminSection({
             {!truthBundle || inputsPending ? (
               <ProductTruthPanelSkeleton />
             ) : (
-              <PreviewCalculatorPanel packaging={packaging} moqRules={moqRules} />
+              <PreviewCalculatorPanel
+                packaging={packaging}
+                moqRules={moqRules}
+                prices={prices}
+                productId={productId}
+                product={form}
+                onMoqSeeded={onMoqRulesChange}
+              />
             )}
           </Suspense>
         )}

@@ -1745,12 +1745,6 @@ const ProductEdit = () => {
                     if (id) void loadProductMedia(id);
                   }}
                 />
-
-                <div className="card-elevated p-4">
-                  <Field label="Hero image URL (advanced)">
-                    <Input value={form.hero_image_url ?? ""} onChange={(e) => set("hero_image_url", e.target.value)} placeholder="https://…" />
-                  </Field>
-                </div>
               </TabsContent>
             )}
 
@@ -2085,6 +2079,9 @@ const ProductEdit = () => {
                     }}
                     complianceApproved={complianceApproved}
                     complianceMetaPending={complianceMetaPending}
+                    onMoqRulesChange={() => {
+                      if (id) void loadChannelAuthority(id);
+                    }}
                   />
                 </Suspense>
               </TabsContent>

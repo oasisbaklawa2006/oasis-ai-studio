@@ -8,11 +8,22 @@ export const ReadinessBadge = ({
   product,
   readiness,
   compact = false,
+  loading = false,
 }: {
   product: Product;
   readiness?: ProductReadinessResult | null;
   compact?: boolean;
+  loading?: boolean;
 }) => {
+  if (loading) {
+    return (
+      <span className="badge-soft bg-muted/60 text-muted-foreground animate-pulse">
+        <AlertCircle className="h-3 w-3" />
+        …
+      </span>
+    );
+  }
+
   const legacy = catalogueReadiness(product);
   const truth = readiness ?? null;
   const ready = truth ? truth.readyForCentralSync : legacy.ready;

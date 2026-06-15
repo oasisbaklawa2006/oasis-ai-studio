@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, startTransition, useDeferredValue } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Copy, Eye, Lock } from "lucide-react";
@@ -49,6 +49,13 @@ export function CentralSyncPreviewPanel({
   const [events, setEvents] = useState<CatalogueSyncEventRow[]>([]);
   const [bundle, setBundle] = useState<CentralSyncPreviewBundle | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showJson, setShowJson] = useState(false);
+  const deferredBundle = useDeferredValue(bundle);
+
+  const jsonPreview = useMemo(() => {
+    if (!showJson || !deferredBundle) return "";
+    return JSON.stringify(deferredBundle, null, 2);
+  }, [showJson, deferredBundle]);
 
   const truthInput = useMemo(
     () =>
@@ -102,60 +109,70 @@ export function CentralSyncPreviewPanel({
         : "Catalogue versions are unavailable."
     : null;
 
-  const runPreview = async () => {
+  const runPreview = () => {
     if (previewBlocked) {
       toast.error(previewBlockMessage ?? "Central Sync preview is unavailable.");
       return;
     }
     setLoading(true);
-    try {
-      const result = await previewCentralSync({
-        form,
-        productId,
-        complianceApproved,
-        complianceMetaPending,
-        prices,
-        moqRules,
-        productMediaRows,
-      });
-      setBundle(result.bundle);
-      await refresh();
-      toast.success("Central sync preview generated (no live write)");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Preview failed");
-    } finally {
-      setLoading(false);
-    }
+    setShowJson(false);
+    startTransition(() => {
+      void (async () => {
+        try {
+          const result = await previewCentralSync({
+            form,
+            productId,
+            complianceApproved,
+            complianceMetaPending,
+            prices,
+            moqRules,
+            productMediaRows,
+          });
+          startTransition(() => setBundle(result.bundle));
+          await refresh();
+          toast.success("Central sync preview generated (no live write)");
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Preview failed");
+        } finally {
+          setLoading(false);
+        }
+      })();
+    });
   };
 
-  const runApprovePreview = async () => {
+  const runApprovePreview = () => {
     if (previewBlocked) {
       toast.error(previewBlockMessage ?? "Central Sync preview is unavailable.");
       return;
     }
     setLoading(true);
-    try {
-      const result = await approveAndPreviewCentralSync({
-        form,
-        productId,
-        complianceApproved,
-        complianceMetaPending,
-        prices,
-        moqRules,
-        productMediaRows,
-      });
-      setBundle(result.preview.bundle);
-      await refresh();
-      if (validation.allowed) {
-        toast.success(result.approveMessage);
-      } else {
-        toast.warning(result.approveMessage);
-      }
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Approve preview failed");
-    } finally {
-      setLoading(false);
-    }
+    setShowJson(false);
+    startTransition(() => {
+      void (async () => {
+        try {
+          const result = await approveAndPreviewCentralSync({
+            form,
+            productId,
+            complianceApproved,
+            complianceMetaPending,
+            prices,
+            moqRules,
+            productMediaRows,
+          });
+          startTransition(() => setBundle(result.preview.bundle));
+          await refresh();
+          if (validation.allowed) {
+            toast.success(result.approveMessage);
+          } else {
+            toast.warning(result.approveMessage);
+          }
+        } catch (err) {
+          toast.error(err instanceof Error ? err.message : "Approve preview failed");
+        } finally {
+          setLoading(false);
+        }
+      })();
+    });
   };
 
   const copyJson = async () => {
@@ -229,19 +246,19 @@ export function CentralSyncPreviewPanel({
         <Button
           size="sm"
           variant="secondary"
-          onClick={() => void runPreview()}
+          onClick={runPreview}
           disabled={loading || previewBlocked}
           title={previewBlocked ? previewBlockMessage ?? undefined : undefined}
         >
-          <Eye className="h-3 w-3 mr-1" /> Generate preview
+          <Eye className="h-3 w-3 mr-1" /> {loading ? "Generating…" : "Generate preview"}
         </Button>
         <Button
           size="sm"
-          onClick={() => void runApprovePreview()}
+          onClick={runApprovePreview}
           disabled={loading || previewBlocked || !validation.allowed}
           title={previewBlocked ? previewBlockMessage ?? undefined : undefined}
         >
-          Approve snapshot (preview)
+          {loading ? "Working…" : "Approve snapshot (preview)"}
         </Button>
         <Button size="sm" variant="outline" onClick={() => void copyJson()} disabled={!bundle}>
           <Copy className="h-3 w-3 mr-1" /> Copy JSON
@@ -288,10 +305,22 @@ export function CentralSyncPreviewPanel({
 
       {bundle && (
         <div className="card-elevated p-4 space-y-2">
-          <h4 className="font-medium">Payload JSON preview</h4>
-          <pre className="text-[11px] bg-muted/30 rounded p-3 overflow-auto max-h-96">
-            {JSON.stringify(bundle, null, 2)}
-          </pre>
+          <div className="flex items-center justify-between gap-2">
+            <h4 className="font-medium">Payload JSON preview</h4>
+            <Button size="sm" variant="outline" onClick={() => setShowJson((v) => !v)}>
+              {showJson ? "Hide JSON" : "Show JSON"}
+            </Button>
+          </div>
+          {showJson && (
+            <pre className="text-[11px] bg-muted/30 rounded p-3 overflow-auto max-h-96">
+              {jsonPreview || "Rendering preview…"}
+            </pre>
+          )}
+          {!showJson && (
+            <p className="text-xs text-muted-foreground">
+              Preview bundle ready ({Object.keys(bundle).length} top-level keys). Expand JSON on demand to avoid UI jank.
+            </p>
+          )}
         </div>
       )}
 

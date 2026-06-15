@@ -19,9 +19,9 @@ import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner"
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import {
   buildProductReadinessSnapshot,
-  dimensionBadgeLabel,
+  dimensionCardLabel,
+  dimensionIsComplete,
   groupRowsByProductId,
-  readinessSummaryLabel,
 } from "@/features/readiness/productReadinessSnapshot";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
@@ -127,32 +127,51 @@ const Products = () => {
   const [mediaByProduct, setMediaByProduct] = useState<Record<string, ProductMediaRow[]>>({});
   const [pricingByProduct, setPricingByProduct] = useState<Record<string, PricingRuleRow[]>>({});
   const [moqByProduct, setMoqByProduct] = useState<Record<string, MoqRuleRow[]>>({});
+  const [authorityReady, setAuthorityReady] = useState(false);
 
   useEffect(() => {
-    supabase.from("products").select("*").order("created_at", { ascending: false }).then(({ data }) => setItems(data ?? []));
-    supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order").then(({ data }) => setRules(data ?? []));
-    supabase.from("product_moq_rules").select("*").then(({ data }) => {
+    let cancelled = false;
+    (async () => {
+      const [productsRes, rulesRes, moqRes, pricingRes, mediaRes] = await Promise.all([
+        supabase.from("products").select("*").order("created_at", { ascending: false }),
+        supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("product_moq_rules").select("*"),
+        supabase.from("product_pricing_rules").select("*"),
+        supabase
+          .from("product_media")
+          .select("id, product_id, type, file_url, status, alt_text, angle, created_at"),
+      ]);
+      if (cancelled) return;
+
+      setItems(productsRes.data ?? []);
+      setRules(rulesRes.data ?? []);
+
+      const moqRows = (moqRes.data ?? []) as MoqRuleRow[];
       const m: Record<string, number> = {};
-      (data ?? []).forEach((r: any) => { m[r.product_id] = (m[r.product_id] || 0) + 1; });
+      moqRows.forEach((r) => {
+        if (!r.product_id) return;
+        m[r.product_id] = (m[r.product_id] || 0) + 1;
+      });
       setMoqCounts(m);
-      setMoqByProduct(groupRowsByProductId((data ?? []) as MoqRuleRow[]));
-    });
-    supabase.from("product_pricing_rules").select("*").then(({ data }) => {
-      const m: Record<string, { total: number; approved: number }> = {};
-      (data ?? []).forEach((r: any) => {
-        if (!m[r.product_id]) m[r.product_id] = { total: 0, approved: 0 };
-        m[r.product_id].total += 1;
-        if (r.approval_status === "approved") m[r.product_id].approved += 1;
+      setMoqByProduct(groupRowsByProductId(moqRows));
+
+      const pricingRows = (pricingRes.data ?? []) as PricingRuleRow[];
+      const pm: Record<string, { total: number; approved: number }> = {};
+      pricingRows.forEach((r) => {
+        if (!r.product_id) return;
+        if (!pm[r.product_id]) pm[r.product_id] = { total: 0, approved: 0 };
+        pm[r.product_id].total += 1;
+        if (r.approval_status === "approved") pm[r.product_id].approved += 1;
       });
-      setPriceCounts(m);
-      setPricingByProduct(groupRowsByProductId((data ?? []) as PricingRuleRow[]));
-    });
-    supabase
-      .from("product_media")
-      .select("id, product_id, type, file_url, status, alt_text, angle, created_at")
-      .then(({ data }) => {
-        setMediaByProduct(groupRowsByProductId((data ?? []) as ProductMediaRow[]));
-      });
+      setPriceCounts(pm);
+      setPricingByProduct(groupRowsByProductId(pricingRows));
+
+      setMediaByProduct(groupRowsByProductId((mediaRes.data ?? []) as ProductMediaRow[]));
+      setAuthorityReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const readinessByProduct = useMemo(() => {
@@ -350,11 +369,19 @@ const Products = () => {
           const dept = deptSummary(p);
           const uomS = uomSummary(p);
           const moqS = moqSummary(p);
-          const heroUrl = resolveProductHeroUrl(p);
-          const readiness = readinessByProduct.get(p.id)?.readiness ?? null;
-          const mediaDim = readiness ? dimensionBadgeLabel(readiness, "media_status") : null;
-          const pricingDim = readiness ? dimensionBadgeLabel(readiness, "pricing_status") : null;
-          const complianceDim = readiness ? dimensionBadgeLabel(readiness, "compliance_status") : null;
+          const snapshot = readinessByProduct.get(p.id);
+          const readiness = authorityReady ? (snapshot?.readiness ?? null) : null;
+          const heroUrl =
+            snapshot?.derivedHeroUrl ?? resolveProductHeroUrl(p);
+          const pricingComplete = readiness
+            ? dimensionIsComplete(readiness, "pricing_status")
+            : false;
+          const mediaComplete = readiness
+            ? dimensionIsComplete(readiness, "media_status")
+            : false;
+          const complianceComplete = readiness
+            ? dimensionIsComplete(readiness, "compliance_status")
+            : false;
           return (
             <Link to={`/products/${p.id}`} key={p.id} className="luxe-card flex flex-col">
               <div className="luxe-media relative">
@@ -399,30 +426,43 @@ const Products = () => {
                 {p.bom_required && <Badge tone="accent"><Boxes className="h-3 w-3" />BOM</Badge>}
                 {p.fixed_carton_required && <Badge tone="muted"><Package className="h-3 w-3" />Closed carton</Badge>}
                 {moqCounts[p.id] > 0 && <Badge tone="primary" title={`${moqCounts[p.id]} channel MOQ rules`}>MOQ rules · {moqCounts[p.id]}</Badge>}
-                {priceCounts[p.id]?.total > 0 && (
+                {priceCounts[p.id]?.total > 0 && readiness && (
                   <Badge
-                    tone={pricingDim === "approved" ? "ok" : "warn"}
-                    title={pricingDim ?? `${priceCounts[p.id].approved}/${priceCounts[p.id].total} approved`}
+                    tone={pricingComplete ? "ok" : "warn"}
+                    title={`Pricing: ${dimensionCardLabel(readiness, "pricing_status")}`}
                   >
-                    {pricingDim === "approved" ? "Approved price" : "Draft price"} · {priceCounts[p.id].total}
+                    {pricingComplete ? "Approved price" : "Draft price"} · {priceCounts[p.id].total}
                   </Badge>
                 )}
                 <Badge
-                  tone={mediaDim === "approved" || heroUrl ? "ok" : "warn"}
-                  title={mediaDim ?? (heroUrl ? "hero present" : p.media_status || "missing")}
+                  tone={mediaComplete || heroUrl ? "ok" : "warn"}
+                  title={
+                    readiness
+                      ? `Media: ${dimensionCardLabel(readiness, "media_status")}`
+                      : heroUrl
+                        ? "hero present"
+                        : p.media_status || "missing"
+                  }
                 >
                   <ImageIcon className="h-3 w-3" />
-                  {mediaDim ?? (heroUrl ? "image" : p.media_status || "missing")}
+                  {readiness
+                    ? dimensionCardLabel(readiness, "media_status")
+                    : heroUrl
+                      ? "image"
+                      : p.media_status || "missing"}
                 </Badge>
-                {complianceDim && (
-                  <Badge tone={complianceDim === "approved" ? "ok" : "warn"} title="HSN/GST compliance">
-                    GST/HSN · {complianceDim}
+                {readiness && (
+                  <Badge
+                    tone={complianceComplete ? "ok" : "warn"}
+                    title={`Compliance: ${dimensionCardLabel(readiness, "compliance_status")}`}
+                  >
+                    GST/HSN · {dimensionCardLabel(readiness, "compliance_status")}
                   </Badge>
                 )}
                 <Badge tone={p.label_status === "approved" || p.label_status === "locked" ? "ok" : "warn"}>
                   <TagIcon className="h-3 w-3" />{p.label_status || "draft"}
                 </Badge>
-                <ReadinessBadge product={p} readiness={readiness} compact />
+                <ReadinessBadge product={p} readiness={readiness} compact loading={!authorityReady} />
               </div>
               </div>
             </Link>

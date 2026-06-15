@@ -13,6 +13,10 @@ import {
   createAiSuggestionFieldMeta,
   type ComplianceFieldMetaMap,
 } from "@/shared/ai/complianceApproval";
+import {
+  PERSISTED_COMPLIANCE_PRODUCT_COLUMNS,
+  UI_ONLY_COMPLIANCE_FIELDS,
+} from "@/shared/ai/compliancePersistence";
 import type { AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
 import { toast } from "sonner";
 
@@ -116,6 +120,26 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
     ([, meta]) => meta?.source === "ai_suggestion" && !meta.approved,
   );
 
+  const authorityFields = [
+    ...PERSISTED_COMPLIANCE_PRODUCT_COLUMNS,
+    ...UI_ONLY_COMPLIANCE_FIELDS,
+  ] as const;
+
+  const authorityStatus = (field: string) => {
+    const value = form[field];
+    const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
+    const meta = metaMap[field as ComplianceSensitiveField];
+    if (!hasValue) return { label: "Missing", className: "text-destructive" };
+    if (meta?.source === "ai_suggestion" && !meta.approved) {
+      return { label: "AI pending approval", className: "text-warning" };
+    }
+    if (meta?.approved) return { label: "Approved for save", className: "text-success" };
+    if (PERSISTED_COMPLIANCE_PRODUCT_COLUMNS.includes(field as (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number])) {
+      return { label: "Saved on product", className: "text-success" };
+    }
+    return { label: "Draft (form only)", className: "text-muted-foreground" };
+  };
+
   return (
     <div className="space-y-4">
       <Alert variant="default" className="border-amber-500/40 bg-amber-500/5">
@@ -123,6 +147,21 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
         <AlertTitle>Compliance safety</AlertTitle>
         <AlertDescription>{AI_COMPLIANCE_UI_DISCLAIMER}</AlertDescription>
       </Alert>
+
+      <div className="rounded-md border p-3 space-y-2">
+        <p className="text-sm font-medium">Authority status (persisted fields)</p>
+        <ul className="text-xs space-y-1">
+          {authorityFields.map((field) => {
+            const status = authorityStatus(field);
+            return (
+              <li key={field} className="flex items-center justify-between gap-2">
+                <span>{FIELD_LABELS[field] ?? field}</span>
+                <span className={status.className}>{status.label}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
 
       <div className="flex flex-wrap gap-2 items-center">
         <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={generateSuggestions}>

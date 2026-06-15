@@ -12,7 +12,6 @@ import {
   Trash2,
   Loader2,
   Link2,
-  RefreshCw,
   AlertTriangle,
   Video,
 } from "lucide-react";
@@ -54,6 +53,14 @@ const MEDIA_TYPES = [
 
 type MediaType = (typeof MEDIA_TYPES)[number];
 
+/** Required for media readiness — uploads to these slots persist as approved in direct mode. */
+const REQUIRED_READINESS_SLOTS: MediaType[] = ["hero_image", "white_background", "closeup"];
+
+const isRequiredSlot = (t: MediaType) => REQUIRED_READINESS_SLOTS.includes(t);
+
+const slotFilled = (media: any[], slot: MediaType) =>
+  media.some((m) => m.type === slot && m.status === "approved");
+
 interface Props {
   productId: string;
   productSku?: string | null;
@@ -78,14 +85,14 @@ export function ProductMediaUploader({
   const { writeMode, canMutate } = useCatalogueMediaWriteMode(roles as Role[]);
   const [media, setMedia] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [type, setType] = useState<MediaType>("raw_photo");
+  const [type, setType] = useState<MediaType>("hero_image");
   const [urlInput, setUrlInput] = useState("");
   const [pendingNotices, setPendingNotices] = useState<string[]>([]);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
-  const replaceRef = useRef<HTMLInputElement>(null);
-  const replaceCamRef = useRef<HTMLInputElement>(null);
+  const slotInputRef = useRef<HTMLInputElement>(null);
+  const [slotUploadTarget, setSlotUploadTarget] = useState<MediaType | null>(null);
 
   const storageFolder = productSku || productId;
 
@@ -102,6 +109,14 @@ export function ProductMediaUploader({
   useEffect(() => {
     if (productId) load();
   }, [productId]);
+
+  useEffect(() => {
+    const nextMissing = REQUIRED_READINESS_SLOTS.find((slot) => !slotFilled(media, slot));
+    if (nextMissing) setType(nextMissing);
+    else if (!media.some((m) => m.type === "hero_image" || m.file_url === currentHero)) {
+      setType("hero_image");
+    }
+  }, [media, currentHero]);
 
   const submitDraft = async (
     intent: MediaOperationIntent,
@@ -142,13 +157,15 @@ export function ProductMediaUploader({
     status: string,
     asHero = false,
   ): Promise<boolean> => {
+    const directApproved =
+      writeMode !== "draft" && (isRequiredSlot(mediaType) || asHero);
     const insertRes = await insertProductMediaRow({
       product_id: productId,
       file_url: url,
       type: mediaType,
-      angle: type.includes("angle") || type === "closeup" ? type : null,
+      angle: mediaType.includes("angle") || mediaType === "closeup" ? mediaType : null,
       alt_text: file.name,
-      status: asHero ? "approved" : status,
+      status: directApproved ? "approved" : status,
     });
     if (!insertRes.ok) {
       toast.error(insertRes.message);
@@ -170,7 +187,13 @@ export function ProductMediaUploader({
     }
     const url = getMediaPublicUrl(path);
     const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
-    const saved = await persistMediaRow(file, url, mediaType, asHero ? "approved" : "raw", asHero);
+    const saved = await persistMediaRow(
+      file,
+      url,
+      mediaType,
+      isRequiredSlot(mediaType) || asHero ? "approved" : "raw",
+      asHero,
+    );
     if (!saved) return null;
     return url;
   };
@@ -230,6 +253,41 @@ export function ProductMediaUploader({
     return true;
   };
 
+  const uploadToSlot = async (files: FileList | null, slot: MediaType) => {
+    if (!files?.length || !canMutate) return;
+    setUploading(true);
+    setType(slot);
+    try {
+      const asHero = slot === "hero_image";
+      if (writeMode === "draft") {
+        const ok = await uploadFileDraft(files[0], asHero ? "replace_hero" : "create", {
+          asHeroType: asHero,
+        });
+        if (ok) toast.success(MEDIA_DRAFT_SUCCESS);
+        return;
+      }
+      if (asHero && currentHero && isPdfPage(currentHero)) {
+        await supabase
+          .from("product_media")
+          .update({ type: "source_pdf_page", status: "reference_only" })
+          .eq("product_id", productId)
+          .eq("file_url", currentHero);
+      }
+      const url = await uploadFileDirect(files[0], asHero, false);
+      if (url && asHero) {
+        await setAsHeroDirect(url);
+        toast.success("Hero image uploaded");
+      } else if (url) {
+        toast.success(`${mediaTypeLabel(slot)} uploaded`);
+      }
+      await load();
+    } finally {
+      setUploading(false);
+      if (slotInputRef.current) slotInputRef.current.value = "";
+      setSlotUploadTarget(null);
+    }
+  };
+
   const upload = async (files: FileList | null, isVideo = false) => {
     if (!files || files.length === 0 || !canMutate) return;
     setUploading(true);
@@ -264,39 +322,6 @@ export function ProductMediaUploader({
       if (galleryRef.current) galleryRef.current.value = "";
       if (cameraRef.current) cameraRef.current.value = "";
       if (videoRef.current) videoRef.current.value = "";
-    }
-  };
-
-  const replaceHero = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !canMutate) return;
-    setUploading(true);
-    try {
-      if (writeMode === "draft") {
-        const existingHeroRow = media.find((m) => m.file_url === currentHero);
-        const ok = await uploadFileDraft(files[0], "replace_hero", {
-          targetRecordId: existingHeroRow?.id ?? null,
-        });
-        if (ok) toast.success(MEDIA_DRAFT_SUCCESS);
-        return;
-      }
-
-      if (currentHero && isPdfPage(currentHero)) {
-        await supabase
-          .from("product_media")
-          .update({ type: "source_pdf_page", status: "reference_only" })
-          .eq("product_id", productId)
-          .eq("file_url", currentHero);
-      }
-      const url = await uploadFileDirect(files[0], true, false);
-      if (url) {
-        await setAsHeroDirect(url);
-        toast.success("Hero photo replaced");
-      }
-      await load();
-    } finally {
-      setUploading(false);
-      if (replaceRef.current) replaceRef.current.value = "";
-      if (replaceCamRef.current) replaceCamRef.current.value = "";
     }
   };
 
@@ -498,17 +523,17 @@ export function ProductMediaUploader({
       return;
     }
 
-    const { error } = await insertProductMediaRow({
+    const insertRes = await insertProductMediaRow({
       product_id: productId,
       file_url: url,
       type,
-      status: "raw",
+      status: writeMode !== "draft" && isRequiredSlot(type) ? "approved" : "raw",
       alt_text: "url_import",
-    }).then((res) => (res.ok ? { error: null } : { error: res.error }));
+    });
 
-    if (error) {
-      if (import.meta.env.DEV) console.error("[media-url-add]", error, url);
-      return toast.error(formatMediaInsertError(error));
+    if (!insertRes.ok) {
+      if (import.meta.env.DEV) console.error("[media-url-add]", insertRes.error, url);
+      return toast.error(insertRes.message);
     }
     setUrlInput("");
     if (!currentHero || isPdfPage(currentHero)) await setAsHeroDirect(url);
@@ -561,49 +586,49 @@ export function ProductMediaUploader({
       )}
 
       {canMutate && (
-        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-          <div className="text-sm font-medium flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" /> Replace product photo
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <Button
-              type="button"
-              variant="default"
-              disabled={uploading}
-              onClick={() => replaceRef.current?.click()}
-              className="w-full"
-            >
-              {uploading ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Upload className="h-4 w-4 mr-2" />
-              )}
-              From gallery
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              disabled={uploading}
-              onClick={() => replaceCamRef.current?.click()}
-              className="w-full"
-            >
-              <Camera className="h-4 w-4 mr-2" /> Take photo
-            </Button>
+        <div className="space-y-3">
+          <div className="text-sm font-medium">Required for readiness</div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {REQUIRED_READINESS_SLOTS.map((slot) => {
+              const filled = slotFilled(media, slot);
+              return (
+                <div key={slot} className="rounded-lg border p-3 space-y-2 bg-muted/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-medium">{mediaTypeLabel(slot)}</span>
+                    <Badge variant={filled ? "default" : "outline"} className="text-[10px]">
+                      {filled ? "approved" : "missing"}
+                    </Badge>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={filled ? "outline" : "default"}
+                    disabled={uploading}
+                    className="w-full"
+                    onClick={() => {
+                      setSlotUploadTarget(slot);
+                      slotInputRef.current?.click();
+                    }}
+                  >
+                    {uploading && slotUploadTarget === slot ? (
+                      <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    ) : (
+                      <Upload className="h-3.5 w-3.5 mr-1" />
+                    )}
+                    {filled ? "Replace" : "Upload"}
+                  </Button>
+                </div>
+              );
+            })}
           </div>
           <input
-            ref={replaceRef}
+            ref={slotInputRef}
             type="file"
             accept="image/*"
             hidden
-            onChange={(e) => replaceHero(e.target.files)}
-          />
-          <input
-            ref={replaceCamRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            onChange={(e) => replaceHero(e.target.files)}
+            onChange={(e) => {
+              if (slotUploadTarget) void uploadToSlot(e.target.files, slotUploadTarget);
+            }}
           />
         </div>
       )}
@@ -611,7 +636,7 @@ export function ProductMediaUploader({
       {canMutate && (
         <div className="space-y-3">
           <div>
-            <Label className="text-xs">Media type for next upload</Label>
+            <Label className="text-xs">Additional media type</Label>
             <select
               className="w-full h-10 px-3 rounded-md border bg-background text-sm mt-1 disabled:opacity-50"
               value={type}

@@ -22,6 +22,10 @@ import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { resolveChannelUom } from "@/features/productAuthority/channelPricingMapper";
 import {
+  seedRetailB2bMoqFromProduct,
+  type ChannelSeedTarget,
+} from "@/features/productAuthority/seedChannelAuthority";
+import {
   canSubmitDraft,
   canWriteMasterDirectly,
   isCatalogueContributor,
@@ -636,11 +640,28 @@ export const ChannelPricingRules = ({
       }
 
       if (created > 0) {
-        toast.success(`Seeded ${created} channel row(s) with UOM from product`);
+        const channels = seeds.map((s) => s.channel as ChannelSeedTarget);
+        const moqRes = await seedRetailB2bMoqFromProduct(productId, product ?? {}, channels);
+        if (!moqRes.ok) {
+          toast.warning(`Pricing seeded but MOQ seed failed: ${moqRes.message ?? "unknown error"}`);
+        }
+        toast.success(
+          `Seeded ${created} channel price row(s)${moqRes.created ? ` and ${moqRes.created} MOQ row(s)` : ""}`,
+        );
         await load();
         onRulesChange?.();
       } else {
-        toast.info("Retail and B2B pricing rows already exist.");
+        const moqRes = await seedRetailB2bMoqFromProduct(
+          productId,
+          product ?? {},
+          seeds.map((s) => s.channel as ChannelSeedTarget),
+        );
+        if (moqRes.created > 0) {
+          toast.success(`Seeded ${moqRes.created} MOQ row(s) from product UOM`);
+          onRulesChange?.();
+        } else {
+          toast.info("Retail and B2B pricing rows already exist.");
+        }
       }
     } finally {
       setSubmitting(false);

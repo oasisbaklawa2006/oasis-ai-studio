@@ -114,15 +114,14 @@ export function ProductLanguageTermsPanel({
           </div>
         ) : null}
 
-        <div className="rounded-md border border-warning/30 bg-warning/5 p-3 flex gap-2">
-          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+        <div className="rounded-md border border-muted bg-muted/10 p-3 flex gap-2">
+          <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-xs space-y-1">
-            <p className="font-medium text-foreground">WhatsApp keywords require review</p>
+            <p className="font-medium text-foreground">WhatsApp keywords — approval workflow not active</p>
             <p className="text-muted-foreground">
-              Phrases in the WhatsApp Keyword tab are submitted as drafts and must be approved before they affect
-              order matching or chat flows.
+              WhatsApp term matching is informational until the durable approval workflow is deployed.
               {whatsappCount > 0
-                ? ` ${whatsappCount} keyword${whatsappCount === 1 ? "" : "s"} in inventory.`
+                ? ` ${whatsappCount} keyword${whatsappCount === 1 ? "" : "s"} in local inventory.`
                 : " No WhatsApp keywords in inventory yet."}
             </p>
           </div>

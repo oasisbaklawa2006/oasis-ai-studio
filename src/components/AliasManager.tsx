@@ -47,7 +47,7 @@ type AliasRowInput = {
   term_type?: ProductLanguageTermType;
 };
 
-import { ALIAS_SEED_RULES } from "@/features/productLanguage/aliasSeedRules";
+import { seedAliasesFromName } from "@/features/productLanguage/aliasSeedRules";
 
 function resolveTermType(productId: string, item: Record<string, unknown>): ProductLanguageTermType {
   const id = String(item.id ?? "");
@@ -248,10 +248,10 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
   const generate = async () => {
     if (submitting || !canMutate) return;
 
-    const matches = ALIAS_SEED_RULES.filter((r) => r.match.test(productName));
-    const rows = matches.flatMap((m) => m.aliases.map((a) => ({ ...a, source: "system_generated" })));
+    const seeded = seedAliasesFromName(productName);
+    const rows = seeded.map((a) => ({ ...a, source: "system_generated" }));
     if (!rows.length) {
-      toast.info("No starter aliases matched. Add them manually.");
+      toast.info("Could not derive aliases from product name. Add them manually.");
       return;
     }
 
