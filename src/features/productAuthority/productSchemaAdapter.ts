@@ -220,6 +220,28 @@ function toBool(v: unknown, fallback = false): boolean {
   return fallback;
 }
 
+/** Central legacy `products.name` (NOT NULL on live DB) — never send null. */
+export function resolveCentralLegacyProductName(fields: {
+  product_name?: unknown;
+  short_name?: unknown;
+  sku?: unknown;
+  name?: unknown;
+}): string {
+  const fromName = String(fields.name ?? "").trim();
+  if (fromName) return fromName;
+
+  const fromProductName = String(fields.product_name ?? "").trim();
+  if (fromProductName) return fromProductName;
+
+  const fromShort = String(fields.short_name ?? "").trim();
+  if (fromShort) return fromShort;
+
+  const fromSku = String(fields.sku ?? "").trim();
+  if (fromSku) return fromSku;
+
+  return "Untitled Product";
+}
+
 function buildDimensionsText(form: Record<string, unknown>): string | null {
   if (form.product_dimensions_cm) return String(form.product_dimensions_cm);
   if (form.dimensions) return String(form.dimensions);
@@ -271,7 +293,9 @@ export function validateProductSavePayload(
   mode: "create" | "update" = "create",
 ): ProductSaveValidation {
   const missing: string[] = [];
-  if (!payload.product_name || !String(payload.product_name).trim()) {
+  const hasDisplayName =
+    String(payload.product_name ?? "").trim() || String(payload.name ?? "").trim();
+  if (!hasDisplayName) {
     missing.push("product_name");
   }
   if (mode === "create") {
@@ -286,6 +310,16 @@ export function validateProductSavePayload(
   return { ok: missing.length === 0, missing, stripped: [] };
 }
 
+export function productSaveValidationMessage(validation: ProductSaveValidation): string {
+  if (!validation.ok && validation.missing.length === 1 && validation.missing[0] === "product_name") {
+    return "Product name is required.";
+  }
+  if (!validation.ok) {
+    return `Missing required fields: ${validation.missing.join(", ")}`;
+  }
+  return "";
+}
+
 export function formatProductSaveError(error: unknown): string {
   return formatSupabaseDiagnostic(error, "Product save");
 }
@@ -298,8 +332,16 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
   const hero = (form.hero_image_url as string) ?? null;
   const dims = buildDimensionsText(form);
 
+  const centralLegacyName = resolveCentralLegacyProductName({
+    product_name: form.product_name,
+    short_name: form.short_name,
+    sku: form.sku,
+    name: form.name,
+  });
+
   const raw: Record<string, unknown> = {
     product_name: form.product_name ?? null,
+    name: centralLegacyName,
     short_name: form.short_name ?? null,
     category: form.category ?? null,
     subcategory: form.subcategory ?? null,

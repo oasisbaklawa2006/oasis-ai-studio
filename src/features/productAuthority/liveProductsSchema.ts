@@ -44,6 +44,7 @@ export const LIVE_PRODUCTS_PRICING_BASIS_FORM_KEYS: ReadonlySet<string> = new Se
  */
 export const CENTRAL_COMPAT_PRODUCT_COLUMNS = [
   "image_url",
+  "name",
   "grams_per_piece",
   "pcs_per_kg",
   "weight_per_pc_grams",

@@ -11,6 +11,7 @@ import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import {
   formToDbProductPayload,
   formatProductSaveError,
+  productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
@@ -74,7 +75,7 @@ export async function saveFastCreateProduct(
 
     const validation = validateProductSavePayload(productRow, "create");
     if (!validation.ok) {
-      throw new Error(`Cannot create product: missing ${validation.missing.join(", ")}`);
+      throw new Error(productSaveValidationMessage(validation));
     }
 
     const skuGuard = assertStructuredSkuForSave(productRow.sku as string);

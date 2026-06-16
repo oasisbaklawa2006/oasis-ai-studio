@@ -5,6 +5,8 @@ import {
   formToDbProductPayload,
   formatProductSaveError,
   findPricingLeaksInProductPayload,
+  productSaveValidationMessage,
+  resolveCentralLegacyProductName,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -29,10 +31,10 @@ describe("productSchemaAdapter", () => {
       sku: "OAS-AS-BKL-0001-0001",
     });
     expect(payload.product_name).toBe("Cashew Kitta");
+    expect(payload.name).toBe("Cashew Kitta");
     expect(payload.subcategory).toBe("Baklawa");
     expect(payload.b2b_price).toBeUndefined();
     expect(payload.mrp).toBeUndefined();
-    expect(payload.name).toBeUndefined();
     expect(payload.price_b2b).toBeUndefined();
     expect(payload.sub_category).toBeUndefined();
     expect(payload.hero_image_url).toBe("https://example.com/h.jpg");
@@ -152,10 +154,34 @@ describe("productSchemaAdapter", () => {
     expect(stripped).toContain("department");
   });
 
+  it("always maps Central legacy name on create payload", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Bourma Pistachio",
+      sku: "OAS-AS-BKL-0099-0001",
+    });
+    expect(payload.name).toBe("Bourma Pistachio");
+    expect(payload.product_name).toBe("Bourma Pistachio");
+  });
+
+  it("falls back Central legacy name from short_name then sku", () => {
+    expect(
+      resolveCentralLegacyProductName({ short_name: "Bourma", sku: "OAS-AS-BKL-0099-0001" }),
+    ).toBe("Bourma");
+    expect(resolveCentralLegacyProductName({ sku: "OAS-AS-BKL-0099-0001" })).toBe(
+      "OAS-AS-BKL-0099-0001",
+    );
+    expect(resolveCentralLegacyProductName({})).toBe("Untitled Product");
+  });
+
   it("validates required fields on create", () => {
     const bad = validateProductSavePayload({ product_name: "A" }, "create");
     expect(bad.ok).toBe(false);
     expect(bad.missing).toContain("sku");
+
+    const missingName = validateProductSavePayload({ sku: "OAS-AS-BKL-0001-0001" }, "create");
+    expect(missingName.ok).toBe(false);
+    expect(missingName.missing).toContain("product_name");
+    expect(productSaveValidationMessage(missingName)).toBe("Product name is required.");
 
     const good = validateProductSavePayload(
       {

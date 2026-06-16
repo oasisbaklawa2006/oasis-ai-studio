@@ -67,6 +67,7 @@ import {
   dbRowToProductForm,
   formToDbProductPayload,
   formatProductSaveError,
+  productSaveValidationMessage,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -1073,9 +1074,12 @@ const ProductEdit = () => {
     setSubmitError(null);
 
     if (missing.length > 0) {
-      const message = isContributorMode
-        ? `Draft not submitted: missing ${missing.join(", ")}`
-        : `Fix missing fields: ${missing.join(", ")}`;
+      const message =
+        missing.length === 1 && missing[0] === "Product name"
+          ? "Product name is required."
+          : isContributorMode
+            ? `Draft not submitted: missing ${missing.join(", ")}`
+            : `Fix missing fields: ${missing.join(", ")}`;
 
       setSubmitError(message);
       toast.error(message);
@@ -1135,7 +1139,7 @@ const ProductEdit = () => {
       const productRow = formToProductRow(safePayload);
       const validation = validateProductSavePayload(productRow, isNew ? "create" : "update");
       if (!validation.ok) {
-        const message = `Missing required fields: ${validation.missing.join(", ")}`;
+        const message = productSaveValidationMessage(validation);
         setLoading(false);
         setSubmitError(message);
         toast.error(message);
