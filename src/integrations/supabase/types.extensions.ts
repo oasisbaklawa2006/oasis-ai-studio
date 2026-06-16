@@ -2,6 +2,7 @@
  * Supplemental Database types derived from in-repo schema sources only (no live gen):
  * - supabase/migrations/20260602140000_catalogue_versions_and_sync_events.sql
  * - supabase/migrations/20260602160000_catalogue_collections_foundation.sql
+ * - supabase/migrations/20260603120000_product_governance_archive_delete.sql
  * - scripts/supabase/PR06B_draft_approval_migration.sql (draft table shape)
  */
 import type { Database } from "./types";
@@ -133,11 +134,53 @@ export type CatalogueAuthorityTableDefinitions = {
   catalogue_moq_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
   catalogue_pricing_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
   catalogue_tag_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
+  product_governance_audit: {
+    Row: {
+      id: string;
+      product_id: string;
+      sku: string;
+      product_name: string | null;
+      action: "archived" | "permanently_deleted";
+      performed_by: string;
+      performed_at: string;
+      metadata: Record<string, unknown>;
+    };
+    Insert: {
+      product_id: string;
+      sku: string;
+      product_name?: string | null;
+      action: "archived" | "permanently_deleted";
+      performed_by: string;
+      metadata?: Record<string, unknown>;
+    };
+    Update: Partial<CatalogueAuthorityTableDefinitions["product_governance_audit"]["Row"]>;
+    Relationships: [];
+  };
+};
+
+export type ProductGovernanceRpc = {
+  assess_product_delete_eligibility: {
+    Args: { _product_id: string };
+    Returns: Record<string, unknown>;
+  };
+  archive_product: {
+    Args: { _product_id: string };
+    Returns: Record<string, unknown>;
+  };
+  permanently_delete_product: {
+    Args: { _product_id: string };
+    Returns: Record<string, unknown>;
+  };
+  is_super_admin: {
+    Args: Record<string, never>;
+    Returns: boolean;
+  };
 };
 
 export type ExtendedDatabase = Database & {
   public: Database["public"] & {
     Tables: Database["public"]["Tables"] & CatalogueAuthorityTableDefinitions;
+    Functions: Database["public"]["Functions"] & ProductGovernanceRpc;
   };
 };
 

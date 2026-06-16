@@ -1,6 +1,6 @@
 import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,7 @@ import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
+import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -599,6 +600,8 @@ const pickComplianceBaseline = (form: Record<string, unknown>) => {
 
 const ProductEdit = () => {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const duplicateFrom = searchParams.get("duplicateFrom");
   const isNew = !id || id === "new";
   const nav = useNavigate();
   const { roles } = useAuth();
@@ -682,6 +685,41 @@ const ProductEdit = () => {
       return next;
     });
   }, [isNew]);
+
+  useEffect(() => {
+    if (!isNew || !duplicateFrom) return;
+
+    void (async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("id", duplicateFrom)
+        .single();
+
+      if (error || !data) {
+        toast.error("Could not load product to duplicate");
+        return;
+      }
+
+      const loaded = dbProductToForm(data);
+      const duplicated = {
+        ...loaded,
+        id: undefined,
+        sku: null,
+        sku_locked: false,
+        product_name: `${loaded.product_name || loaded.name || "Product"} (copy)`.trim(),
+        is_catalogue_ready: false,
+        label_status: "draft",
+        archived_at: null,
+        archived_by: null,
+      };
+      complianceBaselineRef.current = pickComplianceBaseline(duplicated);
+      setComplianceMetaMap({});
+      setForm(duplicated);
+      setDirty(true);
+      toast.success("Duplicated — assign a new SKU before saving");
+    })();
+  }, [isNew, duplicateFrom]);
 
   useEffect(() => {
     let mounted = true;
@@ -1315,6 +1353,18 @@ const ProductEdit = () => {
         subtitle="Master record · catalogue, label, and media-ready."
         actions={
           <>
+            {!isNew && id && (
+              <ProductActionsMenu
+                product={{
+                  id,
+                  sku: form.sku,
+                  product_name: form.product_name,
+                  name: form.name,
+                  archived_at: form.archived_at,
+                }}
+                onChanged={() => nav("/products")}
+              />
+            )}
             <Button
               variant="outline"
               onClick={() => {

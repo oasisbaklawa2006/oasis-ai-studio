@@ -148,6 +148,7 @@ async function listRecentProducts(): Promise<ProductSearchResult[]> {
   const { data } = await supabase
     .from("products")
     .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url")
+    .is("archived_at", null)
     .order("name", { ascending: true, nullsFirst: false })
     .limit(50);
 
@@ -163,7 +164,8 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   const [productsRes, aliasesRes] = await Promise.all([
     supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases")
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
+      .is("archived_at", null)
       .or(`name.ilike.${pattern},sku.ilike.${pattern}`),
     supabase
       .from("product_aliases")
@@ -186,7 +188,8 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (missingIds.length) {
     const { data: linked } = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases")
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
+      .is("archived_at", null)
       .in("id", missingIds);
     if (linked?.length) products = [...products, ...(linked as ProductRow[])];
   }
@@ -207,7 +210,8 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
       const orFilter = toFetch.map((n) => `name.ilike.${escapeIlikePattern(n)}`).join(",");
       const { data: byName } = await supabase
         .from("products")
-        .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases")
+        .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
+        .is("archived_at", null)
         .or(orFilter);
       if (byName?.length) {
         const seen = new Set(products.map((p) => p.id));
@@ -221,7 +225,8 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (!products.length && !aliasRows.length) {
     const { data: broad } = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases")
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
+      .is("archived_at", null)
       .limit(200);
     products = (broad ?? []) as ProductRow[];
   }
@@ -241,7 +246,13 @@ export async function searchProductsWithAliases(q: string): Promise<ProductSearc
 
   const { data, error } = await supabase.rpc("search_products_with_aliases", { _q: text });
   if (!error && data) {
-    return { results: (data ?? []) as ProductSearchResult[], usedBasicFallback: false };
+    const activeIds = new Set(
+      (
+        await supabase.from("products").select("id").is("archived_at", null)
+      ).data?.map((r) => r.id) ?? [],
+    );
+    const results = ((data ?? []) as ProductSearchResult[]).filter((r) => activeIds.has(r.id));
+    return { results, usedBasicFallback: false };
   }
 
   if (error) console.error("[productSearch] RPC unavailable, using fallback:", error.message);

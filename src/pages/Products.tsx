@@ -25,6 +25,12 @@ import {
 } from "@/features/readiness/productReadinessSnapshot";
 import { IMMUTABLE_VERSION_STATUSES } from "@/features/catalogueSnapshot/types";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import {
+  detectProductMasterDuplicates,
+  duplicateKindLabel,
+} from "@/features/productGovernance/duplicateDetection";
+import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
+import type { ProductLabelBarcodeRow } from "@/features/productGovernance/types";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 
 const PRODUCT_CLASSES = [
@@ -122,6 +128,11 @@ const Products = () => {
   const [labelStatus, setLabelStatus] = useState("");
   const [sort, setSort] = useState("recent");
   const [showFilters, setShowFilters] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [labelRows, setLabelRows] = useState<ProductLabelBarcodeRow[]>([]);
+  const [reloadToken, setReloadToken] = useState(0);
+
+  const reloadProducts = () => setReloadToken((n) => n + 1);
 
   const [moqCounts, setMoqCounts] = useState<Record<string, number>>({});
   const [priceCounts, setPriceCounts] = useState<Record<string, { total: number; approved: number }>>({});
@@ -134,8 +145,17 @@ const Products = () => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [productsRes, rulesRes, moqRes, pricingRes, mediaRes, versionsRes] = await Promise.all([
-        supabase.from("products").select("*").order("created_at", { ascending: false }),
+      let productsQuery = supabase
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (!showArchived) {
+        productsQuery = productsQuery.is("archived_at", null);
+      }
+
+      const [productsRes, rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes] =
+        await Promise.all([
+        productsQuery,
         supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("product_moq_rules").select("*"),
         supabase.from("product_pricing_rules").select("*"),
@@ -146,6 +166,7 @@ const Products = () => {
           .from("catalogue_versions")
           .select("product_id, status, version_number")
           .order("version_number", { ascending: false }),
+        supabase.from("labels").select("product_id, barcode, status"),
       ]);
       if (cancelled) return;
 
@@ -185,13 +206,14 @@ const Products = () => {
         }
       }
       setCatalogueApprovedByProduct(approvedByProduct);
+      setLabelRows((labelsRes.data ?? []) as ProductLabelBarcodeRow[]);
 
       setAuthorityReady(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [showArchived, reloadToken]);
 
   const readinessByProduct = useMemo(() => {
     const map = new Map<string, ReturnType<typeof buildProductReadinessSnapshot>>();
@@ -207,6 +229,13 @@ const Products = () => {
     }
     return map;
   }, [items, mediaByProduct, pricingByProduct, moqByProduct]);
+
+  const duplicateSignalsByProduct = useMemo(
+    () => detectProductMasterDuplicates(items, labelRows),
+    [items, labelRows],
+  );
+
+  const duplicateProductCount = duplicateSignalsByProduct.size;
 
   useEffect(() => {
     let cancelled = false;
@@ -231,6 +260,7 @@ const Products = () => {
 
   const filtered = useMemo(() => {
     let arr = items.filter((p) => {
+      if (!showArchived && p.archived_at) return false;
       if (ids && !ids.has(p.id)) return false;
       if (div && p.division_code !== div) return false;
       if (cat && p.category_code !== cat) return false;
@@ -258,7 +288,7 @@ const Products = () => {
       case "label_ok": arr = [...arr].sort((a, b) => Number(b.label_status === "approved" || b.label_status === "locked") - Number(a.label_status === "approved" || a.label_status === "locked")); break;
     }
     return arr;
-  }, [items, ids, div, cat, pack, pclass, mainDept, prodDept, uom, pl, bom, carton, ready, labelStatus, sort]);
+  }, [items, ids, div, cat, pack, pclass, mainDept, prodDept, uom, pl, bom, carton, ready, labelStatus, sort, showArchived]);
 
   const by = (t: string) => rules.filter((r) => r.code_type === t);
   const copy = (e: React.MouseEvent, sku: string) => { e.preventDefault(); navigator.clipboard.writeText(sku); toast.success("SKU copied"); };
@@ -304,6 +334,14 @@ const Products = () => {
               <Filter className="h-3.5 w-3.5 mr-1" />
               <span className="hidden sm:inline">Filters</span>{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
             </Button>
+            <Button
+              variant={showArchived ? "secondary" : "outline"}
+              size="sm"
+              onClick={() => setShowArchived((v) => !v)}
+              className="shrink-0 rounded-full sm:hidden"
+            >
+              {showArchived ? "Archived" : "Active"}
+            </Button>
             <select className="h-9 px-2 rounded-full border border-border/60 bg-background text-xs hidden sm:block max-w-[160px] truncate" value={sort} onChange={(e) => setSort(e.target.value)}>
               {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
             </select>
@@ -311,6 +349,14 @@ const Products = () => {
 
           {searchBasicFallback && q.trim() && (
             <p className="text-xs text-muted-foreground px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
+          )}
+
+          {(duplicateProductCount > 0) && (
+            <div className="px-1 text-xs">
+              <span className="badge-soft bg-warning/10 text-warning">
+                {duplicateProductCount} product{duplicateProductCount === 1 ? "" : "s"} with duplicate signals
+              </span>
+            </div>
           )}
 
           {showFilters && (
@@ -356,6 +402,15 @@ const Products = () => {
                   <option value="">Label: all</option>
                   {LABEL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
+                <label className={`${sel} flex items-center gap-2 cursor-pointer`}>
+                  <input
+                    type="checkbox"
+                    checked={showArchived}
+                    onChange={(e) => setShowArchived(e.target.checked)}
+                    className="rounded border-border"
+                  />
+                  Show archived
+                </label>
                 <select className={sel} value={div} onChange={(e) => setDiv(e.target.value)}>
                   <option value="">All divisions</option>
                   {by("division").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
@@ -402,7 +457,15 @@ const Products = () => {
             ? dimensionIsComplete(readiness, "compliance_status")
             : false;
           return (
-            <Link to={`/products/${p.id}`} key={p.id} className="luxe-card flex flex-col">
+            <div key={p.id} className="luxe-card flex flex-col relative">
+              <div className="absolute top-2 right-2 z-10">
+                <ProductActionsMenu
+                  product={p}
+                  onChanged={reloadProducts}
+                  className="h-8 w-8 bg-background/80 backdrop-blur-sm hover:bg-background"
+                />
+              </div>
+              <Link to={`/products/${p.id}`} className="flex flex-col flex-1 min-w-0">
               <div className="luxe-media relative">
                 {heroUrl
                   ? <img src={heroUrl} alt={productDisplayName(p)} loading="lazy" className={heroUrl.includes("/_pdf_pages/") ? "opacity-60" : ""} />
@@ -412,7 +475,7 @@ const Products = () => {
                 )}
               </div>
               <div className="p-4 sm:p-5 flex-1 flex flex-col min-w-0 space-y-3">
-                <div className="flex items-start justify-between gap-2 min-w-0">
+                <div className="flex items-start justify-between gap-2 min-w-0 pr-8">
                   <div className="min-w-0 flex-1">
                     <div className="luxe-sub mb-1 truncate">{p.category || p.product_type || "—"}</div>
                     <div className="font-display text-lg leading-tight truncate">{productDisplayName(p)}</div>
@@ -425,6 +488,16 @@ const Products = () => {
                 </div>
 
                 {matched && <div className="text-[11px] text-accent">Matched by alias: <span className="font-medium">{matched}</span></div>}
+
+              {p.archived_at && (
+                <div className="text-[11px] text-muted-foreground">Archived · hidden from default search</div>
+              )}
+
+              {duplicateSignalsByProduct.get(p.id)?.map((signal) => (
+                <div key={`${signal.kind}-${signal.otherProductId}`} className="text-[11px] text-warning">
+                  {duplicateKindLabel(signal.kind)}: {signal.matchedValue} · {signal.otherLabel}
+                </div>
+              ))}
 
               {/* Identity + ops badges */}
               <div className="flex flex-wrap gap-1.5 mb-2">
@@ -491,7 +564,8 @@ const Products = () => {
                 />
               </div>
               </div>
-            </Link>
+              </Link>
+            </div>
           );
         })}
 
