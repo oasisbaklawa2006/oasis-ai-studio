@@ -34,6 +34,11 @@ import {
 } from "@/features/productAuthority/productMediaPersistence";
 import { heroUrlWritePayload } from "@/lib/productImage";
 import type { Role } from "@/lib/permissions";
+import {
+  getMediaGovernanceMode,
+  GOVERNANCE_REQUIRED_UPLOADER_TYPES,
+  RECOMMENDED_UPLOADER_TYPES,
+} from "@/features/mediaReadiness/mediaGovernanceMode";
 
 const MEDIA_TYPES = [
   "raw_photo",
@@ -53,10 +58,24 @@ const MEDIA_TYPES = [
 
 type MediaType = (typeof MEDIA_TYPES)[number];
 
-/** Required for media readiness — uploads to these slots persist as approved in direct mode. */
-const REQUIRED_READINESS_SLOTS: MediaType[] = ["hero_image", "white_background", "closeup"];
+function requiredReadinessSlots(): MediaType[] {
+  const mode = getMediaGovernanceMode();
+  if (mode === "production") {
+    return ["hero_image", "white_background", "closeup"];
+  }
+  return [...GOVERNANCE_REQUIRED_UPLOADER_TYPES[mode]] as MediaType[];
+}
 
-const isRequiredSlot = (t: MediaType) => REQUIRED_READINESS_SLOTS.includes(t);
+function recommendedReadinessSlots(): MediaType[] {
+  const mode = getMediaGovernanceMode();
+  if (mode === "production") return [];
+  const required = new Set(requiredReadinessSlots());
+  return RECOMMENDED_UPLOADER_TYPES.filter((t) =>
+    MEDIA_TYPES.includes(t as MediaType) && !required.has(t as MediaType),
+  ) as MediaType[];
+}
+
+const isRequiredSlot = (t: MediaType) => requiredReadinessSlots().includes(t);
 
 const slotFilled = (media: any[], slot: MediaType) =>
   media.some((m) => m.type === slot && m.status === "approved");
@@ -111,7 +130,8 @@ export function ProductMediaUploader({
   }, [productId]);
 
   useEffect(() => {
-    const nextMissing = REQUIRED_READINESS_SLOTS.find((slot) => !slotFilled(media, slot));
+    const required = requiredReadinessSlots();
+    const nextMissing = required.find((slot) => !slotFilled(media, slot));
     if (nextMissing) setType(nextMissing);
     else if (!media.some((m) => m.type === "hero_image" || m.file_url === currentHero)) {
       setType("hero_image");
@@ -589,7 +609,7 @@ export function ProductMediaUploader({
         <div className="space-y-3">
           <div className="text-sm font-medium">Required for readiness</div>
           <div className="grid sm:grid-cols-3 gap-2">
-            {REQUIRED_READINESS_SLOTS.map((slot) => {
+            {requiredReadinessSlots().map((slot) => {
               const filled = slotFilled(media, slot);
               return (
                 <div key={slot} className="rounded-lg border p-3 space-y-2 bg-muted/20">
@@ -621,6 +641,47 @@ export function ProductMediaUploader({
               );
             })}
           </div>
+          {recommendedReadinessSlots().length > 0 && (
+            <>
+              <div className="text-sm font-medium text-muted-foreground">Recommended assets</div>
+              <p className="text-[11px] text-muted-foreground">
+                Optional until pilot signoff — do not block catalogue or Central sync.
+              </p>
+              <div className="grid sm:grid-cols-3 gap-2">
+                {recommendedReadinessSlots().slice(0, 6).map((slot) => {
+                  const filled = slotFilled(media, slot);
+                  return (
+                    <div key={slot} className="rounded-lg border border-dashed p-3 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-medium">{mediaTypeLabel(slot)}</span>
+                        <Badge variant="outline" className="text-[10px]">
+                          {filled ? "uploaded" : "recommended"}
+                        </Badge>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={uploading}
+                        className="w-full"
+                        onClick={() => {
+                          setSlotUploadTarget(slot);
+                          slotInputRef.current?.click();
+                        }}
+                      >
+                        {uploading && slotUploadTarget === slot ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <Upload className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        Upload
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
           <input
             ref={slotInputRef}
             type="file"

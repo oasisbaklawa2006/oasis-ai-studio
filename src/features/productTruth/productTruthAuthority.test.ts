@@ -123,6 +123,7 @@ describe("media authority parity", () => {
   });
 
   it("Product Truth media readiness consumes product_media rows", () => {
+    import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "production";
     const ctx = productMediaContextFromForm(form);
     const assets = mediaAssetsFromSources({ form, productMediaRows: mediaRows });
     const readiness = evaluateMediaReadiness(ctx, assets);

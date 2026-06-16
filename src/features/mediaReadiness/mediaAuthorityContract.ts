@@ -2,6 +2,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { heroUrlWritePayload, resolveProductHeroUrl } from "@/lib/productImage";
 import type { MediaAsset } from "./types";
 import {
+  getMediaGovernanceMode,
+  governedRequiredUploaderTypes,
+} from "./mediaGovernanceMode";
+import {
   mediaAssetsFromProductMedia,
   type ProductMediaRow,
 } from "./mediaAssetsFromForm";
@@ -17,10 +21,26 @@ function rowIsApproved(row: ProductMediaRow): boolean {
 
 /**
  * Authoritative media_status derived only from persisted product_media rows.
- * Ignores products.media_status column (may be stale).
+ * Respects VITE_MEDIA_GOVERNANCE_MODE required slots (testing: hero only).
  */
 export function deriveMediaStatusFromRows(rows: ProductMediaRow[]): DerivedMediaStatus {
   if (!rows.length) return "missing";
+
+  const governedRequired = governedRequiredUploaderTypes();
+  if (governedRequired) {
+    const withUrl = rows.filter((r) => r.file_url);
+    if (!withUrl.length) return "missing";
+
+    for (const reqType of governedRequired) {
+      const row = rows.find(
+        (r) => String(r.type ?? "").toLowerCase() === reqType && r.file_url,
+      );
+      if (!row) return "missing";
+      if (!rowIsApproved(row)) return "pending_approval";
+    }
+    return "approved";
+  }
+
   const withUrl = rows.filter((r) => r.file_url);
   if (!withUrl.length) return "missing";
   if (withUrl.every(rowIsApproved)) return "approved";

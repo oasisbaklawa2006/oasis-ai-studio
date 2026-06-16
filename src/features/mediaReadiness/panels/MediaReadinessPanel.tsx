@@ -5,20 +5,52 @@ import { AlertTriangle, CheckCircle2, ImageIcon } from "lucide-react";
 import { authoritativeMediaAssets } from "../mediaAuthorityContract";
 import { evaluateMediaReadiness, selectApprovedImageUrlsForCentral } from "../mediaReadinessEngine";
 import {
+  getMediaGovernanceMode,
+  mediaGovernanceModeLabel,
+} from "../mediaGovernanceMode";
+import {
   productMediaContextFromForm,
   slotDisplayLabel,
   type ProductMediaRow,
 } from "../mediaAssetsFromForm";
-import type { MediaAssetType } from "../types";
+import type { MediaAssetSlotStatus } from "../types";
 
 type Props = {
   form: Record<string, unknown>;
   productMediaRows?: ProductMediaRow[];
 };
 
-const OPTIONAL_CATALOGUE_SLOTS: Array<{ type: MediaAssetType; label: string }> = [
-  { type: "transparent_cutout", label: "Square / catalogue image" },
-];
+function SlotCard({ slot }: { slot: MediaAssetSlotStatus }) {
+  return (
+    <div className="rounded border p-2 text-xs">
+      <div className="font-medium">{slot.label}</div>
+      <div className="text-muted-foreground font-mono text-[10px] mt-0.5">{slot.type}</div>
+      <Badge
+        variant="outline"
+        className={`mt-1 text-[10px] ${
+          !slot.present
+            ? ""
+            : !slot.approved
+              ? "border-warning/50 text-warning"
+              : "border-success/50 text-success"
+        }`}
+      >
+        {slotDisplayLabel({
+          present: slot.present,
+          approved: slot.approved,
+          status: slot.status,
+        })}
+      </Badge>
+      {slot.url && (
+        <img
+          src={slot.url}
+          alt={slot.label}
+          className="mt-2 h-16 w-full object-cover rounded border"
+        />
+      )}
+    </div>
+  );
+}
 
 export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
   const product = useMemo(() => productMediaContextFromForm(form), [form]);
@@ -32,36 +64,14 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
     [product, assets],
   );
 
-  const optionalSlots = useMemo(() => {
-    const requiredTypes = new Set(readiness.slots.map((s) => s.type));
-    return OPTIONAL_CATALOGUE_SLOTS.map((slot) => {
-      const asset = assets.find((a) => a.type === slot.type && a.url);
-      if (!asset || requiredTypes.has(slot.type)) return null;
-      const approved = asset.status === "approved";
-      return {
-        type: slot.type,
-        label: slot.label,
-        present: true,
-        approved,
-        url: asset.url,
-        status: approved ? "approved" : asset.status,
-      };
-    }).filter(Boolean) as Array<{
-      type: MediaAssetType;
-      label: string;
-      present: boolean;
-      approved: boolean;
-      url: string | null;
-      status: string;
-    }>;
-  }, [assets, readiness.slots]);
+  const governanceMode = getMediaGovernanceMode();
+  const requiredSlots = readiness.slots.filter((s) => s.required);
+  const recommendedSlots = readiness.slots.filter((s) => !s.required);
 
   const centralUrls = useMemo(() => selectApprovedImageUrlsForCentral(assets), [assets]);
   const pct = readiness.maxScore
     ? Math.round((readiness.score / readiness.maxScore) * 100)
     : 0;
-
-  const allSlots = [...readiness.slots, ...optionalSlots];
 
   return (
     <div className="card-elevated p-4 space-y-4">
@@ -73,6 +83,9 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
           <p className="text-xs text-muted-foreground mt-1">
             Profile: <span className="font-mono">{readiness.profile.replace(/_/g, " ")}</span>
             {readiness.isLegacy && " · legacy product"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Governance: {mediaGovernanceModeLabel(governanceMode)}
           </p>
         </div>
         <Badge variant="outline" className="text-xs">
@@ -100,9 +113,17 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
       </div>
 
       <p className="text-[11px] text-muted-foreground rounded border border-dashed p-2">
-        Readiness uses persisted <code className="text-[10px]">product_media</code> rows only
-        (matched by <code className="text-[10px]">type</code>: hero_image, white_background, closeup, etc.).
-        Upload each required slot with the correct media type selected before upload.
+        {governanceMode === "production" ? (
+          <>
+            Readiness uses persisted <code className="text-[10px]">product_media</code> rows matched
+            by category profile. Upload each required slot before publish.
+          </>
+        ) : (
+          <>
+            Pilot testing mode: only governed required slots block Product Truth, readiness score,
+            Central Sync, and catalogue approval. Other assets are recommended.
+          </>
+        )}
       </p>
 
       {readiness.blockers.length > 0 && (
@@ -118,37 +139,37 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
         </div>
       )}
 
-      <div className="grid sm:grid-cols-2 gap-2">
-        {allSlots.map((slot) => (
-          <div key={slot.type} className="rounded border p-2 text-xs">
-            <div className="font-medium">{slot.label}</div>
-            <div className="text-muted-foreground font-mono text-[10px] mt-0.5">{slot.type}</div>
-            <Badge
-              variant="outline"
-              className={`mt-1 text-[10px] ${
-                !slot.present
-                  ? ""
-                  : !slot.approved
-                    ? "border-warning/50 text-warning"
-                    : "border-success/50 text-success"
-              }`}
-            >
-              {slotDisplayLabel({
-                present: slot.present,
-                approved: slot.approved,
-                status: slot.status as "missing" | "draft" | "pending_approval" | "approved",
-              })}
-            </Badge>
-            {slot.url && (
-              <img
-                src={slot.url}
-                alt={slot.label}
-                className="mt-2 h-16 w-full object-cover rounded border"
-              />
+      {requiredSlots.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Required assets
+          </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {requiredSlots.map((slot) => (
+              <SlotCard key={slot.type} slot={slot} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {recommendedSlots.length > 0 && (
+        <div className="space-y-2">
+          <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Recommended assets
+            {governanceMode !== "production" && (
+              <span className="normal-case font-normal text-muted-foreground/80">
+                {" "}
+                — optional until pilot signoff
+              </span>
             )}
           </div>
-        ))}
-      </div>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {recommendedSlots.map((slot) => (
+              <SlotCard key={slot.type} slot={slot} />
+            ))}
+          </div>
+        </div>
+      )}
 
       {centralUrls.length > 0 && (
         <div>

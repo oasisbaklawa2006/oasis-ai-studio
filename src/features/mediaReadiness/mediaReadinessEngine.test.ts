@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   canSyncMediaToCentral,
   evaluateMediaReadiness,
@@ -6,6 +6,20 @@ import {
   selectApprovedImageUrlsForCentral,
 } from "./mediaReadinessEngine";
 import type { MediaAsset, ProductMediaContext } from "./types";
+
+function withMode(mode: string, fn: () => void) {
+  const prev = import.meta.env.VITE_MEDIA_GOVERNANCE_MODE;
+  import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = mode;
+  try {
+    fn();
+  } finally {
+    import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = prev;
+  }
+}
+
+afterEach(() => {
+  import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
+});
 
 const baklawaProduct: ProductMediaContext = {
   category: "Baklawa",
@@ -36,32 +50,40 @@ function asset(
 }
 
 describe("mediaReadinessEngine", () => {
-  it("Baklawa requires catalogue image (white background)", () => {
-    const assets = [asset("primary_image"), asset("close_up_image")];
-    const missing = getMissingMediaAssets(baklawaProduct, assets);
-    expect(missing).toContain("catalogue_image");
-    expect(missing).not.toContain("lifestyle_image");
+  it("Baklawa requires catalogue image (white background) in production mode", () => {
+    withMode("production", () => {
+      const assets = [asset("primary_image"), asset("close_up_image")];
+      const missing = getMissingMediaAssets(baklawaProduct, assets);
+      expect(missing).toContain("catalogue_image");
+      expect(missing).not.toContain("lifestyle_image");
+    });
   });
 
-  it("Gift box requires closed and open pack images", () => {
-    const assets = [asset("primary_image")];
-    const missing = getMissingMediaAssets(giftProduct, assets);
-    expect(missing).toContain("pack_front_image");
-    expect(missing).toContain("open_pack_image");
+  it("Gift box requires closed and open pack images in production mode", () => {
+    withMode("production", () => {
+      const assets = [asset("primary_image")];
+      const missing = getMissingMediaAssets(giftProduct, assets);
+      expect(missing).toContain("pack_front_image");
+      expect(missing).toContain("open_pack_image");
+    });
   });
 
-  it("Export pack requires label and carton media", () => {
-    const assets = [asset("label_front_image")];
-    const missing = getMissingMediaAssets(exportProduct, assets);
-    expect(missing).toContain("packaging_reference");
-    expect(missing).toContain("master_carton_image");
+  it("Export pack requires label and carton media in production mode", () => {
+    withMode("production", () => {
+      const assets = [asset("label_front_image")];
+      const missing = getMissingMediaAssets(exportProduct, assets);
+      expect(missing).toContain("packaging_reference");
+      expect(missing).toContain("master_carton_image");
+    });
   });
 
-  it("missing required media blocks media readiness", () => {
-    const r = evaluateMediaReadiness(baklawaProduct, [asset("primary_image")]);
-    expect(r.canPublishMedia).toBe(false);
-    expect(r.canSyncMediaToCentral).toBe(false);
-    expect(r.blockers.length).toBeGreaterThan(0);
+  it("missing required media blocks media readiness in production mode", () => {
+    withMode("production", () => {
+      const r = evaluateMediaReadiness(baklawaProduct, [asset("primary_image")]);
+      expect(r.canPublishMedia).toBe(false);
+      expect(r.canSyncMediaToCentral).toBe(false);
+      expect(r.blockers.length).toBeGreaterThan(0);
+    });
   });
 
   it("approved media URLs selected for Central payload", () => {
@@ -85,13 +107,15 @@ describe("mediaReadinessEngine", () => {
     expect(urls).not.toContain("https://cdn.example/catalogue_image.jpg");
   });
 
-  it("complete Baklawa media passes Central sync gate", () => {
-    const assets = [
-      asset("primary_image"),
-      asset("catalogue_image"),
-      asset("close_up_image"),
-    ];
-    expect(canSyncMediaToCentral(baklawaProduct, assets)).toBe(true);
+  it("complete Baklawa media passes Central sync gate in production mode", () => {
+    withMode("production", () => {
+      const assets = [
+        asset("primary_image"),
+        asset("catalogue_image"),
+        asset("close_up_image"),
+      ];
+      expect(canSyncMediaToCentral(baklawaProduct, assets)).toBe(true);
+    });
   });
 
   it("legacy product does not throw and shows incomplete status", () => {

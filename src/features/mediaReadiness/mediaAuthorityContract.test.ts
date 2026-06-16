@@ -5,11 +5,12 @@ import {
 } from "./mediaAuthorityContract";
 
 describe("mediaAuthorityContract", () => {
-  it("derives approved status when all rows are approved", () => {
+  it("derives approved status when governed required slots are approved (testing: hero only)", () => {
+    import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
     expect(
       deriveMediaStatusFromRows([
         { type: "hero_image", file_url: "https://a/1.jpg", status: "approved" },
-        { type: "white_background", file_url: "https://a/2.jpg", status: "approved" },
+        { type: "white_background", file_url: "https://a/2.jpg", status: "raw" },
       ]),
     ).toBe("approved");
   });

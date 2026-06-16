@@ -5,51 +5,15 @@ import type {
   MediaReadinessResult,
   MediaAssetSlotStatus,
   ProductMediaContext,
-  ProductMediaProfile,
 } from "./types";
+import { profileSlots } from "@/features/productTruth/readinessProfiles";
 import {
-  optionalProfileSlots,
-  profileSlots,
-  requiredProfileSlots,
-} from "@/features/productTruth/readinessProfiles";
+  getMediaGovernanceMode,
+  governedRecommendedProfileSlots,
+  governedRequiredProfileSlots,
+} from "./mediaGovernanceMode";
 
-function norm(s: string | null | undefined): string {
-  return String(s ?? "").trim().toLowerCase();
-}
-
-export function detectProductMediaProfile(product: ProductMediaContext): ProductMediaProfile {
-  const cat = norm(product.category);
-  const sub = norm(product.subcategory);
-  const pc = norm(product.productClass);
-  const pt = norm(product.productType);
-
-  if (pc.includes("gift_hamper") || cat.includes("hamper") || pt.includes("hamper")) {
-    return "hamper";
-  }
-  if (pc.includes("export") || cat.includes("export") || pt.includes("export")) {
-    return "export_pack";
-  }
-  if (
-    pc.includes("gift") ||
-    pc.includes("ready_pack") ||
-    sub.includes("box") ||
-    sub.includes("acrylic") ||
-    pt.includes("box") ||
-    pt.includes("pack")
-  ) {
-    return "gift_box";
-  }
-  if (
-    cat.includes("baklawa") ||
-    sub.includes("pyramid") ||
-    sub.includes("roll") ||
-    pt.includes("baklawa") ||
-    sub.includes("baklawa")
-  ) {
-    return "baklawa_small_sweets";
-  }
-  return "general";
-}
+import { detectProductMediaProfile } from "./mediaProfileDetection";
 
 function toRequirement(slot: {
   type: MediaAssetType;
@@ -66,13 +30,13 @@ function toRequirement(slot: {
 }
 
 export function getRequiredMediaAssets(product: ProductMediaContext): MediaAssetRequirement[] {
-  const profile = detectProductMediaProfile(product);
-  return requiredProfileSlots(profile).map(toRequirement);
+  const mode = getMediaGovernanceMode();
+  return governedRequiredProfileSlots(product, mode).map(toRequirement);
 }
 
 export function getOptionalMediaAssets(product: ProductMediaContext): MediaAssetRequirement[] {
-  const profile = detectProductMediaProfile(product);
-  return optionalProfileSlots(profile).map(toRequirement);
+  const mode = getMediaGovernanceMode();
+  return governedRecommendedProfileSlots(product, mode).map(toRequirement);
 }
 
 function assetForType(assets: MediaAsset[], type: MediaAssetType): MediaAsset | undefined {
@@ -168,8 +132,9 @@ export function evaluateMediaReadiness(
   mediaAssets: MediaAsset[],
 ): MediaReadinessResult {
   const profile = detectProductMediaProfile(product);
-  const required = requiredProfileSlots(profile).map(toRequirement);
-  const optional = optionalProfileSlots(profile).map(toRequirement);
+  const mode = getMediaGovernanceMode();
+  const required = governedRequiredProfileSlots(product, mode).map(toRequirement);
+  const optional = governedRecommendedProfileSlots(product, mode).map(toRequirement);
   const isLegacy = !!product.isLegacy;
 
   const requiredSlots = required.map((req) =>
@@ -225,4 +190,5 @@ export function evaluateMediaReadiness(
   };
 }
 
+export { detectProductMediaProfile } from "./mediaProfileDetection";
 export { profileSlots };
