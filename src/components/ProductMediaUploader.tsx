@@ -33,6 +33,8 @@ import {
   mediaTypeLabel,
 } from "@/features/productAuthority/productMediaPersistence";
 import { heroUrlWritePayload } from "@/lib/productImage";
+import type { DerivedMediaStatus } from "@/features/mediaReadiness/mediaAuthorityContract";
+import { persistDirectHeroUpload } from "@/features/mediaReadiness/mediaAuthorityContract";
 import type { Role } from "@/lib/permissions";
 import {
   getMediaGovernanceMode,
@@ -85,8 +87,8 @@ interface Props {
   productId: string;
   productSku?: string | null;
   currentHero?: string | null;
-  onHeroChange?: (url: string | null) => void;
-  onMediaChange?: () => void;
+  onHeroChange?: (url: string | null, mediaStatus?: DerivedMediaStatus) => void;
+  onMediaChange?: (opts?: { fallbackHeroUrl?: string | null }) => void;
   /** hero-only: compact hero upload for Status sidebar / testing governance */
   variant?: "full" | "hero-only";
 }
@@ -121,14 +123,22 @@ export function ProductMediaUploader({
 
   const storageFolder = productSku || productId;
 
-  const load = async () => {
+  const load = async (opts?: { fallbackHeroUrl?: string | null }) => {
     const { data } = await supabase
       .from("product_media")
       .select("*")
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
     setMedia(data ?? []);
-    onMediaChange?.();
+    onMediaChange?.(opts);
+  };
+
+  const applyDirectHeroAuthority = async (url: string) => {
+    const result = await persistDirectHeroUpload(productId, url);
+    setMedia(result.rows);
+    onHeroChange?.(result.hero_image_url, result.media_status);
+    onMediaChange?.({ fallbackHeroUrl: result.hero_image_url });
+    return result;
   };
 
   useEffect(() => {
@@ -301,12 +311,12 @@ export function ProductMediaUploader({
       }
       const url = await uploadFileDirect(files[0], asHero, false);
       if (url && asHero) {
-        await setAsHeroDirect(url);
+        await applyDirectHeroAuthority(url);
         toast.success("Hero image uploaded");
       } else if (url) {
         toast.success(`${mediaTypeLabel(slot)} uploaded`);
+        await load();
       }
-      await load();
     } finally {
       setUploading(false);
       if (slotInputRef.current) slotInputRef.current.value = "";
@@ -339,9 +349,10 @@ export function ProductMediaUploader({
         if (url) lastUrl = url;
       }
       toast.success(`${files.length} file(s) uploaded`);
-      await load();
       if (!isVideo && (!currentHero || isPdfPage(currentHero)) && lastUrl) {
-        await setAsHeroDirect(lastUrl);
+        await applyDirectHeroAuthority(lastUrl);
+      } else {
+        await load();
       }
     } finally {
       setUploading(false);
@@ -352,12 +363,7 @@ export function ProductMediaUploader({
   };
 
   const setAsHeroDirect = async (url: string) => {
-    const { error } = await supabase
-      .from("products")
-      .update(heroUrlWritePayload(url))
-      .eq("id", productId);
-    if (error) return toast.error(error.message);
-    onHeroChange?.(url);
+    await applyDirectHeroAuthority(url);
   };
 
   const setAsHero = async (m: any) => {
@@ -562,9 +568,12 @@ export function ProductMediaUploader({
       return toast.error(insertRes.message);
     }
     setUrlInput("");
-    if (!currentHero || isPdfPage(currentHero)) await setAsHeroDirect(url);
+    if (!currentHero || isPdfPage(currentHero)) {
+      await applyDirectHeroAuthority(url);
+    } else {
+      await load();
+    }
     toast.success("Image added from URL");
-    await load();
   };
 
   const heroIsPdf = isPdfPage(currentHero);
@@ -785,9 +794,16 @@ export function ProductMediaUploader({
         ref={galleryRef}
         type="file"
         accept="image/*"
-        multiple
+        multiple={!(heroOnly || testingMode)}
         hidden
-        onChange={(e) => upload(e.target.files)}
+        onChange={(e) => {
+          if (heroOnly || testingMode) {
+            void uploadToSlot(e.target.files, "hero_image");
+          } else {
+            void upload(e.target.files);
+          }
+          if (galleryRef.current) galleryRef.current.value = "";
+        }}
       />
       <input
         ref={cameraRef}
@@ -795,7 +811,14 @@ export function ProductMediaUploader({
         accept="image/*"
         capture="environment"
         hidden
-        onChange={(e) => upload(e.target.files)}
+        onChange={(e) => {
+          if (heroOnly || testingMode) {
+            void uploadToSlot(e.target.files, "hero_image");
+          } else {
+            void upload(e.target.files);
+          }
+          if (cameraRef.current) cameraRef.current.value = "";
+        }}
       />
       <input
         ref={videoRef}
@@ -811,10 +834,7 @@ export function ProductMediaUploader({
             type="button"
             variant="outline"
             disabled={uploading}
-            onClick={() => {
-              setSlotUploadTarget("hero_image");
-              galleryRef.current?.click();
-            }}
+            onClick={() => galleryRef.current?.click()}
             className="w-full"
           >
             <Upload className="h-4 w-4 mr-2" /> From gallery
@@ -823,10 +843,7 @@ export function ProductMediaUploader({
             type="button"
             variant="outline"
             disabled={uploading}
-            onClick={() => {
-              setSlotUploadTarget("hero_image");
-              cameraRef.current?.click();
-            }}
+            onClick={() => cameraRef.current?.click()}
             className="w-full"
           >
             <Camera className="h-4 w-4 mr-2" /> Take photo

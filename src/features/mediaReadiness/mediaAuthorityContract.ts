@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { heroUrlWritePayload, resolveProductHeroUrl } from "@/lib/productImage";
+import { insertProductMediaRow } from "@/features/productAuthority/productMediaPersistence";
 import type { MediaAsset } from "./types";
 import {
   getMediaGovernanceMode,
@@ -107,9 +108,11 @@ export function authoritativeMediaAssets(
 export async function syncProductMediaAuthority(
   productId: string,
   rows: ProductMediaRow[],
+  opts?: { fallbackHeroUrl?: string | null },
 ): Promise<{ media_status: DerivedMediaStatus; hero_image_url: string | null }> {
-  const media_status = deriveMediaStatusFromRows(rows);
-  const hero_image_url = deriveHeroUrlFromMediaRows(rows);
+  const fallbackHeroUrl = opts?.fallbackHeroUrl?.trim() || null;
+  const media_status = deriveMediaStatusFromRows(rows, { fallbackHeroUrl });
+  const hero_image_url = deriveHeroUrlFromMediaRows(rows) ?? fallbackHeroUrl;
 
   const { error } = await supabase
     .from("products")
@@ -122,6 +125,58 @@ export async function syncProductMediaAuthority(
   if (error) throw new Error(error.message);
 
   return { media_status, hero_image_url };
+}
+
+/**
+ * Direct master-write: persist approved hero_image row + sync products columns.
+ * Use after hero upload so readiness never loses the hero URL when rows drift.
+ */
+export async function persistDirectHeroUpload(
+  productId: string,
+  heroUrl: string,
+): Promise<{ media_status: DerivedMediaStatus; hero_image_url: string | null; rows: ProductMediaRow[] }> {
+  const url = heroUrl.trim();
+  if (!url) {
+    throw new Error("Hero URL is required");
+  }
+
+  const { data: existing, error: loadErr } = await supabase
+    .from("product_media")
+    .select("*")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false });
+
+  if (loadErr) throw new Error(loadErr.message);
+
+  let rows: ProductMediaRow[] = existing ?? [];
+  const match = rows.find((r) => String(r.file_url ?? "") === url);
+
+  if (match?.id) {
+    if (String(match.type ?? "").toLowerCase() !== "hero_image" || !rowIsApproved(match)) {
+      const { error: upErr } = await supabase
+        .from("product_media")
+        .update({ type: "hero_image", status: "approved" })
+        .eq("id", match.id);
+      if (upErr) throw new Error(upErr.message);
+      rows = rows.map((r) =>
+        r.id === match.id ? { ...r, type: "hero_image", status: "approved" } : r,
+      );
+    }
+  } else {
+    const insertRes = await insertProductMediaRow({
+      product_id: productId,
+      file_url: url,
+      type: "hero_image",
+      status: "approved",
+      alt_text: "hero_upload",
+    });
+    if (!insertRes.ok) throw new Error(insertRes.message);
+    rows = [insertRes.data as ProductMediaRow, ...rows];
+  }
+
+  const repaired = await repairDirectMasterMediaRows(productId, rows);
+  const synced = await syncProductMediaAuthority(productId, repaired, { fallbackHeroUrl: url });
+  return { ...synced, rows: repaired };
 }
 
 /**

@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   authoritativeMediaAssets,
+  deriveHeroUrlFromMediaRows,
   deriveMediaStatusFromRows,
 } from "./mediaAuthorityContract";
+import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 
 describe("mediaAuthorityContract", () => {
   it("derives approved status when governed required slots are approved (testing: hero only)", () => {
@@ -33,5 +35,39 @@ describe("mediaAuthorityContract", () => {
     expect(
       deriveMediaStatusFromRows([], { fallbackHeroUrl: "https://cdn/hero.jpg" }),
     ).toBe("approved");
+  });
+
+  it("uses fallback hero when rows exist but no approved hero_image row (testing)", () => {
+    import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
+    const rows = [{ type: "raw_photo", file_url: "https://cdn/h.jpg", status: "approved" }];
+    expect(
+      deriveMediaStatusFromRows(rows, { fallbackHeroUrl: "https://cdn/h.jpg" }),
+    ).toBe("approved");
+    expect(deriveHeroUrlFromMediaRows(rows)).toBe("https://cdn/h.jpg");
+  });
+
+  it("testing-mode product readiness completes when approved hero_image row persists", () => {
+    import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
+    const snap = buildProductReadinessSnapshot(
+      {
+        id: "p1",
+        product_name: "Smoke Test Bourma",
+        sku: "OAS-AS-BKL-PST-LOOSE-9922",
+        main_department: "packing_assembly",
+      },
+      {
+        productMediaRows: [
+          {
+            product_id: "p1",
+            type: "hero_image",
+            file_url: "https://cdn/hero.jpg",
+            status: "approved",
+          },
+        ],
+      },
+    );
+    const media = snap.readiness.dimensions.find((d) => d.dimension === "media_status");
+    expect(media?.complete).toBe(true);
+    expect(snap.derivedMediaStatus).toBe("approved");
   });
 });

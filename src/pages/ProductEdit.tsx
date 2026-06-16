@@ -774,12 +774,19 @@ const ProductEdit = () => {
     complianceMetaPending,
   ]);
 
-  const applyMediaAuthority = async (productId: string, rows: ProductMediaRow[]) => {
+  const applyMediaAuthority = async (
+    productId: string,
+    rows: ProductMediaRow[],
+    opts?: { fallbackHeroUrl?: string | null },
+  ) => {
     let authoritative = rows;
     if (await canWriteProductsDirectly(roles)) {
       authoritative = await repairDirectMasterMediaRows(productId, rows);
       try {
-        const synced = await syncProductMediaAuthority(productId, authoritative);
+        const synced = await syncProductMediaAuthority(productId, authoritative, {
+          fallbackHeroUrl:
+            opts?.fallbackHeroUrl ?? resolveProductHeroUrl(form),
+        });
         setForm((f: Record<string, unknown>) => ({
           ...f,
           media_status: synced.media_status,
@@ -795,7 +802,10 @@ const ProductEdit = () => {
     setProductMediaRows(authoritative);
   };
 
-  const loadProductMedia = async (productId: string) => {
+  const loadProductMedia = async (
+    productId: string,
+    opts?: { fallbackHeroUrl?: string | null },
+  ) => {
     const { data, error } = await supabase
       .from("product_media")
       .select("*")
@@ -807,7 +817,7 @@ const ProductEdit = () => {
       }
       return;
     }
-    await applyMediaAuthority(productId, data ?? []);
+    await applyMediaAuthority(productId, data ?? [], opts);
   };
 
   const loadChannelAuthority = async (productId: string) => {
@@ -1797,12 +1807,13 @@ const ProductEdit = () => {
                     hero_image_url: form.hero_image_url,
                     image_url: form.image_url,
                   })}
-                  onHeroChange={(url) => {
+                  onHeroChange={(url, mediaStatus) => {
                     set("hero_image_url", url);
                     set("image_url", url);
+                    if (mediaStatus) set("media_status", mediaStatus);
                   }}
-                  onMediaChange={() => {
-                    if (id) void loadProductMedia(id);
+                  onMediaChange={(opts) => {
+                    if (id) void loadProductMedia(id, opts);
                   }}
                 />
               </TabsContent>
@@ -2205,12 +2216,13 @@ const ProductEdit = () => {
                 hero_image_url: form.hero_image_url,
                 image_url: form.image_url,
               })}
-              onHeroChange={(url) => {
+              onHeroChange={(url, mediaStatus) => {
                 set("hero_image_url", url);
                 set("image_url", url);
+                if (mediaStatus) set("media_status", mediaStatus);
               }}
-              onMediaChange={() => {
-                if (id) void loadProductMedia(id);
+              onMediaChange={(opts) => {
+                if (id) void loadProductMedia(id, opts);
               }}
             />
           )}
