@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Plus, Search, Image as ImageIcon, Tag as TagIcon, Copy,
+  Plus, Search, Image as ImageIcon, Copy,
   Filter, X, Package, Layers, Tag, Boxes, Zap,
 } from "lucide-react";
 import {
@@ -23,6 +23,7 @@ import {
   dimensionIsComplete,
   groupRowsByProductId,
 } from "@/features/readiness/productReadinessSnapshot";
+import { IMMUTABLE_VERSION_STATUSES } from "@/features/catalogueSnapshot/types";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 
@@ -127,12 +128,13 @@ const Products = () => {
   const [mediaByProduct, setMediaByProduct] = useState<Record<string, ProductMediaRow[]>>({});
   const [pricingByProduct, setPricingByProduct] = useState<Record<string, PricingRuleRow[]>>({});
   const [moqByProduct, setMoqByProduct] = useState<Record<string, MoqRuleRow[]>>({});
+  const [catalogueApprovedByProduct, setCatalogueApprovedByProduct] = useState<Record<string, boolean>>({});
   const [authorityReady, setAuthorityReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [productsRes, rulesRes, moqRes, pricingRes, mediaRes] = await Promise.all([
+      const [productsRes, rulesRes, moqRes, pricingRes, mediaRes, versionsRes] = await Promise.all([
         supabase.from("products").select("*").order("created_at", { ascending: false }),
         supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("product_moq_rules").select("*"),
@@ -140,6 +142,10 @@ const Products = () => {
         supabase
           .from("product_media")
           .select("id, product_id, type, file_url, status, alt_text, angle, created_at"),
+        supabase
+          .from("catalogue_versions")
+          .select("product_id, status, version_number")
+          .order("version_number", { ascending: false }),
       ]);
       if (cancelled) return;
 
@@ -167,6 +173,19 @@ const Products = () => {
       setPricingByProduct(groupRowsByProductId(pricingRows));
 
       setMediaByProduct(groupRowsByProductId((mediaRes.data ?? []) as ProductMediaRow[]));
+
+      const approvedByProduct: Record<string, boolean> = {};
+      if (!versionsRes.error) {
+        for (const row of versionsRes.data ?? []) {
+          const pid = row.product_id as string | null;
+          if (!pid || approvedByProduct[pid] !== undefined) continue;
+          approvedByProduct[pid] = IMMUTABLE_VERSION_STATUSES.includes(
+            row.status as (typeof IMMUTABLE_VERSION_STATUSES)[number],
+          );
+        }
+      }
+      setCatalogueApprovedByProduct(approvedByProduct);
+
       setAuthorityReady(true);
     })();
     return () => {
@@ -431,7 +450,7 @@ const Products = () => {
                     tone={pricingComplete ? "ok" : "warn"}
                     title={`Pricing: ${dimensionCardLabel(readiness, "pricing_status")}`}
                   >
-                    {pricingComplete ? "Approved price" : "Draft price"} · {priceCounts[p.id].total}
+                    {pricingComplete ? "Approved price" : "Needs pricing"} · {priceCounts[p.id].total}
                   </Badge>
                 )}
                 <Badge
@@ -459,10 +478,17 @@ const Products = () => {
                     GST/HSN · {dimensionCardLabel(readiness, "compliance_status")}
                   </Badge>
                 )}
-                <Badge tone={p.label_status === "approved" || p.label_status === "locked" ? "ok" : "warn"}>
-                  <TagIcon className="h-3 w-3" />{p.label_status || "draft"}
-                </Badge>
-                <ReadinessBadge product={p} readiness={readiness} compact loading={!authorityReady} />
+                <ReadinessBadge
+                  product={p}
+                  readiness={readiness}
+                  compact
+                  loading={!authorityReady}
+                  statusOpts={{
+                    catalogueVersionApproved: catalogueApprovedByProduct[p.id],
+                    pricingRows: pricingByProduct[p.id],
+                    moqRows: moqByProduct[p.id],
+                  }}
+                />
               </div>
               </div>
             </Link>

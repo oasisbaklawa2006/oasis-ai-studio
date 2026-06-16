@@ -1,5 +1,8 @@
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
-import { readinessSummaryLabel } from "@/features/productTruth/productListReadiness";
+import {
+  productCardTopLevelStatus,
+  type ProductCardStatusOpts,
+} from "@/features/readiness/productReadinessSnapshot";
 import { catalogueReadiness, type Product } from "@/lib/readiness";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -9,11 +12,13 @@ export const ReadinessBadge = ({
   readiness,
   compact = false,
   loading = false,
+  statusOpts,
 }: {
   product: Product;
   readiness?: ProductReadinessResult | null;
   compact?: boolean;
   loading?: boolean;
+  statusOpts?: ProductCardStatusOpts;
 }) => {
   if (loading) {
     return (
@@ -26,13 +31,26 @@ export const ReadinessBadge = ({
 
   const legacy = catalogueReadiness(product);
   const truth = readiness ?? null;
-  const ready = truth ? truth.readyForCentralSync : legacy.ready;
-  const label = truth ? readinessSummaryLabel(truth) : legacy.ready ? "Ready" : compact ? `${legacy.missing.length} missing` : `Fix ${legacy.missing.length}`;
-  const tone = ready
-    ? "bg-success/10 text-success"
-    : truth?.blockers.length || legacy.missing.length
-      ? "bg-destructive/10 text-destructive"
-      : "bg-warning/10 text-warning";
+  const cardStatus = truth ? productCardTopLevelStatus(truth, statusOpts) : null;
+  const ready = cardStatus ? cardStatus.tone === "ok" : legacy.ready;
+  const label = cardStatus
+    ? cardStatus.label
+    : legacy.ready
+      ? "Ready"
+      : compact
+        ? `${legacy.missing.length} missing`
+        : `Fix ${legacy.missing.length}`;
+  const tone = cardStatus
+    ? cardStatus.tone === "ok"
+      ? "bg-success/10 text-success"
+      : cardStatus.tone === "destructive"
+        ? "bg-destructive/10 text-destructive"
+        : "bg-warning/10 text-warning"
+    : ready
+      ? "bg-success/10 text-success"
+      : legacy.missing.length
+        ? "bg-destructive/10 text-destructive"
+        : "bg-warning/10 text-warning";
   const Icon = ready ? CheckCircle2 : AlertCircle;
 
   return (

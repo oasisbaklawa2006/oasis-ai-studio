@@ -13,6 +13,7 @@ import {
   type MoqRuleRow,
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
+import { getChannelPrice } from "@/features/productTruth/channelPricingMoqEngine";
 import {
   evaluateProductReadiness,
   productTruthInputFromForm,
@@ -94,12 +95,79 @@ export function buildProductReadinessSnapshot(
   };
 }
 
-export function readinessSummaryLabel(readiness: ProductReadinessResult): string {
-  if (readiness.readyForCentralSync) return "Ready";
-  if (readiness.blockers.length > 0) {
-    return `${readiness.blockers.length} blocker${readiness.blockers.length === 1 ? "" : "s"}`;
+export type ProductCardStatusTone = "ok" | "warn" | "destructive";
+
+export type ProductCardTopLevelStatus = {
+  label: string;
+  tone: ProductCardStatusTone;
+};
+
+const MOQ_GAP_CHANNELS = ["retail", "b2b"] as const;
+
+/** True when a channel has pricing but no MOQ rule (retail/b2b seed targets). */
+export function channelNeedsMoq(
+  pricingRows: PricingRuleRow[] = [],
+  moqRows: MoqRuleRow[] = [],
+): boolean {
+  const prices = mapPricingRules(pricingRows);
+  const moqRules = mapMoqRules(moqRows);
+  for (const ch of MOQ_GAP_CHANNELS) {
+    const price = getChannelPrice(prices, ch);
+    const priceExists = !!(price?.sellingPrice ?? price?.mrp);
+    const moq = moqRules.find((r) => r.channel === ch);
+    if (priceExists && !moq) return true;
   }
-  return `${readiness.score}/${readiness.maxScore}`;
+  return false;
+}
+
+export type ProductCardStatusOpts = {
+  /** Latest immutable catalogue_versions row (approved / published / synced). */
+  catalogueVersionApproved?: boolean;
+  pricingRows?: PricingRuleRow[];
+  moqRows?: MoqRuleRow[];
+};
+
+/**
+ * Single top-level product card status — same contract as Product Truth.
+ * Never returns legacy "draft"; label_status is not consulted here.
+ */
+export function productCardTopLevelStatus(
+  readiness: ProductReadinessResult | null | undefined,
+  opts: ProductCardStatusOpts = {},
+): ProductCardTopLevelStatus {
+  if (!readiness) {
+    return { label: "…", tone: "warn" };
+  }
+
+  if (readiness.readyForCentralSync || opts.catalogueVersionApproved) {
+    return { label: "Ready", tone: "ok" };
+  }
+
+  if (!dimensionIsComplete(readiness, "media_status")) {
+    return { label: "Needs media", tone: "warn" };
+  }
+  if (!dimensionIsComplete(readiness, "pricing_status")) {
+    return { label: "Needs pricing", tone: "warn" };
+  }
+  if (channelNeedsMoq(opts.pricingRows, opts.moqRows)) {
+    return { label: "Needs MOQ", tone: "warn" };
+  }
+  if (!dimensionIsComplete(readiness, "compliance_status")) {
+    return { label: "Needs compliance", tone: "warn" };
+  }
+
+  if (readiness.blockers.length > 0) {
+    return { label: "Blocked", tone: "destructive" };
+  }
+
+  return { label: `${readiness.score}/${readiness.maxScore}`, tone: "warn" };
+}
+
+export function readinessSummaryLabel(
+  readiness: ProductReadinessResult,
+  opts?: ProductCardStatusOpts,
+): string {
+  return productCardTopLevelStatus(readiness, opts).label;
 }
 
 export function dimensionBadgeLabel(
