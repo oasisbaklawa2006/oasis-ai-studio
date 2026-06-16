@@ -2,6 +2,10 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import type { ProductReadinessResult } from "../productReadiness";
 import type { ReadinessBadge } from "../types";
+import {
+  dimensionReadinessLabel,
+  isTestingMediaGovernance,
+} from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 
 const badgeTone = (b: ReadinessBadge) => {
@@ -79,9 +83,11 @@ export function ProductReadinessPanel({ readiness }: { readiness: ProductReadine
           <div key={d.dimension} className="rounded border p-2 text-xs">
             <div className="font-medium">{d.dimension.replace(/_/g, " ")}</div>
             <Badge variant="outline" className={`mt-1 ${badgeTone(d.badge)}`}>
-              {d.badge.replace(/_/g, " ")}
+              {dimensionReadinessLabel(readiness, d.dimension)}
             </Badge>
-            {d.note && <p className="text-muted-foreground mt-1">{d.note}</p>}
+            {d.note && !(isTestingMediaGovernance() && d.dimension === "media_status") && (
+              <p className="text-muted-foreground mt-1">{d.note}</p>
+            )}
           </div>
         ))}
       </div>

@@ -13,6 +13,11 @@ import {
   deriveMediaStatusFromRows,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
 import {
+  mediaMissingBlockerLabel,
+  mediaMissingNote,
+} from "@/features/mediaReadiness/mediaGovernanceDisplay";
+import { resolveProductHeroUrl } from "@/lib/productImage";
+import {
   productMediaContextFromForm,
   type ProductMediaRow,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
@@ -72,7 +77,7 @@ function evalMedia(input: ProductTruthInput): DimensionStatus {
       dimension: "media_status",
       badge: badgeFor(complete, { pending, approved: complete, legacy: input.isLegacy && !complete }),
       complete,
-      note: complete ? undefined : mr.blockers[0] ?? "Required media missing or not approved",
+      note: complete ? undefined : mr.blockers[0] ?? mediaMissingNote(),
     };
   }
 
@@ -82,7 +87,7 @@ function evalMedia(input: ProductTruthInput): DimensionStatus {
     dimension: "media_status",
     badge: badgeFor(complete, { pending, legacy: input.isLegacy }),
     complete,
-    note: complete ? undefined : "Approved product_media rows required for catalogue slots",
+    note: complete ? undefined : mediaMissingNote(),
   };
 }
 
@@ -201,7 +206,7 @@ export function evaluateProductReadiness(input: ProductTruthInput): ProductReadi
     blockers.push("Packaging conversion rules missing");
   }
   if (!dimensions.find((d) => d.dimension === "media_status")?.complete) {
-    blockers.push("Media missing");
+    blockers.push(mediaMissingBlockerLabel());
   }
   if (!dimensions.find((d) => d.dimension === "production_mapping_status")?.complete) {
     blockers.push("Production mapping missing");
@@ -214,7 +219,11 @@ export function evaluateProductReadiness(input: ProductTruthInput): ProductReadi
   const score = completeCount;
 
   let nextAction = "Review and approve compliance-sensitive fields";
-  if (blockers.includes("Media missing")) nextAction = "Upload hero image or approve media";
+  if (blockers.includes(mediaMissingBlockerLabel())) {
+    nextAction = mediaMissingBlockerLabel() === "Needs hero image"
+      ? "Upload hero image"
+      : "Upload hero image or approve media";
+  }
   else if (blockers.includes("UOM missing")) nextAction = "Configure primary UOM on UOM tab";
   else if (blockers.includes("Packaging conversion rules missing")) {
     nextAction = "Complete packaging hierarchy (pcs/kg/tray/carton)";
@@ -254,9 +263,10 @@ export function productTruthInputFromForm(
   const mediaRows = opts?.productMediaRows ?? [];
   const mediaAssets =
     opts?.mediaAssets ?? authoritativeMediaAssets(mediaRows, form);
+  const fallbackHeroUrl = resolveProductHeroUrl(form);
   const derivedStatus =
     opts?.derivedMediaStatus ??
-    (mediaRows.length > 0 ? deriveMediaStatusFromRows(mediaRows) : null);
+    deriveMediaStatusFromRows(mediaRows, { fallbackHeroUrl });
   const mediaContext = productMediaContextFromForm(form);
 
   return {

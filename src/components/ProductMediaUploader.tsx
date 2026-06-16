@@ -39,6 +39,7 @@ import {
   GOVERNANCE_REQUIRED_UPLOADER_TYPES,
   RECOMMENDED_UPLOADER_TYPES,
 } from "@/features/mediaReadiness/mediaGovernanceMode";
+import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 
 const MEDIA_TYPES = [
   "raw_photo",
@@ -86,6 +87,8 @@ interface Props {
   currentHero?: string | null;
   onHeroChange?: (url: string | null) => void;
   onMediaChange?: () => void;
+  /** hero-only: compact hero upload for Status sidebar / testing governance */
+  variant?: "full" | "hero-only";
 }
 
 const isPdfPage = (url?: string | null) => !!url && url.includes("/_pdf_pages/");
@@ -99,7 +102,10 @@ export function ProductMediaUploader({
   currentHero,
   onHeroChange,
   onMediaChange,
+  variant = "full",
 }: Props) {
+  const heroOnly = variant === "hero-only";
+  const testingMode = isTestingMediaGovernance();
   const { roles } = useAuth();
   const { writeMode, canMutate } = useCatalogueMediaWriteMode(roles as Role[]);
   const [media, setMedia] = useState<any[]>([]);
@@ -567,11 +573,13 @@ export function ProductMediaUploader({
     <div className="card-elevated p-4 sm:p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h3 className="font-display text-xl">Media</h3>
+          <h3 className="font-display text-xl">{heroOnly || testingMode ? "Hero image" : "Media"}</h3>
           <div className="text-xs text-muted-foreground">
             {writeMode === "readonly"
               ? "View only — you cannot upload or change media."
-              : "Upload from gallery or take a photo."}
+              : heroOnly || testingMode
+                ? "Upload or replace the approved hero image for catalogue readiness."
+                : "Upload from gallery or take a photo."}
           </div>
           {writeMode === "draft" && (
             <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
@@ -607,9 +615,16 @@ export function ProductMediaUploader({
 
       {canMutate && (
         <div className="space-y-3">
-          <div className="text-sm font-medium">Required for readiness</div>
-          <div className="grid sm:grid-cols-3 gap-2">
-            {requiredReadinessSlots().map((slot) => {
+          {!heroOnly && !testingMode && (
+            <div className="text-sm font-medium">Required for readiness</div>
+          )}
+          {(heroOnly || testingMode) && currentHero && !heroIsPdf && (
+            <div className="rounded-lg border overflow-hidden">
+              <img src={currentHero} alt="Hero" className="w-full max-h-40 object-cover" />
+            </div>
+          )}
+          <div className={`grid gap-2 ${heroOnly || testingMode ? "grid-cols-1 sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+            {(heroOnly || testingMode ? (["hero_image"] as MediaType[]) : requiredReadinessSlots()).map((slot) => {
               const filled = slotFilled(media, slot);
               return (
                 <div key={slot} className="rounded-lg border p-3 space-y-2 bg-muted/20">
@@ -641,7 +656,7 @@ export function ProductMediaUploader({
               );
             })}
           </div>
-          {recommendedReadinessSlots().length > 0 && (
+          {!heroOnly && !testingMode && recommendedReadinessSlots().length > 0 && (
             <>
               <div className="text-sm font-medium text-muted-foreground">Recommended assets</div>
               <p className="text-[11px] text-muted-foreground">
@@ -694,7 +709,7 @@ export function ProductMediaUploader({
         </div>
       )}
 
-      {canMutate && (
+      {canMutate && !heroOnly && !testingMode && (
         <div className="space-y-3">
           <div>
             <Label className="text-xs">Additional media type</Label>
@@ -790,11 +805,40 @@ export function ProductMediaUploader({
         onChange={(e) => upload(e.target.files, true)}
       />
 
-      {media.length === 0 ? (
+      {(heroOnly || testingMode) && canMutate && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={uploading}
+            onClick={() => {
+              setSlotUploadTarget("hero_image");
+              galleryRef.current?.click();
+            }}
+            className="w-full"
+          >
+            <Upload className="h-4 w-4 mr-2" /> From gallery
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={uploading}
+            onClick={() => {
+              setSlotUploadTarget("hero_image");
+              cameraRef.current?.click();
+            }}
+            className="w-full"
+          >
+            <Camera className="h-4 w-4 mr-2" /> Take photo
+          </Button>
+        </div>
+      )}
+
+      {!heroOnly && !testingMode && media.length === 0 ? (
         <div className="text-sm text-muted-foreground border border-dashed rounded-lg py-8 text-center">
           No media yet. Upload a product photo to get started.
         </div>
-      ) : (
+      ) : !heroOnly && !testingMode ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {media.map((m) => {
             const isHero = m.file_url === currentHero;
@@ -882,7 +926,7 @@ export function ProductMediaUploader({
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

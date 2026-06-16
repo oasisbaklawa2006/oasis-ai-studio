@@ -91,7 +91,14 @@ describe("productListReadiness", () => {
 
   it("never surfaces legacy draft — maps gaps to Needs * labels", () => {
     const { readiness } = buildProductReadinessSnapshot(
-      { ...readyProduct, hsn_code: null, gst_rate: null },
+      {
+        ...readyProduct,
+        hsn_code: null,
+        gst_rate: null,
+        hero_image_url: null,
+        image_url: null,
+        media_status: null,
+      },
       {
         productMediaRows: [],
         pricingRows: [],
@@ -99,7 +106,7 @@ describe("productListReadiness", () => {
       },
     );
 
-    expect(productCardTopLevelStatus(readiness).label).toBe("Needs media");
+    expect(productCardTopLevelStatus(readiness).label).toBe("Needs hero image");
     expect(productCardTopLevelStatus(readiness).label).not.toMatch(/draft/i);
   });
 

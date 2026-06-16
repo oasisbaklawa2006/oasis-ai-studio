@@ -3,6 +3,10 @@ import {
   productCardTopLevelStatus,
   type ProductCardStatusOpts,
 } from "@/features/readiness/productReadinessSnapshot";
+import {
+  dimensionReadinessLabel,
+  isTestingMediaGovernance,
+} from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { catalogueReadiness, type Product } from "@/lib/readiness";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -85,8 +89,8 @@ export const ReadinessBadge = ({
             <ul className="text-xs space-y-0.5">
               {truth.dimensions.map((d) => (
                 <li key={d.dimension}>
-                  • {d.dimension.replace(/_/g, " ")}: {d.badge.replace(/_/g, " ")}
-                  {d.note ? ` — ${d.note}` : ""}
+                  • {d.dimension.replace(/_/g, " ")}: {dimensionReadinessLabel(truth, d.dimension)}
+                  {d.note && !isTestingMediaGovernance() ? ` — ${d.note}` : ""}
                 </li>
               ))}
             </ul>

@@ -47,6 +47,11 @@ import {
   repairDirectMasterMediaRows,
   syncProductMediaAuthority,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
+import {
+  isTestingMediaGovernance,
+  labelStatusInfoLine,
+  mediaGovernanceStatusLine,
+} from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 import {
   mergeDraftOverAuthorityForm,
@@ -1430,7 +1435,7 @@ const ProductEdit = () => {
                 </TabsTrigger>
                 {!isNew && (
                   <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
-                    Media
+                    {isTestingMediaGovernance() ? "Hero image" : "Media"}
                   </TabsTrigger>
                 )}
                 {showPrivateLabel && (
@@ -1783,6 +1788,7 @@ const ProductEdit = () => {
                 <ProductMediaUploader
                   productId={id!}
                   productSku={form.sku}
+                  variant={isTestingMediaGovernance() ? "hero-only" : "full"}
                   currentHero={resolveProductHeroUrl({
                     hero_image_url: form.hero_image_url,
                     image_url: form.image_url,
@@ -2154,14 +2160,24 @@ const ProductEdit = () => {
             </div>
 
             <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
+              <div>{labelStatusInfoLine(String(form.label_status ?? "draft"))}</div>
               <div>
-                Label status:{" "}
-                <span className="font-medium text-foreground">{form.label_status ?? "draft"}</span>
-              </div>
-              <div>
-                Media status (from product_media):{" "}
+                Media:{" "}
                 <span className="font-medium text-foreground">
-                  {readinessSnapshot?.derivedMediaStatus ?? form.media_status ?? "missing"}
+                  {mediaGovernanceStatusLine({
+                    complete: readinessSnapshot
+                      ? readinessSnapshot.readiness.dimensions.find(
+                          (d) => d.dimension === "media_status",
+                        )?.complete
+                      : false,
+                    heroUrl:
+                      readinessSnapshot?.derivedHeroUrl ??
+                      resolveProductHeroUrl({
+                        hero_image_url: form.hero_image_url,
+                        image_url: form.image_url,
+                      }),
+                    derivedStatus: readinessSnapshot?.derivedMediaStatus ?? form.media_status,
+                  })}
                 </span>
               </div>
               {readinessSnapshot && (
@@ -2175,6 +2191,25 @@ const ProductEdit = () => {
               )}
             </div>
           </div>
+
+          {!isNew && isTestingMediaGovernance() && (
+            <ProductMediaUploader
+              productId={id!}
+              productSku={form.sku}
+              variant="hero-only"
+              currentHero={resolveProductHeroUrl({
+                hero_image_url: form.hero_image_url,
+                image_url: form.image_url,
+              })}
+              onHeroChange={(url) => {
+                set("hero_image_url", url);
+                set("image_url", url);
+              }}
+              onMediaChange={() => {
+                if (id) void loadProductMedia(id);
+              }}
+            />
+          )}
 
           <div className="card-elevated p-6 bg-accent-soft/40">
             <div className="text-xs uppercase tracking-wider text-accent-foreground/80 mb-2">

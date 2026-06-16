@@ -23,8 +23,23 @@ function rowIsApproved(row: ProductMediaRow): boolean {
  * Authoritative media_status derived only from persisted product_media rows.
  * Respects VITE_MEDIA_GOVERNANCE_MODE required slots (testing: hero only).
  */
-export function deriveMediaStatusFromRows(rows: ProductMediaRow[]): DerivedMediaStatus {
-  if (!rows.length) return "missing";
+export function deriveMediaStatusFromRows(
+  rows: ProductMediaRow[],
+  opts?: { fallbackHeroUrl?: string | null },
+): DerivedMediaStatus {
+  if (!rows.length) {
+    const fallback = opts?.fallbackHeroUrl?.trim();
+    const governedRequired = governedRequiredUploaderTypes();
+    if (
+      governedRequired?.length === 1 &&
+      governedRequired[0] === "hero_image" &&
+      fallback &&
+      !fallback.includes("/_pdf_pages/")
+    ) {
+      return "approved";
+    }
+    return "missing";
+  }
 
   const governedRequired = governedRequiredUploaderTypes();
   if (governedRequired) {
@@ -35,7 +50,17 @@ export function deriveMediaStatusFromRows(rows: ProductMediaRow[]): DerivedMedia
       const row = rows.find(
         (r) => String(r.type ?? "").toLowerCase() === reqType && r.file_url,
       );
-      if (!row) return "missing";
+      if (!row) {
+        const fallback = opts?.fallbackHeroUrl?.trim();
+        if (
+          reqType === "hero_image" &&
+          fallback &&
+          !fallback.includes("/_pdf_pages/")
+        ) {
+          continue;
+        }
+        return "missing";
+      }
       if (!rowIsApproved(row)) return "pending_approval";
     }
     return "approved";

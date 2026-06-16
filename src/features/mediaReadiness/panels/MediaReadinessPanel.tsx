@@ -8,6 +8,7 @@ import {
   getMediaGovernanceMode,
   mediaGovernanceModeLabel,
 } from "../mediaGovernanceMode";
+import { isTestingMediaGovernance } from "../mediaGovernanceDisplay";
 import {
   productMediaContextFromForm,
   slotDisplayLabel,
@@ -65,8 +66,9 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
   );
 
   const governanceMode = getMediaGovernanceMode();
+  const testingMode = isTestingMediaGovernance();
   const requiredSlots = readiness.slots.filter((s) => s.required);
-  const recommendedSlots = readiness.slots.filter((s) => !s.required);
+  const recommendedSlots = testingMode ? [] : readiness.slots.filter((s) => !s.required);
 
   const centralUrls = useMemo(() => selectApprovedImageUrlsForCentral(assets), [assets]);
   const pct = readiness.maxScore
@@ -120,8 +122,8 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
           </>
         ) : (
           <>
-            Pilot testing mode: only governed required slots block Product Truth, readiness score,
-            Central Sync, and catalogue approval. Other assets are recommended.
+            Testing mode: catalogue readiness requires an approved hero image only. Upload or
+            replace it from the Hero image tab or the Status sidebar.
           </>
         )}
       </p>

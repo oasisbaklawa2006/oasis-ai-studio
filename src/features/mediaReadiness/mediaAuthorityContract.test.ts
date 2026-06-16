@@ -27,4 +27,11 @@ describe("mediaAuthorityContract", () => {
   it("returns missing when no rows and no hero", () => {
     expect(authoritativeMediaAssets([], {})).toEqual([]);
   });
+
+  it("accepts products.hero_image_url as approved hero in testing when no media rows", () => {
+    import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
+    expect(
+      deriveMediaStatusFromRows([], { fallbackHeroUrl: "https://cdn/hero.jpg" }),
+    ).toBe("approved");
+  });
 });

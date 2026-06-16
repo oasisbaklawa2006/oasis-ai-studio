@@ -23,6 +23,7 @@ import {
   dimensionIsComplete,
   groupRowsByProductId,
 } from "@/features/readiness/productReadinessSnapshot";
+import { mediaGovernanceStatusLine } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { IMMUTABLE_VERSION_STATUSES } from "@/features/catalogueSnapshot/types";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
@@ -453,6 +454,9 @@ const Products = () => {
           const mediaComplete = readiness
             ? dimensionIsComplete(readiness, "media_status")
             : false;
+          const mediaLabel = readiness
+            ? dimensionCardLabel(readiness, "media_status")
+            : mediaGovernanceStatusLine({ heroUrl, derivedStatus: p.media_status });
           const complianceComplete = readiness
             ? dimensionIsComplete(readiness, "compliance_status")
             : false;
@@ -530,18 +534,14 @@ const Products = () => {
                   tone={mediaComplete || heroUrl ? "ok" : "warn"}
                   title={
                     readiness
-                      ? `Media: ${dimensionCardLabel(readiness, "media_status")}`
+                      ? `Media: ${mediaLabel}`
                       : heroUrl
                         ? "hero present"
-                        : p.media_status || "missing"
+                        : mediaLabel
                   }
                 >
                   <ImageIcon className="h-3 w-3" />
-                  {readiness
-                    ? dimensionCardLabel(readiness, "media_status")
-                    : heroUrl
-                      ? "image"
-                      : p.media_status || "missing"}
+                  {mediaLabel}
                 </Badge>
                 {readiness && (
                   <Badge

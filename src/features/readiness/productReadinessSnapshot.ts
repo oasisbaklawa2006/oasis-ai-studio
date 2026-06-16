@@ -5,6 +5,7 @@ import {
   deriveMediaStatusFromRows,
   type DerivedMediaStatus,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
+import { dimensionMediaCardLabel, productCardMediaNeedLabel } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 import {
@@ -62,8 +63,13 @@ export function buildProductReadinessSnapshot(
 ): ProductReadinessSnapshot {
   const baseForm = dbRowToProductForm(productRow, {});
   const mediaRows = bundle.productMediaRows ?? [];
-  const derivedMediaStatus = deriveMediaStatusFromRows(mediaRows);
-  const derivedHeroUrl = deriveHeroUrlFromMediaRows(mediaRows);
+  const derivedHeroUrl =
+    deriveHeroUrlFromMediaRows(mediaRows) ??
+    (baseForm.hero_image_url ? String(baseForm.hero_image_url) : null) ??
+    (baseForm.image_url ? String(baseForm.image_url) : null);
+  const derivedMediaStatus = deriveMediaStatusFromRows(mediaRows, {
+    fallbackHeroUrl: derivedHeroUrl,
+  });
 
   const authorityForm: Record<string, unknown> = {
     ...baseForm,
@@ -144,7 +150,7 @@ export function productCardTopLevelStatus(
   }
 
   if (!dimensionIsComplete(readiness, "media_status")) {
-    return { label: "Needs media", tone: "warn" };
+    return { label: productCardMediaNeedLabel(), tone: "warn" };
   }
   if (!dimensionIsComplete(readiness, "pricing_status")) {
     return { label: "Needs pricing", tone: "warn" };
@@ -191,6 +197,9 @@ export function dimensionCardLabel(
   readiness: ProductReadinessResult,
   dimension: string,
 ): string {
+  if (dimension === "media_status") {
+    return dimensionMediaCardLabel(readiness);
+  }
   const dim = readiness.dimensions.find((d) => d.dimension === dimension);
   if (!dim) return "—";
   if (dim.complete) return "complete";
