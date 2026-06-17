@@ -47,6 +47,59 @@ export function buildHeuristicComplianceSuggestions(input: {
   });
 }
 
+function normalizeSuggestionPayload(raw: unknown): AiComplianceSuggestionPayload | null {
+  if (!raw || typeof raw !== "object") return null;
+  const row = raw as Record<string, unknown>;
+  const out: AiComplianceSuggestionPayload = {};
+  if (row.hsn_code != null) out.hsn_code = String(row.hsn_code);
+  if (row.gst_rate != null) out.gst_rate = row.gst_rate as string | number;
+  if (row.shelf_life_days != null) out.shelf_life_days = row.shelf_life_days as string | number;
+  if (row.ingredients != null) out.ingredients = String(row.ingredients);
+  if (row.allergen_warnings != null) out.allergen_warnings = String(row.allergen_warnings);
+  if (row.nutritional_info != null) out.nutritional_info = String(row.nutritional_info);
+  if (row.storage_instructions != null) out.storage_instructions = String(row.storage_instructions);
+  return Object.keys(out).length ? out : null;
+}
+
+/** Parse edge-function payload; null when shape is unusable. */
+export function parseAiComplianceResponse(data: unknown): AiComplianceResponse | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  if (row.ok === false) return null;
+
+  const suggestions = normalizeSuggestionPayload(row.suggestions);
+  if (!suggestions) return null;
+
+  const suggestionOnly = row.suggestion_only !== false;
+  const approved = row.approved === true;
+
+  if (!suggestionOnly || approved) return null;
+
+  return {
+    suggestion_only: true,
+    approved: false,
+    disclaimer: String(row.disclaimer ?? AI_COMPLIANCE_LEGAL_DISCLAIMER),
+    suggestions,
+  };
+}
+
+/**
+ * Use AI response when valid; otherwise heuristic suggestions (never throws).
+ */
+export function resolveAiComplianceResponse(
+  data: unknown,
+  input: { product_name?: string; category?: string },
+): { response: AiComplianceResponse; usedHeuristic: boolean } {
+  const parsed = parseAiComplianceResponse(data);
+  if (parsed) {
+    return { response: parsed, usedHeuristic: false };
+  }
+  return {
+    response: buildHeuristicComplianceSuggestions(input),
+    usedHeuristic: true,
+  };
+}
+
 export function responseIncludesRequiredDisclaimer(response: AiComplianceResponse): boolean {
   return (
     response.suggestion_only === true &&

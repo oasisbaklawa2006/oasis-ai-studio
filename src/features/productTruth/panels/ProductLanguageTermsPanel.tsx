@@ -4,9 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
 import {
+  isProductLanguageTermsSchemaDeployed,
+  LANGUAGE_TERMS_INFORMATIONAL_NOTICE,
+} from "@/features/productIntelligence/languageSchema";
+import {
   PRODUCT_LANGUAGE_TERM_TYPES,
   TERM_TYPE_LABELS,
-  TERM_TYPE_UI_NOTICE,
 } from "@/features/productLanguage/terms";
 import { fetchProductLanguageSnapshot } from "@/features/productIntelligence/fetchLanguageTerms";
 import { capabilityReadinessScore } from "@/features/productIntelligence/productLanguageReadiness";
@@ -57,6 +60,7 @@ export function ProductLanguageTermsPanel({
       })
     : null;
 
+  const schemaDeployed = isProductLanguageTermsSchemaDeployed();
   const whatsappCount = counts.whatsapp_keyword ?? 0;
   const totalAliases = counts.total_aliases ?? 0;
 
@@ -75,15 +79,14 @@ export function ProductLanguageTermsPanel({
           <div className="text-sm font-medium">{productName.trim() || "—"}</div>
         </div>
 
-        <p className="text-xs text-warning border border-warning/30 bg-warning/5 rounded-md px-2 py-1.5">
-          Language discoverability is informational only — it does <strong>not</strong> block catalogue
-          publish or Central Sync until <code className="text-[10px]">product_language_terms</code> is
-          deployed. Term types in localStorage are not durable across devices.
+        <p className="text-xs text-muted-foreground border border-muted bg-muted/10 rounded-md px-2 py-1.5">
+          {LANGUAGE_TERMS_INFORMATIONAL_NOTICE}
+          {!schemaDeployed && " Term types in localStorage are not durable across devices."}
         </p>
 
         {loading ? (
           <p className="text-xs text-muted-foreground">Loading language inventory…</p>
-        ) : readiness ? (
+        ) : readiness && schemaDeployed ? (
           <div className="rounded-md border p-3 space-y-2 bg-muted/10">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -99,8 +102,8 @@ export function ProductLanguageTermsPanel({
                   <CheckCircle2 className="h-3 w-3" /> Baseline complete
                 </span>
               ) : (
-                <span className="badge-soft bg-warning/10 text-warning flex items-center gap-1 text-xs px-2 py-1 rounded-full">
-                  <AlertTriangle className="h-3 w-3" /> Gaps remain
+                <span className="badge-soft bg-muted text-muted-foreground flex items-center gap-1 text-xs px-2 py-1 rounded-full">
+                  In progress
                 </span>
               )}
             </div>
@@ -111,6 +114,14 @@ export function ProductLanguageTermsPanel({
                 Product Intelligence capability layer: {capability.score}/{capability.maxScore} ({capability.label.replace(/_/g, " ")})
               </p>
             )}
+          </div>
+        ) : readiness ? (
+          <div className="rounded-md border border-dashed p-3 space-y-1 bg-muted/5">
+            <div className="text-xs font-medium text-muted-foreground">Discoverability preview</div>
+            <p className="text-[11px] text-muted-foreground">
+              Scoring is paused until <code className="text-[10px]">product_language_terms</code> ships.
+              Alias inventory below is informational only.
+            </p>
           </div>
         ) : null}
 
@@ -143,7 +154,7 @@ export function ProductLanguageTermsPanel({
           </p>
         )}
 
-        {gaps.length > 0 && !loading && (
+        {schemaDeployed && gaps.length > 0 && !loading && (
           <div className="rounded-md border p-3 bg-muted/20 space-y-1">
             <div className="text-xs font-medium">Missing discoverability coverage</div>
             <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">

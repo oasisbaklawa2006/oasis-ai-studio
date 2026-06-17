@@ -8,7 +8,8 @@ import {
   whatsappKeywordsFromAliases,
   type AliasSeed,
 } from "@/features/productLanguage/aliasSeedRules";
-import type { AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
+import { resolveAiComplianceResponse } from "@/shared/ai/complianceSuggestions";
+import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
 
 export type FastCreateSuggestions = {
   formPatch: Record<string, unknown>;
@@ -111,8 +112,11 @@ export async function enrichSuggestionsWithAi(
     const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
       body: { product_name: productName, category },
     });
-    if (!error && data) {
-      const response = data as AiComplianceResponse;
+    const { response, usedHeuristic } = resolveAiComplianceResponse(data, {
+      product_name: productName,
+      category,
+    });
+    if (!error || !usedHeuristic) {
       const s = response.suggestions;
       if (s.hsn_code) next.formPatch.hsn_code = String(s.hsn_code);
       if (s.gst_rate != null) next.formPatch.gst_rate = String(s.gst_rate);
@@ -123,10 +127,19 @@ export async function enrichSuggestionsWithAi(
       if (s.nutritional_info) next.formPatch.nutritional_info = s.nutritional_info;
       next.labelStarter.ingredients_hint = String(next.formPatch.ingredients ?? "");
       next.labelStarter.allergen_hint = String(next.formPatch.allergen_warnings ?? "");
-      next.sources.aiCompliance = true;
+      next.sources.aiCompliance = !usedHeuristic;
     }
   } catch {
-    /* heuristic defaults remain */
+    const { response } = resolveAiComplianceResponse(null, { product_name: productName, category });
+    const s = response.suggestions;
+    if (s.hsn_code) next.formPatch.hsn_code = String(s.hsn_code);
+    if (s.gst_rate != null) next.formPatch.gst_rate = String(s.gst_rate);
+    if (s.shelf_life_days != null) next.formPatch.shelf_life_days = String(s.shelf_life_days);
+    if (s.ingredients) next.formPatch.ingredients = s.ingredients;
+    if (s.allergen_warnings) next.formPatch.allergen_warnings = s.allergen_warnings;
+    if (s.storage_instructions) next.formPatch.storage_instructions = s.storage_instructions;
+    next.labelStarter.ingredients_hint = String(next.formPatch.ingredients ?? "");
+    next.labelStarter.allergen_hint = String(next.formPatch.allergen_warnings ?? "");
   }
 
   try {
@@ -178,13 +191,9 @@ export async function enrichSuggestionsWithAi(
 }
 
 export async function generateFastCreateSku(): Promise<string | null> {
-  const { data: rules } = await supabase
-    .from("sku_code_rules")
-    .select("code,code_type")
-    .eq("is_active", true)
-    .order("sort_order");
+  const { rules } = await fetchActiveSkuCodeRules();
 
-  if (!rules?.length) return null;
+  if (!rules.length) return null;
 
   const pick = (type: string) => rules.find((r) => r.code_type === type)?.code;
   const division = pick("division");

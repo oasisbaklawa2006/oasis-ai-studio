@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isProductLanguageTermsSchemaDeployed } from "./languageSchema";
 import { buildLanguageTermInventory, countLanguageTerms } from "./languageTermInventory";
 import { evaluateProductLanguageReadiness } from "./productLanguageReadiness";
 import type { LanguageTermCounts, LanguageTermRecord, ProductLanguageReadinessResult } from "./types";
@@ -34,6 +35,20 @@ export async function fetchProductLanguageSnapshot(
 
   const inventory = buildLanguageTermInventory(productId, productName, merged);
   const counts = countLanguageTerms(inventory);
+
+  if (!isProductLanguageTermsSchemaDeployed()) {
+    const readiness: ProductLanguageReadinessResult = {
+      score: 0,
+      maxScore: 5,
+      percent: 0,
+      readyForDiscoverability: false,
+      dimensions: [],
+      gaps: [],
+      nextAction: "Preview only — typed product_language_terms schema not deployed.",
+    };
+    return { inventory, counts, readiness };
+  }
+
   const readiness = evaluateProductLanguageReadiness(counts, {
     hasOfficialName: !!trimmedName,
   });

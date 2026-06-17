@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ const Sel = ({ label, value, options, onChange }: any) => (
 export function SkuBuilder({ value, canOverride, onChange }: Props) {
   const [rules, setRules] = useState<Rule[]>([]);
   const [rulesLoaded, setRulesLoaded] = useState(false);
+  const [rulesError, setRulesError] = useState<string | null>(null);
   const [overriding, setOverriding] = useState(false);
   const [overrideSku, setOverrideSku] = useState("");
   const [reason, setReason] = useState("");
@@ -48,15 +50,14 @@ export function SkuBuilder({ value, canOverride, onChange }: Props) {
   const [manualSku, setManualSku] = useState("");
 
   useEffect(() => {
-    supabase
-      .from("sku_code_rules")
-      .select("code,label,code_type")
-      .eq("is_active", true)
-      .order("sort_order")
-      .then(({ data }) => {
-        setRules(data ?? []);
-        setRulesLoaded(true);
-      });
+    void fetchActiveSkuCodeRules().then(({ rules: rows, error }) => {
+      setRules(rows);
+      setRulesError(error);
+      setRulesLoaded(true);
+      if (error && import.meta.env.DEV) {
+        console.warn("[SkuBuilder] sku_code_rules load:", error);
+      }
+    });
   }, []);
 
   const by = (t: string) => rules.filter((r) => r.code_type === t);
@@ -139,6 +140,9 @@ export function SkuBuilder({ value, canOverride, onChange }: Props) {
       {rulesMissing && (
         <p className="text-xs text-warning border border-warning/30 bg-warning/5 rounded-md px-2 py-1.5">
           sku_code_rules table has no active rows — Generate SKU is disabled. You can still type a SKU manually below.
+          {rulesError && (
+            <span className="block mt-1 font-mono text-[10px] text-muted-foreground break-all">{rulesError}</span>
+          )}
         </p>
       )}
 

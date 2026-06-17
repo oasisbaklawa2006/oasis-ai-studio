@@ -83,7 +83,8 @@ describe("snapshot language intelligence", () => {
     });
     expect(section.schema_available).toBe(false);
     expect(section.official_name).toBe("Cashew Kitta");
-    expect(section.language_readiness.score).toBeGreaterThanOrEqual(0);
+    expect(section.language_readiness.score).toBe(0);
+    expect(section.discoverability_gaps).toEqual([]);
     expect(section.search_consumption.matches_alias_text).toBe(true);
     expect(section.search_consumption.matches_typed_terms).toBe(false);
   });

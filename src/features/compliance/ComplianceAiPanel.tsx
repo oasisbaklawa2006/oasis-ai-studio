@@ -18,6 +18,7 @@ import {
   UI_ONLY_COMPLIANCE_FIELDS,
 } from "@/shared/ai/compliancePersistence";
 import type { AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
+import { resolveAiComplianceResponse } from "@/shared/ai/complianceSuggestions";
 import { toast } from "sonner";
 
 type Props = {
@@ -88,17 +89,33 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
         },
       });
 
-      if (error) throw error;
+      const { response, usedHeuristic } = resolveAiComplianceResponse(data, {
+        product_name: String(form.product_name ?? ""),
+        category: String(form.category ?? ""),
+      });
 
-      const response = data as AiComplianceResponse;
-      if (!response?.suggestion_only || response.approved !== false) {
-        throw new Error("Invalid AI compliance response contract");
+      if (error && usedHeuristic) {
+        if (import.meta.env.DEV) {
+          console.warn("[ComplianceAiPanel] edge function unavailable, using heuristic:", error.message);
+        }
       }
 
       applyAiResponse(response);
+      toast.message(
+        usedHeuristic
+          ? "Offline compliance suggestions applied — review and approve before save."
+          : "AI suggestions applied to form — not approved for save until authorized user approves.",
+      );
     } catch (e) {
-      const message = e instanceof Error ? e.message : "AI suggestion request failed";
-      toast.error(message);
+      const { response } = resolveAiComplianceResponse(null, {
+        product_name: String(form.product_name ?? ""),
+        category: String(form.category ?? ""),
+      });
+      applyAiResponse(response);
+      if (import.meta.env.DEV) {
+        console.warn("[ComplianceAiPanel] fallback after error:", e);
+      }
+      toast.message("Offline compliance suggestions applied — review and approve before save.");
     } finally {
       setLoading(false);
     }
