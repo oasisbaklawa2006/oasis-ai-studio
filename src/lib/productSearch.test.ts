@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildFallbackResults, normalizeSearchQuery, productDisplayNameFromRow } from "./productSearch";
+import { buildFallbackResults, buildProductTextSearchOrFilter, normalizeSearchQuery, productDisplayNameFromRow } from "./productSearch";
 
 describe("productSearch fallback", () => {
   const products = [
@@ -56,5 +56,23 @@ describe("productSearch fallback", () => {
       { alias_text: "pyramid", product_id: null, canonical_name: "Cashew Pyramid" },
     ], "pyramid");
     expect(results.some((r) => r.sku === "OAS-LEGACY-001")).toBe(true);
+  });
+
+  it("builds text search filter across name, product_name, short_name, and sku", () => {
+    const filter = buildProductTextSearchOrFilter("  OAS Kit ");
+    expect(filter).toContain("name.ilike.%oas kit%");
+    expect(filter).toContain("product_name.ilike.%oas kit%");
+    expect(filter).toContain("short_name.ilike.%oas kit%");
+    expect(filter).toContain("sku.ilike.%oas kit%");
+  });
+
+  it("finds product when only legacy name column is populated", () => {
+    const results = buildFallbackResults(
+      [{ id: "n1", sku: "OAS-N-1", name: "Pistachio Roll", product_name: null }],
+      [],
+      "Pistachio",
+    );
+    expect(results).toHaveLength(1);
+    expect(results[0].product_name).toBe("Pistachio Roll");
   });
 });
