@@ -1,4 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
+import { fetchActiveProductIdsForSearch } from "@/features/productMaster/productListFetch";
+import { productVisibleInActiveView } from "@/features/productMaster/productListModel";
 
 export type ProductSearchResult = {
   id: string;
@@ -46,6 +48,17 @@ export function escapeIlikePattern(q: string): string {
   return q.replace(/[%_\\]/g, "\\$&");
 }
 
+/** ILIKE filter across products.name, product_name, short_name, and sku. */
+export function buildProductTextSearchOrFilter(rawQuery: string): string {
+  const pattern = `%${escapeIlikePattern(normalizeSearchQuery(rawQuery))}%`;
+  return [
+    `name.ilike.${pattern}`,
+    `product_name.ilike.${pattern}`,
+    `short_name.ilike.${pattern}`,
+    `sku.ilike.${pattern}`,
+  ].join(",");
+}
+
 export function productDisplayNameFromRow(p: ProductRow): string {
   return p.product_name ?? p.name ?? "Unnamed product";
 }
@@ -74,11 +87,15 @@ function getAliasRowText(row: AliasRow): string {
 function scoreProductMatch(p: ProductRow, nq: string): { score: number; matched: string | null } {
   const sku = (p.sku ?? "").toLowerCase();
   const name = productDisplayNameFromRow(p).toLowerCase();
+  const legacyName = (p.name ?? "").toLowerCase();
+  const productName = (p.product_name ?? "").toLowerCase();
   const shortName = (p.short_name ?? "").toLowerCase();
 
   if (sku === nq) return { score: 1, matched: null };
   if (sku.includes(nq)) return { score: 0.95, matched: null };
   if (name.includes(nq)) return { score: 0.9, matched: null };
+  if (productName && productName.includes(nq)) return { score: 0.89, matched: null };
+  if (legacyName && legacyName.includes(nq)) return { score: 0.88, matched: null };
   if (shortName && shortName.includes(nq)) return { score: 0.85, matched: null };
 
   const aliases = p.aliases ?? [];
@@ -164,9 +181,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   const [productsRes, aliasesRes] = await Promise.all([
     supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at, is_active")
       .is("archived_at", null)
-      .or(`name.ilike.${pattern},sku.ilike.${pattern}`),
+      .or(buildProductTextSearchOrFilter(text)),
     supabase
       .from("product_aliases")
       .select("alias_text, alias, product_id, canonical_name")
@@ -176,8 +193,30 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (productsRes.error) console.error("[productSearch] products fallback:", productsRes.error);
   if (aliasesRes.error) console.error("[productSearch] aliases fallback:", aliasesRes.error);
 
-  let products = (productsRes.data ?? []) as ProductRow[];
+  let products = ((productsRes.data ?? []) as ProductRow[]).filter((p) =>
+    productVisibleInActiveView(p as { is_active?: boolean | null; archived_at?: string | null }),
+  );
   const aliasRows = (aliasesRes.data ?? []) as AliasRow[];
+
+  if (productsRes.error) {
+    const broad = await supabase
+      .from("products")
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at, is_active")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!broad.error) {
+      products = ((broad.data ?? []) as ProductRow[]).filter((p) => productVisibleInActiveView(p));
+    }
+  } else if (!products.length) {
+    const broad = await supabase
+      .from("products")
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at, is_active")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (!broad.error) {
+      products = ((broad.data ?? []) as ProductRow[]).filter((p) => productVisibleInActiveView(p));
+    }
+  }
 
   const extraIds = new Set<string>();
   for (const row of aliasRows) {
@@ -188,10 +227,12 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (missingIds.length) {
     const { data: linked } = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
-      .is("archived_at", null)
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at, is_active")
       .in("id", missingIds);
-    if (linked?.length) products = [...products, ...(linked as ProductRow[])];
+    if (linked?.length) {
+      const activeLinked = (linked as ProductRow[]).filter((p) => productVisibleInActiveView(p));
+      products = [...products, ...activeLinked];
+    }
   }
 
   const canonicalNames = [
@@ -207,16 +248,20 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
     const knownNames = new Set(products.map((p) => productDisplayNameFromRow(p).toLowerCase()));
     const toFetch = canonicalNames.filter((n) => !knownNames.has(n.toLowerCase()));
     if (toFetch.length) {
-      const orFilter = toFetch.map((n) => `name.ilike.${escapeIlikePattern(n)}`).join(",");
+      const orFilter = toFetch
+        .flatMap((n) => {
+          const esc = escapeIlikePattern(n);
+          return [`name.ilike.${esc}`, `product_name.ilike.${esc}`];
+        })
+        .join(",");
       const { data: byName } = await supabase
         .from("products")
-        .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
-        .is("archived_at", null)
+        .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at, is_active")
         .or(orFilter);
       if (byName?.length) {
         const seen = new Set(products.map((p) => p.id));
         for (const p of byName as ProductRow[]) {
-          if (!seen.has(p.id)) products.push(p);
+          if (!seen.has(p.id) && productVisibleInActiveView(p)) products.push(p);
         }
       }
     }
@@ -225,10 +270,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (!products.length && !aliasRows.length) {
     const { data: broad } = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at")
-      .is("archived_at", null)
+      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at, is_active")
       .limit(200);
-    products = (broad ?? []) as ProductRow[];
+    products = ((broad ?? []) as ProductRow[]).filter((p) => productVisibleInActiveView(p));
   }
 
   return buildFallbackResults(products, aliasRows, text);
@@ -245,14 +289,14 @@ export async function searchProductsWithAliases(q: string): Promise<ProductSearc
   }
 
   const { data, error } = await supabase.rpc("search_products_with_aliases", { _q: text });
-  if (!error && data) {
-    const activeIds = new Set(
-      (
-        await supabase.from("products").select("id").is("archived_at", null)
-      ).data?.map((r) => r.id) ?? [],
+  if (!error && data?.length) {
+    const activeIds = await fetchActiveProductIdsForSearch();
+    const results = ((data ?? []) as ProductSearchResult[]).filter(
+      (r) => activeIds === null || activeIds.has(r.id),
     );
-    const results = ((data ?? []) as ProductSearchResult[]).filter((r) => activeIds.has(r.id));
-    return { results, usedBasicFallback: false };
+    if (results.length) {
+      return { results, usedBasicFallback: false };
+    }
   }
 
   if (error) console.error("[productSearch] RPC unavailable, using fallback:", error.message);

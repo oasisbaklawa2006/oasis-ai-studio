@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,10 +20,8 @@ import {
   buildProductReadinessSnapshot,
   dimensionCardLabel,
   dimensionIsComplete,
-  groupRowsByProductId,
 } from "@/features/readiness/productReadinessSnapshot";
 import { mediaGovernanceStatusLine } from "@/features/mediaReadiness/mediaGovernanceDisplay";
-import { IMMUTABLE_VERSION_STATUSES } from "@/features/catalogueSnapshot/types";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   detectProductMasterDuplicates,
@@ -32,6 +29,14 @@ import {
 } from "@/features/productGovernance/duplicateDetection";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
 import type { ProductLabelBarcodeRow } from "@/features/productGovernance/types";
+import {
+  fetchProductAuthorityBundle,
+  fetchProductsForMasterList,
+} from "@/features/productMaster/productListFetch";
+import {
+  filterProductsForMasterList,
+  productDisplayName,
+} from "@/features/productMaster/productListModel";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 
 const PRODUCT_CLASSES = [
@@ -68,9 +73,6 @@ const SORTS = [
 
 const labelOf = (list: { v: string; label: string }[], v?: string | null) =>
   list.find((x) => x.v === v)?.label ?? v ?? "";
-
-const productDisplayName = (p: { product_name?: string | null; name?: string | null }) =>
-  p.product_name ?? p.name ?? "Unnamed product";
 
 const Badge = ({ tone = "muted", children, title }: { tone?: "ok" | "warn" | "muted" | "accent" | "primary"; children: React.ReactNode; title?: string }) => {
   const map = {
@@ -142,73 +144,39 @@ const Products = () => {
   const [moqByProduct, setMoqByProduct] = useState<Record<string, MoqRuleRow[]>>({});
   const [catalogueApprovedByProduct, setCatalogueApprovedByProduct] = useState<Record<string, boolean>>({});
   const [authorityReady, setAuthorityReady] = useState(false);
+  const [readinessUnavailable, setReadinessUnavailable] = useState(false);
+  const [productsLoadError, setProductsLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      let productsQuery = supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (!showArchived) {
-        productsQuery = productsQuery.is("archived_at", null);
-      }
+      setAuthorityReady(false);
+      setReadinessUnavailable(false);
 
-      const [productsRes, rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes] =
-        await Promise.all([
-        productsQuery,
-        supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("product_moq_rules").select("*"),
-        supabase.from("product_pricing_rules").select("*"),
-        supabase
-          .from("product_media")
-          .select("id, product_id, type, file_url, status, alt_text, angle, created_at"),
-        supabase
-          .from("catalogue_versions")
-          .select("product_id, status, version_number")
-          .order("version_number", { ascending: false }),
-        supabase.from("labels").select("product_id, barcode, status"),
-      ]);
+      const productsResult = await fetchProductsForMasterList({ showArchived });
       if (cancelled) return;
 
-      setItems(productsRes.data ?? []);
-      setRules(rulesRes.data ?? []);
-
-      const moqRows = (moqRes.data ?? []) as MoqRuleRow[];
-      const m: Record<string, number> = {};
-      moqRows.forEach((r) => {
-        if (!r.product_id) return;
-        m[r.product_id] = (m[r.product_id] || 0) + 1;
-      });
-      setMoqCounts(m);
-      setMoqByProduct(groupRowsByProductId(moqRows));
-
-      const pricingRows = (pricingRes.data ?? []) as PricingRuleRow[];
-      const pm: Record<string, { total: number; approved: number }> = {};
-      pricingRows.forEach((r) => {
-        if (!r.product_id) return;
-        if (!pm[r.product_id]) pm[r.product_id] = { total: 0, approved: 0 };
-        pm[r.product_id].total += 1;
-        if (r.approval_status === "approved") pm[r.product_id].approved += 1;
-      });
-      setPriceCounts(pm);
-      setPricingByProduct(groupRowsByProductId(pricingRows));
-
-      setMediaByProduct(groupRowsByProductId((mediaRes.data ?? []) as ProductMediaRow[]));
-
-      const approvedByProduct: Record<string, boolean> = {};
-      if (!versionsRes.error) {
-        for (const row of versionsRes.data ?? []) {
-          const pid = row.product_id as string | null;
-          if (!pid || approvedByProduct[pid] !== undefined) continue;
-          approvedByProduct[pid] = IMMUTABLE_VERSION_STATUSES.includes(
-            row.status as (typeof IMMUTABLE_VERSION_STATUSES)[number],
-          );
-        }
+      if (productsResult.error) {
+        console.error("[Products] products fetch:", productsResult.error);
+        setProductsLoadError(productsResult.error);
+        toast.error("Could not load full product list — showing available rows");
+      } else {
+        setProductsLoadError(null);
       }
-      setCatalogueApprovedByProduct(approvedByProduct);
-      setLabelRows((labelsRes.data ?? []) as ProductLabelBarcodeRow[]);
+      setItems(productsResult.products);
 
+      const bundle = await fetchProductAuthorityBundle();
+      if (cancelled) return;
+
+      setRules(bundle.rules);
+      setMoqCounts(bundle.moqCounts);
+      setPriceCounts(bundle.priceCounts);
+      setMediaByProduct(bundle.mediaByProduct);
+      setPricingByProduct(bundle.pricingByProduct);
+      setMoqByProduct(bundle.moqByProduct);
+      setCatalogueApprovedByProduct(bundle.catalogueApprovedByProduct);
+      setLabelRows(bundle.labelRows);
+      setReadinessUnavailable(bundle.hadErrors);
       setAuthorityReady(true);
     })();
     return () => {
@@ -260,26 +228,21 @@ const Products = () => {
   const ids = results ? new Set(results.map((r) => r.id)) : null;
 
   const filtered = useMemo(() => {
-    let arr = items.filter((p) => {
-      if (!showArchived && p.archived_at) return false;
-      if (ids && !ids.has(p.id)) return false;
-      if (div && p.division_code !== div) return false;
-      if (cat && p.category_code !== cat) return false;
-      if (pack && p.packaging_code !== pack) return false;
-      if (pclass && p.product_class !== pclass) return false;
-      if (mainDept && p.main_department !== mainDept) return false;
-      if (prodDept && p.production_department !== prodDept) return false;
-      if (uom && p.primary_uom !== uom) return false;
-      if (pl === "yes" && !p.private_label_allowed) return false;
-      if (pl === "no" && p.private_label_allowed) return false;
-      if (bom === "yes" && !p.bom_required) return false;
-      if (bom === "no" && p.bom_required) return false;
-      if (carton === "yes" && !p.fixed_carton_required) return false;
-      if (carton === "no" && p.fixed_carton_required) return false;
-      if (ready === "yes" && !p.is_catalogue_ready) return false;
-      if (ready === "no" && p.is_catalogue_ready) return false;
-      if (labelStatus && p.label_status !== labelStatus) return false;
-      return true;
+    let arr = filterProductsForMasterList(items, {
+      showArchived,
+      searchIds: ids,
+      div,
+      cat,
+      pack,
+      pclass,
+      mainDept,
+      prodDept,
+      uom,
+      pl,
+      bom,
+      carton,
+      ready,
+      labelStatus,
     });
     switch (sort) {
       case "name": arr = [...arr].sort((a, b) => productDisplayName(a).localeCompare(productDisplayName(b))); break;
@@ -551,17 +514,23 @@ const Products = () => {
                     GST/HSN · {dimensionCardLabel(readiness, "compliance_status")}
                   </Badge>
                 )}
-                <ReadinessBadge
-                  product={p}
-                  readiness={readiness}
-                  compact
-                  loading={!authorityReady}
-                  statusOpts={{
-                    catalogueVersionApproved: catalogueApprovedByProduct[p.id],
-                    pricingRows: pricingByProduct[p.id],
-                    moqRows: moqByProduct[p.id],
-                  }}
-                />
+                {readinessUnavailable && authorityReady ? (
+                  <Badge tone="muted" title="Readiness side tables could not be loaded">
+                    Readiness unavailable
+                  </Badge>
+                ) : (
+                  <ReadinessBadge
+                    product={p}
+                    readiness={readiness}
+                    compact
+                    loading={!authorityReady}
+                    statusOpts={{
+                      catalogueVersionApproved: catalogueApprovedByProduct[p.id],
+                      pricingRows: pricingByProduct[p.id],
+                      moqRows: moqByProduct[p.id],
+                    }}
+                  />
+                )}
               </div>
               </div>
               </Link>
@@ -574,7 +543,9 @@ const Products = () => {
             <div className="text-muted-foreground text-sm">
               {q.trim()
                 ? "No products found by this name, SKU, or alias. Try another spelling."
-                : "No products match these filters."}
+                : productsLoadError
+                  ? "Could not load products. Check your connection and try again."
+                  : "No products match these filters."}
             </div>
             {activeFilterCount > 0 && (
               <Button variant="outline" size="sm" onClick={clearAll}>
