@@ -40,11 +40,62 @@ export type ProductImageRow = {
   image_url?: string | null;
 };
 
+export type ProductHeroMediaRow = {
+  type?: string | null;
+  file_url?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+};
+
+const NON_HERO_MEDIA_STATUSES = new Set(["deleted", "rejected", "archived"]);
+
+function trimUrl(url: string | null | undefined): string | null {
+  const v = url?.trim();
+  return v ? v : null;
+}
+
+/** Approved hero_image row only — excludes raw_photo and other slots. */
+export function isApprovedHeroMediaRow(row: ProductHeroMediaRow): boolean {
+  if (!trimUrl(row.file_url)) return false;
+  const status = String(row.status ?? "").toLowerCase();
+  if (NON_HERO_MEDIA_STATUSES.has(status)) return false;
+  return status === "approved" && String(row.type ?? "").toLowerCase() === "hero_image";
+}
+
+/** Latest approved hero_image by created_at (desc). Never uses raw_photo or other types. */
+export function latestApprovedHeroUrlFromMediaRows(rows: ProductHeroMediaRow[]): string | null {
+  const heroes = rows
+    .filter(isApprovedHeroMediaRow)
+    .sort((a, b) => {
+      const ta = Date.parse(a.created_at ?? "") || 0;
+      const tb = Date.parse(b.created_at ?? "") || 0;
+      return tb - ta;
+    });
+  return trimUrl(heroes[0]?.file_url);
+}
+
+/**
+ * Canonical hero URL for Product Master cards and Product Edit.
+ * Precedence: products.hero_image_url → latest approved hero_image media → products.image_url.
+ */
+export function resolveProductCardHeroUrl(
+  product: ProductImageRow | null | undefined,
+  mediaRows: ProductHeroMediaRow[] = [],
+): string | null {
+  const heroCol = trimUrl(product?.hero_image_url);
+  if (heroCol) return heroCol;
+
+  const fromMedia = latestApprovedHeroUrlFromMediaRows(mediaRows);
+  if (fromMedia) return fromMedia;
+
+  return trimUrl(product?.image_url);
+}
+
 /** Unified hero URL — Central writes `image_url`; AI Studio media uploader writes `hero_image_url`. */
 export function resolveProductHeroUrl(row: ProductImageRow | null | undefined): string | null {
   if (!row) return null;
   const url = row.hero_image_url ?? row.image_url ?? null;
-  return url && String(url).trim() ? String(url).trim() : null;
+  return trimUrl(url);
 }
 
 /** Payload fields to keep Central + AI Studio hero URLs in sync on write. */

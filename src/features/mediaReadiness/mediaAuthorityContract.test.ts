@@ -37,13 +37,13 @@ describe("mediaAuthorityContract", () => {
     ).toBe("approved");
   });
 
-  it("uses fallback hero when rows exist but no approved hero_image row (testing)", () => {
+  it("does not use raw_photo when no approved hero_image row exists", () => {
     import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
     const rows = [{ type: "raw_photo", file_url: "https://cdn/h.jpg", status: "approved" }];
     expect(
       deriveMediaStatusFromRows(rows, { fallbackHeroUrl: "https://cdn/h.jpg" }),
     ).toBe("approved");
-    expect(deriveHeroUrlFromMediaRows(rows)).toBe("https://cdn/h.jpg");
+    expect(deriveHeroUrlFromMediaRows(rows)).toBeNull();
   });
 
   it("testing-mode product readiness completes when approved hero_image row persists", () => {

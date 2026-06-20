@@ -15,7 +15,7 @@ import {
 import { toast } from "sonner";
 import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
-import { resolveProductHeroUrl } from "@/lib/productImage";
+import { resolveProductCardHeroUrl } from "@/lib/productImage";
 import {
   buildProductReadinessSnapshot,
   dimensionCardLabel,
@@ -409,8 +409,7 @@ const Products = () => {
           const moqS = moqSummary(p);
           const snapshot = readinessByProduct.get(p.id);
           const readiness = authorityReady ? (snapshot?.readiness ?? null) : null;
-          const heroUrl =
-            snapshot?.derivedHeroUrl ?? resolveProductHeroUrl(p);
+          const heroUrl = resolveProductCardHeroUrl(p, mediaByProduct[p.id] ?? []);
           const pricingComplete = readiness
             ? dimensionIsComplete(readiness, "pricing_status")
             : false;

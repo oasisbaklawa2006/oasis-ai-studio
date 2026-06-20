@@ -1,10 +1,10 @@
 import { dbRowToProductForm } from "@/features/productAuthority/productSchemaAdapter";
 import {
   authoritativeMediaAssets,
-  deriveHeroUrlFromMediaRows,
   deriveMediaStatusFromRows,
   type DerivedMediaStatus,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
+import { resolveProductCardHeroUrl } from "@/lib/productImage";
 import { dimensionMediaCardLabel, productCardMediaNeedLabel } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
@@ -63,10 +63,7 @@ export function buildProductReadinessSnapshot(
 ): ProductReadinessSnapshot {
   const baseForm = dbRowToProductForm(productRow, {});
   const mediaRows = bundle.productMediaRows ?? [];
-  const derivedHeroUrl =
-    deriveHeroUrlFromMediaRows(mediaRows) ??
-    (baseForm.hero_image_url ? String(baseForm.hero_image_url) : null) ??
-    (baseForm.image_url ? String(baseForm.image_url) : null);
+  const derivedHeroUrl = resolveProductCardHeroUrl(baseForm, mediaRows);
   const derivedMediaStatus = deriveMediaStatusFromRows(mediaRows, {
     fallbackHeroUrl: derivedHeroUrl,
   });

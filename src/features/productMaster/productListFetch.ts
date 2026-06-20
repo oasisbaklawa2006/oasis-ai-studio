@@ -86,7 +86,8 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     supabase.from("product_pricing_rules").select("*"),
     supabase
       .from("product_media")
-      .select("id, product_id, type, file_url, status, alt_text, angle, created_at"),
+      .select("id, product_id, type, file_url, status, alt_text, angle, created_at")
+      .order("created_at", { ascending: false }),
     supabase
       .from("catalogue_versions")
       .select("product_id, status, version_number")

@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { heroUrlWritePayload, resolveProductHeroUrl } from "@/lib/productImage";
+import { heroUrlWritePayload, latestApprovedHeroUrlFromMediaRows, resolveProductHeroUrl } from "@/lib/productImage";
 import { insertProductMediaRow } from "@/features/productAuthority/productMediaPersistence";
 import type { MediaAsset } from "./types";
 import {
@@ -74,15 +74,9 @@ export function deriveMediaStatusFromRows(
   return "pending_approval";
 }
 
-/** Hero URL from approved hero_image row, else first approved image row. */
+/** Hero URL from latest approved hero_image row only. */
 export function deriveHeroUrlFromMediaRows(rows: ProductMediaRow[]): string | null {
-  const hero = rows.find(
-    (r) => rowIsApproved(r) && String(r.type ?? "").toLowerCase() === "hero_image" && r.file_url,
-  );
-  if (hero?.file_url) return String(hero.file_url);
-
-  const firstApproved = rows.find((r) => rowIsApproved(r) && r.file_url);
-  return firstApproved?.file_url ? String(firstApproved.file_url) : null;
+  return latestApprovedHeroUrlFromMediaRows(rows);
 }
 
 /**
