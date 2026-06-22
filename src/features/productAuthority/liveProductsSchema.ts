@@ -13,6 +13,8 @@ import {
 export const LIVE_PRODUCTS_STUDIO_ONLY_COLUMNS: ReadonlySet<string> = new Set([
   "approximate_piece_weight_g",
   "pieces_per_kg",
+  "sku_generated_at",
+  "archived_at",
 ]);
 
 /** Studio pricing columns absent on live shared products — never write. */

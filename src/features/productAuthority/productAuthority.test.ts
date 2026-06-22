@@ -154,6 +154,17 @@ describe("productSchemaAdapter", () => {
     expect(stripped).toContain("department");
   });
 
+  it("strips studio-only sku_generated_at for live Central writes", () => {
+    const { payload, stripped } = stripUnknownProductFields({
+      product_name: "Test",
+      sku: "OAS-AS-BKL-0001",
+      sku_generated_at: "2026-06-22T12:00:00.000Z",
+    });
+    expect(payload.sku).toBe("OAS-AS-BKL-0001");
+    expect(payload).not.toHaveProperty("sku_generated_at");
+    expect(stripped).toContain("sku_generated_at");
+  });
+
   it("always maps Central legacy name on create payload", () => {
     const payload = formToDbProductPayload({
       product_name: "Bourma Pistachio",

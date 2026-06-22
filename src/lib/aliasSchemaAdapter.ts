@@ -91,6 +91,37 @@ export async function insertProductAliases(
   return { error: legacy.error };
 }
 
+/** Alias rows for a product — migration schema first, legacy Central fallback. */
+export async function queryProductAliasesForProduct(
+  client: AliasClient,
+  productId: string,
+): Promise<Array<Record<string, unknown>>> {
+  const migration = await client
+    .from("product_aliases")
+    .select("id, alias, alias_text, canonical_name, alias_type, product_id, source, is_active")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false });
+
+  if (!migration.error) {
+    return (migration.data ?? []).filter((row) =>
+      typeof row.is_active === "boolean" ? row.is_active : true,
+    );
+  }
+
+  if (!isAliasSchemaMismatchError(migration.error.message)) {
+    return [];
+  }
+
+  const legacy = await client
+    .from("product_aliases")
+    .select("id, alias_text, canonical_name, product_id")
+    .eq("product_id", productId)
+    .order("created_at", { ascending: false });
+
+  if (!legacy.error) return legacy.data ?? [];
+  return [];
+}
+
 /** Alias search query compatible with migration and legacy Central schemas. */
 export async function queryAliasesByPattern(
   client: AliasClient,

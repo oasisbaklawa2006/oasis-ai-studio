@@ -14,7 +14,8 @@
     "verify:pilot-readiness": "node scripts/verify-pilot-readiness.mjs",
     "generate:pilot-aliases": "npx vitest run --config vitest.config.ts src/features/productAuthority/pilotAlias.test.ts && npx vite-node scripts/export-pilot-aliases.ts",
     "test:watch": "vitest",
-    "test:product-authoring-audit": "playwright test --config playwright.product-authoring.config.ts"
+    "test:product-authoring-audit": "playwright test --config playwright.product-authoring.config.ts",
+    "test:catalogue-final-acceptance": "playwright test --config playwright.catalogue-acceptance.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
