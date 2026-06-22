@@ -5,6 +5,7 @@ import { CheckCircle2, Copy, Eye, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { getAliasText } from "@/lib/aliasDisplay";
+import { queryProductAliasesForProduct } from "@/lib/aliasSchemaAdapter";
 import { CentralSyncReadOnlyBanner } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { getVersionsLoadFailure, getVersionsPersistenceSource } from "../catalogueVersionStore";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
@@ -104,23 +105,17 @@ export function CentralSyncPreviewPanel({
       setLanguageAliasRows([]);
       return;
     }
-    void supabase
-      .from("product_aliases")
-      .select("id, alias, alias_type, product_id, source, is_active")
-      .eq("product_id", productId)
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setLanguageAliasRows(
-          (data ?? []).map((row) => ({
-            id: String(row.id),
-            alias: getAliasText(row),
-            product_id: row.product_id,
-            alias_type: row.alias_type,
-            source: row.source,
-          })),
-        );
-      });
+    void queryProductAliasesForProduct(supabase, productId).then((rows) => {
+      setLanguageAliasRows(
+        rows.map((row) => ({
+          id: String(row.id),
+          alias: getAliasText(row as { alias?: string | null; alias_text?: string | null }),
+          product_id: row.product_id as string | null,
+          alias_type: (row.alias_type as string | null) ?? null,
+          source: (row.source as string | null) ?? null,
+        })),
+      );
+    });
   }, [productId]);
 
   const snapshotInputBase = useMemo(

@@ -25,6 +25,6 @@ describe("fastCreateSkuCodes", () => {
     expect(payload.category_code).toBe("BKL");
     expect(payload.subcategory_code).toBe("ASS");
     expect(payload.packaging_code).toBe("LOOSE");
-    expect(payload.sku_generated_at).toBe("2026-06-22T12:00:00.000Z");
+    expect(payload).not.toHaveProperty("sku_generated_at");
   });
 });
