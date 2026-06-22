@@ -63,7 +63,7 @@ describe("product language terms", () => {
     expect(payload.channel_scope).toContain("customer_app");
   });
 
-  it("admin insert uses product_aliases.alias column", () => {
+  it("admin insert carries migration alias and legacy canonical_name for Central fallback", () => {
     const insert = buildAdminAliasInsert("pid", "Cashew Kitta", "Kaju Kitta", {
       alias_type: "official_alias",
       source: "manual",
@@ -71,11 +71,10 @@ describe("product language terms", () => {
     expect(insert).toEqual({
       product_id: "pid",
       alias: "Kaju Kitta",
+      canonical_name: "Cashew Kitta",
       alias_type: "official_alias",
       source: "manual",
     });
-    expect(insert).not.toHaveProperty("alias_text");
-    expect(insert).not.toHaveProperty("canonical_name");
   });
 
   it("infers legacy_name for unlinked canonical rows", () => {

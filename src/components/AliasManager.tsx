@@ -18,6 +18,7 @@ import {
 } from "@/shared/auth/centralPermissions";
 import type { Role } from "@/lib/permissions";
 import { getAliasText, hasAliasActiveFlag } from "@/lib/aliasDisplay";
+import { insertProductAlias } from "@/lib/aliasSchemaAdapter";
 import {
   PRODUCT_LANGUAGE_TERM_TYPES,
   TERM_TYPE_LABELS,
@@ -155,11 +156,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
       });
       if (!insertPayload.alias) continue;
 
-      const { data, error } = await supabase
-        .from("product_aliases")
-        .insert(insertPayload)
-        .select("id")
-        .single();
+      const { data, error } = await insertProductAlias(supabase, insertPayload);
 
       if (error) {
         if (/duplicate|unique/i.test(error.message)) continue;

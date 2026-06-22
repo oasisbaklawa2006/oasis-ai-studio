@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { insertProductAlias } from "@/lib/aliasSchemaAdapter";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { canWriteMasterDirectly } from "@/shared/auth/centralPermissions";
 import type { Role } from "@/lib/permissions";
@@ -65,9 +66,10 @@ export async function saveApprovedPilotAliases(
 
   if (direct) {
     for (const term of approved) {
-      const { error } = await supabase.from("product_aliases").insert({
+      const { error } = await insertProductAlias(supabase, {
         product_id: term.product_id,
         alias: term.alias_text,
+        canonical_name: term.product_name,
         alias_type: toDbAliasType(term.alias_type),
         is_active: true,
         source: "pilot_alias_review",

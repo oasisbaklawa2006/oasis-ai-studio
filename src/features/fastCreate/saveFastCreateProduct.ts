@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { insertProductAliases, type ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 import {
   canWriteProductsDirectly,
@@ -169,16 +170,7 @@ async function persistFastCreateAliases(
   searchKeywords: string[],
 ) {
   const seen = new Set<string>();
-  const rows: Array<{
-    product_id: string;
-    alias: string;
-    alias_type: string;
-    language: string | null;
-    script: string | null;
-    is_active: boolean;
-    source: string;
-    confidence_score: number;
-  }> = [];
+  const rows: ProductAliasInsertInput[] = [];
 
   const push = (alias: string, alias_type: string, language?: string | null, script?: string | null) => {
     const key = alias.trim().toLowerCase();
@@ -208,7 +200,7 @@ async function persistFastCreateAliases(
 
   if (!rows.length) return;
 
-  const { error } = await supabase.from("product_aliases").insert(rows);
+  const { error } = await insertProductAliases(supabase, rows);
   if (error) {
     console.warn("[FastCreate] alias insert failed:", error.message);
   }

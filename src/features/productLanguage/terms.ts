@@ -1,5 +1,7 @@
 /** Oasis Product Language Authority — six editable term classes (Official Name lives on products.name). */
 
+import type { ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
+
 export const PRODUCT_LANGUAGE_TERM_TYPES = [
   "official_alias",
   "customer_term",
@@ -72,23 +74,17 @@ export type ContributorAliasDraftPayload = {
   source?: string;
 };
 
-export type AdminAliasInsertPayload = {
-  alias: string;
-  product_id: string;
-  alias_type?: string;
-  source?: string;
-};
-
-/** DB-safe insert — product_aliases.alias (migration schema). */
+/** DB-safe insert — migration `alias` with legacy Central fallback via insertProductAlias. */
 export function buildAdminAliasInsert(
   productId: string,
-  _canonicalName: string,
+  canonicalName: string,
   aliasText: string,
   opts?: { alias_type?: string; source?: string },
-): AdminAliasInsertPayload {
-  const payload: AdminAliasInsertPayload = {
+): ProductAliasInsertInput {
+  const payload: ProductAliasInsertInput = {
     product_id: productId,
     alias: aliasText.trim(),
+    canonical_name: canonicalName.trim() || "Unnamed product",
   };
   if (opts?.alias_type) payload.alias_type = opts.alias_type;
   if (opts?.source) payload.source = opts.source;

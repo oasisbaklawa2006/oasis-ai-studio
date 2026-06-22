@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { queryAliasesByPattern } from "@/lib/aliasSchemaAdapter";
 import { fetchActiveProductIdsForSearch } from "@/features/productMaster/productListFetch";
 import { productVisibleInActiveView } from "@/features/productMaster/productListModel";
 
@@ -184,10 +185,7 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
       .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, archived_at, is_active")
       .is("archived_at", null)
       .or(buildProductTextSearchOrFilter(text)),
-    supabase
-      .from("product_aliases")
-      .select("alias, product_id, alias_type, is_active")
-      .or(`alias.ilike.${pattern}`),
+    queryAliasesByPattern(supabase, pattern),
   ]);
 
   if (productsRes.error) console.error("[productSearch] products fallback:", productsRes.error);
