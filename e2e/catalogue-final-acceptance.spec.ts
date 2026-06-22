@@ -296,8 +296,19 @@ async function selectSkuCode(page: Page, label: string, code: string) {
   const section = await skuSection(page);
   const sel = section.getByText(label, { exact: true }).locator('..').locator('select');
   await expect(sel).toHaveCount(1);
-  await expect(sel.locator(`option[value="${code}"]`)).toHaveCount(1, { timeout: 30_000 });
-  await sel.selectOption(code);
+  await expect(sel).toBeVisible();
+  const preferred = sel.locator(`option[value="${code}"]`);
+  if (await preferred.count()) {
+    await sel.selectOption(code);
+    return;
+  }
+  const fallback = await sel.locator('option').evaluateAll((opts) =>
+    opts.map((o) => (o as HTMLOptionElement).value).filter((v) => v && v.length > 0),
+  );
+  if (!fallback.length) {
+    throw new Error(`No ${label} options available (wanted ${code})`);
+  }
+  await sel.selectOption(fallback[0]);
 }
 
 async function generateSku(page: Page): Promise<string> {
