@@ -138,6 +138,7 @@ const ACCEPTANCE_PRODUCTS: ProductConfig[] = [
 ];
 
 const productResults: ProductResult[] = [];
+const AUTH_STATE = path.join(process.cwd(), 'test-results/.auth/catalogue-acceptance.json');
 let productionBundle: string | null = null;
 let authBlocked = false;
 let authBlockReason = '';
@@ -292,23 +293,36 @@ async function skuSection(page: Page) {
   return page.locator('.card-elevated').filter({ hasText: 'SKU · System identity' });
 }
 
-async function selectSkuCode(page: Page, label: string, code: string) {
+async function skuSelect(page: Page, label: string) {
   const section = await skuSection(page);
   const sel = section.getByText(label, { exact: true }).locator('..').locator('select');
   await expect(sel).toHaveCount(1);
   await expect(sel).toBeVisible();
-  const preferred = sel.locator(`option[value="${code}"]`);
-  if (await preferred.count()) {
-    await sel.selectOption(code);
-    return;
-  }
-  const fallback = await sel.locator('option').evaluateAll((opts) =>
+  return sel;
+}
+
+async function waitForSkuSelectOptions(page: Page, label: string, timeoutMs = 60_000) {
+  const sel = await skuSelect(page, label);
+  await expect(async () => {
+    const values = await sel.locator('option').evaluateAll((opts) =>
+      opts.map((o) => (o as HTMLOptionElement).value).filter((v) => v && v.length > 0),
+    );
+    expect(values.length).toBeGreaterThan(0);
+  }).toPass({ timeout: timeoutMs });
+  return sel;
+}
+
+async function selectSkuCode(page: Page, label: string, code: string) {
+  const sel = await waitForSkuSelectOptions(page, label);
+  const values = await sel.locator('option').evaluateAll((opts) =>
     opts.map((o) => (o as HTMLOptionElement).value).filter((v) => v && v.length > 0),
   );
-  if (!fallback.length) {
+  const chosen = values.includes(code) ? code : values[0];
+  if (!chosen) {
     throw new Error(`No ${label} options available (wanted ${code})`);
   }
-  await sel.selectOption(fallback[0]);
+  await sel.selectOption(chosen);
+  await page.waitForTimeout(300);
 }
 
 async function generateSku(page: Page): Promise<string> {
@@ -544,6 +558,7 @@ async function runProductFlow(page: Page, cfg: ProductConfig, testInfo: TestInfo
     await page.locator('label', { hasText: /Product Type/i }).locator('..').locator('input').fill(cfg.productType);
     await page.locator('label', { hasText: /Display Category/i }).locator('..').locator('input').fill(cfg.displayCategory);
     await selectField(page, /Main Department/i, 'third_party_goods_store');
+    await expect(page.getByText('SKU · System identity')).toBeVisible();
     record('Create product form', true);
 
     await selectSkuCode(page, 'Division', cfg.sku.division);
@@ -643,7 +658,7 @@ test.describe('Catalogue final production acceptance', () => {
     writeReport();
   });
 
-  test('login', async ({ page }) => {
+  test('login', async ({ page, context }) => {
     const login = await loginStudio(page);
     if (!login.ok) {
       authBlocked = true;
@@ -652,20 +667,30 @@ test.describe('Catalogue final production acceptance', () => {
       expect.soft(false, authBlockReason).toBeTruthy();
       return;
     }
+    fs.mkdirSync(path.dirname(AUTH_STATE), { recursive: true });
+    await context.storageState({ path: AUTH_STATE });
     expect(login.ok).toBeTruthy();
   });
 
   for (const cfg of ACCEPTANCE_PRODUCTS) {
-    test(`acceptance: ${cfg.name}`, async ({ page }) => {
+    test(`acceptance: ${cfg.name}`, async ({ browser }) => {
       test.skip(authBlocked, authBlockReason);
 
-      const login = await loginStudio(page);
-      expect(login.ok).toBeTruthy();
+      const context = await browser.newContext({
+        storageState: fs.existsSync(AUTH_STATE) ? AUTH_STATE : undefined,
+        viewport: { width: 1440, height: 900 },
+        ignoreHTTPSErrors: true,
+      });
+      const page = await context.newPage();
 
-      const result = await runProductFlow(page, cfg, test.info());
-      if (!result.pass) {
-        const failed = result.steps.filter((s) => !s.pass).map((s) => s.step).join(', ');
-        throw new Error(`${cfg.name} failed at: ${failed}`);
+      try {
+        const result = await runProductFlow(page, cfg, test.info());
+        if (!result.pass) {
+          const failed = result.steps.filter((s) => !s.pass).map((s) => s.step).join(', ');
+          throw new Error(`${cfg.name} failed at: ${failed}`);
+        }
+      } finally {
+        await context.close();
       }
     });
   }
