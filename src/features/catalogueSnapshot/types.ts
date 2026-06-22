@@ -79,6 +79,12 @@ export type CatalogueSnapshotJson = {
   fulfillment_transform: Record<string, unknown>;
   /** Product Intelligence — read-only until product_language_terms schema ships. */
   language_intelligence: SnapshotLanguageIntelligence;
+  /** Durable search aliases from product_aliases (preview / downstream discoverability). */
+  product_aliases?: Array<{
+    alias: string;
+    alias_type?: string | null;
+    source?: string | null;
+  }>;
   synced_at: string | null;
   ready_for_central_sync: boolean;
 };

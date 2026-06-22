@@ -75,18 +75,18 @@ export function latestApprovedHeroUrlFromMediaRows(rows: ProductHeroMediaRow[]):
 }
 
 /**
- * Canonical hero URL for Product Master cards and Product Edit.
- * Precedence: products.hero_image_url → latest approved hero_image media → products.image_url.
+ * Canonical hero URL for Product Master cards and Product Truth.
+ * Precedence: latest approved hero_image media → products.hero_image_url → products.image_url.
  */
 export function resolveProductCardHeroUrl(
   product: ProductImageRow | null | undefined,
   mediaRows: ProductHeroMediaRow[] = [],
 ): string | null {
-  const heroCol = trimUrl(product?.hero_image_url);
-  if (heroCol) return heroCol;
-
   const fromMedia = latestApprovedHeroUrlFromMediaRows(mediaRows);
   if (fromMedia) return fromMedia;
+
+  const heroCol = trimUrl(product?.hero_image_url);
+  if (heroCol) return heroCol;
 
   return trimUrl(product?.image_url);
 }

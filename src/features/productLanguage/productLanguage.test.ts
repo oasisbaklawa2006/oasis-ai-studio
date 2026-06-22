@@ -63,14 +63,19 @@ describe("product language terms", () => {
     expect(payload.channel_scope).toContain("customer_app");
   });
 
-  it("admin insert uses only Central-compatible product_aliases columns", () => {
-    const insert = buildAdminAliasInsert("pid", "Cashew Kitta", "Kaju Kitta");
+  it("admin insert uses product_aliases.alias column", () => {
+    const insert = buildAdminAliasInsert("pid", "Cashew Kitta", "Kaju Kitta", {
+      alias_type: "official_alias",
+      source: "manual",
+    });
     expect(insert).toEqual({
       product_id: "pid",
-      canonical_name: "Cashew Kitta",
-      alias_text: "Kaju Kitta",
+      alias: "Kaju Kitta",
+      alias_type: "official_alias",
+      source: "manual",
     });
-    expect(Object.keys(insert).sort()).toEqual(["alias_text", "canonical_name", "product_id"]);
+    expect(insert).not.toHaveProperty("alias_text");
+    expect(insert).not.toHaveProperty("canonical_name");
   });
 
   it("infers legacy_name for unlinked canonical rows", () => {

@@ -9,7 +9,11 @@ import {
   type AliasSeed,
 } from "@/features/productLanguage/aliasSeedRules";
 import { resolveAiComplianceResponse } from "@/shared/ai/complianceSuggestions";
-import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
+import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
+import {
+  resolveFastCreateSkuCodes,
+  type FastCreateSkuCodeSet,
+} from "./fastCreateSkuCodes";
 
 export type FastCreateSuggestions = {
   formPatch: Record<string, unknown>;
@@ -190,26 +194,30 @@ export async function enrichSuggestionsWithAi(
   return next;
 }
 
-export async function generateFastCreateSku(): Promise<string | null> {
-  const { rules } = await fetchActiveSkuCodeRules();
+export type FastCreateSkuResult = {
+  sku: string;
+  codes: FastCreateSkuCodeSet;
+};
 
-  if (!rules.length) return null;
-
-  const pick = (type: string) => rules.find((r) => r.code_type === type)?.code;
-  const division = pick("division");
-  const category = pick("category");
-  const subcategory = pick("subcategory");
-  const packaging = pick("packaging");
-
-  if (!division || !category || !subcategory || !packaging) return null;
+/** Generate structured Oasis SKU using category preset taxonomy codes. */
+export async function generateFastCreateSku(
+  categoryKey: FastCreateCategoryKey = "other",
+): Promise<FastCreateSkuResult | null> {
+  const codes = resolveFastCreateSkuCodes(categoryKey);
 
   const { data, error } = await supabase.rpc("generate_oasis_sku", {
-    _division_code: division,
-    _category_code: category,
-    _subcategory_code: subcategory,
-    _packaging_code: packaging,
+    _division_code: codes.division_code,
+    _category_code: codes.category_code,
+    _subcategory_code: codes.subcategory_code,
+    _packaging_code: codes.packaging_code,
   });
 
   if (error || !data) return null;
-  return String(data);
+  return { sku: String(data), codes };
+}
+
+/** @deprecated Use generateFastCreateSku(categoryKey) — returns SKU string only. */
+export async function generateFastCreateSkuLegacy(): Promise<string | null> {
+  const result = await generateFastCreateSku("other");
+  return result?.sku ?? null;
 }

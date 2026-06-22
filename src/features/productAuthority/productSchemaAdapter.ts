@@ -363,6 +363,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     is_catalogue_ready: toBool(form.is_catalogue_ready, false),
     sku: form.sku ?? null,
     sku_locked: toBool(form.sku_locked, true),
+    sku_generated_at: form.sku_generated_at ?? null,
     legacy_sku: form.legacy_sku ?? null,
     division_code: form.division_code ?? null,
     category_code: form.category_code ?? null,

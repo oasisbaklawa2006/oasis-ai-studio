@@ -30,10 +30,10 @@ describe("productImage", () => {
     });
   });
 
-  it("card hero prefers products.hero_image_url over stale older media row", () => {
+  it("card hero prefers latest approved media over stale products.hero_image_url column", () => {
     const product = {
-      hero_image_url: "https://cdn.example/baklawa.jpg",
-      image_url: "https://cdn.example/baklawa.jpg",
+      hero_image_url: "https://cdn.example/wrong-stale-column.jpg",
+      image_url: "https://cdn.example/wrong-stale-column.jpg",
     };
     const mediaRows = [
       {

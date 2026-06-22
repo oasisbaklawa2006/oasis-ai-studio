@@ -5,8 +5,9 @@ import {
   isCatalogueContributor,
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import type { FastCreateSuggestions } from "./fastCreateSuggestions";
-import { generateFastCreateSku } from "./fastCreateSuggestions";
+import { resolveFastCreateSkuCodes, type FastCreateSkuCodeSet } from "./fastCreateSkuCodes";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import {
   formToDbProductPayload,
@@ -20,29 +21,35 @@ export const FAST_CREATE_SKU_BLOCK_MESSAGE =
   "Structured SKU could not be generated. Ensure sku_code_rules are configured and generate_oasis_sku RPC is deployed. Placeholder SKUs (DRAFT-*, OAS-FC-*) are blocked.";
 
 /** Resolve structured Oasis SKU for Fast Create — throws if RPC/rules unavailable. */
-export async function requireFastCreateSku(existing?: string | null): Promise<string> {
+export async function requireFastCreateSku(
+  categoryKey: FastCreateCategoryKey = "other",
+  existing?: string | null,
+): Promise<{ sku: string; codes: FastCreateSkuCodeSet }> {
   const trimmed = existing?.trim();
   if (trimmed) {
     const existingCheck = assertStructuredSkuForSave(trimmed);
-    if (existingCheck.ok) return existingCheck.sku;
+    if (existingCheck.ok) {
+      return { sku: existingCheck.sku, codes: resolveFastCreateSkuCodes(categoryKey) };
+    }
   }
 
-  const generated = await generateFastCreateSku();
+  const generated = await generateFastCreateSku(categoryKey);
   if (!generated) {
     throw new Error(FAST_CREATE_SKU_BLOCK_MESSAGE);
   }
 
-  const check = assertStructuredSkuForSave(generated);
+  const check = assertStructuredSkuForSave(generated.sku);
   if (!check.ok) {
     throw new Error(check.reason || FAST_CREATE_SKU_BLOCK_MESSAGE);
   }
-  return check.sku;
+  return generated;
 }
 
 export type FastCreateSaveInput = {
   suggestions: FastCreateSuggestions;
   heroUrl: string | null;
   roles: string[];
+  categoryKey: FastCreateCategoryKey;
   /** Pre-resolved SKU shown in UI before save (optional). */
   resolvedSku?: string | null;
 };
@@ -68,7 +75,17 @@ export async function saveFastCreateProduct(
     if (!form.product_class) form.product_class = "bulk_loose_product";
     if (!form.main_department) form.main_department = "ready_goods_store";
 
-    form.sku = await requireFastCreateSku(input.resolvedSku ?? (form.sku as string | null));
+    const skuResult = await requireFastCreateSku(
+      input.categoryKey,
+      input.resolvedSku ?? (form.sku as string | null),
+    );
+    form.sku = skuResult.sku;
+    form.division_code = skuResult.codes.division_code;
+    form.category_code = skuResult.codes.category_code;
+    form.subcategory_code = skuResult.codes.subcategory_code;
+    form.packaging_code = skuResult.codes.packaging_code;
+    form.sku_locked = true;
+    form.sku_generated_at = new Date().toISOString();
 
     const safePayload = stripUnapprovedComplianceFields(form, input.roles, {}, {});
     const productRow = formToDbProductPayload(safePayload);

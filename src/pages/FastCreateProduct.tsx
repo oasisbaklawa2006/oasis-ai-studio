@@ -80,9 +80,9 @@ const FastCreateProduct = () => {
   const resolveSkuPreview = async () => {
     setSkuError(null);
     try {
-      const sku = await requireFastCreateSku(resolvedSku);
-      setResolvedSku(sku);
-      return sku;
+      const result = await requireFastCreateSku(categoryKey, resolvedSku);
+      setResolvedSku(result.sku);
+      return result.sku;
     } catch (e) {
       const msg = e instanceof Error ? e.message : FAST_CREATE_SKU_BLOCK_MESSAGE;
       setSkuError(msg);
@@ -126,8 +126,8 @@ const FastCreateProduct = () => {
 
     setSaving(true);
     try {
-      const sku = await requireFastCreateSku(resolvedSku);
-      setResolvedSku(sku);
+      const skuResult = await requireFastCreateSku(categoryKey, resolvedSku);
+      setResolvedSku(skuResult.sku);
 
       const payload =
         suggestions ?? buildHeuristicSuggestions(productName.trim(), categoryKey);
@@ -135,7 +135,8 @@ const FastCreateProduct = () => {
         suggestions: payload,
         heroUrl,
         roles,
-        resolvedSku: sku,
+        categoryKey,
+        resolvedSku: skuResult.sku,
       });
 
       if ("draft" in result) {

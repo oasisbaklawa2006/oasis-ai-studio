@@ -1186,8 +1186,11 @@ const ProductEdit = () => {
       } catch {}
 
       setDirty(false);
+      setForm(reloaded);
       toast.success("Saved");
-      nav(`/products/${res.data.id}`);
+      if (isNew) {
+        nav(`/products/${res.data.id}`);
+      }
       return;
     }
 
@@ -1545,7 +1548,7 @@ const ProductEdit = () => {
                 </div>
               </div>
 
-              <SkuBuilder value={form} canOverride={canOverride} onChange={patch} />
+              <SkuBuilder value={form} canOverride={canOverride} productClass={form.product_class} onChange={patch} />
 
               {isContributorMode && (
                 <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">
@@ -2052,18 +2055,27 @@ const ProductEdit = () => {
 
                   <div className="sm:col-span-3">
                     <Field label="Ingredients">
+                      <p className="text-[11px] text-muted-foreground mb-1">
+                        UI-only draft — not saved on the product row. Label Designer will use structured ingredient tables.
+                      </p>
                       <Textarea rows={2} value={form.ingredients ?? ""} onChange={(e) => setComplianceField("ingredients", e.target.value)} placeholder="Example: Cashew, sugar, clarified butter, filo pastry." />
                     </Field>
                   </div>
 
                   <div className="sm:col-span-3">
                     <Field label="Allergen warnings">
+                      <p className="text-[11px] text-muted-foreground mb-1">
+                        UI-only draft — not saved on the product row. Use Labels / Ingredients for durable allergen data.
+                      </p>
                       <Textarea rows={2} value={form.allergen_warnings ?? ""} onChange={(e) => setComplianceField("allergen_warnings", e.target.value)} placeholder="Example: Contains nuts, gluten, dairy." />
                     </Field>
                   </div>
 
                   <div className="sm:col-span-3">
                     <Field label="Nutritional information">
+                      <p className="text-[11px] text-muted-foreground mb-1">
+                        UI-only draft — not saved on the product row. Nutrition panels will be owned by Label Designer.
+                      </p>
                       <Textarea
                         rows={3}
                         value={

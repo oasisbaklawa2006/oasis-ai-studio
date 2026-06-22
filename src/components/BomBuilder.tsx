@@ -14,7 +14,10 @@ import {
   canWriteMasterDirectly,
   isCatalogueContributor,
 } from "@/shared/auth/centralPermissions";
-import type { Role } from "@/lib/permissions";
+import {
+  BOM_TABLE_UNAVAILABLE_MESSAGE,
+  probeBomTables,
+} from "@/features/productAuthority/bomTableContract";
 
 type BomType = "internal_bom" | "hamper_bom";
 
@@ -158,6 +161,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     defaultBomTypeForClass(productClass)
   );
   const [supportsBomType, setSupportsBomType] = useState<boolean | null>(null);
+  const [bomTableUnavailable, setBomTableUnavailable] = useState<string | null>(null);
 
   const [productSearch, setProductSearch] = useState("");
   const [productOptions, setProductOptions] = useState<ProductOption[]>([]);
@@ -167,10 +171,25 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setSelectedBomType(defaultBomTypeForClass(productClass));
   }, [productClass]);
 
+  useEffect(() => {
+    void probeBomTables().then((probe) => {
+      setBomTableUnavailable(probe.errorMessage);
+    });
+  }, []);
+
   const load = async () => {
     if (!parentId) return;
 
     setLoading(true);
+
+    const probe = await probeBomTables();
+    if (!probe.runtimeTableAvailable) {
+      setBomTableUnavailable(probe.errorMessage ?? BOM_TABLE_UNAVAILABLE_MESSAGE);
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+    setBomTableUnavailable(null);
 
     const withBomType = await (supabase as any)
       .from("product_bom")
@@ -517,6 +536,14 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   const selectedTypeMeta = BOM_TYPES.find((type) => type.v === selectedBomType)!;
 
   const bomAuthority = useMemo(() => {
+    if (bomTableUnavailable) {
+      return {
+        label: "Unavailable",
+        detail: bomTableUnavailable,
+        className: "border-destructive/40 bg-destructive/10",
+        iconClass: "text-destructive",
+      };
+    }
     if (visibleItems.length > 0) {
       return {
         label: "Saved",
@@ -539,7 +566,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       className: "border-muted bg-muted/20",
       iconClass: "text-muted-foreground",
     };
-  }, [bomRequired, visibleItems.length]);
+  }, [bomRequired, visibleItems.length, bomTableUnavailable]);
 
   return (
     <div className="space-y-4">

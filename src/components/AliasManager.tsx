@@ -149,8 +149,11 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
     let inserted = 0;
 
     for (const r of rows) {
-      const insertPayload = buildAdminAliasInsert(productId, canonical, r.alias);
-      if (!insertPayload.alias_text) continue;
+      const insertPayload = buildAdminAliasInsert(productId, canonical, r.alias, {
+        alias_type: r.alias_type ?? termType,
+        source: r.source ?? "manual",
+      });
+      if (!insertPayload.alias) continue;
 
       const { data, error } = await supabase
         .from("product_aliases")

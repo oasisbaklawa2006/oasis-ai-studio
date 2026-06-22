@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Copy, Eye, Lock } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { getAliasText } from "@/lib/aliasDisplay";
 import { CentralSyncReadOnlyBanner } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { getVersionsLoadFailure, getVersionsPersistenceSource } from "../catalogueVersionStore";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
@@ -22,7 +24,7 @@ import { LIVE_CENTRAL_WRITE_ENABLED } from "../centralSyncPayload";
 import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 import { isLocalCatalogueFallbackWriteEnabled } from "@/lib/catalogueAuthority/localStoragePolicy";
 import { validateSnapshotGate } from "../snapshotValidation";
-import type { CatalogueSyncEventRow, CatalogueVersionRow, CentralSyncPreviewBundle } from "../types";
+import type { CatalogueSyncEventRow, CatalogueVersionRow, CentralSyncPreviewBundle, SnapshotGeneratorInput } from "../types";
 import { isImmutableVersion } from "../catalogueVersionStore";
 import { isStaleCatalogueVersion } from "../centralSyncPayload";
 
@@ -50,6 +52,7 @@ export function CentralSyncPreviewPanel({
   const [bundle, setBundle] = useState<CentralSyncPreviewBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const [languageAliasRows, setLanguageAliasRows] = useState<SnapshotGeneratorInput["languageAliasRows"]>([]);
   const deferredBundle = useDeferredValue(bundle);
 
   const jsonPreview = useMemo(() => {
@@ -96,6 +99,53 @@ export function CentralSyncPreviewPanel({
     void refresh();
   }, [refresh]);
 
+  useEffect(() => {
+    if (!productId) {
+      setLanguageAliasRows([]);
+      return;
+    }
+    void supabase
+      .from("product_aliases")
+      .select("id, alias, alias_type, product_id, source, is_active")
+      .eq("product_id", productId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setLanguageAliasRows(
+          (data ?? []).map((row) => ({
+            id: String(row.id),
+            alias: getAliasText(row),
+            product_id: row.product_id,
+            alias_type: row.alias_type,
+            source: row.source,
+          })),
+        );
+      });
+  }, [productId]);
+
+  const snapshotInputBase = useMemo(
+    () => ({
+      form,
+      productId,
+      complianceApproved,
+      complianceMetaPending,
+      prices,
+      moqRules,
+      productMediaRows,
+      languageAliasRows,
+    }),
+    [
+      form,
+      productId,
+      complianceApproved,
+      complianceMetaPending,
+      prices,
+      moqRules,
+      productMediaRows,
+      languageAliasRows,
+    ],
+  );
+
   const persistenceSource = getVersionsPersistenceSource(productId);
   const versionsLoadFailure = getVersionsLoadFailure(productId);
   const versionsInfraReady =
@@ -119,15 +169,7 @@ export function CentralSyncPreviewPanel({
     startTransition(() => {
       void (async () => {
         try {
-          const result = await previewCentralSync({
-            form,
-            productId,
-            complianceApproved,
-            complianceMetaPending,
-            prices,
-            moqRules,
-            productMediaRows,
-          });
+          const result = await previewCentralSync(snapshotInputBase);
           startTransition(() => setBundle(result.bundle));
           await refresh();
           toast.success("Central sync preview generated (no live write)");
@@ -150,15 +192,7 @@ export function CentralSyncPreviewPanel({
     startTransition(() => {
       void (async () => {
         try {
-          const result = await approveAndPreviewCentralSync({
-            form,
-            productId,
-            complianceApproved,
-            complianceMetaPending,
-            prices,
-            moqRules,
-            productMediaRows,
-          });
+          const result = await approveAndPreviewCentralSync(snapshotInputBase);
           startTransition(() => setBundle(result.preview.bundle));
           await refresh();
           if (validation.allowed) {

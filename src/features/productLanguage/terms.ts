@@ -73,22 +73,26 @@ export type ContributorAliasDraftPayload = {
 };
 
 export type AdminAliasInsertPayload = {
-  alias_text: string;
-  canonical_name: string;
+  alias: string;
   product_id: string;
+  alias_type?: string;
+  source?: string;
 };
 
-/** DB-safe insert — only Central-supported product_aliases columns. */
+/** DB-safe insert — product_aliases.alias (migration schema). */
 export function buildAdminAliasInsert(
   productId: string,
-  canonicalName: string,
+  _canonicalName: string,
   aliasText: string,
+  opts?: { alias_type?: string; source?: string },
 ): AdminAliasInsertPayload {
-  return {
+  const payload: AdminAliasInsertPayload = {
     product_id: productId,
-    canonical_name: canonicalName.trim() || "Unnamed product",
-    alias_text: aliasText.trim(),
+    alias: aliasText.trim(),
   };
+  if (opts?.alias_type) payload.alias_type = opts.alias_type;
+  if (opts?.source) payload.source = opts.source;
+  return payload;
 }
 
 export function buildContributorAliasDraftPayload(args: {

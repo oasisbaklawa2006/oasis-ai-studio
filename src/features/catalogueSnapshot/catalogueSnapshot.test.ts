@@ -116,6 +116,23 @@ describe("catalogueSnapshot", () => {
     expect(snap.language_intelligence.official_name).toBe("Cashew Pyramid");
   });
 
+  it("includes durable product_aliases in snapshot preview", () => {
+    const snap = generateCatalogueSnapshot({
+      form: baseForm,
+      productId: String(baseForm.id),
+      complianceApproved: true,
+      prices: approvedPrices,
+      moqRules,
+      languageAliasRows: [
+        { id: "a1", alias: "Pista Midya", product_id: String(baseForm.id), alias_type: "search_keyword" },
+        { id: "a2", alias: "Midya", product_id: String(baseForm.id), alias_type: "official_alias" },
+      ],
+    });
+    expect(snap.product_aliases).toHaveLength(2);
+    expect(snap.product_aliases?.map((a) => a.alias)).toContain("Pista Midya");
+    expect(snap.language_intelligence.term_counts.total_aliases).toBeGreaterThan(0);
+  });
+
   it("Central sync payload uses approved media only in snapshot", () => {
     const snap = generateCatalogueSnapshot({
       form: {

@@ -115,6 +115,19 @@ export function generateCatalogueSnapshot(
     conversion_rules: conversionRules,
   };
 
+  const aliasRows = input.languageAliasRows ?? [];
+  const productAliases = aliasRows
+    .map((row) => {
+      const alias = String(row.alias ?? row.alias_text ?? "").trim();
+      if (!alias) return null;
+      return {
+        alias,
+        alias_type: row.alias_type ?? null,
+        source: (row as { source?: string }).source ?? null,
+      };
+    })
+    .filter((row): row is { alias: string; alias_type: string | null; source: string | null } => !!row);
+
   return {
     generated_at: new Date().toISOString(),
     catalogue_product_id: input.productId,
@@ -158,6 +171,7 @@ export function generateCatalogueSnapshot(
       officialName: String(input.form.product_name ?? ""),
       aliasRows: input.languageAliasRows,
     }),
+    product_aliases: productAliases,
     synced_at: null,
     ready_for_central_sync: readiness.readyForCentralSync && !!input.complianceApproved,
   };
