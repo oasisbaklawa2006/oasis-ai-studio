@@ -5,6 +5,11 @@ export type InboundWhatsAppMessage = {
   customer_label: string;
   body: string;
   received_at: string;
+  /** `live` when loaded from whatsapp_inbound_messages; `sample` for Phase 2B fixtures. */
+  source?: "live" | "sample";
+  /** Resolver output stored at ingest time (Phase 2C). */
+  stored_resolution?: ProductUtteranceResolution | null;
+  resolver_status?: "pending" | "resolved" | "failed";
 };
 
 export type OperatorDecision = "pending" | "confirmed" | "rejected" | "alternative_selected";

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 import { ProductSuggestionCard } from "@/features/productIntelligence/components/ProductSuggestionCard";
 import type { ProductUtteranceResolution, RuntimeAlternative } from "@/features/productIntelligence/runtime";
 import { InboundMessageBubble } from "./components/InboundMessageBubble";
-import { SAMPLE_INBOUND_MESSAGES } from "./fixtures/sampleMessages";
+import { fetchInboundMessages } from "./fetchInboundMessages";
 import {
   confirmSuggestion,
   initialOperatorState,
@@ -12,19 +13,36 @@ import {
 } from "./operatorSuggestionState";
 import { resolveInboundMessage } from "./resolveInboundMessage";
 import { appendSuggestionAudit } from "./suggestionAudit";
+import {
+  isPhase2cTestSeedEnabled,
+  seedPhase2cTestMessagesToDatabase,
+} from "./seedPhase2cTestMessages";
 import type { InboundMessageView, InboundWhatsAppMessage, OperatorSuggestionState } from "./types";
+import type { InboxFeedMode } from "./whatsappInboundTypes";
 
 type MessageRowProps = {
   message: InboundWhatsAppMessage;
 };
 
 function MessageRow({ message }: MessageRowProps) {
-  const [resolution, setResolution] = useState<ProductUtteranceResolution | null>(null);
+  const [resolution, setResolution] = useState<ProductUtteranceResolution | null>(
+    message.stored_resolution ?? null,
+  );
   const [resolverError, setResolverError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [operator, setOperator] = useState<OperatorSuggestionState>(initialOperatorState(null));
+  const [loading, setLoading] = useState(!message.stored_resolution);
+  const [operator, setOperator] = useState<OperatorSuggestionState>(
+    initialOperatorState(message.stored_resolution ?? null),
+  );
 
   useEffect(() => {
+    if (message.stored_resolution) {
+      setResolution(message.stored_resolution);
+      setOperator(initialOperatorState(message.stored_resolution));
+      setResolverError(null);
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -47,7 +65,7 @@ function MessageRow({ message }: MessageRowProps) {
     return () => {
       cancelled = true;
     };
-  }, [message.body, message.id]);
+  }, [message.body, message.id, message.stored_resolution]);
 
   const audit = useCallback(
     (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {
@@ -103,20 +121,84 @@ function MessageRow({ message }: MessageRowProps) {
 }
 
 export default function OperatorInboxPanel() {
+  const [messages, setMessages] = useState<InboundWhatsAppMessage[]>([]);
+  const [banner, setBanner] = useState("Loading messages…");
+  const [mode, setMode] = useState<InboxFeedMode>("sample_fallback");
+  const [loadingFeed, setLoadingFeed] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+
+  const loadFeed = useCallback(async () => {
+    setLoadingFeed(true);
+    try {
+      const feed = await fetchInboundMessages();
+      setMessages(feed.messages);
+      setBanner(feed.banner);
+      setMode(feed.mode);
+    } finally {
+      setLoadingFeed(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadFeed();
+  }, [loadFeed]);
+
+  const onSeedTestMessages = async () => {
+    setSeeding(true);
+    try {
+      await seedPhase2cTestMessagesToDatabase();
+      await loadFeed();
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-3xl">
       <PageHeader
         title="WhatsApp Operator Inbox"
-        subtitle="Phase 2B preview — read-only product suggestions. No orders, stock, or outbound replies."
+        subtitle="Phase 2C — read-only live ingestion + product suggestions. No orders, stock, or outbound replies."
+        actions={
+          isPhase2cTestSeedEnabled() ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={seeding || loadingFeed}
+              onClick={() => void onSeedTestMessages()}
+            >
+              {seeding ? "Seeding…" : "Seed test messages"}
+            </Button>
+          ) : undefined
+        }
       />
+
+      <div
+        className={`rounded-lg border px-3 py-2 text-xs ${
+          mode === "live"
+            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-800 dark:text-emerald-300"
+            : "border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+        }`}
+        data-testid="inbox-feed-banner"
+      >
+        {banner}
+      </div>
+
       <div className="card-elevated p-4 sm:p-5 space-y-5">
-        {SAMPLE_INBOUND_MESSAGES.map((msg) => (
-          <MessageRow key={msg.id} message={msg} />
-        ))}
+        {loadingFeed && (
+          <p className="text-sm text-muted-foreground">Loading inbox…</p>
+        )}
+        {!loadingFeed && messages.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No inbound messages yet. Use the dev seeder or ingest via the Phase 2C adapter.
+          </p>
+        )}
+        {!loadingFeed &&
+          messages.map((msg) => <MessageRow key={msg.id} message={msg} />)}
       </div>
       <p className="text-xs text-muted-foreground max-w-3xl">
         Operator confirm/reject actions write lightweight audit entries to local storage only.
-        Catalogue pilot v1.0 and Phase 2A resolver remain frozen upstream.
+        Inbound messages are stored read-only in `whatsapp_inbound_messages` when the table is available.
       </p>
     </div>
   );

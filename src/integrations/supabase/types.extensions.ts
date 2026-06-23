@@ -156,6 +156,24 @@ export type CatalogueAuthorityTableDefinitions = {
     Update: Partial<CatalogueAuthorityTableDefinitions["product_governance_audit"]["Row"]>;
     Relationships: [];
   };
+  whatsapp_inbound_messages: {
+    Row: {
+      id: string;
+      provider_message_id: string | null;
+      sender_phone: string;
+      sender_name: string | null;
+      message_body: string;
+      message_type: string;
+      received_at: string;
+      raw_payload: Record<string, unknown> | null;
+      resolver_status: "pending" | "resolved" | "failed";
+      resolver_result_json: Record<string, unknown> | null;
+      created_at: string;
+    };
+    Insert: never;
+    Update: never;
+    Relationships: [];
+  };
 };
 
 export type ProductGovernanceRpc = {
@@ -174,6 +192,20 @@ export type ProductGovernanceRpc = {
   is_super_admin: {
     Args: Record<string, never>;
     Returns: boolean;
+  };
+  ingest_whatsapp_inbound_message: {
+    Args: {
+      _provider_message_id?: string | null;
+      _sender_phone: string;
+      _sender_name?: string | null;
+      _message_body: string;
+      _message_type?: string;
+      _received_at?: string;
+      _raw_payload?: Record<string, unknown> | null;
+      _resolver_status?: string;
+      _resolver_result_json?: Record<string, unknown> | null;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["whatsapp_inbound_messages"]["Row"];
   };
 };
 
