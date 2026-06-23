@@ -1,5 +1,6 @@
 import { buildCatalogLexicon, type CatalogLexiconEntry } from "./catalogLexicon";
 import { collapseCandidatesByLogicalGroup } from "./candidateGrouping";
+import { cashewTartFamilyConfidenceBoost } from "./productFamilies";
 import {
   actionForBand,
   assignConfidenceBand,
@@ -82,6 +83,7 @@ function considerCandidate(map: Map<string, ScoredCandidate>, candidate: ScoredC
 function scoreEntryTerms(
   entry: CatalogLexiconEntry,
   normalized: ReturnType<typeof normalizeUtterance>,
+  catalog: RuntimeCatalog,
 ): ScoredCandidate | null {
   const queryVariants = [
     normalized.normalized_text,
@@ -116,16 +118,6 @@ function scoreEntryTerms(
     }
     capped = Math.min(1, capped + bulkPhraseBoost(normalized.raw, entry.resolved_name, entry.sku));
 
-    // Penalize batch001 tart SKUs when customer uses kaju-tart phrasing aimed at acceptance bulk.
-    if (
-      term.source === "alias" &&
-      entry.sku.startsWith("OAS-AS-BKL-00") &&
-      !entry.sku.includes("BULK") &&
-      /tart.*kaju|kaju.*tart/i.test(normalized.raw)
-    ) {
-      capped = Math.max(0, capped - 0.12);
-    }
-
     const candidate: ScoredCandidate = {
       product_id: entry.product_id,
       sku: entry.sku,
@@ -146,6 +138,10 @@ function scoreEntryTerms(
   confidence += packCountBoost(normalized.pack_count, entry.search_text, entry.sku);
   confidence += frozenIntentBoost(normalized.tokens, entry.search_text);
   confidence += cheeseIntentBoost(normalized.tokens, entry.search_text);
+  const product = catalog.products.find((p) => p.id === entry.product_id);
+  if (product) {
+    confidence += cashewTartFamilyConfidenceBoost(normalized.raw, product);
+  }
   confidence = Math.min(1, Math.max(0, confidence));
 
   return { ...best, confidence };
@@ -233,7 +229,7 @@ export function resolveProductUtterance(
   }
 
   for (const entry of lexicon) {
-    const scored = scoreEntryTerms(entry, normalized);
+    const scored = scoreEntryTerms(entry, normalized, catalog);
     if (scored) considerCandidate(candidateMap, scored);
   }
 

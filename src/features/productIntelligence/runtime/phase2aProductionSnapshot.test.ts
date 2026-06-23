@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveProductUtterance } from "./resolveProductUtterance";
 import { PRODUCTION_SNAPSHOT_CATALOG } from "./fixtures/productionSnapshotCatalog";
+import { isCashewTartFamilySku } from "./productFamilies";
 
 const catalog = PRODUCTION_SNAPSHOT_CATALOG;
 
@@ -28,10 +29,11 @@ describe("production snapshot resolver verification", () => {
     expect(r.resolved_sku).toBe("OAS-AS-BKL-PST-MAAPET-0003");
   });
 
-  it("kaju tart → HIGH Cashew Tart Bulk", () => {
+  it("kaju tart → HIGH Cashew Tart / Tart Cashew family", () => {
     const r = resolveProductUtterance("kaju tart", catalog);
     expect(r.confidence_band).toBe("HIGH");
-    expect(r.resolved_sku).toBe("OAS-AS-BKL-CSH-BULK-0004");
+    expect(r.action).toBe("auto_suggest");
+    expect(isCashewTartFamilySku(r.resolved_sku)).toBe(true);
   });
 
   it("frozen kunafa → HIGH or MEDIUM frozen product", () => {

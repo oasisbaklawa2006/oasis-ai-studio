@@ -29,7 +29,8 @@ describe("confidenceBands", () => {
 
 type Case = {
   utterance: string;
-  expectSku: string | null;
+  expectSku?: string | null;
+  expectSkuIn?: string[];
   expectClarify?: boolean;
   minBand?: "HIGH" | "MEDIUM" | "LOW";
   expectSkuInAlternatives?: string[];
@@ -37,7 +38,11 @@ type Case = {
 
 const REQUIRED_CASES: Case[] = [
   { utterance: "pista bulbul", expectSku: "OAS-AS-BKL-PST-BULK-0017", minBand: "HIGH" },
-  { utterance: "kaju tart", expectSku: "OAS-AS-BKL-CSH-BULK-0004", minBand: "HIGH" },
+  {
+    utterance: "kaju tart",
+    expectSkuIn: ["OAS-AS-BKL-0020", "OAS-AS-BKL-CSH-BULK-0004"],
+    minBand: "HIGH",
+  },
   { utterance: "kunafa cheese", expectSku: "OAS-FR-KNF-KNF-MAAPET-0002", minBand: "HIGH" },
   {
     utterance: "frozen kunafa",
@@ -77,7 +82,11 @@ describe("Phase 2A required utterances", () => {
         }
         return;
       }
-      expect(res.resolved_sku).toBe(tc.expectSku);
+      if (tc.expectSkuIn?.length) {
+        expect(tc.expectSkuIn).toContain(res.resolved_sku);
+      } else {
+        expect(res.resolved_sku).toBe(tc.expectSku);
+      }
       if (tc.minBand === "HIGH") {
         expect(res.confidence_band).toBe("HIGH");
         expect(res.action).toBe("auto_suggest");
@@ -121,7 +130,11 @@ describe("Phase 2A corpus metrics", () => {
     let pass = 0;
     for (const tc of unambiguous) {
       const res = resolveProductUtterance(tc.utterance, catalog);
-      if (res.resolved_sku === tc.expectSku) pass += 1;
+      if (tc.expectSkuIn?.length) {
+        if (tc.expectSkuIn.includes(res.resolved_sku ?? "")) pass += 1;
+      } else if (res.resolved_sku === tc.expectSku) {
+        pass += 1;
+      }
     }
     const rate = pass / unambiguous.length;
     expect(rate).toBeGreaterThanOrEqual(0.95);
