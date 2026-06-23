@@ -1,3 +1,4 @@
+import { productFamilyKey } from "./productFamilies";
 import type { RuntimeCatalog, RuntimeCatalogProduct } from "./types";
 
 export type ScoredCandidateLike = {
@@ -54,6 +55,11 @@ export function packVariantIndicator(product: RuntimeCatalogProduct): string {
 
 /** Stable logical group key — duplicate catalogue rows share this key. */
 export function logicalGroupKey(product: RuntimeCatalogProduct): string {
+  const family = productFamilyKey(product);
+  if (family) {
+    return `family::${family}`;
+  }
+
   const name = normalizeLabel(product.product_name ?? product.name);
   const short = normalizeLabel(product.short_name);
   const category = normalizeLabel(product.category);

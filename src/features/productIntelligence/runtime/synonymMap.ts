@@ -43,7 +43,7 @@ const PHRASE_SYNONYMS: ReadonlyArray<{ pattern: RegExp; replacement: string }> =
   { pattern: /\bdates\s+pista\b/gi, replacement: "dates pista stuffed" },
   { pattern: /\bchanna\s+badam\b/gi, replacement: "channa badam barfi" },
   { pattern: /\bchana\s+badam\b/gi, replacement: "channa badam barfi" },
-  { pattern: /\bkaju\s+tart\b/gi, replacement: "kaju tart cashew" },
+  { pattern: /\b(kaju|cashew)\s+tart\b|\btart\s+(kaju|cashew)\b/gi, replacement: "cashew tart" },
   { pattern: /\bpista\s+bulbul\b/gi, replacement: "pista bulbul pistachio" },
   { pattern: /\bosh\s*el\s*bulbul\b/gi, replacement: "bulbul pista" },
   { pattern: /\boshel\s+bulbul\b/gi, replacement: "bulbul pista" },
