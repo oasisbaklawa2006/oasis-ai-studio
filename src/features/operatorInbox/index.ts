@@ -2,6 +2,14 @@ export { default as OperatorInboxPanel } from "./OperatorInboxPanel";
 export { resolveInboundMessage } from "./resolveInboundMessage";
 export { ingestInboundMessage, createInMemoryIngestStore } from "./ingestInboundMessage";
 export { fetchInboundMessages, resolveInboxFeed } from "./fetchInboundMessages";
+export { processWebhookPayload } from "./webhook/processWebhookPayload";
+export { normalizeWebhookPayload } from "./webhook/normalizeWebhookPayload";
+export {
+  createSalesOrderDraftFromOperator,
+  recordOperatorDecision,
+  createInMemoryDraftStore,
+} from "./createSalesOrderDraft";
+export { canCreateSalesOrderDraft, isCompleteResolution } from "./draftGovernance";
 export { validateWhatsAppInboundInput, isWhatsAppTableUnavailable } from "./validateWhatsAppInbound";
 export {
   seedPhase2cTestMessagesInMemory,
