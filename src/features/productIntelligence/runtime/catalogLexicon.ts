@@ -92,7 +92,7 @@ export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeC
   let productQuery = supabase
     .from("products")
     .select(
-      "id, sku, name, product_name, short_name, category, subcategory, packaging_code, is_active, archived_at, created_at, updated_at",
+      "id, sku, name, product_name, short_name, category, subcategory, packaging_code, is_active, created_at",
     );
 
   if (skuFilter?.length) {
@@ -112,9 +112,9 @@ export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeC
     subcategory: p.subcategory ?? null,
     packaging_code: p.packaging_code ?? null,
     is_active: p.is_active ?? null,
-    archived_at: p.archived_at ?? null,
+    archived_at: null,
     created_at: p.created_at ?? null,
-    updated_at: p.updated_at ?? null,
+    updated_at: null,
   }));
 
   const aliases: RuntimeCatalogAlias[] = [];
