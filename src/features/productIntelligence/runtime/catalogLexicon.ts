@@ -91,7 +91,9 @@ export function buildCatalogLexicon(catalog: RuntimeCatalog): CatalogLexiconEntr
 export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeCatalog> {
   let productQuery = supabase
     .from("products")
-    .select("id, sku, name, product_name, short_name, category, subcategory");
+    .select(
+      "id, sku, name, product_name, short_name, category, subcategory, packaging_code, is_active, archived_at, created_at, updated_at",
+    );
 
   if (skuFilter?.length) {
     productQuery = productQuery.in("sku", skuFilter);
@@ -108,6 +110,11 @@ export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeC
     short_name: p.short_name ?? null,
     category: p.category ?? null,
     subcategory: p.subcategory ?? null,
+    packaging_code: p.packaging_code ?? null,
+    is_active: p.is_active ?? null,
+    archived_at: p.archived_at ?? null,
+    created_at: p.created_at ?? null,
+    updated_at: p.updated_at ?? null,
   }));
 
   const aliases: RuntimeCatalogAlias[] = [];

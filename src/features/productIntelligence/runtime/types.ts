@@ -18,6 +18,11 @@ export type RuntimeCatalogProduct = {
   short_name: string | null;
   category: string | null;
   subcategory: string | null;
+  packaging_code?: string | null;
+  is_active?: boolean | null;
+  archived_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 export type RuntimeCatalogAlias = {

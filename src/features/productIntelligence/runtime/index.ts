@@ -1,3 +1,9 @@
+export {
+  collapseCandidatesByLogicalGroup,
+  logicalGroupKey,
+  packVariantIndicator,
+  skuSerial,
+} from "./candidateGrouping";
 export { resolveProductUtterance } from "./resolveProductUtterance";
 export { loadRuntimeCatalog, buildRuntimeCatalogFromFixtures } from "./catalogLexicon";
 export { normalizeUtterance, extractPackCount } from "./normalizeUtterance";

@@ -1,4 +1,5 @@
 import { buildCatalogLexicon, type CatalogLexiconEntry } from "./catalogLexicon";
+import { collapseCandidatesByLogicalGroup } from "./candidateGrouping";
 import {
   actionForBand,
   assignConfidenceBand,
@@ -237,6 +238,14 @@ export function resolveProductUtterance(
   }
 
   let ranked = Array.from(candidateMap.values()).sort((a, b) => b.confidence - a.confidence);
+  const {
+    collapsed: logicalRanked,
+    rawCount,
+    logicalGroupCount,
+    collapsedDuplicateCount,
+  } = collapseCandidatesByLogicalGroup(ranked, catalog, normalized.raw);
+  ranked = logicalRanked;
+
   const midyaAmbiguous = isMidyaSingleTokenAmbiguous(normalized, catalog);
   const exactWinner = midyaAmbiguous ? undefined : pickExactAliasWinner(catalog, ranked, normalized.raw);
   const top = exactWinner ?? ranked[0];
@@ -285,7 +294,9 @@ export function resolveProductUtterance(
     matchSource: top?.match_source,
     matchedTerm: top?.matched_term,
     resolvedSku: clarification_required ? null : top?.sku,
-    candidateCount: ranked.length,
+    candidateCount: rawCount,
+    logicalGroupCount,
+    collapsedDuplicateCount,
   });
 
   return {
