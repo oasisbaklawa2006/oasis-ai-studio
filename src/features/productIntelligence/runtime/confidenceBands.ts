@@ -36,15 +36,40 @@ export function buildReason(opts: {
   matchedTerm?: string;
   resolvedSku?: string | null;
   candidateCount: number;
+  logicalGroupCount?: number;
+  collapsedDuplicateCount?: number;
 }): string {
-  const { band, ambiguous, confidence, minThreshold, matchSource, matchedTerm, resolvedSku, candidateCount } =
-    opts;
+  const {
+    band,
+    ambiguous,
+    confidence,
+    minThreshold,
+    matchSource,
+    matchedTerm,
+    resolvedSku,
+    candidateCount,
+    logicalGroupCount,
+    collapsedDuplicateCount = 0,
+  } = opts;
+
+  const groupCount = logicalGroupCount ?? candidateCount;
 
   if (candidateCount === 0) {
     return "No product matched the normalized utterance.";
   }
   if (ambiguous) {
-    return `Multiple products score within ambiguity delta — ${candidateCount} candidate(s) need clarification.`;
+    if (collapsedDuplicateCount > 0) {
+      return `Multiple product groups score within ambiguity delta — ${groupCount} group(s) need clarification (duplicate catalogue rows collapsed).`;
+    }
+    return `Multiple product groups score within ambiguity delta — ${groupCount} group(s) need clarification.`;
+  }
+  if (collapsedDuplicateCount > 0 && band === "HIGH") {
+    if (resolvedSku && matchSource === "sku") {
+      return `Matched SKU exactly: ${resolvedSku} (duplicate catalogue rows collapsed into product groups).`;
+    }
+    if (matchedTerm && matchSource) {
+      return `Matched via ${matchSource}: "${matchedTerm}" (${band} confidence ${confidence.toFixed(2)}; duplicate catalogue rows collapsed).`;
+    }
   }
   if (confidence < minThreshold) {
     return `Best confidence ${confidence.toFixed(2)} is below ${minThreshold} threshold.`;
