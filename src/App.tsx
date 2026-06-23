@@ -34,6 +34,7 @@ import ApprovalInbox from "./pages/ApprovalInbox";
 import PilotReadinessDashboard from "./pages/PilotReadinessDashboard";
 import PilotAliasReview from "./pages/PilotAliasReview";
 import ResolverPreview from "./pages/ResolverPreview";
+import OperatorInbox from "./pages/OperatorInbox";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,7 @@ const App = () => (
                 <Route path="/approvals" element={<ApprovalInbox />} />
                 <Route path="/data-correction" element={<RoleGate page="data_correction"><DataCorrection /></RoleGate>} />
                 <Route path="/admin/resolver-preview" element={<RoleGate page="testing"><ResolverPreview /></RoleGate>} />
+                <Route path="/admin/operator-inbox" element={<RoleGate page="testing"><OperatorInbox /></RoleGate>} />
                 <Route path="/admin/import/category-1" element={<RoleGate page="category1_import"><Category1ImportStaging /></RoleGate>} />
               </Route>
             </Route>

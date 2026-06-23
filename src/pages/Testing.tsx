@@ -135,9 +135,17 @@ const Testing = () => {
         title="Testing Checklist"
         subtitle={`Walk through every flow — ${done}/${total} complete. State is saved locally on this device.`}
         actions={
-          <Button variant="secondary" asChild>
-            <Link to="/testing/pilot-readiness">5-SKU Pilot Readiness</Link>
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" asChild>
+              <Link to="/testing/pilot-readiness">5-SKU Pilot Readiness</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/admin/resolver-preview">Resolver Preview</Link>
+            </Button>
+            <Button variant="outline" asChild>
+              <Link to="/admin/operator-inbox">Operator Inbox (2B)</Link>
+            </Button>
+          </div>
         }
       />
 
