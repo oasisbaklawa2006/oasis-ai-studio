@@ -1,5 +1,7 @@
 -- Phase 2F: draft quantity from resolver + realtime publication for operator inbox.
 
+DROP FUNCTION IF EXISTS public.create_whatsapp_sales_order_draft_from_operator(UUID, TEXT, TEXT, UUID, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.create_whatsapp_sales_order_draft_from_operator(
   _source_message_id UUID,
   _resolved_sku TEXT,
