@@ -3,12 +3,14 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ProductSuggestionCard } from "@/features/productIntelligence/components/ProductSuggestionCard";
 import type { ProductUtteranceResolution, RuntimeAlternative } from "@/features/productIntelligence/runtime";
+import { DraftVisibilityPanel } from "./components/DraftVisibilityPanel";
 import { InboundMessageBubble } from "./components/InboundMessageBubble";
 import {
   createSalesOrderDraftFromOperator,
   recordOperatorDecision,
 } from "./createSalesOrderDraft";
 import { isCompleteResolution } from "./draftGovernance";
+import { fetchDraftVisibility } from "./fetchDraftVisibility";
 import { fetchInboundMessages } from "./fetchInboundMessages";
 import {
   confirmSuggestion,
@@ -23,13 +25,15 @@ import {
   seedPhase2cTestMessagesToDatabase,
 } from "./seedPhase2cTestMessages";
 import type { InboundMessageView, InboundWhatsAppMessage, OperatorSuggestionState } from "./types";
+import { useOperatorInboxRealtime } from "./useOperatorInboxRealtime";
 import type { InboxFeedMode } from "./whatsappInboundTypes";
 
 type MessageRowProps = {
   message: InboundWhatsAppMessage;
+  onDraftCreated?: () => void;
 };
 
-function MessageRow({ message }: MessageRowProps) {
+function MessageRow({ message, onDraftCreated }: MessageRowProps) {
   const storedComplete = isCompleteResolution(message.stored_resolution)
     ? message.stored_resolution
     : null;
@@ -99,12 +103,15 @@ function MessageRow({ message }: MessageRowProps) {
           resolution,
           operator: next,
         });
-        if (result?.draft) setDraftId(result.draft.id);
+        if (result?.draft) {
+          setDraftId(result.draft.id);
+          onDraftCreated?.();
+        }
       } catch (e) {
         setDraftError(e instanceof Error ? e.message : "Draft creation failed");
       }
     },
-    [message.id, message.source, resolution],
+    [message.id, message.source, onDraftCreated, resolution],
   );
 
   const onConfirm = () => {
@@ -180,6 +187,10 @@ export default function OperatorInboxPanel() {
   const [mode, setMode] = useState<InboxFeedMode>("sample_fallback");
   const [loadingFeed, setLoadingFeed] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [drafts, setDrafts] = useState<Awaited<ReturnType<typeof fetchDraftVisibility>>["drafts"]>([]);
+  const [decisions, setDecisions] = useState<Awaited<ReturnType<typeof fetchDraftVisibility>>["decisions"]>([]);
+  const [draftVisibilityError, setDraftVisibilityError] = useState<string | null>(null);
+  const [loadingDraftVisibility, setLoadingDraftVisibility] = useState(true);
 
   const loadFeed = useCallback(async () => {
     setLoadingFeed(true);
@@ -193,15 +204,38 @@ export default function OperatorInboxPanel() {
     }
   }, []);
 
+  const loadDraftVisibility = useCallback(async () => {
+    setLoadingDraftVisibility(true);
+    try {
+      const result = await fetchDraftVisibility();
+      setDrafts(result.drafts);
+      setDecisions(result.decisions);
+      setDraftVisibilityError(result.error);
+    } finally {
+      setLoadingDraftVisibility(false);
+    }
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadFeed(), loadDraftVisibility()]);
+  }, [loadDraftVisibility, loadFeed]);
+
   useEffect(() => {
-    void loadFeed();
-  }, [loadFeed]);
+    void refreshAll();
+  }, [refreshAll]);
+
+  useOperatorInboxRealtime({
+    enabled: mode === "live",
+    onRefresh: () => {
+      void refreshAll();
+    },
+  });
 
   const onSeedTestMessages = async () => {
     setSeeding(true);
     try {
       await seedPhase2cTestMessagesToDatabase();
-      await loadFeed();
+      await refreshAll();
     } finally {
       setSeeding(false);
     }
@@ -211,7 +245,7 @@ export default function OperatorInboxPanel() {
     <div className="space-y-6 max-w-3xl">
       <PageHeader
         title="WhatsApp Operator Inbox"
-        subtitle="Phase 2D/2E — webhook ingest, product suggestions, and reviewable sales order drafts only."
+        subtitle="Phase 2F — Meta webhook ingest, realtime inbox, quantity-aware drafts, and read-only draft visibility."
         actions={
           isPhase2cTestSeedEnabled() ? (
             <Button
@@ -248,8 +282,17 @@ export default function OperatorInboxPanel() {
           </p>
         )}
         {!loadingFeed &&
-          messages.map((msg) => <MessageRow key={msg.id} message={msg} />)}
+          messages.map((msg) => (
+            <MessageRow key={msg.id} message={msg} onDraftCreated={() => void loadDraftVisibility()} />
+          ))}
       </div>
+
+      <DraftVisibilityPanel
+        drafts={drafts}
+        decisions={decisions}
+        loading={loadingDraftVisibility}
+        error={draftVisibilityError}
+      />
       <p className="text-xs text-muted-foreground max-w-3xl">
         Confirm creates a reviewable sales order draft only — no final order, stock, finance, or outbound replies.
         Reject and alternative actions write operator audit records when live ingestion is enabled.

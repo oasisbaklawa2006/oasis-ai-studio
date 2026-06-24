@@ -14,6 +14,7 @@ export {
 export { resolveProductUtterance } from "./resolveProductUtterance";
 export { loadRuntimeCatalog, buildRuntimeCatalogFromFixtures } from "./catalogLexicon";
 export { normalizeUtterance, extractPackCount } from "./normalizeUtterance";
+export { extractOrderQuantity } from "./parseOrderQuantity";
 export {
   assignConfidenceBand,
   actionForBand,

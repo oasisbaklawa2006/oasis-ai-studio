@@ -1,14 +1,14 @@
-import { buildCatalogLexicon, type CatalogLexiconEntry } from "./catalogLexicon";
-import { collapseCandidatesByLogicalGroup } from "./candidateGrouping";
-import { cashewTartFamilyConfidenceBoost } from "./productFamilies";
+import { buildCatalogLexicon, type CatalogLexiconEntry } from "./catalogLexicon.ts";
+import { collapseCandidatesByLogicalGroup } from "./candidateGrouping.ts";
+import { cashewTartFamilyConfidenceBoost } from "./productFamilies.ts";
 import {
   actionForBand,
   assignConfidenceBand,
   buildReason,
   isAmbiguous,
-} from "./confidenceBands";
-import { normalizeUtterance } from "./normalizeUtterance";
-import { extractOrderQuantity } from "./parseOrderQuantity";
+} from "./confidenceBands.ts";
+import { normalizeUtterance } from "./normalizeUtterance.ts";
+import { extractOrderQuantity } from "./parseOrderQuantity.ts";
 import {
   bulkPhraseBoost,
   cheeseIntentBoost,
@@ -17,15 +17,15 @@ import {
   frozenIntentBoost,
   packCountBoost,
   tokenOverlapScore,
-} from "./scoring";
+} from "./scoring.ts";
 import type {
   MatchSource,
   ProductUtteranceResolution,
   RuntimeAlternative,
   RuntimeCatalog,
   RuntimeResolverConfig,
-} from "./types";
-import { DEFAULT_RUNTIME_RESOLVER_CONFIG } from "./types";
+} from "./types.ts";
+import { DEFAULT_RUNTIME_RESOLVER_CONFIG } from "./types.ts";
 
 type ScoredCandidate = {
   product_id: string;

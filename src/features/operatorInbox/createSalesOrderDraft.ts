@@ -92,6 +92,7 @@ export async function createSalesOrderDraftFromOperator(
     _resolved_product_id: productId,
     _confidence_band: input.resolution.confidence_band,
     _operator_decision: operatorDecision,
+    _quantity: input.resolution.order_quantity ?? 1,
   });
 
   if (error) {
@@ -153,7 +154,7 @@ export function createInMemoryDraftStore() {
           confidence_band: band,
           operator_decision: args._operator_decision as SalesOrderDraftRow["operator_decision"],
           status: band === "HIGH" ? "AI_DRAFT" : "UNDER_REVIEW",
-          quantity: 1,
+          quantity: Number(args._quantity ?? 1),
           created_by: "test-user",
           created_at: new Date().toISOString(),
         };

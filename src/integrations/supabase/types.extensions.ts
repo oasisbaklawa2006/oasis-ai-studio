@@ -253,6 +253,7 @@ export type ProductGovernanceRpc = {
       _resolved_product_id?: string | null;
       _confidence_band: string;
       _operator_decision: string;
+      _quantity?: number;
     };
     Returns: CatalogueAuthorityTableDefinitions["whatsapp_sales_order_drafts"]["Row"];
   };
