@@ -1,16 +1,12 @@
 import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
 import type { OperatorSuggestionState } from "./types";
 
-export function isCompleteResolution(
-  resolution: ProductUtteranceResolution | null | undefined,
-): resolution is ProductUtteranceResolution {
-  if (!resolution) return false;
-  return (
-    typeof resolution.query === "string" &&
-    typeof resolution.confidence_band === "string" &&
-    Array.isArray(resolution.alternatives)
-  );
-}
+export {
+  isCompleteResolution,
+  isPartialStoredResolution,
+  isRenderableStoredResolution,
+  normalizeStoredResolution,
+} from "./storedResolution";
 
 export function canCreateSalesOrderDraft(
   resolution: ProductUtteranceResolution | null,
