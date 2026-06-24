@@ -1,0 +1,44 @@
+import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
+import type { OperatorSuggestionState } from "./types";
+
+export function isCompleteResolution(
+  resolution: ProductUtteranceResolution | null | undefined,
+): resolution is ProductUtteranceResolution {
+  if (!resolution) return false;
+  return (
+    typeof resolution.query === "string" &&
+    typeof resolution.confidence_band === "string" &&
+    Array.isArray(resolution.alternatives)
+  );
+}
+
+export function canCreateSalesOrderDraft(
+  resolution: ProductUtteranceResolution | null,
+  operator: OperatorSuggestionState,
+): boolean {
+  if (!resolution) return false;
+  if (!operator.selected_sku) return false;
+
+  if (operator.decision === "confirmed") {
+    if (resolution.confidence_band === "LOW") return false;
+    return true;
+  }
+
+  if (operator.decision === "alternative_selected") {
+    return true;
+  }
+
+  return false;
+}
+
+export function draftStatusForBand(band: ProductUtteranceResolution["confidence_band"]): "AI_DRAFT" | "UNDER_REVIEW" {
+  return band === "HIGH" ? "AI_DRAFT" : "UNDER_REVIEW";
+}
+
+export function operatorDecisionForDraft(
+  operator: OperatorSuggestionState,
+): "confirmed" | "alternative_selected" | null {
+  if (operator.decision === "confirmed") return "confirmed";
+  if (operator.decision === "alternative_selected") return "alternative_selected";
+  return null;
+}

@@ -4,6 +4,11 @@ import { Button } from "@/components/ui/button";
 import { ProductSuggestionCard } from "@/features/productIntelligence/components/ProductSuggestionCard";
 import type { ProductUtteranceResolution, RuntimeAlternative } from "@/features/productIntelligence/runtime";
 import { InboundMessageBubble } from "./components/InboundMessageBubble";
+import {
+  createSalesOrderDraftFromOperator,
+  recordOperatorDecision,
+} from "./createSalesOrderDraft";
+import { isCompleteResolution } from "./draftGovernance";
 import { fetchInboundMessages } from "./fetchInboundMessages";
 import {
   confirmSuggestion,
@@ -25,19 +30,22 @@ type MessageRowProps = {
 };
 
 function MessageRow({ message }: MessageRowProps) {
-  const [resolution, setResolution] = useState<ProductUtteranceResolution | null>(
-    message.stored_resolution ?? null,
-  );
+  const storedComplete = isCompleteResolution(message.stored_resolution)
+    ? message.stored_resolution
+    : null;
+  const [resolution, setResolution] = useState<ProductUtteranceResolution | null>(storedComplete);
   const [resolverError, setResolverError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!message.stored_resolution);
+  const [loading, setLoading] = useState(!storedComplete);
   const [operator, setOperator] = useState<OperatorSuggestionState>(
-    initialOperatorState(message.stored_resolution ?? null),
+    initialOperatorState(storedComplete),
   );
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftError, setDraftError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (message.stored_resolution) {
-      setResolution(message.stored_resolution);
-      setOperator(initialOperatorState(message.stored_resolution));
+    if (storedComplete) {
+      setResolution(storedComplete);
+      setOperator(initialOperatorState(storedComplete));
       setResolverError(null);
       setLoading(false);
       return;
@@ -65,7 +73,7 @@ function MessageRow({ message }: MessageRowProps) {
     return () => {
       cancelled = true;
     };
-  }, [message.body, message.id, message.stored_resolution]);
+  }, [message.body, message.id, storedComplete]);
 
   const audit = useCallback(
     (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {
@@ -81,22 +89,60 @@ function MessageRow({ message }: MessageRowProps) {
     [message.body, message.id, resolution?.confidence_band],
   );
 
+  const maybeCreateDraft = useCallback(
+    async (next: OperatorSuggestionState) => {
+      if (message.source !== "live" || !resolution) return;
+      setDraftError(null);
+      try {
+        const result = await createSalesOrderDraftFromOperator({
+          source_message_id: message.id,
+          resolution,
+          operator: next,
+        });
+        if (result?.draft) setDraftId(result.draft.id);
+      } catch (e) {
+        setDraftError(e instanceof Error ? e.message : "Draft creation failed");
+      }
+    },
+    [message.id, message.source, resolution],
+  );
+
   const onConfirm = () => {
     const next = confirmSuggestion(operator, resolution);
     setOperator(next);
     audit("confirm", next.selected_sku, next.selected_product_name);
+    void maybeCreateDraft(next);
   };
 
   const onReject = () => {
     const next = rejectSuggestion(operator);
     setOperator(next);
     audit("reject", null, null);
+    if (message.source === "live") {
+      void recordOperatorDecision({
+        source_message_id: message.id,
+        action: "reject",
+        sku: null,
+        product_name: null,
+        confidence_band: resolution?.confidence_band ?? null,
+      }).catch(() => undefined);
+    }
   };
 
   const onSelectAlternative = (alt: RuntimeAlternative) => {
     const next = selectAlternative(operator, alt);
     setOperator(next);
     audit("select_alternative", alt.sku, alt.product_name);
+    void maybeCreateDraft(next);
+    if (message.source === "live") {
+      void recordOperatorDecision({
+        source_message_id: message.id,
+        action: "select_alternative",
+        sku: alt.sku,
+        product_name: alt.product_name,
+        confidence_band: resolution?.confidence_band ?? null,
+      }).catch(() => undefined);
+    }
   };
 
   return (
@@ -115,6 +161,14 @@ function MessageRow({ message }: MessageRowProps) {
           onReject={onReject}
           onSelectAlternative={onSelectAlternative}
         />
+      )}
+      {draftId && (
+        <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
+          Sales order draft created: {draftId}
+        </p>
+      )}
+      {draftError && (
+        <p className="text-xs text-destructive mt-2">{draftError}</p>
       )}
     </InboundMessageBubble>
   );
@@ -157,7 +211,7 @@ export default function OperatorInboxPanel() {
     <div className="space-y-6 max-w-3xl">
       <PageHeader
         title="WhatsApp Operator Inbox"
-        subtitle="Phase 2C — read-only live ingestion + product suggestions. No orders, stock, or outbound replies."
+        subtitle="Phase 2D/2E — webhook ingest, product suggestions, and reviewable sales order drafts only."
         actions={
           isPhase2cTestSeedEnabled() ? (
             <Button
@@ -190,15 +244,15 @@ export default function OperatorInboxPanel() {
         )}
         {!loadingFeed && messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            No inbound messages yet. Use the dev seeder or ingest via the Phase 2C adapter.
+            No inbound messages yet. Use the dev seeder or webhook ingest adapter.
           </p>
         )}
         {!loadingFeed &&
           messages.map((msg) => <MessageRow key={msg.id} message={msg} />)}
       </div>
       <p className="text-xs text-muted-foreground max-w-3xl">
-        Operator confirm/reject actions write lightweight audit entries to local storage only.
-        Inbound messages are stored read-only in `whatsapp_inbound_messages` when the table is available.
+        Confirm creates a reviewable sales order draft only — no final order, stock, finance, or outbound replies.
+        Reject and alternative actions write operator audit records when live ingestion is enabled.
       </p>
     </div>
   );

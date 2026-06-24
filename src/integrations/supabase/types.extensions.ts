@@ -174,6 +174,44 @@ export type CatalogueAuthorityTableDefinitions = {
     Update: never;
     Relationships: [];
   };
+  whatsapp_sales_order_drafts: {
+    Row: {
+      id: string;
+      source: "whatsapp_inbound";
+      source_message_id: string;
+      sender_phone: string;
+      customer_name: string | null;
+      message_body: string;
+      resolved_product_id: string | null;
+      resolved_sku: string;
+      resolved_product_name: string | null;
+      confidence_band: "HIGH" | "MEDIUM" | "LOW";
+      operator_decision: "confirmed" | "alternative_selected";
+      status: "AI_DRAFT" | "UNDER_REVIEW" | "CANCELLED";
+      quantity: number;
+      created_by: string;
+      created_at: string;
+    };
+    Insert: never;
+    Update: never;
+    Relationships: [];
+  };
+  whatsapp_operator_decisions: {
+    Row: {
+      id: string;
+      source_message_id: string;
+      action: "confirm" | "reject" | "select_alternative";
+      sku: string | null;
+      product_name: string | null;
+      confidence_band: string | null;
+      whatsapp_sales_order_draft_id: string | null;
+      decided_by: string;
+      decided_at: string;
+    };
+    Insert: never;
+    Update: never;
+    Relationships: [];
+  };
 };
 
 export type ProductGovernanceRpc = {
@@ -206,6 +244,27 @@ export type ProductGovernanceRpc = {
       _resolver_result_json?: Record<string, unknown> | null;
     };
     Returns: CatalogueAuthorityTableDefinitions["whatsapp_inbound_messages"]["Row"];
+  };
+  create_whatsapp_sales_order_draft_from_operator: {
+    Args: {
+      _source_message_id: string;
+      _resolved_sku: string;
+      _resolved_product_name?: string | null;
+      _resolved_product_id?: string | null;
+      _confidence_band: string;
+      _operator_decision: string;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["whatsapp_sales_order_drafts"]["Row"];
+  };
+  record_whatsapp_operator_decision: {
+    Args: {
+      _source_message_id: string;
+      _action: string;
+      _sku?: string | null;
+      _product_name?: string | null;
+      _confidence_band?: string | null;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["whatsapp_operator_decisions"]["Row"];
   };
 };
 
