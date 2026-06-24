@@ -1,12 +1,11 @@
 import { corsHeaders } from "npm:@supabase/supabase-js@2.95.0/cors";
 import { createClient } from "npm:@supabase/supabase-js@2.95.0";
+import { verifyMetaWebhookSignature } from "../_shared/metaSignature.ts";
+import { resolveInboundAtEdge } from "../_shared/resolveInboundAtEdge.ts";
 
 /**
- * Phase 2D webhook skeleton — provider-neutral ingest to whatsapp_inbound_messages.
- * Full Phase 2A resolver runs in Studio internal adapter; edge stores pending resolver
- * when catalog resolution is not available server-side.
- *
- * Future: verify X-Hub-Signature-256, bundle shared resolver for edge.
+ * Phase 2F — Meta WhatsApp webhook with signature verification and edge resolver ingest.
+ * Draft-only path — no orders, stock, finance, dispatch, or outbound replies.
  */
 
 type WebhookBody = {
@@ -58,10 +57,27 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body = (await req.json().catch(() => ({}))) as WebhookBody | Record<string, unknown>;
+    const rawBody = await req.text();
+    const body = (JSON.parse(rawBody || "{}") || {}) as WebhookBody | Record<string, unknown>;
     const provider =
       (body as WebhookBody).provider ??
       ((body as Record<string, unknown>).entry ? "meta_whatsapp" : "test");
+
+    const appSecret = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
+    const allowTestWebhook = Deno.env.get("ALLOW_TEST_WEBHOOK") === "true";
+
+    if (provider === "meta_whatsapp") {
+      if (!appSecret) {
+        return json({ ok: false, error: "WHATSAPP_APP_SECRET is not configured" }, 503);
+      }
+      const signature = req.headers.get("x-hub-signature-256");
+      const valid = await verifyMetaWebhookSignature(rawBody, signature, appSecret);
+      if (!valid) {
+        return json({ ok: false, error: "invalid webhook signature" }, 401);
+      }
+    } else if (!allowTestWebhook) {
+      return json({ ok: false, error: "test webhook provider is disabled" }, 403);
+    }
 
     const raw_payload = ((body as WebhookBody).raw_payload ?? body) as Record<string, unknown>;
     const meta = provider === "meta_whatsapp" ? extractFromMeta(raw_payload) : null;
@@ -80,6 +96,8 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
 
+    const resolved = await resolveInboundAtEdge(admin, message_body);
+
     const { data, error } = await admin.rpc("ingest_whatsapp_inbound_message", {
       _provider_message_id: (body as WebhookBody).provider_message_id ?? meta?.provider_message_id,
       _sender_phone: sender_phone,
@@ -88,8 +106,8 @@ Deno.serve(async (req) => {
       _message_type: message_type,
       _received_at: (body as WebhookBody).received_at ?? meta?.received_at,
       _raw_payload: { ...raw_payload, webhook_provider: provider },
-      _resolver_status: "pending",
-      _resolver_result_json: null,
+      _resolver_status: resolved.resolver_status,
+      _resolver_result_json: resolved.resolver_result_json,
     });
 
     if (error) return json({ ok: false, error: error.message }, 500);
@@ -97,7 +115,8 @@ Deno.serve(async (req) => {
     return json({
       ok: true,
       message_id: data?.id,
-      resolver_status: data?.resolver_status ?? "pending",
+      resolver_status: data?.resolver_status ?? resolved.resolver_status,
+      order_quantity: resolved.resolver_result_json?.order_quantity ?? 1,
     }, 200);
   } catch (e) {
     return json({ ok: false, error: (e as Error).message }, 500);

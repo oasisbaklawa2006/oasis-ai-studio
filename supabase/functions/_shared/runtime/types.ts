@@ -82,6 +82,5 @@ export type ProductUtteranceResolution = {
   clarification_required: boolean;
   alternatives: RuntimeAlternative[];
   pack_count: number | null;
-  /** Parsed order quantity for draft lines (defaults to 1). */
   order_quantity: number;
 };
