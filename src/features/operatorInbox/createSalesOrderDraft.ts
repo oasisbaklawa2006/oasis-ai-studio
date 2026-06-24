@@ -38,7 +38,7 @@ export type CreateDraftDeps = {
 
 const defaultDeps: CreateDraftDeps = {
   rpc: async (fn, args) => {
-    const { data, error } = await supabase.rpc(fn as "create_sales_order_draft_from_operator", args as never);
+    const { data, error } = await supabase.rpc(fn as "create_whatsapp_sales_order_draft_from_operator", args as never);
     return { data: data as Record<string, unknown> | null, error };
   },
 };
@@ -85,7 +85,7 @@ export async function createSalesOrderDraftFromOperator(
     input.resolution.alternatives.find((a) => a.sku === input.operator.selected_sku)?.product_id ??
     null;
 
-  const { data, error } = await deps.rpc("create_sales_order_draft_from_operator", {
+  const { data, error } = await deps.rpc("create_whatsapp_sales_order_draft_from_operator", {
     _source_message_id: input.source_message_id,
     _resolved_sku: input.operator.selected_sku,
     _resolved_product_name: input.operator.selected_product_name,
@@ -133,7 +133,7 @@ export function createInMemoryDraftStore() {
 
   const deps: CreateDraftDeps = {
     rpc: async (fn, args) => {
-      if (fn === "create_sales_order_draft_from_operator") {
+      if (fn === "create_whatsapp_sales_order_draft_from_operator") {
         const messageId = String(args._source_message_id);
         const existing = drafts.get(messageId);
         if (existing) {

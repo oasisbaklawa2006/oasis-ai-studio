@@ -4,7 +4,7 @@
 
 | Area | Finding |
 |------|---------|
-| Sprint 9 / `sales_order_drafts` | **Not in repo** — no prior implementation |
+| Legacy `sales_order_drafts` | Exists in DB — **not used** by Phase 2D/2E |
 | `catalogue_*_drafts` | PIM governance only — **unsafe to reuse** for WhatsApp orders |
 | `draft_orders` (blueprint) | Planned in `PRODUCT_INTELLIGENCE_TO_WHATSAPP_BLUEPRINT.md` — not migrated |
 | Phase 2C ingest | **Complete** — `whatsapp_inbound_messages` + `ingest_whatsapp_inbound_message` |
@@ -13,7 +13,7 @@
 
 ## Architecture decision
 
-**New minimal `sales_order_drafts` table** (Studio Supabase) — does not reuse catalogue drafts or touch `sales_orders` / inventory / finance.
+**New minimal `whatsapp_sales_order_drafts` table** (Studio Supabase) — does not alter legacy `sales_order_drafts`, catalogue drafts, or touch `sales_orders` / inventory / finance.
 
 **Webhook:** Internal adapter (`processWebhookPayload`) is the canonical ingest path with Phase 2A resolver. Edge function skeleton stores via service-role RPC; full resolver in edge deferred (documented).
 
@@ -35,7 +35,7 @@ Operator Inbox (live feed)
 Operator Confirm (governance check)
         │
         ▼
-create_sales_order_draft_from_operator RPC → sales_order_drafts (UNDER_REVIEW / AI_DRAFT)
+create_whatsapp_sales_order_draft_from_operator RPC → whatsapp_sales_order_drafts (UNDER_REVIEW / AI_DRAFT)
         │
         ▼
 whatsapp_operator_decisions audit row

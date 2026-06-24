@@ -174,7 +174,7 @@ export type CatalogueAuthorityTableDefinitions = {
     Update: never;
     Relationships: [];
   };
-  sales_order_drafts: {
+  whatsapp_sales_order_drafts: {
     Row: {
       id: string;
       source: "whatsapp_inbound";
@@ -204,7 +204,7 @@ export type CatalogueAuthorityTableDefinitions = {
       sku: string | null;
       product_name: string | null;
       confidence_band: string | null;
-      sales_order_draft_id: string | null;
+      whatsapp_sales_order_draft_id: string | null;
       decided_by: string;
       decided_at: string;
     };
@@ -245,7 +245,7 @@ export type ProductGovernanceRpc = {
     };
     Returns: CatalogueAuthorityTableDefinitions["whatsapp_inbound_messages"]["Row"];
   };
-  create_sales_order_draft_from_operator: {
+  create_whatsapp_sales_order_draft_from_operator: {
     Args: {
       _source_message_id: string;
       _resolved_sku: string;
@@ -254,7 +254,7 @@ export type ProductGovernanceRpc = {
       _confidence_band: string;
       _operator_decision: string;
     };
-    Returns: CatalogueAuthorityTableDefinitions["sales_order_drafts"]["Row"];
+    Returns: CatalogueAuthorityTableDefinitions["whatsapp_sales_order_drafts"]["Row"];
   };
   record_whatsapp_operator_decision: {
     Args: {

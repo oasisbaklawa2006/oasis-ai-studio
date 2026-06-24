@@ -1,7 +1,8 @@
--- Phase 2D/2E: operator-created sales order drafts from WhatsApp inbound messages.
+-- Phase 2D/2E: operator-created WhatsApp sales order drafts from inbound messages.
 -- Draft only — no final sales order, stock, finance, or dispatch.
+-- Uses whatsapp_sales_order_drafts (does not alter any existing sales_order_drafts table).
 
-CREATE TABLE IF NOT EXISTS public.sales_order_drafts (
+CREATE TABLE IF NOT EXISTS public.whatsapp_sales_order_drafts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   source TEXT NOT NULL DEFAULT 'whatsapp_inbound'
     CHECK (source = 'whatsapp_inbound'),
@@ -22,23 +23,22 @@ CREATE TABLE IF NOT EXISTS public.sales_order_drafts (
   quantity NUMERIC NOT NULL DEFAULT 1 CHECK (quantity > 0),
   created_by UUID NOT NULL REFERENCES auth.users(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  CONSTRAINT sales_order_drafts_one_per_message UNIQUE (source_message_id)
+  CONSTRAINT whatsapp_sales_order_drafts_one_per_message UNIQUE (source_message_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_sales_order_drafts_status
-  ON public.sales_order_drafts (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_sales_order_drafts_status
+  ON public.whatsapp_sales_order_drafts (status, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_sales_order_drafts_source_message
-  ON public.sales_order_drafts (source_message_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_sales_order_drafts_source_message
+  ON public.whatsapp_sales_order_drafts (source_message_id);
 
-COMMENT ON TABLE public.sales_order_drafts IS
-  'Phase 2E reviewable sales order drafts from WhatsApp operator confirm. Not a final sales order.';
+COMMENT ON TABLE public.whatsapp_sales_order_drafts IS
+  'Phase 2E reviewable WhatsApp sales order drafts from operator confirm. Not a final sales order.';
 
-ALTER TABLE public.sales_order_drafts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whatsapp_sales_order_drafts ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Team read sales order drafts" ON public.sales_order_drafts;
-CREATE POLICY "Team read sales order drafts"
-  ON public.sales_order_drafts
+CREATE POLICY "Team read whatsapp sales order drafts"
+  ON public.whatsapp_sales_order_drafts
   FOR SELECT
   TO authenticated
   USING (public.is_team_member(auth.uid()));
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS public.whatsapp_operator_decisions (
   sku TEXT,
   product_name TEXT,
   confidence_band TEXT,
-  sales_order_draft_id UUID REFERENCES public.sales_order_drafts(id),
+  whatsapp_sales_order_draft_id UUID REFERENCES public.whatsapp_sales_order_drafts(id),
   decided_by UUID NOT NULL REFERENCES auth.users(id),
   decided_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -62,14 +62,13 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_operator_decisions_message
 
 ALTER TABLE public.whatsapp_operator_decisions ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Team read whatsapp operator decisions" ON public.whatsapp_operator_decisions;
 CREATE POLICY "Team read whatsapp operator decisions"
   ON public.whatsapp_operator_decisions
   FOR SELECT
   TO authenticated
   USING (public.is_team_member(auth.uid()));
 
-CREATE OR REPLACE FUNCTION public.create_sales_order_draft_from_operator(
+CREATE OR REPLACE FUNCTION public.create_whatsapp_sales_order_draft_from_operator(
   _source_message_id UUID,
   _resolved_sku TEXT,
   _resolved_product_name TEXT,
@@ -77,19 +76,19 @@ CREATE OR REPLACE FUNCTION public.create_sales_order_draft_from_operator(
   _confidence_band TEXT,
   _operator_decision TEXT
 )
-RETURNS public.sales_order_drafts
+RETURNS public.whatsapp_sales_order_drafts
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
   msg public.whatsapp_inbound_messages;
-  existing public.sales_order_drafts;
-  inserted public.sales_order_drafts;
+  existing public.whatsapp_sales_order_drafts;
+  inserted public.whatsapp_sales_order_drafts;
   draft_status TEXT;
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_team_member(auth.uid()) THEN
-    RAISE EXCEPTION 'not authorized to create sales order drafts';
+    RAISE EXCEPTION 'not authorized to create whatsapp sales order drafts';
   END IF;
 
   IF _source_message_id IS NULL THEN
@@ -122,7 +121,7 @@ BEGIN
   END IF;
 
   SELECT * INTO existing
-  FROM public.sales_order_drafts
+  FROM public.whatsapp_sales_order_drafts
   WHERE source_message_id = _source_message_id
   LIMIT 1;
 
@@ -135,7 +134,7 @@ BEGIN
     ELSE 'UNDER_REVIEW'
   END;
 
-  INSERT INTO public.sales_order_drafts (
+  INSERT INTO public.whatsapp_sales_order_drafts (
     source_message_id,
     sender_phone,
     customer_name,
@@ -169,7 +168,7 @@ BEGIN
     sku,
     product_name,
     confidence_band,
-    sales_order_draft_id,
+    whatsapp_sales_order_draft_id,
     decided_by
   )
   VALUES (
@@ -186,7 +185,7 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.create_sales_order_draft_from_operator(
+GRANT EXECUTE ON FUNCTION public.create_whatsapp_sales_order_draft_from_operator(
   UUID, TEXT, TEXT, UUID, TEXT, TEXT
 ) TO authenticated;
 
@@ -238,3 +237,9 @@ $$;
 GRANT EXECUTE ON FUNCTION public.record_whatsapp_operator_decision(
   UUID, TEXT, TEXT, TEXT, TEXT
 ) TO authenticated;
+
+COMMENT ON FUNCTION public.create_whatsapp_sales_order_draft_from_operator IS
+  'Phase 2E operator confirm → whatsapp_sales_order_drafts only. Idempotent per source_message_id.';
+
+COMMENT ON FUNCTION public.record_whatsapp_operator_decision IS
+  'Phase 2E durable reject/alternative operator audit. No order side effects.';

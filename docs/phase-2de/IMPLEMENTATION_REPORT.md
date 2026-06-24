@@ -2,25 +2,25 @@
 
 ## Architecture decision
 
-**New `sales_order_drafts` table** — no existing Sprint 9 or sales order draft system in repo. Catalogue `*_drafts` tables were **not** reused.
+**New `whatsapp_sales_order_drafts` table** — does not alter the legacy `sales_order_drafts` table. Catalogue `*_drafts` tables were **not** reused.
 
 ## SQL migration required
 
 **Yes** — apply after Phase 2C migration:
 
-`supabase/migrations/20260623200000_sales_order_drafts_phase2de.sql`
+`supabase/migrations/20260623210000_whatsapp_sales_order_drafts_phase2de.sql`
 
 Creates:
-- `sales_order_drafts` — reviewable draft only (UNIQUE per `source_message_id`)
+- `whatsapp_sales_order_drafts` — reviewable draft only (UNIQUE per `source_message_id`)
 - `whatsapp_operator_decisions` — durable reject/alternative audit
-- `create_sales_order_draft_from_operator` RPC
+- `create_whatsapp_sales_order_draft_from_operator` RPC
 - `record_whatsapp_operator_decision` RPC
 
 ## Files changed
 
 | Area | Files |
 |------|-------|
-| Migration | `supabase/migrations/20260623200000_sales_order_drafts_phase2de.sql` |
+| Migration | `supabase/migrations/20260623210000_whatsapp_sales_order_drafts_phase2de.sql` |
 | Webhook | `webhook/processWebhookPayload.ts`, `normalizeWebhookPayload.ts`, `types.ts` |
 | Edge skeleton | `supabase/functions/whatsapp-webhook/index.ts` |
 | Drafts | `createSalesOrderDraft.ts`, `draftGovernance.ts` |
@@ -43,7 +43,7 @@ Creates:
 - `isCompleteResolution` — re-resolve if stored JSON incomplete
 - Draft created on Confirm (HIGH/MEDIUM) or Select alternative (LOW path)
 
-## Part C — Sales order draft
+## Part C — WhatsApp sales order draft
 
 Draft fields: source, source_message_id, sender_phone, customer_name, message_body, resolved SKU/product, confidence_band, operator_decision, status (`AI_DRAFT` / `UNDER_REVIEW`).
 
@@ -63,10 +63,10 @@ Phase 2D/2E tests: 15 new + Phase 2A/2B/2C regression green.
 
 ## Production smoke (after migration apply)
 
-1. Apply `20260623200000_sales_order_drafts_phase2de.sql` in Supabase
+1. Apply `20260623210000_whatsapp_sales_order_drafts_phase2de.sql` in Supabase
 2. Webhook simulate: `processWebhookPayload({ provider: 'test', ..., message_body: '6 pc midya' })`
-3. Open `/admin/operator-inbox` → confirm → verify `sales_order_drafts` row
+3. Open `/admin/operator-inbox` → confirm → verify `whatsapp_sales_order_drafts` row
 
 ## GO / NO-GO
 
-**GO** for Phase 2D/2E after second migration is applied to production Supabase.
+**GO** for Phase 2D/2E after migration is applied to production Supabase.
