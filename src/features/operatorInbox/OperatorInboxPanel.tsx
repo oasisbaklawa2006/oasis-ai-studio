@@ -9,7 +9,7 @@ import {
   createSalesOrderDraftFromOperator,
   recordOperatorDecision,
 } from "./createSalesOrderDraft";
-import { isCompleteResolution } from "./draftGovernance";
+import { isRenderableStoredResolution } from "./draftGovernance";
 import { fetchDraftVisibility } from "./fetchDraftVisibility";
 import { fetchInboundMessages } from "./fetchInboundMessages";
 import {
@@ -34,22 +34,36 @@ type MessageRowProps = {
 };
 
 function MessageRow({ message, onDraftCreated }: MessageRowProps) {
-  const storedComplete = isCompleteResolution(message.stored_resolution)
+  const renderFromDb = isRenderableStoredResolution(message.stored_resolution)
     ? message.stored_resolution
     : null;
-  const [resolution, setResolution] = useState<ProductUtteranceResolution | null>(storedComplete);
-  const [resolverError, setResolverError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(!storedComplete);
+  const [resolution, setResolution] = useState<ProductUtteranceResolution | null>(renderFromDb);
+  const [resolverError, setResolverError] = useState<string | null>(
+    message.resolver_status === "failed"
+      ? "Resolver failed at ingest — message shown without suggestion."
+      : null,
+  );
+  const [loading, setLoading] = useState(
+    !renderFromDb && message.resolver_status !== "failed",
+  );
   const [operator, setOperator] = useState<OperatorSuggestionState>(
-    initialOperatorState(storedComplete),
+    initialOperatorState(renderFromDb),
   );
   const [draftId, setDraftId] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (storedComplete) {
-      setResolution(storedComplete);
-      setOperator(initialOperatorState(storedComplete));
+    if (message.resolver_status === "failed") {
+      setResolution(null);
+      setOperator(initialOperatorState(null));
+      setResolverError("Resolver failed at ingest — message shown without suggestion.");
+      setLoading(false);
+      return;
+    }
+
+    if (renderFromDb) {
+      setResolution(renderFromDb);
+      setOperator(initialOperatorState(renderFromDb));
       setResolverError(null);
       setLoading(false);
       return;
@@ -62,9 +76,16 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
       try {
         const res = await resolveInboundMessage(message.body);
         if (cancelled) return;
-        setResolution(res);
-        setOperator(initialOperatorState(res));
-        if (!res) setResolverError("Resolver unavailable — message shown without suggestion.");
+        if (res && isRenderableStoredResolution(res)) {
+          setResolution(res);
+          setOperator(initialOperatorState(res));
+        } else if (res) {
+          setResolution(res);
+          setOperator(initialOperatorState(res));
+        } else {
+          setResolution(null);
+          setResolverError("Resolver unavailable — message shown without suggestion.");
+        }
       } catch (e) {
         if (!cancelled) {
           setResolverError(e instanceof Error ? e.message : "Resolver failed");
@@ -77,7 +98,7 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
     return () => {
       cancelled = true;
     };
-  }, [message.body, message.id, storedComplete]);
+  }, [message.body, message.id, message.resolver_status, renderFromDb]);
 
   const audit = useCallback(
     (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {

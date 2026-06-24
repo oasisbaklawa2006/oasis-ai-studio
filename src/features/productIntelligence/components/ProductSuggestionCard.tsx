@@ -35,6 +35,9 @@ export function ProductSuggestionCard({
   const primary = showPrimarySuggestion(resolution);
   const selectedSku = operator.selected_sku;
   const decided = operator.decision !== "pending";
+  const confidence = resolution.confidence ?? 0;
+  const alternatives = resolution.alternatives ?? [];
+  const reason = resolution.reason?.trim() || "No additional resolver detail.";
 
   return (
     <div className="mt-2 rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2 text-sm" data-testid="product-suggestion-card">
@@ -50,7 +53,7 @@ export function ProductSuggestionCard({
           {displayAction}
         </Badge>
         <span className="text-[10px] text-muted-foreground ml-auto">
-          {(resolution.confidence * 100).toFixed(0)}%
+          {(confidence * 100).toFixed(0)}%
         </span>
       </div>
 
@@ -67,15 +70,15 @@ export function ProductSuggestionCard({
         </p>
       )}
 
-      <p className="text-xs text-muted-foreground leading-snug">{resolution.reason}</p>
+      <p className="text-xs text-muted-foreground leading-snug">{reason}</p>
 
-      {resolution.alternatives.length > 0 && (
+      {alternatives.length > 0 && (
         <div className="space-y-1">
           <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-            Alternatives ({resolution.alternatives.length})
+            Alternatives ({alternatives.length})
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {resolution.alternatives.slice(0, 4).map((alt) => (
+            {alternatives.slice(0, 4).map((alt) => (
               <Button
                 key={`${alt.sku}-${alt.matched_term}`}
                 type="button"
