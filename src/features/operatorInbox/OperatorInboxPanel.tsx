@@ -11,7 +11,12 @@ import {
 } from "./createSalesOrderDraft";
 import { isRenderableStoredResolution } from "./draftGovernance";
 import { fetchDraftVisibility } from "./fetchDraftVisibility";
+import type { WhatsAppDraftRow, WhatsAppOperatorDecisionRow } from "./fetchDraftVisibility";
 import { fetchInboundMessages } from "./fetchInboundMessages";
+import {
+  hydrateOperatorStateFromPersistence,
+  indexOperatorHydration,
+} from "./hydrateOperatorState";
 import {
   confirmSuggestion,
   initialOperatorState,
@@ -28,15 +33,26 @@ import type { InboundMessageView, InboundWhatsAppMessage, OperatorSuggestionStat
 import { useOperatorInboxRealtime } from "./useOperatorInboxRealtime";
 import type { InboxFeedMode } from "./whatsappInboundTypes";
 
+type MessageHydration = {
+  draft: WhatsAppDraftRow | null;
+  latestDecision: WhatsAppOperatorDecisionRow | null;
+};
+
 type MessageRowProps = {
   message: InboundWhatsAppMessage;
+  hydration?: MessageHydration;
   onDraftCreated?: () => void;
 };
 
-function MessageRow({ message, onDraftCreated }: MessageRowProps) {
+function MessageRow({ message, hydration, onDraftCreated }: MessageRowProps) {
   const renderFromDb = isRenderableStoredResolution(message.stored_resolution)
     ? message.stored_resolution
     : null;
+  const persistedOnLoad = hydrateOperatorStateFromPersistence(
+    renderFromDb,
+    hydration?.draft ?? null,
+    hydration?.latestDecision ?? null,
+  );
   const [resolution, setResolution] = useState<ProductUtteranceResolution | null>(renderFromDb);
   const [resolverError, setResolverError] = useState<string | null>(
     message.resolver_status === "failed"
@@ -46,11 +62,28 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
   const [loading, setLoading] = useState(
     !renderFromDb && message.resolver_status !== "failed",
   );
-  const [operator, setOperator] = useState<OperatorSuggestionState>(
-    initialOperatorState(renderFromDb),
-  );
-  const [draftId, setDraftId] = useState<string | null>(null);
+  const [operator, setOperator] = useState<OperatorSuggestionState>(persistedOnLoad.operator);
+  const [draftId, setDraftId] = useState<string | null>(persistedOnLoad.draftId);
   const [draftError, setDraftError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const activeResolution = resolution ?? renderFromDb;
+    const persisted = hydrateOperatorStateFromPersistence(
+      activeResolution,
+      hydration?.draft ?? null,
+      hydration?.latestDecision ?? null,
+    );
+    if (persisted.operator.decision !== "pending" || persisted.draftId) {
+      setOperator(persisted.operator);
+      setDraftId(persisted.draftId);
+    }
+  }, [
+    hydration?.draft,
+    hydration?.latestDecision,
+    message.id,
+    resolution,
+    renderFromDb,
+  ]);
 
   useEffect(() => {
     if (message.resolver_status === "failed") {
@@ -63,7 +96,17 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
 
     if (renderFromDb) {
       setResolution(renderFromDb);
-      setOperator(initialOperatorState(renderFromDb));
+      const persisted = hydrateOperatorStateFromPersistence(
+        renderFromDb,
+        hydration?.draft ?? null,
+        hydration?.latestDecision ?? null,
+      );
+      setOperator(
+        persisted.operator.decision !== "pending" || persisted.draftId
+          ? persisted.operator
+          : initialOperatorState(renderFromDb),
+      );
+      if (persisted.draftId) setDraftId(persisted.draftId);
       setResolverError(null);
       setLoading(false);
       return;
@@ -78,10 +121,30 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
         if (cancelled) return;
         if (res && isRenderableStoredResolution(res)) {
           setResolution(res);
-          setOperator(initialOperatorState(res));
+          const persisted = hydrateOperatorStateFromPersistence(
+            res,
+            hydration?.draft ?? null,
+            hydration?.latestDecision ?? null,
+          );
+          setOperator(
+            persisted.operator.decision !== "pending" || persisted.draftId
+              ? persisted.operator
+              : initialOperatorState(res),
+          );
+          if (persisted.draftId) setDraftId(persisted.draftId);
         } else if (res) {
           setResolution(res);
-          setOperator(initialOperatorState(res));
+          const persisted = hydrateOperatorStateFromPersistence(
+            res,
+            hydration?.draft ?? null,
+            hydration?.latestDecision ?? null,
+          );
+          setOperator(
+            persisted.operator.decision !== "pending" || persisted.draftId
+              ? persisted.operator
+              : initialOperatorState(res),
+          );
+          if (persisted.draftId) setDraftId(persisted.draftId);
         } else {
           setResolution(null);
           setResolverError("Resolver unavailable — message shown without suggestion.");
@@ -98,7 +161,14 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
     return () => {
       cancelled = true;
     };
-  }, [message.body, message.id, message.resolver_status, renderFromDb]);
+  }, [
+    hydration?.draft,
+    hydration?.latestDecision,
+    message.body,
+    message.id,
+    message.resolver_status,
+    renderFromDb,
+  ]);
 
   const audit = useCallback(
     (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {
@@ -303,9 +373,17 @@ export default function OperatorInboxPanel() {
           </p>
         )}
         {!loadingFeed &&
-          messages.map((msg) => (
-            <MessageRow key={msg.id} message={msg} onDraftCreated={() => void loadDraftVisibility()} />
-          ))}
+          (() => {
+            const hydrationIndex = indexOperatorHydration(drafts, decisions);
+            return messages.map((msg) => (
+              <MessageRow
+                key={msg.id}
+                message={msg}
+                hydration={hydrationIndex.get(msg.id) ?? { draft: null, latestDecision: null }}
+                onDraftCreated={() => void loadDraftVisibility()}
+              />
+            ));
+          })()}
       </div>
 
       <DraftVisibilityPanel
