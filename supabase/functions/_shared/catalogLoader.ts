@@ -2,8 +2,7 @@ import type { SupabaseClient } from "npm:@supabase/supabase-js@2.95.0";
 import type { RuntimeCatalog, RuntimeCatalogAlias, RuntimeCatalogProduct } from "./runtime/types.ts";
 
 function aliasTextFromRow(row: Record<string, unknown>): string {
-  const primary = row.alias ?? row.alias_text;
-  return String(primary ?? "").trim();
+  return String(row.alias_text ?? "").trim();
 }
 
 function canonicalFromRow(row: Record<string, unknown>, fallback: string): string {
@@ -38,13 +37,12 @@ export async function loadCatalogForEdge(admin: SupabaseClient): Promise<Runtime
 
   const { data: aliasRows, error: aliasError } = await admin
     .from("product_aliases")
-    .select("product_id, alias, alias_text, canonical_name, alias_type, is_active");
+    .select("product_id, alias_text, canonical_name, created_at");
 
   if (aliasError) throw aliasError;
 
   const aliases: RuntimeCatalogAlias[] = [];
   for (const row of aliasRows ?? []) {
-    if (typeof row.is_active === "boolean" && !row.is_active) continue;
     const product = mappedProducts.find((p) => p.id === row.product_id);
     if (!product) continue;
     const alias_text = aliasTextFromRow(row as Record<string, unknown>);
@@ -53,7 +51,7 @@ export async function loadCatalogForEdge(admin: SupabaseClient): Promise<Runtime
       alias_text,
       canonical_name: canonicalFromRow(row as Record<string, unknown>, product.name),
       product_id: row.product_id,
-      alias_type: typeof row.alias_type === "string" ? row.alias_type : null,
+      alias_type: null,
     });
   }
 
