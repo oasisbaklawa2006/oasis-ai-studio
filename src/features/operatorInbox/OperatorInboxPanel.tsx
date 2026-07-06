@@ -114,7 +114,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
     setDraftId(existingDraft.id);
     setDraftStatus(existingDraft.status);
     setDraftError(null);
-  }, [existingDraft?.id, existingDraft?.resolved_sku, existingDraft?.created_at]);
+  }, [existingDraft?.id, existingDraft?.resolved_sku, existingDraft?.status, existingDraft?.created_at]);
 
   const audit = useCallback(
     (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {
