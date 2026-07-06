@@ -75,7 +75,7 @@ export async function createSalesOrderDraftFromOperator(
     return null;
   }
 
-  const operatorDecision = operatorDecisionForDraft(input.operator);
+  const operatorDecision = operatorDecisionForDraft(input.resolution, input.operator);
   if (!operatorDecision || !input.operator.selected_sku) {
     return null;
   }
