@@ -185,7 +185,8 @@ describe("Phase 2C — governance and operator actions", () => {
 
     const alt = res.alternatives[0];
     const picked = selectAlternative(initialOperatorState(res), alt);
-    expect(picked.decision).toBe("alternative_selected");
+    expect(picked.decision).toBe("pending");
+    expect(picked.selected_sku).toBe(alt.sku);
   });
 });
 

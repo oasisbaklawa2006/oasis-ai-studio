@@ -197,17 +197,19 @@ describe("Phase 2E — operator sales order draft", () => {
     expect(canCreateSalesOrderDraft(res, operator)).toBe(false);
   });
 
-  it("LOW with selected alternative creates draft only", async () => {
+  it("LOW with selected alternative creates draft only after confirm", async () => {
     const res = resolveProductUtterance("midya", catalog);
     const alt = res.alternatives.find((a) => a.sku === "OAS-AS-BKL-PST-MAAPET-0003")!;
-    const operator = selectAlternative(initialOperatorState(res), alt);
+    const picked = selectAlternative(initialOperatorState(res), alt);
+    expect(canCreateSalesOrderDraft(res, picked)).toBe(false);
+    const operator = confirmSuggestion(picked, res);
     const store = createInMemoryDraftStore();
     const result = await createSalesOrderDraftFromOperator(
       { source_message_id: "msg-low-alt", resolution: res, operator },
       store.deps,
     );
     expect(result?.draft.status).toBe("UNDER_REVIEW");
-    expect(result?.draft.operator_decision).toBe("alternative_selected");
+    expect(result?.draft.operator_decision).toBe("confirmed");
     expect(result?.draft.resolved_sku).toBe("OAS-AS-BKL-PST-MAAPET-0003");
   });
 

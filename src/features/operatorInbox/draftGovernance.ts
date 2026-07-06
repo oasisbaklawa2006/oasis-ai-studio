@@ -14,17 +14,8 @@ export function canCreateSalesOrderDraft(
 ): boolean {
   if (!resolution) return false;
   if (!operator.selected_sku) return false;
-
-  if (operator.decision === "confirmed") {
-    if (resolution.confidence_band === "LOW") return false;
-    return true;
-  }
-
-  if (operator.decision === "alternative_selected") {
-    return true;
-  }
-
-  return false;
+  if (operator.decision !== "confirmed") return false;
+  return true;
 }
 
 export function draftStatusForBand(band: ProductUtteranceResolution["confidence_band"]): "AI_DRAFT" | "UNDER_REVIEW" {
