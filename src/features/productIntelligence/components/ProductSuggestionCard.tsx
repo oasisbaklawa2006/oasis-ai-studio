@@ -2,7 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ProductUtteranceResolution, RuntimeAlternative } from "@/features/productIntelligence/runtime";
 import {
+  canConfirmSuggestion,
+  confirmButtonLabel,
   displayActionForBand,
+  formatDetectedQuantity,
+  requiresExplicitProductSelection,
   showPrimarySuggestion,
 } from "@/features/operatorInbox/suggestionGovernance";
 import type { OperatorSuggestionState } from "@/features/operatorInbox/types";
@@ -38,6 +42,14 @@ export function ProductSuggestionCard({
   const confidence = resolution.confidence ?? 0;
   const alternatives = resolution.alternatives ?? [];
   const reason = resolution.reason?.trim() || "No additional resolver detail.";
+  const detectedQuantity = formatDetectedQuantity(resolution);
+  const needsProductPick = requiresExplicitProductSelection(resolution);
+  const canConfirm = canConfirmSuggestion(resolution, operator);
+  const confirmLabel = canConfirm
+    ? confirmButtonLabel(resolution)
+    : needsProductPick
+      ? "Select product first"
+      : confirmButtonLabel(resolution);
 
   return (
     <div className="mt-2 rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2 text-sm" data-testid="product-suggestion-card">
@@ -70,6 +82,22 @@ export function ProductSuggestionCard({
         </p>
       )}
 
+      {needsProductPick && (
+        <p
+          className="text-xs text-amber-800 dark:text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded px-2 py-1.5"
+          data-testid="clarification-required-banner"
+        >
+          Clarification required — select a product from the alternatives before confirming.
+        </p>
+      )}
+
+      {detectedQuantity && (
+        <div className="text-xs" data-testid="detected-quantity">
+          <span className="text-muted-foreground">Detected quantity:</span>{" "}
+          <span className="font-medium">{detectedQuantity}</span>
+        </div>
+      )}
+
       <p className="text-xs text-muted-foreground leading-snug">{reason}</p>
 
       {alternatives.length > 0 && (
@@ -78,7 +106,7 @@ export function ProductSuggestionCard({
             Alternatives ({alternatives.length})
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {alternatives.slice(0, 4).map((alt) => (
+            {alternatives.map((alt) => (
               <Button
                 key={`${alt.sku}-${alt.matched_term}`}
                 type="button"
@@ -100,11 +128,13 @@ export function ProductSuggestionCard({
           type="button"
           size="sm"
           className="h-8"
-          disabled={disabled || decided || (!selectedSku && !resolution.resolved_sku)}
+          variant={canConfirm ? "default" : "secondary"}
+          disabled={disabled || decided || !canConfirm}
           onClick={onConfirm}
+          data-testid="confirm-suggestion-button"
         >
           <Check className="h-3.5 w-3.5 mr-1" />
-          Confirm
+          {confirmLabel}
         </Button>
         <Button
           type="button"

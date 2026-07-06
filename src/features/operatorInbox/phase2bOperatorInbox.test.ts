@@ -17,8 +17,11 @@ import {
   getSuggestionAuditLog,
 } from "./suggestionAudit";
 import {
+  canConfirmSuggestion,
   canPreselectTopMatch,
   displayActionForBand,
+  formatDetectedQuantity,
+  requiresExplicitProductSelection,
   showPrimarySuggestion,
 } from "./suggestionGovernance";
 import { isCashewTartFamilySku } from "@/features/productIntelligence/runtime/productFamilies";
@@ -70,6 +73,14 @@ describe("Phase 2B operator inbox — governance", () => {
     const state = initialOperatorState(res);
     expect(state.selected_sku).toBeNull();
     expect(canPreselectTopMatch(res)).toBe(false);
+    expect(requiresExplicitProductSelection(res)).toBe(true);
+    expect(canConfirmSuggestion(res, state)).toBe(false);
+  });
+
+  it("formatDetectedQuantity shows kg from pyramid utterance", () => {
+    const res = resolveProductUtterance("Hi send 50 kg pyramid", catalog);
+    expect(res.order_quantity).toBe(50);
+    expect(formatDetectedQuantity(res)).toBe("50 kg");
   });
 
   it("HIGH is preselected but still pending until operator confirms", () => {
@@ -121,12 +132,15 @@ describe("Phase 2B operator inbox — operator actions (no orders)", () => {
     expect(getSuggestionAuditLog()[0].action).toBe("reject");
   });
 
-  it("select alternative updates operator state without order write", () => {
+  it("select alternative updates selection but stays pending until confirm", () => {
     const res = resolveProductUtterance("midya", catalog);
     const alt = res.alternatives.find((a) => a.sku === "OAS-AS-BKL-PST-MAAPET-0003")!;
     const state = selectAlternative(initialOperatorState(res), alt);
-    expect(state.decision).toBe("alternative_selected");
+    expect(state.decision).toBe("pending");
     expect(state.selected_sku).toBe("OAS-AS-BKL-PST-MAAPET-0003");
+    expect(canConfirmSuggestion(res, state)).toBe(true);
+    const confirmed = confirmSuggestion(state, res);
+    expect(confirmed.decision).toBe("confirmed");
   });
 });
 

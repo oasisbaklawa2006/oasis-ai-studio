@@ -52,9 +52,10 @@ export function selectAlternative(
   alt: RuntimeAlternative,
 ): OperatorSuggestionState {
   return {
-    decision: "alternative_selected",
+    ...state,
+    decision: "pending",
     selected_sku: alt.sku,
     selected_product_name: alt.product_name,
-    decided_at: new Date().toISOString(),
+    decided_at: null,
   };
 }

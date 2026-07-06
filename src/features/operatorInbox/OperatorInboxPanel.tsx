@@ -161,7 +161,6 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
     const next = selectAlternative(operator, alt);
     setOperator(next);
     audit("select_alternative", alt.sku, alt.product_name);
-    void maybeCreateDraft(next);
     if (message.source === "live") {
       void recordOperatorDecision({
         source_message_id: message.id,
