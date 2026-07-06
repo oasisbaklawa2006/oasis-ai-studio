@@ -10,10 +10,11 @@ import {
   recordOperatorDecision,
 } from "./createSalesOrderDraft";
 import { isRenderableStoredResolution } from "./draftGovernance";
-import { fetchDraftVisibility } from "./fetchDraftVisibility";
+import { fetchDraftVisibility, type WhatsAppDraftRow } from "./fetchDraftVisibility";
 import { fetchInboundMessages } from "./fetchInboundMessages";
 import {
   confirmSuggestion,
+  hydrateOperatorStateFromDraft,
   initialOperatorState,
   rejectSuggestion,
   selectAlternative,
@@ -30,10 +31,11 @@ import type { InboxFeedMode } from "./whatsappInboundTypes";
 
 type MessageRowProps = {
   message: InboundWhatsAppMessage;
+  existingDraft: WhatsAppDraftRow | null;
   onDraftCreated?: () => void;
 };
 
-function MessageRow({ message, onDraftCreated }: MessageRowProps) {
+function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps) {
   const renderFromDb = isRenderableStoredResolution(message.stored_resolution)
     ? message.stored_resolution
     : null;
@@ -46,11 +48,14 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
   const [loading, setLoading] = useState(
     !renderFromDb && message.resolver_status !== "failed",
   );
-  const [operator, setOperator] = useState<OperatorSuggestionState>(
-    initialOperatorState(renderFromDb),
+  const [operator, setOperator] = useState<OperatorSuggestionState>(() =>
+    existingDraft
+      ? hydrateOperatorStateFromDraft(existingDraft)
+      : initialOperatorState(renderFromDb),
   );
-  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(existingDraft?.id ?? null);
   const [draftError, setDraftError] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     if (message.resolver_status === "failed") {
@@ -61,9 +66,17 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
       return;
     }
 
-    if (renderFromDb) {
-      setResolution(renderFromDb);
-      setOperator(initialOperatorState(renderFromDb));
+    const stored = isRenderableStoredResolution(message.stored_resolution)
+      ? message.stored_resolution
+      : null;
+
+    if (stored) {
+      setResolution(stored);
+      setOperator((prev) => {
+        if (existingDraft) return hydrateOperatorStateFromDraft(existingDraft);
+        if (prev.decision === "pending" && prev.selected_sku) return prev;
+        return initialOperatorState(stored);
+      });
       setResolverError(null);
       setLoading(false);
       return;
@@ -78,10 +91,18 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
         if (cancelled) return;
         if (res && isRenderableStoredResolution(res)) {
           setResolution(res);
-          setOperator(initialOperatorState(res));
+          setOperator((prev) => {
+            if (existingDraft) return hydrateOperatorStateFromDraft(existingDraft);
+            if (prev.decision === "pending" && prev.selected_sku) return prev;
+            return initialOperatorState(res);
+          });
         } else if (res) {
           setResolution(res);
-          setOperator(initialOperatorState(res));
+          setOperator((prev) => {
+            if (existingDraft) return hydrateOperatorStateFromDraft(existingDraft);
+            if (prev.decision === "pending" && prev.selected_sku) return prev;
+            return initialOperatorState(res);
+          });
         } else {
           setResolution(null);
           setResolverError("Resolver unavailable — message shown without suggestion.");
@@ -98,7 +119,14 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
     return () => {
       cancelled = true;
     };
-  }, [message.body, message.id, message.resolver_status, renderFromDb]);
+  }, [message.body, message.id, message.resolver_status, message.stored_resolution, existingDraft?.id]);
+
+  useEffect(() => {
+    if (!existingDraft) return;
+    setOperator(hydrateOperatorStateFromDraft(existingDraft));
+    setDraftId(existingDraft.id);
+    setDraftError(null);
+  }, [existingDraft?.id, existingDraft?.resolved_sku, existingDraft?.created_at]);
 
   const audit = useCallback(
     (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {
@@ -114,32 +142,38 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
     [message.body, message.id, resolution?.confidence_band],
   );
 
-  const maybeCreateDraft = useCallback(
-    async (next: OperatorSuggestionState) => {
-      if (message.source !== "live" || !resolution) return;
-      setDraftError(null);
+  const onConfirm = () => {
+    const next = confirmSuggestion(operator, resolution);
+    if (next.decision !== "confirmed" || !next.selected_sku) return;
+
+    audit("confirm", next.selected_sku, next.selected_product_name);
+    setDraftError(null);
+    setConfirming(true);
+
+    void (async () => {
       try {
+        if (message.source !== "live" || !resolution) {
+          setOperator(next);
+          return;
+        }
         const result = await createSalesOrderDraftFromOperator({
           source_message_id: message.id,
           resolution,
           operator: next,
         });
-        if (result?.draft) {
-          setDraftId(result.draft.id);
-          onDraftCreated?.();
+        if (!result?.draft) {
+          setDraftError("Confirm failed — draft was not created. Selection kept.");
+          return;
         }
+        setOperator(next);
+        setDraftId(result.draft.id);
+        onDraftCreated?.();
       } catch (e) {
-        setDraftError(e instanceof Error ? e.message : "Draft creation failed");
+        setDraftError(e instanceof Error ? e.message : "Confirm failed — selection kept.");
+      } finally {
+        setConfirming(false);
       }
-    },
-    [message.id, message.source, onDraftCreated, resolution],
-  );
-
-  const onConfirm = () => {
-    const next = confirmSuggestion(operator, resolution);
-    setOperator(next);
-    audit("confirm", next.selected_sku, next.selected_product_name);
-    void maybeCreateDraft(next);
+    })();
   };
 
   const onReject = () => {
@@ -158,18 +192,10 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
   };
 
   const onSelectAlternative = (alt: RuntimeAlternative) => {
+    if (operator.decision !== "pending" || confirming) return;
     const next = selectAlternative(operator, alt);
     setOperator(next);
     audit("select_alternative", alt.sku, alt.product_name);
-    if (message.source === "live") {
-      void recordOperatorDecision({
-        source_message_id: message.id,
-        action: "select_alternative",
-        sku: alt.sku,
-        product_name: alt.product_name,
-        confidence_band: resolution?.confidence_band ?? null,
-      }).catch(() => undefined);
-    }
   };
 
   return (
@@ -187,7 +213,11 @@ function MessageRow({ message, onDraftCreated }: MessageRowProps) {
           onConfirm={onConfirm}
           onReject={onReject}
           onSelectAlternative={onSelectAlternative}
+          disabled={confirming}
         />
+      )}
+      {confirming && (
+        <p className="text-xs text-muted-foreground mt-2">Confirming selection…</p>
       )}
       {draftId && (
         <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
@@ -212,32 +242,32 @@ export default function OperatorInboxPanel() {
   const [draftVisibilityError, setDraftVisibilityError] = useState<string | null>(null);
   const [loadingDraftVisibility, setLoadingDraftVisibility] = useState(true);
 
-  const loadFeed = useCallback(async () => {
-    setLoadingFeed(true);
+  const loadFeed = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoadingFeed(true);
     try {
       const feed = await fetchInboundMessages();
       setMessages(feed.messages);
       setBanner(feed.banner);
       setMode(feed.mode);
     } finally {
-      setLoadingFeed(false);
+      if (!options?.silent) setLoadingFeed(false);
     }
   }, []);
 
-  const loadDraftVisibility = useCallback(async () => {
-    setLoadingDraftVisibility(true);
+  const loadDraftVisibility = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoadingDraftVisibility(true);
     try {
       const result = await fetchDraftVisibility();
       setDrafts(result.drafts);
       setDecisions(result.decisions);
       setDraftVisibilityError(result.error);
     } finally {
-      setLoadingDraftVisibility(false);
+      if (!options?.silent) setLoadingDraftVisibility(false);
     }
   }, []);
 
-  const refreshAll = useCallback(async () => {
-    await Promise.all([loadFeed(), loadDraftVisibility()]);
+  const refreshAll = useCallback(async (options?: { silent?: boolean }) => {
+    await Promise.all([loadFeed(options), loadDraftVisibility(options)]);
   }, [loadDraftVisibility, loadFeed]);
 
   useEffect(() => {
@@ -247,7 +277,7 @@ export default function OperatorInboxPanel() {
   useOperatorInboxRealtime({
     enabled: mode === "live",
     onRefresh: () => {
-      void refreshAll();
+      void refreshAll({ silent: true });
     },
   });
 
@@ -303,7 +333,12 @@ export default function OperatorInboxPanel() {
         )}
         {!loadingFeed &&
           messages.map((msg) => (
-            <MessageRow key={msg.id} message={msg} onDraftCreated={() => void loadDraftVisibility()} />
+            <MessageRow
+              key={msg.id}
+              message={msg}
+              existingDraft={drafts.find((draft) => draft.source_message_id === msg.id) ?? null}
+              onDraftCreated={() => void loadDraftVisibility({ silent: true })}
+            />
           ))}
       </div>
 
@@ -315,7 +350,7 @@ export default function OperatorInboxPanel() {
       />
       <p className="text-xs text-muted-foreground max-w-3xl">
         Confirm creates a reviewable sales order draft only — no final order, stock, finance, or outbound replies.
-        Reject and alternative actions write operator audit records when live ingestion is enabled.
+        Reject writes an operator audit record when live ingestion is enabled.
       </p>
     </div>
   );

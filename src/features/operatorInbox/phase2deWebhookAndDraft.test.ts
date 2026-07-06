@@ -14,7 +14,7 @@ import {
   createInMemoryDraftStore,
   createSalesOrderDraftFromOperator,
 } from "./createSalesOrderDraft";
-import { canCreateSalesOrderDraft } from "./draftGovernance";
+import { canCreateSalesOrderDraft, operatorDecisionForDraft } from "./draftGovernance";
 import { createInMemoryIngestStore, ingestInboundMessage } from "./ingestInboundMessage";
 import { normalizeWebhookPayload } from "./webhook/normalizeWebhookPayload";
 import { processWebhookPayload } from "./webhook/processWebhookPayload";
@@ -209,8 +209,21 @@ describe("Phase 2E — operator sales order draft", () => {
       store.deps,
     );
     expect(result?.draft.status).toBe("UNDER_REVIEW");
-    expect(result?.draft.operator_decision).toBe("confirmed");
+    expect(result?.draft.operator_decision).toBe("alternative_selected");
     expect(result?.draft.resolved_sku).toBe("OAS-AS-BKL-PST-MAAPET-0003");
+  });
+
+  it("LOW confirm maps UI confirmed state to alternative_selected for draft RPC", () => {
+    const res = resolveProductUtterance("midya", catalog);
+    const alt = res.alternatives[0];
+    const operator = confirmSuggestion(selectAlternative(initialOperatorState(res), alt), res);
+    expect(operatorDecisionForDraft(res, operator)).toBe("alternative_selected");
+  });
+
+  it("HIGH confirm maps UI confirmed state to confirmed for draft RPC", () => {
+    const res = resolveProductUtterance("pista bulbul", catalog);
+    const operator = confirmSuggestion(initialOperatorState(res), res);
+    expect(operatorDecisionForDraft(res, operator)).toBe("confirmed");
   });
 
   it("Draft links to source message", async () => {

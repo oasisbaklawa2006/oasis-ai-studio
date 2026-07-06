@@ -22,10 +22,16 @@ export function draftStatusForBand(band: ProductUtteranceResolution["confidence_
   return band === "HIGH" ? "AI_DRAFT" : "UNDER_REVIEW";
 }
 
+/**
+ * Maps UI confirmed state to draft RPC `operator_decision`.
+ * LOW / unresolved rows must send `alternative_selected` per DB constraint.
+ */
 export function operatorDecisionForDraft(
+  resolution: ProductUtteranceResolution | null,
   operator: OperatorSuggestionState,
 ): "confirmed" | "alternative_selected" | null {
-  if (operator.decision === "confirmed") return "confirmed";
-  if (operator.decision === "alternative_selected") return "alternative_selected";
-  return null;
+  if (operator.decision !== "confirmed" || !operator.selected_sku) return null;
+  if (resolution?.confidence_band === "LOW") return "alternative_selected";
+  if (resolution && !resolution.resolved_sku) return "alternative_selected";
+  return "confirmed";
 }

@@ -3,6 +3,24 @@ import type { OperatorSuggestionState } from "./types";
 import { canPreselectTopMatch } from "./suggestionGovernance";
 import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
 
+export type DraftOperatorSnapshot = {
+  id: string;
+  resolved_sku: string;
+  resolved_product_name: string | null;
+  created_at: string;
+};
+
+export function hydrateOperatorStateFromDraft(
+  draft: DraftOperatorSnapshot,
+): OperatorSuggestionState {
+  return {
+    decision: "confirmed",
+    selected_sku: draft.resolved_sku,
+    selected_product_name: draft.resolved_product_name,
+    decided_at: draft.created_at,
+  };
+}
+
 export function initialOperatorState(
   resolution: ProductUtteranceResolution | null,
 ): OperatorSuggestionState {

@@ -7,6 +7,7 @@ import {
 import { resolveInboundMessage } from "./resolveInboundMessage";
 import {
   confirmSuggestion,
+  hydrateOperatorStateFromDraft,
   initialOperatorState,
   rejectSuggestion,
   selectAlternative,
@@ -81,6 +82,18 @@ describe("Phase 2B operator inbox — governance", () => {
     const res = resolveProductUtterance("Hi send 50 kg pyramid", catalog);
     expect(res.order_quantity).toBe(50);
     expect(formatDetectedQuantity(res)).toBe("50 kg");
+  });
+
+  it("hydrateOperatorStateFromDraft restores confirmed card state", () => {
+    const hydrated = hydrateOperatorStateFromDraft({
+      id: "draft-1",
+      resolved_sku: "OAS-AS-BKL-0006",
+      resolved_product_name: "Cashew Pyramid",
+      created_at: "2026-07-06T21:00:00.000Z",
+    });
+    expect(hydrated.decision).toBe("confirmed");
+    expect(hydrated.selected_sku).toBe("OAS-AS-BKL-0006");
+    expect(hydrated.selected_product_name).toBe("Cashew Pyramid");
   });
 
   it("HIGH is preselected but still pending until operator confirms", () => {
