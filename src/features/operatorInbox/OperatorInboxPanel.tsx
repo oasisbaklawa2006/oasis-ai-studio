@@ -16,6 +16,7 @@ import {
   confirmSuggestion,
   hydrateOperatorStateFromDraft,
   initialOperatorState,
+  mergeOperatorStateOnResolution,
   rejectSuggestion,
   selectAlternative,
 } from "./operatorSuggestionState";
@@ -54,6 +55,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
       : initialOperatorState(renderFromDb),
   );
   const [draftId, setDraftId] = useState<string | null>(existingDraft?.id ?? null);
+  const [draftStatus, setDraftStatus] = useState<string | null>(existingDraft?.status ?? null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -72,11 +74,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
 
     if (stored) {
       setResolution(stored);
-      setOperator((prev) => {
-        if (existingDraft) return hydrateOperatorStateFromDraft(existingDraft);
-        if (prev.decision === "pending" && prev.selected_sku) return prev;
-        return initialOperatorState(stored);
-      });
+      setOperator((prev) => mergeOperatorStateOnResolution(prev, stored, existingDraft));
       setResolverError(null);
       setLoading(false);
       return;
@@ -89,20 +87,9 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
       try {
         const res = await resolveInboundMessage(message.body);
         if (cancelled) return;
-        if (res && isRenderableStoredResolution(res)) {
+        if (res) {
           setResolution(res);
-          setOperator((prev) => {
-            if (existingDraft) return hydrateOperatorStateFromDraft(existingDraft);
-            if (prev.decision === "pending" && prev.selected_sku) return prev;
-            return initialOperatorState(res);
-          });
-        } else if (res) {
-          setResolution(res);
-          setOperator((prev) => {
-            if (existingDraft) return hydrateOperatorStateFromDraft(existingDraft);
-            if (prev.decision === "pending" && prev.selected_sku) return prev;
-            return initialOperatorState(res);
-          });
+          setOperator((prev) => mergeOperatorStateOnResolution(prev, res, existingDraft));
         } else {
           setResolution(null);
           setResolverError("Resolver unavailable — message shown without suggestion.");
@@ -125,8 +112,9 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
     if (!existingDraft) return;
     setOperator(hydrateOperatorStateFromDraft(existingDraft));
     setDraftId(existingDraft.id);
+    setDraftStatus(existingDraft.status);
     setDraftError(null);
-  }, [existingDraft?.id, existingDraft?.resolved_sku, existingDraft?.created_at]);
+  }, [existingDraft?.id, existingDraft?.resolved_sku, existingDraft?.status, existingDraft?.created_at]);
 
   const audit = useCallback(
     (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {
@@ -167,6 +155,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
         }
         setOperator(next);
         setDraftId(result.draft.id);
+        setDraftStatus(result.draft.status);
         onDraftCreated?.();
       } catch (e) {
         setDraftError(e instanceof Error ? e.message : "Confirm failed — selection kept.");
@@ -214,6 +203,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
           onReject={onReject}
           onSelectAlternative={onSelectAlternative}
           disabled={confirming}
+          draftStatus={draftStatus}
         />
       )}
       {confirming && (
@@ -291,6 +281,8 @@ export default function OperatorInboxPanel() {
     }
   };
 
+  const inboxReady = !loadingFeed && !loadingDraftVisibility;
+
   return (
     <div className="space-y-6 max-w-3xl">
       <PageHeader
@@ -326,12 +318,15 @@ export default function OperatorInboxPanel() {
         {loadingFeed && (
           <p className="text-sm text-muted-foreground">Loading inbox…</p>
         )}
-        {!loadingFeed && messages.length === 0 && (
+        {!inboxReady && !loadingFeed && loadingDraftVisibility && (
+          <p className="text-sm text-muted-foreground">Loading draft state…</p>
+        )}
+        {inboxReady && messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
             No inbound messages yet. Use the dev seeder or webhook ingest adapter.
           </p>
         )}
-        {!loadingFeed &&
+        {inboxReady &&
           messages.map((msg) => (
             <MessageRow
               key={msg.id}

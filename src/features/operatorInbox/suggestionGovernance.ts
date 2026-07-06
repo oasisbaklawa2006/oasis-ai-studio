@@ -51,6 +51,17 @@ export function confirmButtonLabel(resolution: ProductUtteranceResolution): stri
   return "Confirm";
 }
 
+export function confirmButtonLabelForCard(
+  resolution: ProductUtteranceResolution,
+  operator: OperatorSuggestionState,
+): string {
+  if (operator.decision === "confirmed") return "Confirmed";
+  if (operator.decision === "rejected") return "Rejected";
+  if (canConfirmSuggestion(resolution, operator)) return confirmButtonLabel(resolution);
+  if (requiresExplicitProductSelection(resolution)) return "Select product first";
+  return confirmButtonLabel(resolution);
+}
+
 export function formatDetectedQuantity(resolution: ProductUtteranceResolution): string | null {
   const qty = resolution.order_quantity;
   if (qty == null || qty < 1) return null;

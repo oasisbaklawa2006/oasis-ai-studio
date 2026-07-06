@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import type { ProductUtteranceResolution, RuntimeAlternative } from "@/features/productIntelligence/runtime";
 import {
   canConfirmSuggestion,
-  confirmButtonLabel,
+  confirmButtonLabelForCard,
   displayActionForBand,
   formatDetectedQuantity,
   requiresExplicitProductSelection,
@@ -25,6 +25,7 @@ type ProductSuggestionCardProps = {
   onReject: () => void;
   onSelectAlternative: (alt: RuntimeAlternative) => void;
   disabled?: boolean;
+  draftStatus?: string | null;
 };
 
 export function ProductSuggestionCard({
@@ -34,6 +35,7 @@ export function ProductSuggestionCard({
   onReject,
   onSelectAlternative,
   disabled = false,
+  draftStatus = null,
 }: ProductSuggestionCardProps) {
   const displayAction = displayActionForBand(resolution.confidence_band);
   const primary = showPrimarySuggestion(resolution);
@@ -43,13 +45,9 @@ export function ProductSuggestionCard({
   const alternatives = resolution.alternatives ?? [];
   const reason = resolution.reason?.trim() || "No additional resolver detail.";
   const detectedQuantity = formatDetectedQuantity(resolution);
-  const needsProductPick = requiresExplicitProductSelection(resolution);
+  const needsProductPick = requiresExplicitProductSelection(resolution) && !decided;
   const canConfirm = canConfirmSuggestion(resolution, operator);
-  const confirmLabel = canConfirm
-    ? confirmButtonLabel(resolution)
-    : needsProductPick
-      ? "Select product first"
-      : confirmButtonLabel(resolution);
+  const confirmLabel = confirmButtonLabelForCard(resolution, operator);
 
   return (
     <div className="mt-2 rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2 text-sm" data-testid="product-suggestion-card">
@@ -88,6 +86,15 @@ export function ProductSuggestionCard({
           data-testid="clarification-required-banner"
         >
           Clarification required — select a product from the alternatives before confirming.
+        </p>
+      )}
+
+      {decided && operator.decision === "confirmed" && draftStatus && (
+        <p
+          className="text-xs text-emerald-800 dark:text-emerald-300"
+          data-testid="draft-status-banner"
+        >
+          Draft {draftStatus.replace(/_/g, " ").toLowerCase()} · {operator.selected_product_name ?? operator.selected_sku}
         </p>
       )}
 

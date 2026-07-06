@@ -9,6 +9,7 @@ import {
   confirmSuggestion,
   hydrateOperatorStateFromDraft,
   initialOperatorState,
+  mergeOperatorStateOnResolution,
   rejectSuggestion,
   selectAlternative,
 } from "./operatorSuggestionState";
@@ -20,6 +21,7 @@ import {
 import {
   canConfirmSuggestion,
   canPreselectTopMatch,
+  confirmButtonLabelForCard,
   displayActionForBand,
   formatDetectedQuantity,
   requiresExplicitProductSelection,
@@ -94,6 +96,39 @@ describe("Phase 2B operator inbox — governance", () => {
     expect(hydrated.decision).toBe("confirmed");
     expect(hydrated.selected_sku).toBe("OAS-AS-BKL-0006");
     expect(hydrated.selected_product_name).toBe("Cashew Pyramid");
+  });
+
+  it("mergeOperatorStateOnResolution preserves confirmed state across refresh", () => {
+    const res = resolveProductUtterance("midya", catalog);
+    const alt = res.alternatives[0];
+    const confirmed = confirmSuggestion(selectAlternative(initialOperatorState(res), alt), res);
+    const merged = mergeOperatorStateOnResolution(confirmed, res, null);
+    expect(merged.decision).toBe("confirmed");
+    expect(merged.selected_sku).toBe(alt.sku);
+  });
+
+  it("mergeOperatorStateOnResolution prefers existing draft over pending state", () => {
+    const res = resolveProductUtterance("midya", catalog);
+    const draft = {
+      id: "bc3076c4-78c0-4b16-9dd0-aae77566a23e",
+      resolved_sku: "OAS-AS-BKL-0006",
+      resolved_product_name: "Cashew Pyramid",
+      created_at: "2026-07-06T21:00:00.000Z",
+    };
+    const merged = mergeOperatorStateOnResolution(initialOperatorState(res), res, draft);
+    expect(merged.decision).toBe("confirmed");
+    expect(merged.selected_sku).toBe("OAS-AS-BKL-0006");
+  });
+
+  it("confirmButtonLabelForCard shows Confirmed after hydration, not Select product first", () => {
+    const res = resolveProductUtterance("Hi send 50 kg pyramid", catalog);
+    const hydrated = hydrateOperatorStateFromDraft({
+      id: "draft-1",
+      resolved_sku: "OAS-AS-BKL-0006",
+      resolved_product_name: "Cashew Pyramid",
+      created_at: "2026-07-06T21:00:00.000Z",
+    });
+    expect(confirmButtonLabelForCard(res, hydrated)).toBe("Confirmed");
   });
 
   it("HIGH is preselected but still pending until operator confirms", () => {

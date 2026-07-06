@@ -21,6 +21,18 @@ export function hydrateOperatorStateFromDraft(
   };
 }
 
+/** Preserve local operator actions across feed refresh; prefer stored draft when present. */
+export function mergeOperatorStateOnResolution(
+  prev: OperatorSuggestionState,
+  resolution: ProductUtteranceResolution | null,
+  existingDraft: DraftOperatorSnapshot | null,
+): OperatorSuggestionState {
+  if (existingDraft) return hydrateOperatorStateFromDraft(existingDraft);
+  if (prev.decision === "confirmed" || prev.decision === "rejected") return prev;
+  if (prev.decision === "pending" && prev.selected_sku) return prev;
+  return initialOperatorState(resolution);
+}
+
 export function initialOperatorState(
   resolution: ProductUtteranceResolution | null,
 ): OperatorSuggestionState {
