@@ -251,7 +251,7 @@ export default function CatalogueProductStudio() {
   }, [selected, editor]);
 
   const resetFromProduct = () => {
-    if (!selected) return;
+    if (!canResetDraft || !selected) return;
     setEditorState(generateEditorState(selected));
     toast.success("Draft reset from current product data.");
   };
@@ -367,6 +367,10 @@ export default function CatalogueProductStudio() {
   const textLocked = currentPersistedDraft?.status === "UNDER_REVIEW";
   // While the persisted draft is still being fetched/hydrated, no workflow action or edit may occur.
   const workflowDisabled = draftBusy || draftLoading;
+  // Reset must never fire while a save/submit/approve/reject is in flight, while the saved draft is
+  // still loading, while the draft is UNDER_REVIEW (locked), or with no product selected — same
+  // guards as every other draft-mutating action on this page.
+  const canResetDraft = !draftLoading && !workflowDisabled && !textLocked && !draftBusy && !!selected;
 
   const handleSaveDraft = async () => {
     if (!selected || !editor) return;
@@ -663,7 +667,7 @@ export default function CatalogueProductStudio() {
                       <Button type="button" size="sm" variant="outline" disabled={workflowDisabled} onClick={handleLoadLatestDraft}>
                         <History size={12} className="mr-1.5" /> Load Latest Draft
                       </Button>
-                      <Button type="button" size="sm" variant="outline" disabled={draftLoading} onClick={resetFromProduct}>
+                      <Button type="button" size="sm" variant="outline" disabled={!canResetDraft} onClick={resetFromProduct}>
                         Reset draft from product data
                       </Button>
                       {currentPersistedDraft && canSubmitForReview(currentPersistedDraft.status as CatalogueDraftStatus) && (
