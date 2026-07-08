@@ -11,11 +11,6 @@ export const STATUS_LABEL: Record<CatalogueDraftStatus, string> = {
   REJECTED: "Rejected",
 };
 
-/** Only a DRAFT is directly editable; APPROVED/REJECTED/UNDER_REVIEW are read-only in this UI. */
-export function isDraftEditable(status: CatalogueDraftStatus): boolean {
-  return status === "DRAFT";
-}
-
 export function canSubmitForReview(status: CatalogueDraftStatus): boolean {
   return status === "DRAFT";
 }

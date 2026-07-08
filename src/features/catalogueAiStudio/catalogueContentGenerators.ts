@@ -10,6 +10,7 @@ import type {
   CatalogueDraftPrompts,
   CatalogueDraftPromptKey,
 } from "./catalogueDraftTypes";
+import { hasNumber, hasText } from "./catalogueFieldUtils";
 
 export interface DraftBlockMeta {
   key: CatalogueDraftContentKey;
@@ -66,14 +67,6 @@ export interface DraftProductInput {
   master_carton_qty?: number | null;
   pcs_per_carton?: number | null;
   carton_dimensions_cm?: string | null;
-}
-
-function hasText(value: string | null | undefined): boolean {
-  return Boolean(value && value.trim().length > 0);
-}
-
-function hasNumber(value: number | null | undefined): boolean {
-  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 const MISSING_FIELD = (field: string) => `Add missing field first: ${field}.`;

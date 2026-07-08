@@ -3,6 +3,7 @@
  * Reads only existing `products` fields already available to this app — no new backend
  * status column is invented and no field is mutated here.
  */
+import { hasNumber, hasText } from "./catalogueFieldUtils";
 
 export type ReadinessState = "pass" | "warn" | "missing";
 
@@ -46,14 +47,6 @@ export interface ReadinessProductInput {
   gst_rate?: number | null;
   is_active?: boolean | null;
   is_catalogue_ready?: boolean | null;
-}
-
-function hasText(value: string | null | undefined): boolean {
-  return Boolean(value && value.trim().length > 0);
-}
-
-function hasNumber(value: number | null | undefined): boolean {
-  return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
 const STATE_POINTS: Record<ReadinessState, number> = { pass: 2, warn: 1, missing: 0 };
