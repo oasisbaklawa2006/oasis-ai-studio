@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History, Wrench, Upload } from "lucide-react";
+import { LayoutDashboard, Package, Image, Tags, BookOpen, Gift, Leaf, Tag, Sparkles, Settings, LogOut, Menu, ClipboardCheck, ShieldCheck, History, Wrench, Upload, Wand2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -17,6 +17,7 @@ const nav: NavItem[] = [
   { to: "/tags", label: "Tags", icon: Tags, page: "tags" },
   { to: "/catalogues", label: "Catalogues", icon: BookOpen, page: "catalogues" },
   { to: "/admin/catalogue-builder", label: "Catalogue Builder", icon: BookOpen, page: "catalogues" },
+  { to: "/admin/catalogue-product-studio", label: "Catalogue Product Studio", icon: Wand2, page: "catalogues" },
   { to: "/hampers", label: "Hampers & BOM", icon: Gift, page: "hampers" },
   { to: "/ingredients", label: "Ingredients", icon: Leaf, page: "ingredients" },
   { to: "/labels", label: "Label Studio", icon: Tag, page: "labels" },

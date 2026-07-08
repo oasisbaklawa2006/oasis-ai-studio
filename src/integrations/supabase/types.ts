@@ -52,6 +52,145 @@ export type Database = {
           },
         ]
       }
+      catalogue_ai_studio_draft_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          draft_id: string
+          from_status: string | null
+          id: string
+          metadata: Json
+          to_status: string | null
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          draft_id: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          to_status?: string | null
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          draft_id?: string
+          from_status?: string | null
+          id?: string
+          metadata?: Json
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogue_ai_studio_draft_audit_log_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "catalogue_ai_studio_drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      catalogue_ai_studio_drafts: {
+        Row: {
+          b2b_sales_copy: string
+          catalogue_title: string
+          closeup_image_prompt: string
+          created_at: string
+          created_by: string | null
+          export_bundle_preview: string
+          export_catalogue_copy: string
+          hero_image_prompt: string
+          hindi_description: string
+          id: string
+          lifestyle_image_prompt: string
+          long_description: string
+          packaging_image_prompt: string
+          product_id: string
+          published_at: string | null
+          published_by: string | null
+          rejection_reason: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          short_description: string
+          source_snapshot: Json
+          square_image_prompt: string
+          status: string
+          storage_shelf_life_copy: string
+          updated_at: string
+          version_number: number
+          whatsapp_product_message: string
+        }
+        Insert: {
+          b2b_sales_copy?: string
+          catalogue_title?: string
+          closeup_image_prompt?: string
+          created_at?: string
+          created_by?: string | null
+          export_bundle_preview?: string
+          export_catalogue_copy?: string
+          hero_image_prompt?: string
+          hindi_description?: string
+          id?: string
+          lifestyle_image_prompt?: string
+          long_description?: string
+          packaging_image_prompt?: string
+          product_id: string
+          published_at?: string | null
+          published_by?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          short_description?: string
+          source_snapshot?: Json
+          square_image_prompt?: string
+          status?: string
+          storage_shelf_life_copy?: string
+          updated_at?: string
+          version_number?: number
+          whatsapp_product_message?: string
+        }
+        Update: {
+          b2b_sales_copy?: string
+          catalogue_title?: string
+          closeup_image_prompt?: string
+          created_at?: string
+          created_by?: string | null
+          export_bundle_preview?: string
+          export_catalogue_copy?: string
+          hero_image_prompt?: string
+          hindi_description?: string
+          id?: string
+          lifestyle_image_prompt?: string
+          long_description?: string
+          packaging_image_prompt?: string
+          product_id?: string
+          published_at?: string | null
+          published_by?: string | null
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          short_description?: string
+          source_snapshot?: Json
+          square_image_prompt?: string
+          status?: string
+          storage_shelf_life_copy?: string
+          updated_at?: string
+          version_number?: number
+          whatsapp_product_message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalogue_ai_studio_drafts_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       catalogue_products: {
         Row: {
           catalogue_id: string
