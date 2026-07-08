@@ -16,6 +16,7 @@ import Media from "./pages/Media";
 import Tags from "./pages/Tags";
 import Catalogues from "./pages/Catalogues";
 import CatalogueBuilder from "./pages/CatalogueBuilder";
+import CatalogueProductStudio from "./pages/CatalogueProductStudio";
 import CatalogueDetail from "./pages/CatalogueDetail";
 import CatalogueProposal from "./pages/CatalogueProposal";
 import PublicCatalogue from "./pages/PublicCatalogue";
@@ -66,6 +67,7 @@ const App = () => (
                 <Route path="/tags" element={<RoleGate page="tags"><Tags /></RoleGate>} />
                 <Route path="/catalogues" element={<RoleGate page="catalogues"><Catalogues /></RoleGate>} />
                 <Route path="/admin/catalogue-builder" element={<RoleGate page="catalogues"><CatalogueBuilder /></RoleGate>} />
+                <Route path="/admin/catalogue-product-studio" element={<RoleGate page="catalogues"><CatalogueProductStudio /></RoleGate>} />
                 <Route path="/catalogues/:id" element={<RoleGate page="catalogues"><CatalogueDetail /></RoleGate>} />
                 <Route path="/catalogues/:id/proposal" element={<RoleGate page="catalogues"><CatalogueProposal /></RoleGate>} />
                 <Route path="/hampers" element={<RoleGate page="hampers"><Hampers /></RoleGate>} />
