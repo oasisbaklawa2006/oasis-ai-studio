@@ -64,6 +64,8 @@ import {
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
   hero_image_url?: string | null;
+  is_active: boolean | null;
+  is_catalogue_ready: boolean | null;
 };
 
 const PRODUCT_SELECT =
