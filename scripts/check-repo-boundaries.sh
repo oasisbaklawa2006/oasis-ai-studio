@@ -47,25 +47,30 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 2. Supabase migrations/functions/DDL: this repo does not own schema.
+# 2. Supabase migrations/functions: this repo does not own schema.
 #    Pre-existing legacy content (predating the ownership split) is reported
-#    as a warning only — see docs/repo-ownership-guardrails.md. Only NEW
-#    migration files, new Edge Function files, or newly added DDL statements
-#    are hard failures, since that is what actually reintroduces schema
-#    ownership going forward. Untracked new files are checked unconditionally
-#    (no base ref needed); committed/staged additions and DDL diffs are
-#    checked against the base branch when it can be resolved.
+#    as a warning only — see docs/repo-ownership-guardrails.md. Ownership is
+#    enforced purely at FILE-IDENTITY level:
+#      - a brand new supabase/migrations/*.sql or supabase/functions/** file
+#        is always a hard failure (new backend/schema ownership) — whether it
+#        arrives untracked, staged, or committed since the base branch.
+#      - an edit to an EXISTING (already-tracked-at-base) legacy file is
+#        reported as a warning only, never a hard failure.
+#    Deliberately NOT implemented: grepping added ("+") diff lines under
+#    supabase/ for DDL keywords (CREATE TABLE, ALTER TABLE, CREATE POLICY,
+#    etc.). That line-diff approach can't distinguish a genuinely new DDL
+#    statement from a reformat / line-ending change / whitespace rewrite of
+#    an already-legacy migration — every touched line reappears as a "+"
+#    line even when nothing semantically changed, which false-positived on
+#    routine legacy-file edits (Bugbot: "Legacy migration reformat triggers
+#    DDL"). A correct statement-aware differ would need a real SQL parser to
+#    normalize whitespace/line-endings/comments and compare statement
+#    signatures between base and HEAD — that complexity/fragility was judged
+#    not worth it here. File identity (new vs. pre-existing) is the reliable
+#    signal instead: new files are exactly the case that reintroduces schema
+#    ownership; edits to legacy files are exactly the case that must stay
+#    warning-only per the guardrail's own promise.
 # ---------------------------------------------------------------------------
-DDL_PATTERNS=(
-  "CREATE TABLE"
-  "ALTER TABLE"
-  "DROP TABLE"
-  "CREATE POLICY"
-  "ALTER POLICY"
-  "ENABLE ROW LEVEL SECURITY"
-  "CREATE FUNCTION"
-  "CREATE TRIGGER"
-)
 
 # BOUNDARY_BASE_REF, when set (e.g. by CI — see .github/workflows/repo-boundaries.yml),
 # is the correct diff base for this run (the PR base sha, or the pre-push sha) and is
@@ -147,21 +152,26 @@ if [ "$HAVE_BASE" -eq 1 ]; then
     violations=$((violations + 1))
   fi
 
-  # DDL patterns newly added (as +lines) anywhere under supabase/, including edits to existing
-  # tracked files — committed since base, or still staged/unstaged locally.
-  ddl_diff="$(git diff --unified=0 "${BASE_REF}" -- supabase 2>/dev/null | grep -E '^\+[^+]' || true)"
-  if [ -n "$ddl_diff" ]; then
-    for pattern in "${DDL_PATTERNS[@]}"; do
-      hit="$(echo "$ddl_diff" | grep -F -- "$pattern" || true)"
-      if [ -n "$hit" ]; then
-        echo "BOUNDARY VIOLATION: newly added DDL pattern \"$pattern\" under supabase/ — schema authority belongs to oasis-supabase-core:"
-        echo "$hit" | sed 's/^/  /'
-        violations=$((violations + 1))
-      fi
-    done
+  # Edits to EXISTING legacy migration/function files — warning only, never a
+  # hard failure, no matter what content (including DDL keywords) the edit
+  # touches. This is what makes a routine legacy-migration reformat pass.
+  modified_migrations="$(git diff --name-only --diff-filter=M "${BASE_REF}" -- supabase/migrations 2>/dev/null | grep -E '\.sql$' || true)"
+  if [ -n "$modified_migrations" ]; then
+    count="$(echo "$modified_migrations" | wc -l | tr -d ' ')"
+    echo "NOTE: $count existing legacy supabase/migrations file(s) modified — warning only, not a hard failure (see docs/repo-ownership-guardrails.md):"
+    echo "$modified_migrations" | sed 's/^/  /'
+    warnings=$((warnings + 1))
+  fi
+
+  modified_functions="$(git diff --name-only --diff-filter=M "${BASE_REF}" -- supabase/functions 2>/dev/null || true)"
+  if [ -n "$modified_functions" ]; then
+    count="$(echo "$modified_functions" | wc -l | tr -d ' ')"
+    echo "NOTE: $count existing legacy supabase/functions file(s) modified — warning only, not a hard failure (see docs/repo-ownership-guardrails.md):"
+    echo "$modified_functions" | sed 's/^/  /'
+    warnings=$((warnings + 1))
   fi
 else
-  echo "NOTE: base ref \"${BASE_REF}\" not available — skipping tracked-file diff/DDL checks (nothing to compare against). Untracked-file checks above still ran."
+  echo "NOTE: base ref \"${BASE_REF}\" not available — skipping tracked-file diff checks (nothing to compare against). Untracked-file checks above still ran."
 fi
 
 # ---------------------------------------------------------------------------
