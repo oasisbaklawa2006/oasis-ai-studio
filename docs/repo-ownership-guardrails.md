@@ -57,12 +57,24 @@ This repo currently contains `supabase/migrations/` and `supabase/functions/`
 content that predates the ownership split above. `check-repo-boundaries.sh`
 reports that pre-existing content as a **warning only** — it is not this
 guardrail's job to retroactively fail CI over historical debt, and migrations
-are explicitly out of scope for guardrail changes. The check instead fails
-only on **new** migration files, new Edge Function files, or newly added DDL
-statements introduced since the base branch — i.e. schema ownership actually
-being reintroduced going forward. Migrating the legacy `supabase/` content out
-of this repo is a separate, deliberate effort, not something this check
-performs or blocks on.
+are explicitly out of scope for guardrail changes. This applies to *any*
+already-tracked file anywhere under `supabase/`, not just migrations/
+functions: an edit to a pre-existing file is always a warning, even if the
+edit touches DDL, because the check never diffs an existing file's changed
+lines (see below). The check instead hard-fails only on **new** paths —
+whether they arrive untracked, staged, or committed since the base branch —
+i.e. schema ownership actually being reintroduced going forward:
+- any new `supabase/migrations/*.sql` file, or any new file under
+  `supabase/functions/**`, fails outright by location alone;
+- a new `*.sql` file anywhere *else* under `supabase/` (e.g.
+  `supabase/schema/new_table.sql`) fails only if its content contains a DDL/
+  RLS/backend-ownership statement (`CREATE TABLE`, `ALTER TABLE`, `DROP
+  TABLE`, `CREATE POLICY`, `ALTER POLICY`, `ENABLE ROW LEVEL SECURITY`,
+  `CREATE FUNCTION`, `CREATE TRIGGER`) — a stray non-schema `.sql` file
+  outside migrations isn't itself a boundary violation.
+
+Migrating the legacy `supabase/` content out of this repo is a separate,
+deliberate effort, not something this check performs or blocks on.
 
 ## Mandatory pre-PR ownership gate
 
