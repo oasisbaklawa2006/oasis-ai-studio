@@ -110,26 +110,44 @@ file_has_ddl() {
   return 1
 }
 
-# BOUNDARY_BASE_REF, when set (e.g. by CI — see .github/workflows/repo-boundaries.yml),
-# is the correct diff base for this run (the PR base sha, or the pre-push sha) and is
-# expected to resolve: if it doesn't, that's a checkout/history problem, not "no base
-# available", so we fail loudly rather than silently falling through to a same-commit
-# origin/main diff that would report zero new violations no matter what changed.
-# When unset (local/dev runs), fall back to origin/main, warning if even that can't
-# be resolved — tracked-diff checks are skipped in that case, but the untracked-file
-# checks above always ran regardless.
+# BOUNDARY_BASE_REF, when set to a real sha/ref (e.g. by CI — see
+# .github/workflows/repo-boundaries.yml), is the correct diff base for this
+# run (the PR base sha, or the pre-push sha) and is expected to resolve: if
+# it doesn't, that's a checkout/history problem, not "no base available", so
+# we fail loudly rather than silently falling through to a same-commit
+# origin/main diff that would report zero new violations no matter what
+# changed.
+#
+# Two cases are explicitly NOT "a base that should resolve but didn't" —
+# both are treated as "no base available" and fall back to the same local-
+# fallback path (try origin/main; warn, don't fail, if even that can't be
+# resolved; skip tracked-diff checks either way):
+#   - BOUNDARY_BASE_REF unset/empty — a local/dev run, or a CI trigger with
+#     no natural base (e.g. workflow_dispatch).
+#   - BOUNDARY_BASE_REF is the all-zero sha (0000000000000000000000000000000000000000).
+#     GitHub sets github.event.before to this on a push event that has no
+#     prior commit to point at (creating a branch, or main's very first
+#     push) — there is genuinely no "before" commit to diff against, so
+#     treating it as an unresolvable real sha would fail CI on a perfectly
+#     clean push with zero actual boundary violations.
+# Either way, the untracked-file checks above already ran regardless of any
+# of this — they need no base at all.
+ALL_ZERO_SHA_RE='^0+$'
 HAVE_BASE=0
-if [ -n "${BOUNDARY_BASE_REF:-}" ]; then
+if [ -n "${BOUNDARY_BASE_REF:-}" ] && [[ ! "${BOUNDARY_BASE_REF}" =~ $ALL_ZERO_SHA_RE ]]; then
   BASE_REF="$BOUNDARY_BASE_REF"
   if git rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null 2>&1; then
     HAVE_BASE=1
   else
     echo "ERROR: BOUNDARY_BASE_REF=\"${BASE_REF}\" was provided but could not be resolved to a commit."
-    echo "This usually means the checkout did not fetch enough history (actions/checkout needs fetch-depth: 0) or the base sha is invalid (e.g. a branch-creation push with a null 'before' sha)."
+    echo "This usually means the checkout did not fetch enough history (actions/checkout needs fetch-depth: 0) or the base sha is invalid."
     echo "Failing loudly instead of silently skipping the diff-based boundary checks — see docs/repo-ownership-guardrails.md."
     exit 1
   fi
 else
+  if [ -n "${BOUNDARY_BASE_REF:-}" ]; then
+    echo "WARNING: Boundary base ref is all-zero; tracked diff checks are skipped for this run."
+  fi
   BASE_REF="origin/main"
   if git rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null 2>&1; then
     HAVE_BASE=1
