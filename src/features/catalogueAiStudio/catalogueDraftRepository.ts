@@ -55,6 +55,7 @@ async function insertAudit(
   fromStatus: string | null,
   toStatus: string | null,
   actorId: string | null,
+  metadata?: Record<string, unknown>,
 ): Promise<void> {
   const { error } = await supabase.from("catalogue_ai_studio_draft_audit_log").insert({
     draft_id: draftId,
@@ -62,6 +63,7 @@ async function insertAudit(
     from_status: fromStatus,
     to_status: toStatus,
     actor_id: actorId,
+    ...(metadata ? { metadata } : {}),
   });
   if (error) throw new Error(error.message);
 }
@@ -119,7 +121,21 @@ export async function saveDraft(params: {
     }
     throw new Error(error.message);
   }
-  await insertAudit(data.id, latest ? "CREATE_NEW_VERSION" : "CREATE_DRAFT", latest?.status ?? null, "DRAFT", params.actorId);
+  // Carry the previous version's rejection reason forward onto the new version's own audit
+  // entry — the audit log is scoped to a single draft_id (see fetchDraftAuditLog), so without
+  // this, "why was the prior version rejected" becomes invisible the moment a new version starts.
+  const versionMetadata =
+    latest?.status === "REJECTED" && latest.rejection_reason
+      ? { previous_version_rejection_reason: latest.rejection_reason }
+      : undefined;
+  await insertAudit(
+    data.id,
+    latest ? "CREATE_NEW_VERSION" : "CREATE_DRAFT",
+    latest?.status ?? null,
+    "DRAFT",
+    params.actorId,
+    versionMetadata,
+  );
   return data;
 }
 
@@ -175,6 +191,6 @@ export async function rejectDraft(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error(STATUS_CHANGED_MESSAGE);
-  await insertAudit(draftId, "REJECT", "UNDER_REVIEW", "REJECTED", actorId);
+  await insertAudit(draftId, "REJECT", "UNDER_REVIEW", "REJECTED", actorId, { rejection_reason: reason });
   return data;
 }
