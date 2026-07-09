@@ -67,10 +67,30 @@ DDL_PATTERNS=(
   "CREATE TRIGGER"
 )
 
-BASE_REF="${BOUNDARY_BASE_REF:-origin/main}"
+# BOUNDARY_BASE_REF, when set (e.g. by CI — see .github/workflows/repo-boundaries.yml),
+# is the correct diff base for this run (the PR base sha, or the pre-push sha) and is
+# expected to resolve: if it doesn't, that's a checkout/history problem, not "no base
+# available", so we fail loudly rather than silently falling through to a same-commit
+# origin/main diff that would report zero new violations no matter what changed.
+# When unset (local/dev runs), fall back to origin/main, warning if even that can't
+# be resolved — tracked-diff checks are skipped in that case, but the untracked-file
+# checks above always ran regardless.
 HAVE_BASE=0
-if git rev-parse --verify --quiet "${BASE_REF}" >/dev/null 2>&1; then
-  HAVE_BASE=1
+if [ -n "${BOUNDARY_BASE_REF:-}" ]; then
+  BASE_REF="$BOUNDARY_BASE_REF"
+  if git rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null 2>&1; then
+    HAVE_BASE=1
+  else
+    echo "ERROR: BOUNDARY_BASE_REF=\"${BASE_REF}\" was provided but could not be resolved to a commit."
+    echo "This usually means the checkout did not fetch enough history (actions/checkout needs fetch-depth: 0) or the base sha is invalid (e.g. a branch-creation push with a null 'before' sha)."
+    echo "Failing loudly instead of silently skipping the diff-based boundary checks — see docs/repo-ownership-guardrails.md."
+    exit 1
+  fi
+else
+  BASE_REF="origin/main"
+  if git rev-parse --verify --quiet "${BASE_REF}^{commit}" >/dev/null 2>&1; then
+    HAVE_BASE=1
+  fi
 fi
 
 if [ -d "supabase/migrations" ]; then
