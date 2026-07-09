@@ -135,27 +135,58 @@ if [ -n "$untracked_functions" ]; then
 fi
 
 if [ "$HAVE_BASE" -eq 1 ]; then
-  # New migration files committed or staged since the base branch. (Untracked
-  # new files are already covered above, independent of base-ref resolution.)
-  new_migrations="$(git diff --name-only --diff-filter=A "${BASE_REF}" -- supabase/migrations 2>/dev/null | grep -E '\.sql$' || true)"
+  # New migration/function paths committed or staged since the base branch.
+  #
+  # `--diff-filter=A` (added) alone is NOT enough: `git mv some/other/file.sql
+  # supabase/migrations/x.sql`, or copying a tracked file into supabase/, is
+  # reported by git as status R (renamed) or C (copied), never A — so an
+  # A-only filter lets a file walk straight into forbidden backend-ownership
+  # territory without ever showing up as "added". We scan the FULL repo diff
+  # (no pathspec — restricting to supabase/ up front can suppress rename
+  # pairing against a source path outside it) with rename/copy detection on,
+  # then classify every row ourselves:
+  #   - A/T rows have one path column: that path IS the new/changed file.
+  #   - R/C rows have two path columns (old, new): the DESTINATION (new) path
+  #     is what matters — a rename health-checks against where the file ends
+  #     up, not where it used to live. The source path is irrelevant here
+  #     (moving a file OUT of supabase/ isn't a boundary violation).
+  # Any A/C/R/T row whose destination lands under supabase/migrations/*.sql
+  # or supabase/functions/** is new backend/schema ownership and hard-fails,
+  # exactly like a freshly created file would.
+  new_migrations=""
+  new_functions=""
+  while IFS=$'\t' read -r status path1 path2; do
+    [ -z "$status" ] && continue
+    case "$status" in
+      A*|T*) dest="$path1" ;;
+      R*|C*) dest="$path2" ;;
+      *) continue ;;
+    esac
+    case "$dest" in
+      supabase/migrations/*.sql) new_migrations="${new_migrations}${dest}"$'\n' ;;
+      supabase/functions/*) new_functions="${new_functions}${dest}"$'\n' ;;
+    esac
+  done < <(git diff --name-status -M -C --diff-filter=ACRT "${BASE_REF}" 2>/dev/null)
+  new_migrations="$(printf '%s' "$new_migrations" | grep -v '^$' | sort -u || true)"
+  new_functions="$(printf '%s' "$new_functions" | grep -v '^$' | sort -u || true)"
+
   if [ -n "$new_migrations" ]; then
-    echo "BOUNDARY VIOLATION: new Supabase migration file(s) added — schema ownership belongs to oasis-supabase-core:"
+    echo "BOUNDARY VIOLATION: new Supabase migration path(s) introduced (added, renamed, or copied in) — schema ownership belongs to oasis-supabase-core:"
     echo "$new_migrations" | sed 's/^/  /'
     violations=$((violations + 1))
   fi
-
-  # New Edge Function files committed or staged since the base branch.
-  new_functions="$(git diff --name-only --diff-filter=A "${BASE_REF}" -- supabase/functions 2>/dev/null || true)"
   if [ -n "$new_functions" ]; then
-    echo "BOUNDARY VIOLATION: new Supabase Edge Function file(s) added — Edge Function ownership belongs to oasis-supabase-core:"
+    echo "BOUNDARY VIOLATION: new Supabase Edge Function path(s) introduced (added, renamed, or copied in) — Edge Function ownership belongs to oasis-supabase-core:"
     echo "$new_functions" | sed 's/^/  /'
     violations=$((violations + 1))
   fi
 
-  # Edits to EXISTING legacy migration/function files — warning only, never a
-  # hard failure, no matter what content (including DDL keywords) the edit
-  # touches. This is what makes a routine legacy-migration reformat pass.
-  modified_migrations="$(git diff --name-only --diff-filter=M "${BASE_REF}" -- supabase/migrations 2>/dev/null | grep -E '\.sql$' || true)"
+  # Edits to EXISTING legacy migration/function files (same path in base and
+  # HEAD, i.e. genuinely status M — rename detection above doesn't reclassify
+  # same-path changes) — warning only, never a hard failure, no matter what
+  # content (including DDL keywords) the edit touches. This is what makes a
+  # routine legacy-migration reformat pass instead of false-positiving.
+  modified_migrations="$(git diff --name-only -M -C --diff-filter=M "${BASE_REF}" -- supabase/migrations 2>/dev/null | grep -E '\.sql$' || true)"
   if [ -n "$modified_migrations" ]; then
     count="$(echo "$modified_migrations" | wc -l | tr -d ' ')"
     echo "NOTE: $count existing legacy supabase/migrations file(s) modified — warning only, not a hard failure (see docs/repo-ownership-guardrails.md):"
@@ -163,7 +194,7 @@ if [ "$HAVE_BASE" -eq 1 ]; then
     warnings=$((warnings + 1))
   fi
 
-  modified_functions="$(git diff --name-only --diff-filter=M "${BASE_REF}" -- supabase/functions 2>/dev/null || true)"
+  modified_functions="$(git diff --name-only -M -C --diff-filter=M "${BASE_REF}" -- supabase/functions 2>/dev/null || true)"
   if [ -n "$modified_functions" ]; then
     count="$(echo "$modified_functions" | wc -l | tr -d ' ')"
     echo "NOTE: $count existing legacy supabase/functions file(s) modified — warning only, not a hard failure (see docs/repo-ownership-guardrails.md):"
@@ -171,7 +202,7 @@ if [ "$HAVE_BASE" -eq 1 ]; then
     warnings=$((warnings + 1))
   fi
 else
-  echo "NOTE: base ref \"${BASE_REF}\" not available — skipping tracked-file diff checks (nothing to compare against). Untracked-file checks above still ran."
+  echo "NOTE: base ref \"${BASE_REF}\" not available — skipping tracked-file diff checks (nothing to compare against). Untracked-file checks above still ran (independent of base-ref availability — an untracked file has no history to diff against in the first place, so it needs none)."
 fi
 
 # ---------------------------------------------------------------------------
