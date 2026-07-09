@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
+import { LabelReadinessPanel } from "@/components/LabelReadinessPanel";
+import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -774,6 +776,10 @@ const ProductEdit = () => {
     complianceApproved,
     complianceMetaPending,
   ]);
+
+  // Deliberately separate from readinessSnapshot/catalogue readiness above — see
+  // labelReadiness.ts docblock for why they must never be merged into one toggle.
+  const labelReadiness = useMemo(() => computeLabelReadiness(form), [form]);
 
   const applyMediaAuthority = async (
     productId: string,
@@ -2018,6 +2024,8 @@ const ProductEdit = () => {
             )}
 
             <TabsContent value="compliance" className="space-y-6">
+              <LabelReadinessPanel readiness={labelReadiness} />
+
               <ComplianceAiPanel
                 form={form}
                 set={set}
