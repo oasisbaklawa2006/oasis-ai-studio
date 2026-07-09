@@ -1,14 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Zap, ImagePlus, ArrowRight } from "lucide-react";
+import { Loader2, Sparkles, Zap, ImagePlus, ArrowRight, Trash2 } from "lucide-react";
 import {
   FAST_CREATE_CATEGORIES,
   type FastCreateCategoryKey,
@@ -24,8 +32,45 @@ import {
   requireFastCreateSku,
   saveFastCreateProduct,
 } from "@/features/fastCreate/saveFastCreateProduct";
+import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { probeProductMediaBucket, MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
 import { CATEGORY_PREFEED_DISCLAIMER } from "@/features/productDefaults/categoryPrefeed";
+
+const FAST_CREATE_DRAFT_STORAGE_KEY = "oasis-fast-create-draft-v1";
+
+type FastCreateDraftSnapshot = {
+  productName: string;
+  categoryKey: FastCreateCategoryKey;
+  heroUrl: string | null;
+  resolvedSku: string | null;
+  suggestions: FastCreateSuggestions | null;
+};
+
+function loadFastCreateDraft(): FastCreateDraftSnapshot | null {
+  try {
+    const raw = sessionStorage.getItem(FAST_CREATE_DRAFT_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as FastCreateDraftSnapshot;
+  } catch {
+    return null;
+  }
+}
+
+function saveFastCreateDraft(snapshot: FastCreateDraftSnapshot) {
+  try {
+    sessionStorage.setItem(FAST_CREATE_DRAFT_STORAGE_KEY, JSON.stringify(snapshot));
+  } catch {
+    /* sessionStorage unavailable — draft simply won't survive navigation */
+  }
+}
+
+function clearFastCreateDraft() {
+  try {
+    sessionStorage.removeItem(FAST_CREATE_DRAFT_STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
 
 const FastCreateProduct = () => {
   const nav = useNavigate();
@@ -41,6 +86,9 @@ const FastCreateProduct = () => {
   const [resolvedSku, setResolvedSku] = useState<string | null>(null);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [bucketStatus, setBucketStatus] = useState<string | null>(null);
+  const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
 
   useEffect(() => {
     probeProductMediaBucket().then((r) => {
@@ -50,10 +98,53 @@ const FastCreateProduct = () => {
     });
   }, []);
 
+  // Restore a preserved Fast Create draft (e.g. after an accidental navigation) once on mount.
+  useEffect(() => {
+    const draft = loadFastCreateDraft();
+    if (!draft) return;
+    setProductName(draft.productName);
+    setCategoryKey(draft.categoryKey);
+    setHeroUrl(draft.heroUrl);
+    setResolvedSku(draft.resolvedSku);
+    setSuggestions(draft.suggestions);
+    setRestoredFromDraft(true);
+  }, []);
+
+  const hasUnsavedWork = !!productName.trim() || !!suggestions || !!heroUrl;
+
+  // Keep the session draft in sync while the user works, so accidental navigation never loses it.
+  useEffect(() => {
+    if (!hasUnsavedWork) return;
+    saveFastCreateDraft({ productName, categoryKey, heroUrl, resolvedSku, suggestions });
+  }, [productName, categoryKey, heroUrl, resolvedSku, suggestions, hasUnsavedWork]);
+
   const categoryLabel = useMemo(
     () => FAST_CREATE_CATEGORIES.find((c) => c.key === categoryKey)?.label ?? categoryKey,
     [categoryKey],
   );
+
+  const shortSku = useMemo(() => (resolvedSku ? deriveShortSku(resolvedSku) : null), [resolvedSku]);
+
+  const requestNavigation = (path: string) => {
+    if (hasUnsavedWork) {
+      setPendingNavPath(path);
+      return;
+    }
+    nav(path);
+  };
+
+  const discardDraft = () => {
+    clearFastCreateDraft();
+    setProductName("");
+    setCategoryKey("baklawa");
+    setHeroUrl(null);
+    setHeroPreview(null);
+    setSuggestions(null);
+    setResolvedSku(null);
+    setSkuError(null);
+    setDiscardConfirmOpen(false);
+    toast.success("Draft cleared.");
+  };
 
   useEffect(() => {
     return () => {
@@ -139,6 +230,8 @@ const FastCreateProduct = () => {
         resolvedSku: skuResult.sku,
       });
 
+      clearFastCreateDraft();
+
       if ("draft" in result) {
         toast.success("Product draft submitted for approval.");
         nav("/approvals");
@@ -165,16 +258,26 @@ const FastCreateProduct = () => {
           <div className="text-xs mt-1 text-muted-foreground">{MEDIA_BUCKET_OWNER_ACTION}</div>
         </div>
       )}
+      {restoredFromDraft && (
+        <div className="mb-4 rounded-md border border-accent/40 bg-accent/10 px-4 py-2 text-xs text-foreground">
+          Restored your unsaved draft from this session.
+        </div>
+      )}
       <PageHeader
         title="Fast Create"
         subtitle="Name · category · image — system fills compliance, search, and packaging defaults."
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link to="/products/new">Full editor</Link>
+            {hasUnsavedWork && (
+              <Button variant="ghost" onClick={() => setDiscardConfirmOpen(true)}>
+                <Trash2 className="h-4 w-4 mr-1" /> Clear
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => requestNavigation("/products/new")}>
+              Full editor
             </Button>
-            <Button variant="outline" asChild>
-              <Link to="/admin/import/category-1">Category 1 import</Link>
+            <Button variant="outline" onClick={() => requestNavigation("/admin/import/category-1")}>
+              Category 1 import
             </Button>
           </div>
         }
@@ -246,7 +349,13 @@ const FastCreateProduct = () => {
               </Button>
             </div>
             {resolvedSku ? (
-              <div className="font-mono font-medium text-foreground">{resolvedSku}</div>
+              <>
+                <div className="font-mono font-medium text-foreground">{resolvedSku}</div>
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-dashed">
+                  <span className="text-muted-foreground text-xs">Short SKU (staff/search)</span>
+                  <span className="font-mono text-xs font-medium text-foreground">{shortSku}</span>
+                </div>
+              </>
             ) : skuError ? (
               <p className="text-destructive text-xs">{skuError}</p>
             ) : (
@@ -307,6 +416,9 @@ const FastCreateProduct = () => {
                   <div className="font-medium">{String(suggestions.formPatch.shelf_life_days ?? "—")} days</div>
                 </div>
               </div>
+              <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                Suggested default only — requires compliance review.
+              </p>
 
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Aliases</div>
@@ -357,6 +469,69 @@ const FastCreateProduct = () => {
           )}
         </div>
       </div>
+
+      <Dialog open={!!pendingNavPath} onOpenChange={(open) => !open && setPendingNavPath(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save draft and continue?</DialogTitle>
+            <DialogDescription>
+              You have unsaved Fast Create input. Save it as a draft for this session before leaving?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setPendingNavPath(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                if (pendingNavPath) {
+                  const path = pendingNavPath;
+                  setPendingNavPath(null);
+                  nav(path);
+                }
+              }}
+            >
+              Continue without saving
+            </Button>
+            <Button
+              onClick={() => {
+                saveFastCreateDraft({ productName, categoryKey, heroUrl, resolvedSku, suggestions });
+                if (pendingNavPath) {
+                  const path = pendingNavPath;
+                  setPendingNavPath(null);
+                  nav(path);
+                }
+              }}
+            >
+              Save & continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={discardConfirmOpen} onOpenChange={setDiscardConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear this draft?</DialogTitle>
+            <DialogDescription>
+              This clears the product name, category, image, and generated suggestions from this session. This
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscardConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={discardDraft}>
+              Clear draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

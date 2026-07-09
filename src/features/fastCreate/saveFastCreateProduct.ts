@@ -7,7 +7,7 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import type { FastCreateSuggestions } from "./fastCreateSuggestions";
+import { generateFastCreateSku, type FastCreateSuggestions } from "./fastCreateSuggestions";
 import { resolveFastCreateSkuCodes, type FastCreateSkuCodeSet } from "./fastCreateSkuCodes";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import {

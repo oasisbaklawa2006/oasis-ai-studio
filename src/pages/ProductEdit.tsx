@@ -64,6 +64,7 @@ import {
 import { ComplianceAiPanel, trackManualComplianceEdit } from "@/features/compliance/ComplianceAiPanel";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import {
+  buildDimensionsText,
   dbRowToProductForm,
   formToDbProductPayload,
   formatProductSaveError,

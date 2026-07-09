@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -21,6 +22,7 @@ import {
   PencilLine,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { BuildMeterBar } from "@/components/BuildMeterBar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,6 +66,7 @@ import {
   canSubmitForReview,
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
 import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
+import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
@@ -198,6 +201,7 @@ function ReadinessRow({ category }: { category: ReadinessCategory }) {
 
 export default function CatalogueProductStudio() {
   const { user } = useAuth();
+  const nav = useNavigate();
   const [products, setProducts] = useState<CatalogueProductStudioProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -698,6 +702,14 @@ export default function CatalogueProductStudio() {
               </Card>
 
               {readiness && (
+                <BuildMeterBar
+                  score={readiness.score}
+                  categories={readiness.categories}
+                  onChipClick={() => nav(`/products/${selected.id}`)}
+                />
+              )}
+
+              {readiness && (
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -876,64 +888,74 @@ export default function CatalogueProductStudio() {
                         <p className="text-[11px] text-muted-foreground">
                           Generated locally from this product's current fields — no external AI call in this studio.
                         </p>
-                        {DRAFT_BLOCK_META.map((block) => (
-                          <div key={block.key} className="space-y-1.5">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div>
-                                <label className="text-xs font-semibold text-foreground">{block.label}</label>
-                                <p className="text-[10px] text-muted-foreground">{block.hint}</p>
+                        {DRAFT_BLOCK_META.map((block) => {
+                          const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
+                          return (
+                            <div key={block.key} className="space-y-1.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <label className="text-xs font-semibold text-foreground">{block.label}</label>
+                                  <p className="text-[10px] text-muted-foreground">{block.hint}</p>
+                                </div>
+                                {!blockIsMissing && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={draftLoading}
+                                    onClick={() => copyText(editor.content[block.key], block.label)}
+                                  >
+                                    <Copy size={12} className="mr-1.5" /> Copy
+                                  </Button>
+                                )}
                               </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                disabled={draftLoading}
-                                onClick={() => copyText(editor.content[block.key], block.label)}
-                              >
-                                <Copy size={12} className="mr-1.5" /> Copy
-                              </Button>
+                              <Textarea
+                                value={editor.content[block.key]}
+                                onChange={(e) => updateContentBlock(block.key, e.target.value)}
+                                rows={block.key === "long_description" ? 4 : 2}
+                                className={`text-xs ${blockIsMissing ? "border-amber-400/60 bg-amber-500/5 text-amber-800 dark:text-amber-300" : ""}`}
+                                disabled={textLocked || draftLoading}
+                              />
                             </div>
-                            <Textarea
-                              value={editor.content[block.key]}
-                              onChange={(e) => updateContentBlock(block.key, e.target.value)}
-                              rows={block.key === "long_description" ? 4 : 2}
-                              className="text-xs"
-                              disabled={textLocked || draftLoading}
-                            />
-                          </div>
-                        ))}
+                          );
+                        })}
                       </TabsContent>
 
                       <TabsContent value="media" className="space-y-4 pt-4">
                         <p className="text-[11px] text-muted-foreground">
                           Prompt text only — this studio does not generate images.
                         </p>
-                        {IMAGE_PROMPT_BLOCK_META.map((block) => (
-                          <div key={block.key} className="space-y-1.5">
-                            <div className="flex flex-wrap items-center justify-between gap-2">
-                              <div>
-                                <label className="text-xs font-semibold text-foreground">{block.label}</label>
-                                <p className="text-[10px] text-muted-foreground">{block.hint}</p>
+                        {IMAGE_PROMPT_BLOCK_META.map((block) => {
+                          const blockIsMissing = isMissingFieldOnlyMessage(editor.prompts[block.key]);
+                          return (
+                            <div key={block.key} className="space-y-1.5">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                  <label className="text-xs font-semibold text-foreground">{block.label}</label>
+                                  <p className="text-[10px] text-muted-foreground">{block.hint}</p>
+                                </div>
+                                {!blockIsMissing && (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    disabled={draftLoading}
+                                    onClick={() => copyText(editor.prompts[block.key], block.label)}
+                                  >
+                                    <Copy size={12} className="mr-1.5" /> Copy
+                                  </Button>
+                                )}
                               </div>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="ghost"
-                                disabled={draftLoading}
-                                onClick={() => copyText(editor.prompts[block.key], block.label)}
-                              >
-                                <Copy size={12} className="mr-1.5" /> Copy
-                              </Button>
+                              <Textarea
+                                value={editor.prompts[block.key]}
+                                onChange={(e) => updatePromptBlock(block.key, e.target.value)}
+                                rows={2}
+                                className={`text-xs ${blockIsMissing ? "border-amber-400/60 bg-amber-500/5 text-amber-800 dark:text-amber-300" : ""}`}
+                                disabled={textLocked || draftLoading}
+                              />
                             </div>
-                            <Textarea
-                              value={editor.prompts[block.key]}
-                              onChange={(e) => updatePromptBlock(block.key, e.target.value)}
-                              rows={2}
-                              className="text-xs"
-                              disabled={textLocked || draftLoading}
-                            />
-                          </div>
-                        ))}
+                          );
+                        })}
                       </TabsContent>
 
                       <TabsContent value="packaging" className="space-y-2 pt-4">
