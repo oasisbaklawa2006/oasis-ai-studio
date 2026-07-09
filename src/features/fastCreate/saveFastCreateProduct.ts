@@ -40,7 +40,9 @@ export async function requireFastCreateSku(
   }
 
   const check = assertStructuredSkuForSave(generated.sku);
-  if (!check.ok) {
+  // Explicit `=== false` (not `!check.ok`) — with strictNullChecks off in this project's
+  // tsconfig, boolean-negation doesn't narrow discriminated unions reliably.
+  if (check.ok === false) {
     throw new Error(check.reason || FAST_CREATE_SKU_BLOCK_MESSAGE);
   }
   return generated;
@@ -97,7 +99,7 @@ export async function saveFastCreateProduct(
     }
 
     const skuGuard = assertStructuredSkuForSave(productRow.sku as string);
-    if (!skuGuard.ok) {
+    if (skuGuard.ok === false) {
       throw new Error(skuGuard.reason);
     }
 

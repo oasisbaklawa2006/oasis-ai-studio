@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "typecheck:build": "tsc -b --force",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
     "verify:pilot-readiness": "node scripts/verify-pilot-readiness.mjs",

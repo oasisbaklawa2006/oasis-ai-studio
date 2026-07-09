@@ -582,7 +582,10 @@ const inferProductClass = (data: any) => {
   return "bulk_loose_product";
 };
 
-const dbProductToForm = (data: any) => {
+// Explicit return type — without it, TS infers the return type from only the spread's
+// explicit overrides and silently drops dbRowToProductForm's Record<string, unknown>
+// shape, so later reads of e.g. loaded.product_name fail to typecheck.
+const dbProductToForm = (data: any): Record<string, unknown> => {
   const loaded = dbRowToProductForm(data, empty);
   const mainDepartment = loaded.main_department || normalizeMainDepartment(data);
   return {
@@ -1146,7 +1149,9 @@ const ProductEdit = () => {
       );
 
       const skuGuard = assertStructuredSkuForSave(safePayload.sku);
-      if (!skuGuard.ok) {
+      // Explicit `=== false` (not `!skuGuard.ok`) — with strictNullChecks off in this
+      // project's tsconfig, boolean-negation doesn't narrow discriminated unions reliably.
+      if (skuGuard.ok === false) {
         setLoading(false);
         setSubmitError(skuGuard.reason);
         toast.error(skuGuard.reason);
