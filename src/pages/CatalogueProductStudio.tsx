@@ -16,6 +16,9 @@ import {
   ShieldCheck,
   Ban,
   Wand2,
+  UserRound,
+  Info,
+  PencilLine,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge } from "@/components/ui/badge";
@@ -60,6 +63,7 @@ import {
   canReject,
   canSubmitForReview,
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
+import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
@@ -118,6 +122,14 @@ function buildSourceSnapshot(product: CatalogueProductStudioProduct): Record<str
     is_catalogue_ready: product.is_catalogue_ready ?? null,
     snapshotted_at: new Date().toISOString(),
   };
+}
+
+/** Reads a known string field out of an audit row's jsonb `metadata` — never throws on shape drift. */
+function auditMetadataString(entry: CatalogueDraftAuditRow, key: string): string | null {
+  const metadata = entry.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value : null;
 }
 
 const DRAFT_STATUS_BADGE_CLASS: Record<CatalogueDraftStatus, string> = {
@@ -288,6 +300,10 @@ export default function CatalogueProductStudio() {
   const [draftBusy, setDraftBusy] = useState(false);
   const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
+  // Human-readable labels for created_by/reviewed_by/audit actor_id — without this the governance
+  // workflow and audit trail only ever show opaque UUIDs. Keyed by user id; a lookup failure or an
+  // id with no resolvable profile just falls back to a short id (see catalogueActorDisplay.ts).
+  const [actorLabels, setActorLabels] = useState<Record<string, string>>({});
 
   // Always holds the product id actually on screen right now, read synchronously by every in-flight
   // async handler/effect below — never the stale product id closed over when that async call started.
@@ -308,6 +324,7 @@ export default function CatalogueProductStudio() {
       setRejectReason("");
       setEditorState(null);
       setDraftLoading(false);
+      setActorLabels({});
       return;
     }
     const productId = selected.id;
@@ -315,6 +332,7 @@ export default function CatalogueProductStudio() {
     setAuditLog([]);
     setRejectReasonOpen(false);
     setRejectReason("");
+    setActorLabels({});
     setEditorState(generateEditorState(selected));
     setDraftLoading(true);
 
@@ -340,6 +358,29 @@ export default function CatalogueProductStudio() {
       cancelled = true;
     };
   }, [selected]);
+
+  // Resolves every actor id currently visible (draft creator/reviewer, every audit row's actor) into
+  // a display label in one batched lookup. Runs whenever the persisted draft or audit log changes;
+  // guarded by selectedIdRef so a slow lookup started before a product switch never paints labels for
+  // the wrong product.
+  useEffect(() => {
+    const productId = selected?.id ?? null;
+    if (!productId || (!persistedDraft && auditLog.length === 0)) return;
+    let cancelled = false;
+    const ids = [
+      persistedDraft?.created_by,
+      persistedDraft?.reviewed_by,
+      ...auditLog.map((entry) => entry.actor_id),
+    ];
+    fetchActorLabels(ids).then((labels) => {
+      if (!cancelled && selectedIdRef.current === productId) {
+        setActorLabels((prev) => ({ ...prev, ...labels }));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.id, persistedDraft, auditLog]);
 
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
   // overwrite the new product's audit history with the previous draft's events.
@@ -371,6 +412,19 @@ export default function CatalogueProductStudio() {
   // still loading, while the draft is UNDER_REVIEW (locked), or with no product selected — same
   // guards as every other draft-mutating action on this page.
   const canResetDraft = !draftLoading && !workflowDisabled && !textLocked && !draftBusy && !!selected;
+
+  // True when the editor's current content/prompts differ from the last saved draft — the operator
+  // has no other way to tell whether "Save Draft" would actually change anything right now. Only
+  // meaningful once a saved draft exists; a freshly generated (never-saved) draft is always "unsaved"
+  // by definition and isn't flagged here to avoid a permanently-on indicator with nothing to compare.
+  const hasUnsavedChanges = useMemo(() => {
+    if (!currentPersistedDraft || !editor) return false;
+    const saved = mapRowToEditor(currentPersistedDraft);
+    return (
+      JSON.stringify(editor.content) !== JSON.stringify(saved.content) ||
+      JSON.stringify(editor.prompts) !== JSON.stringify(saved.prompts)
+    );
+  }, [currentPersistedDraft, editor]);
 
   const handleSaveDraft = async () => {
     if (!selected || !editor) return;
@@ -517,6 +571,22 @@ export default function CatalogueProductStudio() {
         Catalogue Product AI Studio writes drafts only. Live product master changes are not performed here.
       </div>
 
+      <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
+        <Info size={14} className="shrink-0 mt-0.5" />
+        <div className="space-y-0.5">
+          <p className="text-foreground font-semibold">How this fits together</p>
+          <p>1. This app creates and governs the draft (save → submit → approve/reject) shown below.</p>
+          <p>2. oasis-supabase-core owns the draft/audit schema this app reads and writes.</p>
+          <p>3. Oasis-Baklawa-Central is meant to consume only an <em>approved, final</em> snapshot — never a raw in-progress draft.</p>
+          <p>4. oasis-trace should only ever receive final product identity via Central's product master, never directly from this app.</p>
+          <p className="text-foreground">
+            Note: steps 3 and 4 describe the intended design. There is currently no automated connector
+            publishing an approved draft from here into Central — an approved draft stays a governed
+            record in this app until that connector exists.
+          </p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
         <Card>
           <CardHeader className="pb-3">
@@ -539,7 +609,9 @@ export default function CatalogueProductStudio() {
                 <AlertTriangle size={14} /> {error}
               </div>
             ) : filtered.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4 text-center">No products match.</p>
+              <p className="text-xs text-muted-foreground py-4 text-center">
+                {products.length === 0 ? "No products in the catalogue yet." : "No products match your search."}
+              </p>
             ) : (
               <div className="max-h-[60vh] overflow-y-auto space-y-1">
                 {filtered.map((p) => (
@@ -650,15 +722,38 @@ export default function CatalogueProductStudio() {
                       <CardTitle className="text-sm flex items-center gap-2">
                         <Wand2 size={14} /> Governance workflow
                       </CardTitle>
-                      {currentPersistedDraft && (
-                        <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
-                          {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} · v{currentPersistedDraft.version_number}
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {hasUnsavedChanges && (
+                          <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40">
+                            <PencilLine size={10} className="mr-1" /> Unsaved changes
+                          </Badge>
+                        )}
+                        {currentPersistedDraft && (
+                          <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
+                            {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} · v{currentPersistedDraft.version_number}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                     <CardDescription className="text-[11px]">
                       Workflow actions always act on the currently displayed saved draft for this product.
                     </CardDescription>
+
+                    {currentPersistedDraft && (currentPersistedDraft.status === "APPROVED" || currentPersistedDraft.status === "REJECTED") && currentPersistedDraft.reviewed_at && (
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                        <UserRound size={12} />
+                        {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} by{" "}
+                        {currentPersistedDraft.reviewed_by ? (actorLabels[currentPersistedDraft.reviewed_by] ?? "…") : "unknown"} on{" "}
+                        {new Date(currentPersistedDraft.reviewed_at).toLocaleString()}
+                      </p>
+                    )}
+
+                    {currentPersistedDraft?.status === "REJECTED" && currentPersistedDraft.rejection_reason && (
+                      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2.5 text-[11px] text-foreground">
+                        <span className="font-semibold text-destructive">Rejection reason: </span>
+                        {currentPersistedDraft.rejection_reason}
+                      </div>
+                    )}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <Button type="button" size="sm" disabled={workflowDisabled || textLocked} onClick={handleSaveDraft}>
@@ -722,25 +817,40 @@ export default function CatalogueProductStudio() {
 
                   {currentPersistedDraft && (
                     <CardContent>
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-1">
                         <History size={14} className="text-muted-foreground" />
                         <span className="text-xs font-semibold text-foreground">
                           History / audit — v{currentPersistedDraft.version_number}
                         </span>
                       </div>
+                      <p className="text-[10px] text-muted-foreground mb-2">
+                        Scoped to this version only. Reasons from a prior rejected version, if any, carry forward
+                        into the "CREATE_NEW_VERSION" entry below.
+                      </p>
                       {auditLog.length === 0 ? (
                         <p className="text-xs text-muted-foreground py-2">No actions recorded yet.</p>
                       ) : (
                         <div className="space-y-1.5">
-                          {auditLog.map((entry) => (
-                            <div key={entry.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-[11px]">
-                              <span className="font-semibold text-foreground">{entry.action}</span>
-                              <span className="text-muted-foreground">
-                                {entry.from_status ?? "—"} → {entry.to_status ?? "—"}
-                              </span>
-                              <span className="text-muted-foreground">{new Date(entry.created_at).toLocaleString()}</span>
-                            </div>
-                          ))}
+                          {auditLog.map((entry) => {
+                            const reason =
+                              auditMetadataString(entry, "rejection_reason") ??
+                              auditMetadataString(entry, "previous_version_rejection_reason");
+                            return (
+                              <div key={entry.id} className="rounded-lg border border-border px-3 py-2 text-[11px] space-y-1">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <span className="font-semibold text-foreground">{entry.action}</span>
+                                  <span className="text-muted-foreground">
+                                    {entry.from_status ?? "—"} → {entry.to_status ?? "—"}
+                                  </span>
+                                  <span className="text-muted-foreground">{new Date(entry.created_at).toLocaleString()}</span>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
+                                  <span>{entry.actor_id ? (actorLabels[entry.actor_id] ?? "…") : "—"}</span>
+                                  {reason && <span className="text-foreground">Reason: {reason}</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </CardContent>
