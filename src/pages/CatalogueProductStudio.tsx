@@ -72,8 +72,11 @@ type CatalogueProductStudioProduct = DraftProductInput & {
   is_catalogue_ready: boolean | null;
 };
 
+// b2b_price and carton_dimensions_cm are not present on production's products table
+// (schema drift from the AI-Studio reference implementation). Both fields are optional
+// everywhere they're consumed downstream, so omitting them from the select is safe.
 const PRODUCT_SELECT =
-  "id, product_name, sku, category, subcategory, description, short_description, hero_image_url, mrp, b2b_price, b2b_uom, pack_size, net_weight_g, carton_qty, master_carton_qty, pcs_per_carton, carton_dimensions_cm, moq_text, moq_value, moq_uom, shelf_life_days, storage_instructions, temperature_requirement, hsn_code, gst_rate, is_active, is_catalogue_ready";
+  "id, product_name, sku, category, subcategory, description, short_description, hero_image_url, mrp, b2b_uom, pack_size, net_weight_g, carton_qty, master_carton_qty, pcs_per_carton, moq_text, moq_value, moq_uom, shelf_life_days, storage_instructions, temperature_requirement, hsn_code, gst_rate, is_active, is_catalogue_ready";
 
 interface EditorState {
   productId: string;
