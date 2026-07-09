@@ -242,7 +242,7 @@ export function resolveCentralLegacyProductName(fields: {
   return "Untitled Product";
 }
 
-function buildDimensionsText(form: Record<string, unknown>): string | null {
+export function buildDimensionsText(form: Record<string, unknown>): string | null {
   if (form.product_dimensions_cm) return String(form.product_dimensions_cm);
   if (form.dimensions) return String(form.dimensions);
   const l = form.dimension_l_cm;

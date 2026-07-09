@@ -9,11 +9,11 @@ import {
   type AliasSeed,
 } from "@/features/productLanguage/aliasSeedRules";
 import { resolveAiComplianceResponse } from "@/shared/ai/complianceSuggestions";
-import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import {
   resolveFastCreateSkuCodes,
   type FastCreateSkuCodeSet,
 } from "./fastCreateSkuCodes";
+import { sanitizeAiFragments } from "./aiOutputSanitizer";
 
 export type FastCreateSuggestions = {
   formPatch: Record<string, unknown>;
@@ -167,10 +167,12 @@ export async function enrichSuggestionsWithAi(
       });
       if (resp.ok) {
         const text = await resp.text();
-        const parsed = text
+        const rawFragments = text
           .split(/[,\n]/)
-          .map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""))
-          .filter((s) => s.length > 1 && s.length < 40);
+          .map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
+        // The chat endpoint streams raw JSON chunks; sanitize before treating any
+        // fragment as a real alias (see aiOutputSanitizer.ts for what this rejects).
+        const parsed = sanitizeAiFragments(rawFragments);
         if (parsed.length) {
           const merged = [...next.aliases];
           const seen = new Set(merged.map((a) => a.alias.toLowerCase()));
