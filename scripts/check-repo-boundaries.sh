@@ -51,8 +51,10 @@ fi
 #    Pre-existing legacy content (predating the ownership split) is reported
 #    as a warning only — see docs/repo-ownership-guardrails.md. Only NEW
 #    migration files, new Edge Function files, or newly added DDL statements
-#    (compared against the base branch) are hard failures, since that is
-#    what actually reintroduces schema ownership going forward.
+#    are hard failures, since that is what actually reintroduces schema
+#    ownership going forward. Untracked new files are checked unconditionally
+#    (no base ref needed); committed/staged additions and DDL diffs are
+#    checked against the base branch when it can be resolved.
 # ---------------------------------------------------------------------------
 DDL_PATTERNS=(
   "CREATE TABLE"
@@ -89,26 +91,36 @@ if [ -d "supabase/functions" ]; then
   fi
 fi
 
+# Untracked new files under supabase/migrations or supabase/functions — this
+# check needs no base ref at all (an untracked file has no history to diff
+# against) and must always run, so a missing/unresolvable base ref can never
+# let a new schema/function file slip through the local pre-PR gate.
+untracked_migrations="$(git ls-files --others --exclude-standard -- supabase/migrations 2>/dev/null | grep -E '\.sql$' || true)"
+if [ -n "$untracked_migrations" ]; then
+  echo "BOUNDARY VIOLATION: untracked Supabase migration file(s) — schema ownership belongs to oasis-supabase-core:"
+  echo "$untracked_migrations" | sed 's/^/  /'
+  violations=$((violations + 1))
+fi
+
+untracked_functions="$(git ls-files --others --exclude-standard -- supabase/functions 2>/dev/null || true)"
+if [ -n "$untracked_functions" ]; then
+  echo "BOUNDARY VIOLATION: untracked Supabase Edge Function file(s) — Edge Function ownership belongs to oasis-supabase-core:"
+  echo "$untracked_functions" | sed 's/^/  /'
+  violations=$((violations + 1))
+fi
+
 if [ "$HAVE_BASE" -eq 1 ]; then
-  # New migration files since the base branch — committed, staged, or still
-  # untracked in the working tree (untracked files never show up in `git
-  # diff`, so they need a separate `git ls-files --others` pass; this is what
-  # makes the check useful as a *pre*-commit, pre-PR gate too).
-  new_migrations="$( { \
-    git diff --name-only --diff-filter=A "${BASE_REF}" -- supabase/migrations 2>/dev/null; \
-    git ls-files --others --exclude-standard -- supabase/migrations 2>/dev/null; \
-  } | grep -E '\.sql$' | sort -u || true )"
+  # New migration files committed or staged since the base branch. (Untracked
+  # new files are already covered above, independent of base-ref resolution.)
+  new_migrations="$(git diff --name-only --diff-filter=A "${BASE_REF}" -- supabase/migrations 2>/dev/null | grep -E '\.sql$' || true)"
   if [ -n "$new_migrations" ]; then
     echo "BOUNDARY VIOLATION: new Supabase migration file(s) added — schema ownership belongs to oasis-supabase-core:"
     echo "$new_migrations" | sed 's/^/  /'
     violations=$((violations + 1))
   fi
 
-  # New Edge Function files since the base branch (committed, staged, or untracked).
-  new_functions="$( { \
-    git diff --name-only --diff-filter=A "${BASE_REF}" -- supabase/functions 2>/dev/null; \
-    git ls-files --others --exclude-standard -- supabase/functions 2>/dev/null; \
-  } | sort -u || true )"
+  # New Edge Function files committed or staged since the base branch.
+  new_functions="$(git diff --name-only --diff-filter=A "${BASE_REF}" -- supabase/functions 2>/dev/null || true)"
   if [ -n "$new_functions" ]; then
     echo "BOUNDARY VIOLATION: new Supabase Edge Function file(s) added — Edge Function ownership belongs to oasis-supabase-core:"
     echo "$new_functions" | sed 's/^/  /'
@@ -129,7 +141,7 @@ if [ "$HAVE_BASE" -eq 1 ]; then
     done
   fi
 else
-  echo "NOTE: base ref \"${BASE_REF}\" not available — skipping new-migration/DDL diff check (nothing to compare against)."
+  echo "NOTE: base ref \"${BASE_REF}\" not available — skipping tracked-file diff/DDL checks (nothing to compare against). Untracked-file checks above still ran."
 fi
 
 # ---------------------------------------------------------------------------
