@@ -289,14 +289,11 @@ export default function CatalogueProductStudio() {
   }, [products, search]);
 
   const selected = useMemo(() => products.find((p) => p.id === selectedId) || null, [products, selectedId]);
-  const readiness: ReadinessResult | null = useMemo(
-    () => (selected ? computeCatalogueProductReadiness(selected) : null),
-    [selected],
-  );
-  const packagingCategories = useMemo(
-    () => readiness?.categories.filter((c) => c.group === "packaging") ?? [],
-    [readiness],
-  );
+  // readiness/packagingCategories are computed further down, once mediaSummary (below) is
+  // available — the hero-image readiness check must agree with the same media authority the
+  // anchor and Media tab use (Bugbot-caught: computeCatalogueProductReadiness() previously only
+  // ever saw the raw hero_image_url column, so a product could show "Hero image Present" in the
+  // anchor while readiness/Build Meter still flagged hero as missing).
 
   // Editor state lives only in local component state until explicitly saved. Keyed by productId so a
   // product switch can never render or copy the previous product's drafts.
@@ -491,6 +488,25 @@ export default function CatalogueProductStudio() {
   const mediaSummary = useMemo(
     () => summarizeCatalogueMedia(selected, mediaRows),
     [selected, mediaRows],
+  );
+
+  // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
+  // untouched — it just needs an accurate hero_image_url to check. mediaSummary.heroUrl (the same
+  // media-authority resolution the anchor/Media tab use) is fed in ahead of the raw column, so
+  // readiness/Build Meter can never disagree with what the operator sees elsewhere on this page.
+  const readiness: ReadinessResult | null = useMemo(
+    () =>
+      selected
+        ? computeCatalogueProductReadiness({
+            ...selected,
+            hero_image_url: mediaSummary.heroUrl ?? selected.hero_image_url,
+          })
+        : null,
+    [selected, mediaSummary.heroUrl],
+  );
+  const packagingCategories = useMemo(
+    () => readiness?.categories.filter((c) => c.group === "packaging") ?? [],
+    [readiness],
   );
 
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
