@@ -49,6 +49,7 @@ export function packagingHierarchyFromForm(form: Record<string, unknown>): Packa
     kgPerTray,
     traysPerMasterCarton,
     packsPerCarton,
+    pcsPerPack,
     allowPartialPack: false,
     allowPartialCarton: false,
     roundingRule: "nearest",

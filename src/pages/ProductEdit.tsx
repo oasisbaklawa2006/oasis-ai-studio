@@ -5,6 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { LabelReadinessPanel } from "@/components/LabelReadinessPanel";
 import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
+import {
+  clearFastCreateDraft,
+  fastCreateFormPatchFromDraft,
+  loadFastCreateDraft,
+} from "@/features/fastCreate/fastCreateDraft";
+import { saleTypeFromForm } from "@/features/productAuthority/saleType";
+import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
+import {
+  catalogueReadyBlockedMessage,
+  evaluateCatalogueReadyGate,
+} from "@/features/productAuthority/catalogueReadyGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -733,6 +744,21 @@ const ProductEdit = () => {
     })();
   }, [isNew, duplicateFrom]);
 
+  // Fast Create → Full Editor handoff: a saved Fast Create session draft pre-fills the
+  // new-product form (name, category, sale-type class, packaging, prices, image, SKU)
+  // so the operator is never asked for the same data twice.
+  useEffect(() => {
+    if (!isNew || duplicateFrom) return;
+    const fastDraft = loadFastCreateDraft();
+    if (!fastDraft || !fastDraft.productName.trim()) return;
+    const patch = fastCreateFormPatchFromDraft(fastDraft);
+    setForm((prev: any) => ({ ...prev, ...patch }));
+    setDirty(true);
+    toast.success("Pre-filled from your Fast Create draft.");
+    // Consumed — keep session storage clean so a later fresh product doesn't inherit it.
+    clearFastCreateDraft();
+  }, [isNew, duplicateFrom]);
+
   useEffect(() => {
     let mounted = true;
 
@@ -783,6 +809,21 @@ const ProductEdit = () => {
   // Deliberately separate from readinessSnapshot/catalogue readiness above — see
   // labelReadiness.ts docblock for why they must never be merged into one toggle.
   const labelReadiness = useMemo(() => computeLabelReadiness(form), [form]);
+
+  // Hard gate for the Catalogue-ready toggle — Active stays separate and ungated.
+  const catalogueReadyGate = useMemo(
+    () =>
+      evaluateCatalogueReadyGate({
+        sku: form.sku,
+        saleType: saleTypeFromForm(form),
+        pricing: resolvePricing(form, channelPrices),
+        packagingPresent: !!(form.packaging_code || form.pcs_per_pack || form.pack_size),
+        heroImageUrl: readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url,
+        truthScore: readinessSnapshot?.readiness.score ?? null,
+        truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
+      }),
+    [form, channelPrices, readinessSnapshot],
+  );
 
   const applyMediaAuthority = async (
     productId: string,
@@ -2197,8 +2238,24 @@ const ProductEdit = () => {
 
             <div className="flex items-center justify-between">
               <Label>Catalogue-ready</Label>
-              <Switch checked={!!form.is_catalogue_ready} onCheckedChange={(v) => set("is_catalogue_ready", v)} />
+              <Switch
+                checked={!!form.is_catalogue_ready}
+                onCheckedChange={(v) => {
+                  if (v && !catalogueReadyGate.allowed) {
+                    toast.error(catalogueReadyBlockedMessage(catalogueReadyGate));
+                    return;
+                  }
+                  set("is_catalogue_ready", v);
+                }}
+              />
             </div>
+            {!catalogueReadyGate.allowed && !form.is_catalogue_ready && (
+              <ul className="text-[11px] text-amber-700 dark:text-amber-400 space-y-0.5 list-disc pl-4">
+                {catalogueReadyGate.blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
 
             <div className="text-xs text-muted-foreground border-t pt-3 space-y-1">
               <div>{labelStatusInfoLine(String(form.label_status ?? "draft"))}</div>

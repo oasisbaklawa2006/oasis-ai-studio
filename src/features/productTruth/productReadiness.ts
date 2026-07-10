@@ -18,6 +18,7 @@ import {
   mediaMissingNote,
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { resolveProductHeroUrl } from "@/lib/productImage";
+import { isPackBasedSelling } from "@/features/productAuthority/packLogic";
 import {
   productMediaContextFromForm,
   type ProductMediaRow,
@@ -97,12 +98,16 @@ function evalPricing(input: ProductTruthInput): DimensionStatus {
   const approvedPrice = prices.find((p) => p.priceStatus === "approved");
   const pending = prices.some((p) => p.priceStatus === "pending_approval");
   const hasAny = prices.length > 0;
-  const complete = !!approvedPrice && !priceBlocksPublish(approvedPrice);
+  const channelComplete = !!approvedPrice && !priceBlocksPublish(approvedPrice);
+  // Products carry legacy/Central-owned mrp / price_b2b values that this app never writes
+  // but must still recognize — otherwise a product with real prices reads "pricing missing".
+  const fallbackComplete = !!(input.fallbackPrices?.mrp || input.fallbackPrices?.b2bPrice);
+  const complete = channelComplete || fallbackComplete;
   return {
     dimension: "pricing_status",
-    badge: badgeFor(complete, { approved: complete, pending, legacy: input.isLegacy && !hasAny }),
+    badge: badgeFor(complete, { approved: channelComplete, pending, legacy: input.isLegacy && !hasAny }),
     complete,
-    note: complete ? undefined : "Approved channel price required",
+    note: complete ? undefined : "Approved channel price or product MRP/B2B price required",
   };
 }
 
@@ -118,12 +123,21 @@ function evalUom(input: ProductTruthInput): DimensionStatus {
 
 function evalPackaging(input: ProductTruthInput): DimensionStatus {
   const chain = validateConversionRuleChain(input.packaging ?? {});
-  const complete = chain.valid && !!(input.packaging?.piecesPerKg || input.packaging?.gramsPerPiece);
+  // Pack-based products (ready packs, boxes, jars) complete via pack contents —
+  // the chain's pcs ↔ kg requirement only applies to loose / weight-based selling.
+  const packChainMessages = chain.messages.filter((m) => !m.includes("pcs ↔ kg"));
+  const complete = input.packBasedSelling
+    ? packChainMessages.length === 0 && !!input.packaging?.pcsPerPack
+    : chain.valid && !!(input.packaging?.piecesPerKg || input.packaging?.gramsPerPiece);
   return {
     dimension: "packaging_status",
     badge: badgeFor(complete, { legacy: input.isLegacy }),
     complete,
-    note: complete ? undefined : chain.messages[0] ?? "Packaging conversion rules incomplete",
+    note: complete
+      ? undefined
+      : input.packBasedSelling
+        ? packChainMessages[0] ?? "Qty per pack missing"
+        : chain.messages[0] ?? "Packaging conversion rules incomplete",
   };
 }
 
@@ -292,5 +306,22 @@ export function productTruthInputFromForm(
     moqRules: opts?.moqRules,
     mediaAssets,
     mediaContext,
+    fallbackPrices: {
+      mrp: positiveNumOrNull(form.mrp),
+      b2bPrice:
+        positiveNumOrNull(form.b2b_price) ??
+        positiveNumOrNull(form.price_b2b) ??
+        positiveNumOrNull(form.b2b_price_inr),
+      exportPrice: positiveNumOrNull(form.export_price),
+    },
+    packBasedSelling: isPackBasedSelling(
+      (form.primary_uom as string) ?? (form.retail_uom as string) ?? null,
+    ),
   };
+}
+
+function positiveNumOrNull(v: unknown): number | null {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }

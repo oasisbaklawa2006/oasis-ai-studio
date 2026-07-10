@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { BuildMeterBar } from "@/components/BuildMeterBar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -15,8 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Zap, ImagePlus, ArrowRight, Trash2 } from "lucide-react";
+import { Loader2, Sparkles, Zap, ImagePlus, ArrowRight, Trash2, Plus } from "lucide-react";
 import {
   FAST_CREATE_CATEGORIES,
   type FastCreateCategoryKey,
@@ -26,6 +28,7 @@ import {
   enrichSuggestionsWithAi,
   type FastCreateSuggestions,
 } from "@/features/fastCreate/fastCreateSuggestions";
+import { sanitizeAiFragments } from "@/features/fastCreate/aiOutputSanitizer";
 import { uploadFastCreateHero } from "@/features/fastCreate/uploadFastCreateHero";
 import {
   FAST_CREATE_SKU_BLOCK_MESSAGE,
@@ -33,97 +36,97 @@ import {
   saveFastCreateProduct,
 } from "@/features/fastCreate/saveFastCreateProduct";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
+import {
+  clearFastCreateDraft,
+  emptyFastCreateDraft,
+  fastCreateFormPatchFromDraft,
+  fastCreateReadinessCategories,
+  fastCreateReadinessScore,
+  loadFastCreateDraft,
+  saveFastCreateDraft,
+  type FastCreateDraftSnapshot,
+} from "@/features/fastCreate/fastCreateDraft";
+import { SALE_TYPES, getSaleTypeRequirements, type SaleType } from "@/features/productAuthority/saleType";
+import { getBuildMeterStatus } from "@/features/productAuthority/buildMeter";
+import { fetchActiveSkuCodeRules, type SkuCodeRule } from "@/lib/skuCodeRules";
 import { probeProductMediaBucket, MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
 import { CATEGORY_PREFEED_DISCLAIMER } from "@/features/productDefaults/categoryPrefeed";
 
-const FAST_CREATE_DRAFT_STORAGE_KEY = "oasis-fast-create-draft-v1";
-
-type FastCreateDraftSnapshot = {
-  productName: string;
-  categoryKey: FastCreateCategoryKey;
-  heroUrl: string | null;
-  resolvedSku: string | null;
-  suggestions: FastCreateSuggestions | null;
-};
-
-function loadFastCreateDraft(): FastCreateDraftSnapshot | null {
-  try {
-    const raw = sessionStorage.getItem(FAST_CREATE_DRAFT_STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as FastCreateDraftSnapshot;
-  } catch {
-    return null;
-  }
-}
-
-function saveFastCreateDraft(snapshot: FastCreateDraftSnapshot) {
-  try {
-    sessionStorage.setItem(FAST_CREATE_DRAFT_STORAGE_KEY, JSON.stringify(snapshot));
-  } catch {
-    /* sessionStorage unavailable — draft simply won't survive navigation */
-  }
-}
-
-function clearFastCreateDraft() {
-  try {
-    sessionStorage.removeItem(FAST_CREATE_DRAFT_STORAGE_KEY);
-  } catch {
-    /* ignore */
-  }
-}
+/** Sentinel for "the correct packaging is not in the taxonomy yet" — never a real code. */
+const PACKAGING_MISSING_SENTINEL = "__missing__";
 
 const FastCreateProduct = () => {
   const nav = useNavigate();
   const { roles } = useAuth();
-  const [productName, setProductName] = useState("");
-  const [categoryKey, setCategoryKey] = useState<FastCreateCategoryKey>("baklawa");
-  const [heroUrl, setHeroUrl] = useState<string | null>(null);
+  const [draft, setDraft] = useState<FastCreateDraftSnapshot>(emptyFastCreateDraft());
   const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [suggestions, setSuggestions] = useState<FastCreateSuggestions | null>(null);
-  const [resolvedSku, setResolvedSku] = useState<string | null>(null);
   const [skuError, setSkuError] = useState<string | null>(null);
   const [bucketStatus, setBucketStatus] = useState<string | null>(null);
   const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [restoredFromDraft, setRestoredFromDraft] = useState(false);
+  const [packagingRules, setPackagingRules] = useState<SkuCodeRule[]>([]);
+  const [packagingRulesError, setPackagingRulesError] = useState<string | null>(null);
+  const [addOptionOpen, setAddOptionOpen] = useState(false);
+  const [newOptionCode, setNewOptionCode] = useState("");
+  const [newOptionLabel, setNewOptionLabel] = useState("");
+  const [addingOption, setAddingOption] = useState(false);
+
+  const patchDraft = (patch: Partial<FastCreateDraftSnapshot>) =>
+    setDraft((prev) => ({ ...prev, ...patch }));
 
   useEffect(() => {
     probeProductMediaBucket().then((r) => {
-      if (r.status !== "available") {
-        setBucketStatus(r.message);
-      }
+      if (r.status !== "available") setBucketStatus(r.message);
     });
+  }, []);
+
+  const loadPackagingOptions = async () => {
+    const { rules, error } = await fetchActiveSkuCodeRules();
+    setPackagingRules(rules.filter((r) => r.code_type === "packaging"));
+    setPackagingRulesError(error);
+  };
+
+  useEffect(() => {
+    void loadPackagingOptions();
   }, []);
 
   // Restore a preserved Fast Create draft (e.g. after an accidental navigation) once on mount.
   useEffect(() => {
-    const draft = loadFastCreateDraft();
-    if (!draft) return;
-    setProductName(draft.productName);
-    setCategoryKey(draft.categoryKey);
-    setHeroUrl(draft.heroUrl);
-    setResolvedSku(draft.resolvedSku);
-    setSuggestions(draft.suggestions);
+    const stored = loadFastCreateDraft();
+    if (!stored) return;
+    setDraft(stored);
     setRestoredFromDraft(true);
   }, []);
 
-  const hasUnsavedWork = !!productName.trim() || !!suggestions || !!heroUrl;
+  const hasUnsavedWork = !!draft.productName.trim() || !!draft.suggestions || !!draft.heroUrl;
 
   // Keep the session draft in sync while the user works, so accidental navigation never loses it.
   useEffect(() => {
     if (!hasUnsavedWork) return;
-    saveFastCreateDraft({ productName, categoryKey, heroUrl, resolvedSku, suggestions });
-  }, [productName, categoryKey, heroUrl, resolvedSku, suggestions, hasUnsavedWork]);
+    saveFastCreateDraft(draft);
+  }, [draft, hasUnsavedWork]);
 
-  const categoryLabel = useMemo(
-    () => FAST_CREATE_CATEGORIES.find((c) => c.key === categoryKey)?.label ?? categoryKey,
-    [categoryKey],
+  const requirements = useMemo(
+    () => getSaleTypeRequirements(draft.saleType, { b2bEnabled: draft.b2bEnabled }),
+    [draft.saleType, draft.b2bEnabled],
   );
 
-  const shortSku = useMemo(() => (resolvedSku ? deriveShortSku(resolvedSku) : null), [resolvedSku]);
+  const readinessCategories = useMemo(() => fastCreateReadinessCategories(draft), [draft]);
+  const readinessScore = useMemo(() => fastCreateReadinessScore(readinessCategories), [readinessCategories]);
+  const meterStatus = getBuildMeterStatus(readinessScore);
+
+  const categoryLabel = useMemo(
+    () => FAST_CREATE_CATEGORIES.find((c) => c.key === draft.categoryKey)?.label ?? draft.categoryKey,
+    [draft.categoryKey],
+  );
+
+  const shortSku = useMemo(() => (draft.resolvedSku ? deriveShortSku(draft.resolvedSku) : null), [draft.resolvedSku]);
+
+  const packagingBlocked = requirements.requiresPackaging && !draft.packagingCode;
 
   const requestNavigation = (path: string) => {
     if (hasUnsavedWork) {
@@ -135,12 +138,8 @@ const FastCreateProduct = () => {
 
   const discardDraft = () => {
     clearFastCreateDraft();
-    setProductName("");
-    setCategoryKey("baklawa");
-    setHeroUrl(null);
+    setDraft(emptyFastCreateDraft());
     setHeroPreview(null);
-    setSuggestions(null);
-    setResolvedSku(null);
     setSkuError(null);
     setDiscardConfirmOpen(false);
     toast.success("Draft cleared.");
@@ -159,7 +158,7 @@ const FastCreateProduct = () => {
       if (heroPreview?.startsWith("blob:")) URL.revokeObjectURL(heroPreview);
       setHeroPreview(URL.createObjectURL(file));
       const url = await uploadFastCreateHero(file);
-      setHeroUrl(url);
+      patchDraft({ heroUrl: url });
       toast.success("Image uploaded");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Image upload failed");
@@ -170,34 +169,44 @@ const FastCreateProduct = () => {
 
   const resolveSkuPreview = async () => {
     setSkuError(null);
+    if (packagingBlocked) {
+      setSkuError("SKU blocked — select a valid packaging type first.");
+      patchDraft({ resolvedSku: null });
+      return null;
+    }
     try {
-      const result = await requireFastCreateSku(categoryKey, resolvedSku);
-      setResolvedSku(result.sku);
+      const result = await requireFastCreateSku(draft.categoryKey, draft.resolvedSku, draft.packagingCode);
+      patchDraft({ resolvedSku: result.sku });
       return result.sku;
     } catch (e) {
       const msg = e instanceof Error ? e.message : FAST_CREATE_SKU_BLOCK_MESSAGE;
       setSkuError(msg);
-      setResolvedSku(null);
+      patchDraft({ resolvedSku: null });
       return null;
     }
   };
 
   const generate = async () => {
-    if (!productName.trim()) {
+    if (!draft.productName.trim()) {
       toast.error("Enter a product name first.");
       return;
     }
     setGenerating(true);
     try {
-      const base = buildHeuristicSuggestions(productName.trim(), categoryKey);
+      const base = buildHeuristicSuggestions(draft.productName.trim(), draft.categoryKey);
       const enriched = await enrichSuggestionsWithAi(
         base,
-        productName.trim(),
+        draft.productName.trim(),
         String(base.formPatch.category ?? categoryLabel),
       );
-      setSuggestions(enriched);
+      patchDraft({
+        suggestions: enriched,
+        editedDescription: null,
+        editedAliases: null,
+        editedWhatsappKeywords: null,
+      });
       await resolveSkuPreview();
-      toast.success("Suggestions ready — review SKU and create.");
+      toast.success("Suggestions ready — review, edit, and create.");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not generate suggestions");
     } finally {
@@ -205,29 +214,48 @@ const FastCreateProduct = () => {
     }
   };
 
-  const create = async () => {
-    if (!productName.trim()) {
-      toast.error("Product name is required.");
-      return;
+  /** Applies operator edits over the generated suggestions before save/handoff. */
+  const effectiveSuggestions = (): FastCreateSuggestions | null => {
+    if (!draft.suggestions) return null;
+    const next: FastCreateSuggestions = {
+      ...draft.suggestions,
+      formPatch: { ...draft.suggestions.formPatch },
+    };
+    if (draft.editedDescription != null && draft.editedDescription.trim()) {
+      next.formPatch.description = draft.editedDescription.trim();
     }
-    if (!heroUrl) {
-      toast.error("Upload a product image.");
-      return;
+    if (draft.editedAliases != null) {
+      const parsed = sanitizeAiFragments(draft.editedAliases.split(/[,\n]/));
+      next.aliases = parsed.map((alias) => ({ alias, alias_type: "search_term" }));
     }
+    if (draft.editedWhatsappKeywords != null) {
+      next.whatsappKeywords = sanitizeAiFragments(draft.editedWhatsappKeywords.split(/[,\n]/));
+    }
+    return next;
+  };
 
+  const missingRequired = readinessCategories.filter((c) => c.state === "missing").map((c) => c.label);
+  const readyToCreate = missingRequired.length === 0 && !skuError && !packagingBlocked;
+
+  const create = async () => {
+    if (!readyToCreate) {
+      toast.error(`Cannot create yet. Missing: ${missingRequired.join(", ")}`);
+      return;
+    }
     setSaving(true);
     try {
-      const skuResult = await requireFastCreateSku(categoryKey, resolvedSku);
-      setResolvedSku(skuResult.sku);
+      const skuResult = await requireFastCreateSku(draft.categoryKey, draft.resolvedSku, draft.packagingCode);
+      patchDraft({ resolvedSku: skuResult.sku });
 
       const payload =
-        suggestions ?? buildHeuristicSuggestions(productName.trim(), categoryKey);
+        effectiveSuggestions() ?? buildHeuristicSuggestions(draft.productName.trim(), draft.categoryKey);
       const result = await saveFastCreateProduct({
         suggestions: payload,
-        heroUrl,
+        heroUrl: draft.heroUrl,
         roles,
-        categoryKey,
+        categoryKey: draft.categoryKey,
         resolvedSku: skuResult.sku,
+        extraFormPatch: fastCreateFormPatchFromDraft(draft),
       });
 
       clearFastCreateDraft();
@@ -238,7 +266,7 @@ const FastCreateProduct = () => {
         return;
       }
 
-      toast.success(`Product created (${result.sku}) — opening full editor.`);
+      toast.success(`Product draft created (${result.sku}) — opening full editor.`);
       nav(`/products/${result.id}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Create failed");
@@ -247,7 +275,42 @@ const FastCreateProduct = () => {
     }
   };
 
-  const readyToCreate = !!productName.trim() && !!heroUrl && !skuError;
+  const addPackagingOption = async () => {
+    const code = newOptionCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const label = newOptionLabel.trim();
+    if (!code || !label) {
+      toast.error("Both code and label are required.");
+      return;
+    }
+    setAddingOption(true);
+    try {
+      const { error } = await supabase.from("sku_code_rules").insert({
+        code_type: "packaging",
+        code,
+        label,
+        is_active: true,
+      });
+      if (error) throw new Error(error.message);
+      toast.success(`Packaging option "${label}" added.`);
+      setAddOptionOpen(false);
+      setNewOptionCode("");
+      setNewOptionLabel("");
+      await loadPackagingOptions();
+      patchDraft({ packagingCode: code, packagingLabel: label, resolvedSku: null });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not add option");
+    } finally {
+      setAddingOption(false);
+    }
+  };
+
+  const suggestions = draft.suggestions;
+  const aliasesText =
+    draft.editedAliases ?? (suggestions ? suggestions.aliases.map((a) => a.alias).join(", ") : "");
+  const keywordsText =
+    draft.editedWhatsappKeywords ?? (suggestions ? suggestions.whatsappKeywords.join(", ") : "");
+  const descriptionText =
+    draft.editedDescription ?? String(suggestions?.formPatch.description ?? "");
 
   return (
     <>
@@ -265,7 +328,7 @@ const FastCreateProduct = () => {
       )}
       <PageHeader
         title="Fast Create"
-        subtitle="Name · category · image — system fills compliance, search, and packaging defaults."
+        subtitle="Fast draft inputs — the system fills compliance, search, and packaging defaults; you review and create a draft."
         actions={
           <div className="flex gap-2">
             {hasUnsavedWork && (
@@ -283,22 +346,53 @@ const FastCreateProduct = () => {
         }
       />
 
+      <div className="mb-4">
+        <BuildMeterBar score={readinessScore} categories={readinessCategories} />
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {meterStatus.meetsThreshold
+            ? "Ready for catalogue draft review after create."
+            : "Draft only — complete the missing fields for catalogue draft review."}
+        </p>
+      </div>
+
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="card-elevated p-6 space-y-5">
           <div className="flex items-center gap-2 text-accent">
             <Zap className="h-5 w-5" />
-            <h2 className="font-display text-xl">3 required inputs</h2>
+            <h2 className="font-display text-xl">Fast draft inputs</h2>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sale type / product use</Label>
+            <select
+              className="w-full h-10 px-3 rounded-md border bg-background text-sm"
+              value={draft.saleType}
+              onChange={(e) => patchDraft({ saleType: e.target.value as SaleType, resolvedSku: null })}
+            >
+              {SALE_TYPES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+            {draft.saleType === "retail_ready_pack" && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={draft.b2bEnabled}
+                  onChange={(e) => patchDraft({ b2bEnabled: e.target.checked })}
+                />
+                Also sold B2B (requires B2B price)
+              </label>
+            )}
           </div>
 
           <div className="space-y-2">
             <Label>Product name</Label>
             <Input
-              value={productName}
-              onChange={(e) => {
-                setProductName(e.target.value);
-                setSuggestions(null);
-              }}
-              placeholder="Cashew Pyramid Baklawa / 6 pcs Gift Box"
+              value={draft.productName}
+              onChange={(e) => patchDraft({ productName: e.target.value, suggestions: null })}
+              placeholder="Misr 15 / Cashew Pyramid Gift Box"
               autoFocus
             />
           </div>
@@ -307,11 +401,14 @@ const FastCreateProduct = () => {
             <Label>Category</Label>
             <select
               className="w-full h-10 px-3 rounded-md border bg-background text-sm"
-              value={categoryKey}
-              onChange={(e) => {
-                setCategoryKey(e.target.value as FastCreateCategoryKey);
-                setSuggestions(null);
-              }}
+              value={draft.categoryKey}
+              onChange={(e) =>
+                patchDraft({
+                  categoryKey: e.target.value as FastCreateCategoryKey,
+                  suggestions: null,
+                  resolvedSku: null,
+                })
+              }
             >
               {FAST_CREATE_CATEGORIES.map((c) => (
                 <option key={c.key} value={c.key}>
@@ -321,43 +418,158 @@ const FastCreateProduct = () => {
             </select>
           </div>
 
-          <div className="space-y-2">
-            <Label>Product image</Label>
-            <div className="flex items-center gap-3">
-              <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-muted/50 text-sm">
-                <ImagePlus className="h-4 w-4" />
-                {uploading ? "Uploading…" : "Upload hero"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={uploading}
-                  onChange={(e) => onPickImage(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              {heroPreview && (
-                <img src={heroPreview} alt="" className="h-16 w-16 rounded object-cover border" />
+          {requirements.requiresPackaging && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Packaging type</Label>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setAddOptionOpen(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add option
+                </Button>
+              </div>
+              <select
+                className="w-full h-10 px-3 rounded-md border bg-background text-sm"
+                value={draft.packagingCode ?? (packagingRules.length ? "" : PACKAGING_MISSING_SENTINEL)}
+                onChange={(e) => {
+                  const code = e.target.value;
+                  if (code === PACKAGING_MISSING_SENTINEL || !code) {
+                    patchDraft({ packagingCode: null, packagingLabel: null, resolvedSku: null });
+                    return;
+                  }
+                  const rule = packagingRules.find((r) => r.code === code);
+                  patchDraft({ packagingCode: code, packagingLabel: rule?.label ?? code, resolvedSku: null });
+                }}
+              >
+                <option value="">Select packaging…</option>
+                {packagingRules.map((r) => (
+                  <option key={r.code} value={r.code}>
+                    {r.label} ({r.code})
+                  </option>
+                ))}
+                <option value={PACKAGING_MISSING_SENTINEL}>Packaging option missing — needs taxonomy update</option>
+              </select>
+              {packagingRulesError && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  Packaging options loaded with a warning: {packagingRulesError}
+                </p>
+              )}
+              {packagingBlocked && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  No packaging selected — SKU generation and create are blocked until packaging is chosen or a
+                  missing option is added to the taxonomy.
+                </p>
               )}
             </div>
-          </div>
+          )}
+
+          {requirements.requiresQtyPerPack && (
+            <div className="space-y-2">
+              <Label>Qty per pack (pcs)</Label>
+              <Input
+                type="number"
+                min="1"
+                value={draft.qtyPerPack}
+                onChange={(e) => patchDraft({ qtyPerPack: e.target.value })}
+                placeholder="6"
+              />
+            </div>
+          )}
+
+          {(requirements.requiresMrp || requirements.requiresB2bPrice) && (
+            <div className="grid grid-cols-2 gap-3">
+              {requirements.requiresMrp && (
+                <div className="space-y-2">
+                  <Label>MRP (₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={draft.mrp}
+                    onChange={(e) => patchDraft({ mrp: e.target.value })}
+                    placeholder="450"
+                  />
+                </div>
+              )}
+              {requirements.requiresB2bPrice && (
+                <div className="space-y-2">
+                  <Label>B2B price (₹)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={draft.b2bPrice}
+                    onChange={(e) => patchDraft({ b2bPrice: e.target.value })}
+                    placeholder="380"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {(requirements.requiresMrp || requirements.requiresB2bPrice) && (
+            <p className="text-[10px] text-muted-foreground">
+              Prices entered here carry into Full Editor and readiness checks — final channel pricing approval
+              still happens in Sales Pricing Rules.
+            </p>
+          )}
+
+          {requirements.requiresHeroImage && (
+            <div className="space-y-2">
+              <Label>Product image</Label>
+              <div className="flex items-center gap-3">
+                <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md border cursor-pointer hover:bg-muted/50 text-sm">
+                  <ImagePlus className="h-4 w-4" />
+                  {uploading ? "Uploading…" : "Upload hero"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={uploading}
+                    onChange={(e) => onPickImage(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+                {heroPreview && (
+                  <img src={heroPreview} alt="" className="h-16 w-16 rounded object-cover border" />
+                )}
+              </div>
+            </div>
+          )}
+
+          {requirements.requiresExportFields && (
+            <p className="text-[11px] text-muted-foreground rounded-md border border-dashed p-2">
+              Export details (export price, carton dimensions, CBM, country labels) — complete in Full Editor
+              after creating the draft.
+            </p>
+          )}
 
           <div className="rounded-md border border-dashed p-3 text-sm space-y-1">
             <div className="flex items-center justify-between gap-2">
               <span className="text-muted-foreground">Structured SKU (before save)</span>
-              <Button type="button" size="sm" variant="outline" onClick={resolveSkuPreview} disabled={generating}>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={resolveSkuPreview}
+                disabled={generating || packagingBlocked}
+              >
                 Refresh SKU
               </Button>
             </div>
-            {resolvedSku ? (
+            {draft.resolvedSku ? (
               <>
-                <div className="font-mono font-medium text-foreground">{resolvedSku}</div>
+                <div className="font-mono font-medium text-foreground">{draft.resolvedSku}</div>
                 <div className="flex items-center justify-between gap-2 pt-1 border-t border-dashed">
                   <span className="text-muted-foreground text-xs">Short SKU (staff/search)</span>
                   <span className="font-mono text-xs font-medium text-foreground">{shortSku}</span>
                 </div>
+                {draft.packagingLabel && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Packaging segment: {draft.packagingLabel} ({draft.packagingCode})
+                  </p>
+                )}
               </>
             ) : skuError ? (
               <p className="text-destructive text-xs">{skuError}</p>
+            ) : packagingBlocked ? (
+              <p className="text-xs text-amber-700 dark:text-amber-400">
+                SKU invalid — fix packaging/category before approval.
+              </p>
             ) : (
               <p className="text-xs text-muted-foreground">Generate suggestions or click Refresh to resolve via RPC.</p>
             )}
@@ -366,40 +578,49 @@ const FastCreateProduct = () => {
           <p className="text-xs text-muted-foreground">{CATEGORY_PREFEED_DISCLAIMER}</p>
 
           <div className="flex flex-wrap gap-2 pt-2">
-            <Button type="button" variant="secondary" disabled={generating || !productName.trim()} onClick={generate}>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={generating || !draft.productName.trim()}
+              onClick={generate}
+            >
               {generating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
               Generate suggestions
             </Button>
-            <Button type="button" disabled={!readyToCreate || saving} onClick={create}>
+            <Button
+              type="button"
+              disabled={!readyToCreate || saving}
+              onClick={create}
+              title={readyToCreate ? undefined : `Missing: ${missingRequired.join(", ")}`}
+            >
               {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-1" />}
-              Create product
+              Create Product Draft
             </Button>
           </div>
-
-          <p className="text-xs text-muted-foreground">
-            Target: under 60 seconds · ~3 fields · auto HSN/GST/UOM/shelf life · optional AI enrichment
-          </p>
+          {!readyToCreate && missingRequired.length > 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              Complete to create: {missingRequired.join(", ")}. Your input is kept as a session draft meanwhile.
+            </p>
+          )}
         </div>
 
         <div className="card-elevated p-6 space-y-4">
-          <h2 className="font-display text-xl">System suggestions</h2>
+          <h2 className="font-display text-xl">System suggestions (editable)</h2>
           {!suggestions ? (
             <p className="text-sm text-muted-foreground">
               Pick a category to preview defaults, then click <strong>Generate suggestions</strong> for
-              descriptions, aliases, WhatsApp keywords, and compliance fields.
+              descriptions, aliases, WhatsApp keywords, and compliance fields — all editable before create.
             </p>
           ) : (
             <div className="space-y-4 text-sm">
-              <div className="flex flex-wrap gap-1">
-                {suggestions.sources.defaults && <Badge variant="secondary">Category defaults</Badge>}
-                {suggestions.sources.heuristicAliases && <Badge variant="secondary">Alias seeds</Badge>}
-                {suggestions.sources.aiCompliance && <Badge variant="secondary">AI compliance</Badge>}
-                {suggestions.sources.aiAliases && <Badge variant="secondary">AI aliases</Badge>}
-              </div>
-
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Description</div>
-                <p>{String(suggestions.formPatch.description ?? "—")}</p>
+                <Textarea
+                  rows={3}
+                  className="text-xs"
+                  value={descriptionText}
+                  onChange={(e) => patchDraft({ editedDescription: e.target.value })}
+                />
               </div>
 
               <div className="grid sm:grid-cols-3 gap-3">
@@ -421,30 +642,36 @@ const FastCreateProduct = () => {
               </p>
 
               <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Aliases</div>
-                <div className="flex flex-wrap gap-1">
-                  {suggestions.aliases.map((a) => (
-                    <Badge key={a.alias} variant="outline">
-                      {a.alias}
-                    </Badge>
-                  ))}
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                  Aliases (comma-separated, editable)
                 </div>
+                <Textarea
+                  rows={2}
+                  className="text-xs"
+                  value={aliasesText}
+                  onChange={(e) => patchDraft({ editedAliases: e.target.value })}
+                />
               </div>
 
               <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">WhatsApp keywords</div>
-                <div className="flex flex-wrap gap-1">
-                  {suggestions.whatsappKeywords.map((k) => (
-                    <Badge key={k} variant="outline">
-                      {k}
-                    </Badge>
-                  ))}
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                  WhatsApp keywords (comma-separated, editable)
                 </div>
+                <Textarea
+                  rows={2}
+                  className="text-xs"
+                  value={keywordsText}
+                  onChange={(e) => patchDraft({ editedWhatsappKeywords: e.target.value })}
+                />
               </div>
 
               <div>
                 <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Label starter</div>
-                <p className="text-muted-foreground">{suggestions.labelStarter.net_weight_hint}</p>
+                <p className="text-muted-foreground">
+                  {draft.qtyPerPack && Number(draft.qtyPerPack) > 0
+                    ? `${draft.qtyPerPack} pcs ${String(suggestions.formPatch.primary_uom ?? "box")}${draft.packagingLabel ? ` · ${draft.packagingLabel}` : ""}`
+                    : suggestions.labelStarter.net_weight_hint}
+                </p>
               </div>
             </div>
           )}
@@ -455,7 +682,7 @@ const FastCreateProduct = () => {
               <div className="grid grid-cols-3 gap-2 text-xs">
                 {(["hsn_code", "gst_rate", "shelf_life_days", "primary_uom", "main_department"] as const).map(
                   (k) => {
-                    const d = FAST_CREATE_CATEGORIES.find((c) => c.key === categoryKey)?.defaults;
+                    const d = FAST_CREATE_CATEGORIES.find((c) => c.key === draft.categoryKey)?.defaults;
                     return (
                       <div key={k}>
                         <span className="text-muted-foreground">{k}: </span>
@@ -475,14 +702,12 @@ const FastCreateProduct = () => {
           <DialogHeader>
             <DialogTitle>Save draft and continue?</DialogTitle>
             <DialogDescription>
-              You have unsaved Fast Create input. Save it as a draft for this session before leaving?
+              You have unsaved Fast Create input. Save it as a draft for this session before leaving? Saved
+              drafts also pre-fill the Full Editor.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setPendingNavPath(null)}
-            >
+            <Button variant="outline" onClick={() => setPendingNavPath(null)}>
               Cancel
             </Button>
             <Button
@@ -490,6 +715,7 @@ const FastCreateProduct = () => {
               onClick={() => {
                 if (pendingNavPath) {
                   const path = pendingNavPath;
+                  clearFastCreateDraft();
                   setPendingNavPath(null);
                   nav(path);
                 }
@@ -499,7 +725,7 @@ const FastCreateProduct = () => {
             </Button>
             <Button
               onClick={() => {
-                saveFastCreateDraft({ productName, categoryKey, heroUrl, resolvedSku, suggestions });
+                saveFastCreateDraft(draft);
                 if (pendingNavPath) {
                   const path = pendingNavPath;
                   setPendingNavPath(null);
@@ -518,8 +744,8 @@ const FastCreateProduct = () => {
           <DialogHeader>
             <DialogTitle>Clear this draft?</DialogTitle>
             <DialogDescription>
-              This clears the product name, category, image, and generated suggestions from this session. This
-              cannot be undone.
+              This clears the product name, category, packaging, prices, image, and generated suggestions from
+              this session. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -528,6 +754,45 @@ const FastCreateProduct = () => {
             </Button>
             <Button variant="destructive" onClick={discardDraft}>
               Clear draft
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={addOptionOpen} onOpenChange={setAddOptionOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add packaging option</DialogTitle>
+            <DialogDescription>
+              Adds a new packaging option to the shared SKU taxonomy (sku_code_rules). Options used by existing
+              products are never deleted — they can only be disabled later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>Code (A–Z, 0–9)</Label>
+              <Input
+                value={newOptionCode}
+                onChange={(e) => setNewOptionCode(e.target.value)}
+                placeholder="PREMBOX"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Label</Label>
+              <Input
+                value={newOptionLabel}
+                onChange={(e) => setNewOptionLabel(e.target.value)}
+                placeholder="Branded Premium Box"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOptionOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={addPackagingOption} disabled={addingOption}>
+              {addingOption ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : null}
+              Add option
             </Button>
           </DialogFooter>
         </DialogContent>

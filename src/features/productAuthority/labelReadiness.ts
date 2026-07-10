@@ -59,6 +59,8 @@ export interface LabelReadinessProductInput {
   storage_instructions?: string | null;
   pack_size?: string | null;
   net_weight_g?: number | null;
+  /** Pieces per retail pack — lets pack declarations read as "6 pcs box · 500g". */
+  pcs_per_pack?: number | string | null;
 }
 
 const NUTRITION_REVIEW_NOTICE = "Draft nutrition data — requires compliance review.";
@@ -97,7 +99,15 @@ function buildQuantity(p: LabelReadinessProductInput): LabelReadinessCategory {
       nextAction: "Set both Pack Size and Net Weight for a complete declaration.",
     };
   }
-  return { key: "quantity", label: "Quantity / Pack Declaration", state: "pass", detail: `${p.pack_size} · ${p.net_weight_g}g`, nextAction: null };
+  const pcs = Number(p.pcs_per_pack);
+  const pcsPrefix = Number.isFinite(pcs) && pcs > 0 ? `${pcs} pcs · ` : "";
+  return {
+    key: "quantity",
+    label: "Quantity / Pack Declaration",
+    state: "pass",
+    detail: `${pcsPrefix}${p.pack_size} · ${p.net_weight_g}g`,
+    nextAction: null,
+  };
 }
 
 function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategory {
