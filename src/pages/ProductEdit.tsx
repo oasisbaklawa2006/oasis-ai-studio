@@ -648,9 +648,9 @@ const ProductEdit = () => {
 
   const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
   // ?tab= lets another page (e.g. Catalogue Product AI Studio's missing-field deep-link) open
-  // this product directly on the section that owns a given field. It only seeds the initial
-  // tab — once mounted, navigation within this page still goes through setTab/localStorage as
-  // before, so it never fights the operator's own tab clicks.
+  // this product directly on the section that owns a given field. Once mounted, navigation
+  // within this page still goes through setTab/localStorage as before, so it never fights the
+  // operator's own tab clicks.
   const deepLinkTab = searchParams.get("tab");
   const [tab, setTab] = useState<string>(() => {
     if (deepLinkTab) return deepLinkTab;
@@ -660,6 +660,23 @@ const ProductEdit = () => {
       return "identity";
     }
   });
+
+  // Bugbot-caught: the initializer above only seeds `tab` on first mount. Since React Router
+  // re-renders this same component instance (no remount) when only the id/tab params change —
+  // e.g. one deep link followed by another without leaving this page — a later `?tab=` was
+  // silently ignored. Re-apply it whenever a genuinely new id/tab pair arrives, tracked via a
+  // ref so it never re-fires for the operator's own subsequent tab clicks.
+  const appliedDeepLinkRef = useRef<{ id: string | undefined; tab: string | null }>({
+    id,
+    tab: deepLinkTab,
+  });
+  useEffect(() => {
+    const applied = appliedDeepLinkRef.current;
+    if (deepLinkTab && (deepLinkTab !== applied.tab || id !== applied.id)) {
+      setTab(deepLinkTab);
+    }
+    appliedDeepLinkRef.current = { id, tab: deepLinkTab };
+  }, [id, deepLinkTab]);
 
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);

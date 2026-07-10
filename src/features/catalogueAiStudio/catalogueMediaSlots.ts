@@ -19,13 +19,6 @@ export interface CatalogueMediaSlot {
 }
 
 /**
- * Required media slots for this product, with satisfied/missing status from the same approved-
- * media authority evaluateMediaReadiness() already uses (pending/draft/rejected rows never count
- * as satisfied — see buildSlot()'s `approved` check in mediaReadinessEngine.ts). "not_applicable"
- * is intentionally never emitted here: evaluateMediaReadiness()'s required-slot list already IS
- * the applicable set for this product's detected media profile — nothing outside it is surfaced.
- */
-/**
  * Missing required media slots always deep-link to this literal path — not through
  * catalogueStudioNavigation.ts's category-based fullEditorDeepLink(), which resolves to different
  * Full Editor sections per readiness category. Media has exactly one owner section regardless of
@@ -35,11 +28,24 @@ export function catalogueMediaTabDeepLink(productId: string): string {
   return `/products/${productId}?tab=media`;
 }
 
+/**
+ * Required media slots for this product, with satisfied/missing status from the same approved-
+ * media authority evaluateMediaReadiness() already uses (pending/draft/rejected rows never count
+ * as satisfied — see buildSlot()'s `approved` check in mediaReadinessEngine.ts). "not_applicable"
+ * is intentionally never emitted here: evaluateMediaReadiness()'s required-slot list already IS
+ * the applicable set for this product's detected media profile — nothing outside it is surfaced.
+ *
+ * legacyHeroForm is passed straight through to authoritativeMediaAssets()'s own fallback (Bugbot-
+ * caught: without it, a product with an approved legacy hero_image_url/media_status but zero
+ * product_media rows showed "Hero present" in the anchor/media preview and "Missing" here, since
+ * both read the same empty product_media fetch with no path to reconcile them).
+ */
 export function catalogueRequiredMediaSlots(
   product: ProductMediaContext,
   mediaRows: ProductMediaRow[],
+  legacyHeroForm?: Record<string, unknown>,
 ): CatalogueMediaSlot[] {
-  const assets = authoritativeMediaAssets(mediaRows);
+  const assets = authoritativeMediaAssets(mediaRows, legacyHeroForm);
   const readiness = evaluateMediaReadiness(product, assets);
   return readiness.slots
     .filter((slot) => slot.required)

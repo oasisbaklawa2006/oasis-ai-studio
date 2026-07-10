@@ -88,6 +88,7 @@ import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogue
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
   hero_image_url?: string | null;
+  media_status?: string | null;
   is_active: boolean | null;
   is_catalogue_ready: boolean | null;
   product_class?: string | null;
@@ -110,10 +111,10 @@ type CatalogueProductStudioProduct = DraftProductInput & {
 // that check has no way to know types.ts itself is stale.
 const PRODUCT_SELECT = [
   "id", "product_name", "sku", "category", "subcategory", "description", "short_description",
-  "hero_image_url", "mrp", "price_b2b", "b2b_uom", "pack_size", "net_weight_g", "carton_qty",
-  "master_carton_qty", "pcs_per_carton", "moq_text", "moq_value", "moq_uom", "shelf_life_days",
-  "storage_instructions", "temperature_requirement", "hsn_code", "gst_rate", "is_active",
-  "is_catalogue_ready", "product_class", "main_department", "packaging_code",
+  "hero_image_url", "media_status", "mrp", "price_b2b", "b2b_uom", "pack_size", "net_weight_g",
+  "carton_qty", "master_carton_qty", "pcs_per_carton", "moq_text", "moq_value", "moq_uom",
+  "shelf_life_days", "storage_instructions", "temperature_requirement", "hsn_code", "gst_rate",
+  "is_active", "is_catalogue_ready", "product_class", "main_department", "packaging_code",
 ].join(", ");
 
 /** Maps the raw price_b2b column onto the shared b2b_price field name every readiness/draft-generator consumer expects. */
@@ -520,6 +521,7 @@ export default function CatalogueProductStudio() {
               isLegacy: !selected.sku,
             },
             mediaLoadState.status === "loaded" ? mediaRows : [],
+            { hero_image_url: selected.hero_image_url, media_status: selected.media_status },
           )
         : [],
     [selected, mediaRows, mediaLoadState.status],

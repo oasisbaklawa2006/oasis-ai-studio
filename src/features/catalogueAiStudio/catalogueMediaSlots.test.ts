@@ -46,4 +46,32 @@ describe("catalogueRequiredMediaSlots", () => {
       expect(typeof slot.label).toBe("string");
     }
   });
+
+  // Bugbot-caught: a product with an approved legacy hero_image_url/media_status but zero
+  // product_media rows must not disagree with the anchor/media preview, which already falls back
+  // to that same legacy column via resolveProductCardHeroUrl().
+  it("falls back to the legacy hero_image_url/media_status when there are no product_media rows", () => {
+    const satisfied = catalogueRequiredMediaSlots({ productId: "p1" }, [], {
+      hero_image_url: "https://cdn.example/legacy-hero.jpg",
+      media_status: "approved",
+    });
+    expect(satisfied.some((s) => s.status === "satisfied")).toBe(true);
+  });
+
+  it("does not satisfy a slot from a legacy hero that isn't approved", () => {
+    const pending = catalogueRequiredMediaSlots({ productId: "p1" }, [], {
+      hero_image_url: "https://cdn.example/legacy-hero.jpg",
+      media_status: "pending_approval",
+    });
+    expect(pending.every((s) => s.status === "missing")).toBe(true);
+  });
+
+  it("product_media rows take priority over the legacy hero fallback when rows exist", () => {
+    const slots = catalogueRequiredMediaSlots(
+      { productId: "p1" },
+      [{ id: "h1", type: "hero_image", status: "pending_approval", file_url: "https://cdn.example/hero.jpg" }],
+      { hero_image_url: "https://cdn.example/legacy-hero.jpg", media_status: "approved" },
+    );
+    expect(slots.every((s) => s.status === "missing")).toBe(true);
+  });
 });
