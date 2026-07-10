@@ -278,6 +278,48 @@ A fourth Bugbot review pass found one more issue, a genuine and fully fixable on
     (`string_to_array(upper(btrim(sku)), '-')`, checking length = 6 and `[1] = 'OAS'`,
     taking `[5]`) across all three occurrences of the CTE.
 
+**Post-audit correction (2026-07-10, branch `fix/post-audit-product-authority-safety-2026-07-10`):**
+Item 9 above described the app's multi-row approved-pricing selection as fundamentally
+unfixable because `resolvePricing()` had no defined ordering. That has since changed:
+11. **Multi-row pricing selection is now a defined, deterministic rule (resolves item 9's
+    approximation):** `resolvePricing()` now delegates channel selection to
+    `getChannelPrice()`/`compareChannelPriceRows()` (`src/features/productTruth/
+    channelPricingMoqEngine.ts`) — the same authority already used by the readiness
+    snapshot, Central sync payload, Catalogue Builder, and the Channel Rules panel. The
+    rule: among approved, currently-valid (validity-window-respecting) rows for a
+    product+channel, the newest by `approved_at` wins; ties (including rows with no
+    `approved_at`) are broken by the lowest `id`. `product_pricing_rules` queries in
+    `ProductEdit.tsx` now also carry an explicit matching `.order()` for defense-in-depth,
+    though the app's selection no longer depends on query order to be correct.
+    `resolvePricing()` additionally exposes `reviewRequiredChannels` — populated when more
+    than one currently-valid approved row for the same product+channel disagrees in value —
+    which `pricingBlockers()` surfaces as an explicit blocker rather than silently trusting
+    the newest row. This audit's SQL was updated to match exactly: the former
+    `first_approved_pricing` CTE (best-effort, explicitly flagged as an approximation) was
+    replaced with `newest_approved_pricing` (an exact, provable reproduction of the new
+    rule) plus a `pricing_review_required` CTE surfacing the same disagreement diagnostic
+    as `blocker_mrp_review_required` / `blocker_b2b_price_review_required` /
+    `blocker_export_price_review_required` columns. Item 9's original "REVIEW_REQUIRED,
+    not trusted at face value" guidance is retained here for historical accuracy — it now
+    describes an explicit, queryable diagnostic instead of an unresolved gap. Audit A
+    remains UNVERIFIABLE overall (still not executed — see Environment Identity), so this
+    is a code/SQL alignment record, not new data evidence.
+
+**Schema gap confirmation — internal/not-for-sale intent (no fix in this PR):** NEW-2 above
+remains the authoritative treatment of this gap and is unchanged by the post-audit fix PR.
+Restated briefly per that PR's explicit "document only" scope:
+- Historical internal misclassification cannot be conclusively reconstructed because
+  `sale_type` has never been a persisted `products` column — there is no field to read the
+  original intent back from for products saved before, or outside, PR #75's Defect 2 guard.
+- `bom_required = true` and `main_department = 'packing_material'` are the only two
+  available signals, and both are weak/indirect (a `bom_required` product can still be
+  legitimately sold as a component) — the audit SQL's Audit C therefore classifies matches
+  as `HIGH_CONFIDENCE_REVIEW` / `POSSIBLE_REVIEW` candidates only, never as
+  `VERIFIED_MISCLASSIFIED`.
+- A durable fix would need a real `sale_type` (or `is_for_sale`) column — a schema/migration
+  change that belongs to a separately approved Supabase Core design task, not this frontend
+  PR. No schema, migration, or product data change was made here for this gap.
+
 ---
 
 ## 10. Catalogue-Ready Integrity Results (Audit A)

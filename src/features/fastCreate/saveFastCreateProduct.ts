@@ -17,16 +17,10 @@ import {
   productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
-import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
+import { assertStructuredSkuForSave, skuPackagingSegment } from "@/features/productAuthority/skuGuard";
 
 export const FAST_CREATE_SKU_BLOCK_MESSAGE =
   "Structured SKU could not be generated. Ensure sku_code_rules are configured and generate_oasis_sku RPC is deployed. Placeholder SKUs (DRAFT-*, OAS-FC-*) are blocked.";
-
-/** Packaging segment (5th of 6 dash-separated parts) of a structured OAS-DIV-CAT-SUBCAT-PKG-SEQ SKU. */
-function skuPackagingSegment(sku: string): string | null {
-  const parts = sku.trim().toUpperCase().split("-");
-  return parts.length === 6 && parts[0] === "OAS" ? parts[4] : null;
-}
 
 /** Resolve structured Oasis SKU for Fast Create — throws if RPC/rules unavailable. */
 export async function requireFastCreateSku(

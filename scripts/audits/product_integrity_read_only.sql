@@ -37,6 +37,17 @@
 --     - Pricing requirement by sale type: src/features/productAuthority/saleType.ts
 --         getSaleTypeRequirements() combined with
 --         src/features/productAuthority/pricingAuthority.ts pricingBlockers()
+--     - Multi-row approved pricing selection (UPDATED post-audit — see the "Correction
+--         record" in the companion report): previously an unordered Array.find(), so this
+--         SQL could only approximate it. Fixed to a defined, deterministic rule —
+--         newest currently-valid approved row by approved_at, ties broken by lowest id —
+--         implemented in getChannelPrice()/compareChannelPriceRows()
+--         (src/features/productTruth/channelPricingMoqEngine.ts) and used by
+--         resolvePricing() (src/features/productAuthority/pricingAuthority.ts). The CTEs
+--         below now reproduce that exact rule instead of an approximation, and also flag
+--         products where multiple currently-valid approved rows for the same
+--         product+channel disagree in value (review-required), mirroring
+--         pricingAuthority.ts's disagreesWithSelected().
 --     - Active packaging taxonomy: sku_code_rules WHERE code_type = 'packaging'
 --         AND is_active = true (src/lib/skuCodeRules.ts fetchActiveSkuCodeRules())
 --   Product Truth score (readinessSnapshot.readiness.score / maxScore) is
@@ -189,30 +200,42 @@ derived_hero AS (
 approved_pricing AS (
   -- Positivity filter mirrors pricingAuthority.ts's num() helper, which treats zero,
   -- negative, and non-numeric values as "missing" — an approved rule saved as 0 must
-  -- not satisfy a pricing blocker here just because a row exists.
+  -- not satisfy a pricing blocker here just because a row exists. The valid_from/
+  -- valid_until window mirrors isPriceEffective() (channelPricingMoqEngine.ts) — a
+  -- currently-expired or not-yet-effective approved row is not "currently valid".
   SELECT
     id,
     product_id,
     lower(price_channel) AS channel,
     coalesce(calculated_price, base_price) AS price_value,
-    created_at
+    approved_at
   FROM product_pricing_rules
   WHERE approval_status = 'approved'
     AND coalesce(calculated_price, base_price) > 0
+    AND (valid_from IS NULL OR valid_from <= now())
+    AND (valid_until IS NULL OR valid_until >= now())
 ),
-first_approved_pricing AS (
-  -- resolvePricing()'s channelOf(name) = approved.find(p => channel === name) takes the
-  -- FIRST approved row per channel in whatever order Supabase returned them — the app
-  -- issues no explicit .order(), so that row order is not formally guaranteed by
-  -- Postgres/PostgREST. This is a best-effort approximation (earliest created_at, ties
-  -- broken by lowest id) of "first returned," not a provable match to the app's actual
-  -- selection when multiple approved rows exist for the same product+channel. Flagged as
-  -- an approximation in the audit report, not a guaranteed reproduction like the rest of
-  -- this file's rules.
+newest_approved_pricing AS (
+  -- Exact reproduction of getChannelPrice()/compareChannelPriceRows()
+  -- (channelPricingMoqEngine.ts): newest approved_at first, ties (including rows with no
+  -- approved_at at all) broken by lowest id. This is now a defined, provable rule — not
+  -- an approximation — following the post-audit fix that gave resolvePricing() a
+  -- deterministic multi-row selection.
   SELECT DISTINCT ON (product_id, channel)
-    product_id, channel, price_value
+    product_id, channel, price_value, id
   FROM approved_pricing
-  ORDER BY product_id, channel, created_at ASC NULLS LAST, id ASC
+  ORDER BY product_id, channel, approved_at DESC NULLS LAST, id ASC
+),
+pricing_review_required AS (
+  -- A product+channel needs manual review when more than one currently-valid approved row
+  -- disagrees on price_value — mirrors pricingAuthority.ts's disagreesWithSelected(). The
+  -- newest row above is still used as the resolved value below; this is a diagnostic, not
+  -- a silent aggregation.
+  SELECT DISTINCT ap.product_id, ap.channel
+  FROM approved_pricing ap
+  JOIN newest_approved_pricing nap
+    ON nap.product_id = ap.product_id AND nap.channel = ap.channel
+  WHERE ap.id <> nap.id AND ap.price_value IS DISTINCT FROM nap.price_value
 ),
 pricing_summary AS (
   SELECT
@@ -220,11 +243,14 @@ pricing_summary AS (
     -- resolvePricing() derives MRP from the 'retail' channel only (channelOf("retail")),
     -- never from a channel literally named 'mrp' — pricingRuleRowToChannelPrice's
     -- isMrpChannel branch only ever populates a field the app never reads back out.
-    -- max() here is a no-op selector: first_approved_pricing has at most one row per
+    -- max() here is a no-op selector: newest_approved_pricing has at most one row per
     -- (product_id, channel) already.
     max(CASE WHEN ap.channel = 'retail' THEN ap.price_value END)          AS channel_mrp,
     max(CASE WHEN ap.channel = 'b2b' THEN ap.price_value END)             AS channel_b2b,
     max(CASE WHEN ap.channel = 'export' THEN ap.price_value END)         AS channel_export,
+    bool_or(rr.channel = 'retail')                                       AS mrp_review_required,
+    bool_or(rr.channel = 'b2b')                                          AS b2b_review_required,
+    bool_or(rr.channel = 'export')                                       AS export_review_required,
     -- product-row fallback prices, per pricingAuthority.ts resolvePricing().
     -- NOTE: resolvePricing() also checks form.price_b2b, but that key is not a real
     -- products column per the generated Supabase types (src/integrations/supabase/
@@ -237,7 +263,8 @@ pricing_summary AS (
     CASE WHEN coalesce(p.export_price, p.export_price_usd) > 0
       THEN coalesce(p.export_price, p.export_price_usd) END AS field_export
   FROM products p
-  LEFT JOIN first_approved_pricing ap ON ap.product_id = p.id
+  LEFT JOIN newest_approved_pricing ap ON ap.product_id = p.id
+  LEFT JOIN pricing_review_required rr ON rr.product_id = p.id
   GROUP BY p.id, p.mrp, p.b2b_price, p.b2b_price_inr,
            p.export_price, p.export_price_usd
 )
@@ -273,6 +300,14 @@ SELECT
     AND coalesce(ps.channel_b2b, ps.field_b2b) IS NULL)              AS blocker_b2b_price_missing,
   (req.customer_facing AND req.requires_export_price
     AND coalesce(ps.channel_export, ps.field_export) IS NULL)        AS blocker_export_price_missing,
+  -- Multiple currently-valid approved rows disagree — mirrors pricingBlockers()'s
+  -- reviewRequiredChannels handling, a diagnostic rather than a silently-picked value.
+  (req.customer_facing AND req.requires_mrp
+    AND coalesce(ps.mrp_review_required, false))                    AS blocker_mrp_review_required,
+  (req.customer_facing AND req.requires_b2b_price
+    AND coalesce(ps.b2b_review_required, false))                    AS blocker_b2b_price_review_required,
+  (req.customer_facing AND req.requires_export_price
+    AND coalesce(ps.export_review_required, false))                 AS blocker_export_price_review_required,
   (req.customer_facing AND req.requires_packaging
     AND NOT (p.packaging_code IS NOT NULL AND p.packaging_code <> '')) AS blocker_packaging_missing,
   (req.customer_facing AND req.requires_hero_image

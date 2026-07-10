@@ -39,6 +39,16 @@ export function isPilotSku(sku: string | null | undefined): boolean {
   return PILOT_SKUS.includes(String(sku).trim() as PilotSkuCode);
 }
 
+/**
+ * Packaging segment (5th of 6 dash-separated parts) of a structured
+ * OAS-DIV-CAT-SUBCAT-PKG-SEQ SKU. Deliberately looser than isStructuredOasisSku's regex —
+ * this only extracts a segment for cross-checking, it doesn't gate SKU validity.
+ */
+export function skuPackagingSegment(sku: string | null | undefined): string | null {
+  const parts = String(sku ?? "").trim().toUpperCase().split("-");
+  return parts.length === 6 && parts[0] === "OAS" ? parts[4] : null;
+}
+
 export type SkuGuardResult = { ok: true; sku: string } | { ok: false; reason: string };
 
 /**

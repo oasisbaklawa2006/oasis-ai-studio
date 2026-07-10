@@ -15,8 +15,10 @@ import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
-  hasPackagingTaxonomyCode,
+  packagingAuthorityFromRulesResult,
+  type PackagingTaxonomyAuthority,
 } from "@/features/productAuthority/catalogueReadyGate";
+import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -87,6 +89,7 @@ import {
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
+import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   mapMoqRules,
@@ -635,6 +638,10 @@ const ProductEdit = () => {
 
   const [form, setForm] = useState<any>(empty);
   const [loading, setLoading] = useState(false);
+  // Distinct from `loading` (which drives the "Saving…" save-button label) — this only
+  // tracks the initial product-row fetch, so Save stays disabled during that window
+  // without the button claiming a save is in progress (Defect 2).
+  const [productFetchPending, setProductFetchPending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [rpcContributorRole, setRpcContributorRole] = useState(false);
   const [languageTermsRefreshKey, setLanguageTermsRefreshKey] = useState(0);
@@ -659,6 +666,10 @@ const ProductEdit = () => {
   // resolves — the catalogue-ready gate must not judge a product on the empty
   // placeholder channelPrices/productMediaRows it starts render with.
   const [authorityLoaded, setAuthorityLoaded] = useState(isNew);
+  // `null` = the active packaging taxonomy (sku_code_rules where code_type = 'packaging')
+  // hasn't loaded yet — the catalogue-ready gate must never treat that as "packaging
+  // present" just because a form field is non-empty (Defect 1).
+  const [packagingAuthority, setPackagingAuthority] = useState<PackagingTaxonomyAuthority | null>(null);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
@@ -783,6 +794,34 @@ const ProductEdit = () => {
     };
   }, []);
 
+  // Active packaging taxonomy — a shared, product-independent authority, so it's loaded
+  // once per mount rather than per product id.
+  useEffect(() => {
+    let mounted = true;
+
+    fetchActiveSkuCodeRules()
+      .then((result) => {
+        if (!mounted) return;
+        // Log any advisory error regardless of outcome — fetchActiveSkuCodeRules() can
+        // still return usable rules (via its fallback) alongside a non-null primary-query
+        // error, which is worth surfacing even though the load itself succeeds.
+        if (result.error && import.meta.env.DEV) {
+          console.error("[ProductEdit] sku_code_rules load issue:", result.error);
+        }
+        const authority = packagingAuthorityFromRulesResult(result);
+        if (authority) setPackagingAuthority(authority);
+      })
+      .catch((error) => {
+        if (mounted && import.meta.env.DEV) {
+          console.error("[ProductEdit] sku_code_rules load failed:", error);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(tabKey, tab);
@@ -816,19 +855,45 @@ const ProductEdit = () => {
   // labelReadiness.ts docblock for why they must never be merged into one toggle.
   const labelReadiness = useMemo(() => computeLabelReadiness(form), [form]);
 
-  // Hard gate for the Catalogue-ready toggle — Active stays separate and ungated.
+  // Hard gate for the Catalogue-ready toggle — Active stays separate and ungated. Used for
+  // the visible blocker list and the save-time hard guard, both of which must treat "the
+  // packaging taxonomy authority hasn't loaded" as a real, active blocker (default
+  // behaviour) — the cost of a false block during that window is just a retry.
   const catalogueReadyGate = useMemo(
     () =>
       evaluateCatalogueReadyGate({
         sku: form.sku,
         saleType: saleTypeFromForm(form),
         pricing: resolvePricing(form, channelPrices),
-        packagingPresent: hasPackagingTaxonomyCode(form),
+        packagingCode: form.packaging_code,
+        packagingAuthority,
         heroImageUrl: readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url,
         truthScore: readinessSnapshot?.readiness.score ?? null,
         truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
       }),
-    [form, channelPrices, readinessSnapshot],
+    [form, channelPrices, packagingAuthority, readinessSnapshot],
+  );
+
+  // Same evaluation, but with `ignorePendingPackagingAuthority: true` — used only by the
+  // auto-clear effect below. A stalled/failed packaging taxonomy load must never block
+  // clearing readiness for *other*, independently-confirmed blockers (bad SKU, missing
+  // price, missing hero, ...); it must only suppress the specific packaging-related
+  // uncertainty (Bugbot-caught regression: the effect previously held off entirely
+  // whenever packagingAuthority was null, for any reason).
+  const autoClearGate = useMemo(
+    () =>
+      evaluateCatalogueReadyGate({
+        sku: form.sku,
+        saleType: saleTypeFromForm(form),
+        pricing: resolvePricing(form, channelPrices),
+        packagingCode: form.packaging_code,
+        packagingAuthority,
+        heroImageUrl: readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url,
+        truthScore: readinessSnapshot?.readiness.score ?? null,
+        truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
+        ignorePendingPackagingAuthority: true,
+      }),
+    [form, channelPrices, packagingAuthority, readinessSnapshot],
   );
 
   // A product that was already catalogue-ready must not silently stay ready once it
@@ -838,17 +903,18 @@ const ProductEdit = () => {
   useEffect(() => {
     // Skip while channel pricing / product media are still hydrating for an existing
     // product — the gate would otherwise judge a genuinely-ready product against the
-    // empty placeholder channelPrices/productMediaRows it starts render with and
-    // falsely clear it (Bugbot-flagged regression on this same fix).
+    // empty placeholder channelPrices/productMediaRows it starts render with and falsely
+    // clear it (Bugbot-flagged regression on this same fix). Packaging taxonomy loading
+    // state is handled inside autoClearGate itself, not here.
     if (!authorityLoaded) return;
-    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+    if (form.is_catalogue_ready && !autoClearGate.allowed) {
       set("is_catalogue_ready", false);
       toast.warning(
-        `Catalogue-ready was turned off — ${catalogueReadyBlockedMessage(catalogueReadyGate)}`,
+        `Catalogue-ready was turned off — ${catalogueReadyBlockedMessage(autoClearGate)}`,
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authorityLoaded, catalogueReadyGate.allowed, form.is_catalogue_ready]);
+  }, [authorityLoaded, autoClearGate.allowed, form.is_catalogue_ready]);
 
   const applyMediaAuthority = async (
     productId: string,
@@ -896,9 +962,22 @@ const ProductEdit = () => {
     await applyMediaAuthority(productId, data ?? [], opts);
   };
 
+  // Explicit ordering isn't load-bearing for correctness anymore — resolvePricing() /
+  // getChannelPrice() sort deterministically client-side regardless of arrival order — but
+  // it keeps the raw rows presented to the rest of the app (ChannelPricingRules table,
+  // Product Truth panels) in the same newest-first, stably-tie-broken order as the
+  // authority selection itself (Defect 3).
+  const orderedPricingRulesQuery = (productId: string) =>
+    supabase
+      .from("product_pricing_rules")
+      .select("*")
+      .eq("product_id", productId)
+      .order("approved_at", { ascending: false, nullsFirst: false })
+      .order("id", { ascending: true });
+
   const loadChannelAuthority = async (productId: string) => {
     const [pricingRes, moqRes] = await Promise.all([
-      supabase.from("product_pricing_rules").select("*").eq("product_id", productId),
+      orderedPricingRulesQuery(productId),
       supabase.from("product_moq_rules").select("*").eq("product_id", productId),
     ]);
     if (pricingRes.error && import.meta.env.DEV) {
@@ -914,10 +993,7 @@ const ProductEdit = () => {
     if (await canWriteProductsDirectly(roles)) {
       const repair = await repairDirectMasterPricingRows(productId);
       if (repair.repaired > 0) {
-        const { data: refreshed } = await supabase
-          .from("product_pricing_rules")
-          .select("*")
-          .eq("product_id", productId);
+        const { data: refreshed } = await orderedPricingRulesQuery(productId);
         const rows = (refreshed ?? []) as PricingRuleRow[];
         setPricingRuleRows(rows);
         setChannelPrices(mapPricingRules(rows));
@@ -934,8 +1010,25 @@ const ProductEdit = () => {
   // authorityLoaded true against the newer product's form (Bugbot-flagged regression).
   const authorityRequestIdRef = useRef<string | null>(null);
 
+  // Tracks which product id's initial row fetch is the current, non-superseded one — a
+  // slower fetch for a product the user has since navigated away from must not populate
+  // the newer product's form, clear it, surface a stale error, or end the newer request's
+  // loading state (Defect 2).
+  const productFetchRequestIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (isNew || !id || loadedId === id) return;
+    if (!shouldFetchById(isNew, id, loadedId)) {
+      // No fetch will start on this effect run. Force-clear pending rather than leaving it
+      // as whatever a previous, now-abandoned effect instance (for a different id) last set
+      // it to — that abandoned fetch's own .then() will never run (it's superseded) or
+      // isn't guaranteed to resolve, so nothing else is guaranteed to clear the flag here.
+      setProductFetchPending(false);
+      return;
+    }
+
+    let cancelled = false;
+    productFetchRequestIdRef.current = id;
+    setProductFetchPending(true);
 
     (supabase as any)
       .from("products")
@@ -943,7 +1036,10 @@ const ProductEdit = () => {
       .eq("id", id)
       .single()
       .then(({ data, error }: any) => {
+        if (!isCurrentAsyncRequest(id, cancelled, productFetchRequestIdRef.current)) return;
+
         if (error) {
+          setProductFetchPending(false);
           toast.error(error.message);
           return;
         }
@@ -960,7 +1056,12 @@ const ProductEdit = () => {
             if (authorityRequestIdRef.current === id) setAuthorityLoaded(true);
           });
         }
+        setProductFetchPending(false);
       });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, isNew, loadedId]);
 
   const set = (k: string, v: any) => {
@@ -1496,7 +1597,7 @@ const ProductEdit = () => {
             >
               Back
             </Button>
-            <Button onClick={save} disabled={loading}>
+            <Button onClick={save} disabled={loading || productFetchPending}>
               {loading ? "Saving…" : isContributorMode ? "Submit Draft" : "Save"}
             </Button>
           </>

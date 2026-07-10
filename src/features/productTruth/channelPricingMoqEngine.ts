@@ -15,6 +15,19 @@ export function isPriceEffective(price: ChannelPriceRecord, at = new Date()): bo
   return true;
 }
 
+/**
+ * Deterministic newest-currently-valid-approved-rule ordering: newest approvedAt first,
+ * ties (including rows with no approvedAt at all) broken by `id` ascending so the result
+ * never depends on the order rows arrived in — required for resolvePricing() and the
+ * read-only audit SQL to reproduce exactly the same selection (Defect 3).
+ */
+export function compareChannelPriceRows(a: ChannelPriceRecord, b: ChannelPriceRecord): number {
+  const aT = a.approvedAt ? new Date(a.approvedAt).getTime() : 0;
+  const bT = b.approvedAt ? new Date(b.approvedAt).getTime() : 0;
+  if (bT !== aT) return bT - aT;
+  return String(a.id ?? "").localeCompare(String(b.id ?? ""));
+}
+
 export function getChannelPrice(
   prices: ChannelPriceRecord[],
   channel: string,
@@ -27,11 +40,7 @@ export function getChannelPrice(
   const approved = matches.filter((p) => p.priceStatus === "approved");
   const pool = approved.length ? approved : matches.filter((p) => p.priceStatus !== "archived");
   if (!pool.length) return null;
-  return pool.sort((a, b) => {
-    const aT = a.approvedAt ? new Date(a.approvedAt).getTime() : 0;
-    const bT = b.approvedAt ? new Date(b.approvedAt).getTime() : 0;
-    return bT - aT;
-  })[0];
+  return [...pool].sort(compareChannelPriceRows)[0];
 }
 
 export function validateMOQ(
