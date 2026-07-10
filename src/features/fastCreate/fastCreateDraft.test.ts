@@ -4,6 +4,7 @@ import {
   fastCreateFormPatchFromDraft,
   fastCreateReadinessCategories,
   fastCreateReadinessScore,
+  heroPreviewFromDraft,
   type FastCreateDraftSnapshot,
 } from "./fastCreateDraft";
 
@@ -88,5 +89,20 @@ describe("fastCreateFormPatchFromDraft — Full Editor handoff", () => {
     const patch = fastCreateFormPatchFromDraft({ ...misr15Draft(), mrp: "", b2bPrice: "0" });
     expect(patch).not.toHaveProperty("mrp");
     expect(patch).not.toHaveProperty("b2b_price");
+  });
+});
+
+describe("heroPreviewFromDraft (Defect 6 regression — restored draft hides hero preview)", () => {
+  it("restores the preview from a stored hero URL", () => {
+    expect(heroPreviewFromDraft(misr15Draft())).toBe("https://x/hero.jpg");
+  });
+
+  it("clears the preview when the restored draft has no image", () => {
+    expect(heroPreviewFromDraft({ ...misr15Draft(), heroUrl: null })).toBeNull();
+  });
+
+  it("reflects a replaced hero URL rather than an earlier one", () => {
+    const replaced = { ...misr15Draft(), heroUrl: "https://x/new-hero.jpg" };
+    expect(heroPreviewFromDraft(replaced)).toBe("https://x/new-hero.jpg");
   });
 });

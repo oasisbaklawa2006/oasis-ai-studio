@@ -47,6 +47,41 @@ describe("computeLabelReadiness", () => {
     }
   });
 
+  // Full Editor's `form` state binds net_weight_g/shelf_life_days to <Input> elements,
+  // which always yield strings via e.target.value — the exact shape Bugbot flagged as
+  // misread by a strict `typeof value === "number"` check (Defect 4 regression).
+  describe("string-form numeric inputs, exactly as the real Full Editor form provides them", () => {
+    it("scores quantity as pass when net_weight_g arrives as a numeric string", () => {
+      const result = computeLabelReadiness({ ...COMPLETE_INPUT, net_weight_g: "500" });
+      expect(result.categories.find((c) => c.key === "quantity")?.state).toBe("pass");
+    });
+
+    it("scores shelf_storage as pass when shelf_life_days arrives as a numeric string", () => {
+      const result = computeLabelReadiness({ ...COMPLETE_INPUT, shelf_life_days: "90" });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("pass");
+    });
+
+    it("treats a blank string net_weight_g the same as missing, not present", () => {
+      const result = computeLabelReadiness({ ...COMPLETE_INPUT, net_weight_g: "" });
+      expect(result.categories.find((c) => c.key === "quantity")?.state).toBe("warn");
+    });
+
+    it("treats a \"0\" string shelf_life_days as missing, not a valid zero", () => {
+      const result = computeLabelReadiness({ ...COMPLETE_INPUT, shelf_life_days: "0" });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("warn");
+    });
+
+    it("treats non-numeric text as missing, not present", () => {
+      const result = computeLabelReadiness({ ...COMPLETE_INPUT, net_weight_g: "abc" });
+      expect(result.categories.find((c) => c.key === "quantity")?.state).toBe("warn");
+    });
+
+    it("tolerates surrounding whitespace in a numeric string", () => {
+      const result = computeLabelReadiness({ ...COMPLETE_INPUT, shelf_life_days: " 90 " });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("pass");
+    });
+  });
+
   it("reports FSSAI-mandatory fields as no_column data gaps", () => {
     const gaps = getLabelDataGaps();
     const noColumnKeys = gaps.filter((g) => g.severity === "no_column").map((g) => g.key);

@@ -15,6 +15,7 @@ import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
+  hasPackagingTaxonomyCode,
 } from "@/features/productAuthority/catalogueReadyGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -653,6 +654,11 @@ const ProductEdit = () => {
   const [moqRuleRows, setMoqRuleRows] = useState<MoqRuleRow[]>([]);
   const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
   const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
+  // A new product has no channel pricing/media rows to hydrate, so authority is
+  // trivially "loaded" already; an existing product isn't until reloadProductAuthority
+  // resolves — the catalogue-ready gate must not judge a product on the empty
+  // placeholder channelPrices/productMediaRows it starts render with.
+  const [authorityLoaded, setAuthorityLoaded] = useState(isNew);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
@@ -817,13 +823,32 @@ const ProductEdit = () => {
         sku: form.sku,
         saleType: saleTypeFromForm(form),
         pricing: resolvePricing(form, channelPrices),
-        packagingPresent: !!(form.packaging_code || form.pcs_per_pack || form.pack_size),
+        packagingPresent: hasPackagingTaxonomyCode(form),
         heroImageUrl: readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url,
         truthScore: readinessSnapshot?.readiness.score ?? null,
         truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
       }),
     [form, channelPrices, readinessSnapshot],
   );
+
+  // A product that was already catalogue-ready must not silently stay ready once it
+  // develops a hard blocker (price removed, SKU invalidated, packaging cleared, etc.) —
+  // recalculated on every relevant field change via the memo above. Auto-clear the local
+  // flag and surface a visible warning rather than persisting a contradictory state.
+  useEffect(() => {
+    // Skip while channel pricing / product media are still hydrating for an existing
+    // product — the gate would otherwise judge a genuinely-ready product against the
+    // empty placeholder channelPrices/productMediaRows it starts render with and
+    // falsely clear it (Bugbot-flagged regression on this same fix).
+    if (!authorityLoaded) return;
+    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+      set("is_catalogue_ready", false);
+      toast.warning(
+        `Catalogue-ready was turned off — ${catalogueReadyBlockedMessage(catalogueReadyGate)}`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authorityLoaded, catalogueReadyGate.allowed, form.is_catalogue_ready]);
 
   const applyMediaAuthority = async (
     productId: string,
@@ -904,6 +929,11 @@ const ProductEdit = () => {
     await Promise.all([loadProductMedia(productId), loadChannelAuthority(productId)]);
   };
 
+  // Tracks which product's authority load is the current, non-superseded one — a slower
+  // reload for a product the user has since navigated away from must not mark
+  // authorityLoaded true against the newer product's form (Bugbot-flagged regression).
+  const authorityRequestIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (isNew || !id || loadedId === id) return;
 
@@ -924,7 +954,11 @@ const ProductEdit = () => {
           setComplianceMetaMap(buildComplianceMetaFromSavedProduct(loaded));
           setLoadedId(id);
           setForm(loaded);
-          void reloadProductAuthority(id);
+          setAuthorityLoaded(false);
+          authorityRequestIdRef.current = id;
+          void reloadProductAuthority(id).then(() => {
+            if (authorityRequestIdRef.current === id) setAuthorityLoaded(true);
+          });
         }
       });
   }, [id, isNew, loadedId]);
@@ -1144,6 +1178,19 @@ const ProductEdit = () => {
 
       setSubmitError(message);
       toast.error(message);
+      return;
+    }
+
+    // Unlike the auto-clear effect above, this hard save-time guard is NOT gated on
+    // authorityLoaded: "saving must not persist catalogue-ready=true while hard
+    // blockers exist" is an absolute requirement, not conditional on hydration timing.
+    // A false block during the brief hydration window just costs the user a retry;
+    // a false allow could persist a genuinely-blocked product (e.g. invalid SKU, read
+    // directly from form with no async dependency) as catalogue-ready.
+    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+      const message = catalogueReadyBlockedMessage(catalogueReadyGate);
+      setSubmitError(message);
+      toast.error(`Cannot save as catalogue-ready — ${message}`);
       return;
     }
 
@@ -2249,7 +2296,7 @@ const ProductEdit = () => {
                 }}
               />
             </div>
-            {!catalogueReadyGate.allowed && !form.is_catalogue_ready && (
+            {!catalogueReadyGate.allowed && (
               <ul className="text-[11px] text-amber-700 dark:text-amber-400 space-y-0.5 list-disc pl-4">
                 {catalogueReadyGate.blockers.map((b) => (
                   <li key={b}>{b}</li>

@@ -22,7 +22,7 @@
  * cannot honestly be "ready for label design" while legally mandatory data has nowhere
  * reliable to live yet.
  */
-import { hasNumber, hasText } from "@/features/catalogueAiStudio/catalogueFieldUtils";
+import { hasNumericInput, hasText } from "@/features/catalogueAiStudio/catalogueFieldUtils";
 
 export type LabelReadinessState = "pass" | "warn" | "missing";
 
@@ -55,10 +55,12 @@ export interface LabelReadinessResult {
 export interface LabelReadinessProductInput {
   product_name?: string | null;
   category?: string | null;
-  shelf_life_days?: number | null;
+  /** Full Editor form state binds this to a text input — arrives as a string like "90". */
+  shelf_life_days?: number | string | null;
   storage_instructions?: string | null;
   pack_size?: string | null;
-  net_weight_g?: number | null;
+  /** Full Editor form state binds this to a text input — arrives as a string like "500". */
+  net_weight_g?: number | string | null;
   /** Pieces per retail pack — lets pack declarations read as "6 pcs box · 500g". */
   pcs_per_pack?: number | string | null;
 }
@@ -80,7 +82,7 @@ function buildIdentity(p: LabelReadinessProductInput): LabelReadinessCategory {
 
 function buildQuantity(p: LabelReadinessProductInput): LabelReadinessCategory {
   const hasPack = hasText(p.pack_size);
-  const hasWeight = hasNumber(p.net_weight_g);
+  const hasWeight = hasNumericInput(p.net_weight_g);
   if (!hasPack && !hasWeight) {
     return {
       key: "quantity",
@@ -111,7 +113,7 @@ function buildQuantity(p: LabelReadinessProductInput): LabelReadinessCategory {
 }
 
 function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategory {
-  const hasShelf = hasNumber(p.shelf_life_days);
+  const hasShelf = hasNumericInput(p.shelf_life_days);
   const hasStorage = hasText(p.storage_instructions);
   if (!hasShelf && !hasStorage) {
     return {

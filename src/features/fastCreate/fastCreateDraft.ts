@@ -82,6 +82,18 @@ export function clearFastCreateDraft() {
   }
 }
 
+/**
+ * The hero thumbnail preview to show immediately after restoring a draft. The Fast
+ * Create thumbnail renders only from `heroPreview` state, not `draft.heroUrl` directly —
+ * restoring the draft without also deriving this left an uploaded image invisible
+ * (still present in state and still saved, but no thumbnail shown). Also clears any
+ * stale preview left over from whatever was on screen before restore when the restored
+ * draft has no image of its own.
+ */
+export function heroPreviewFromDraft(draft: FastCreateDraftSnapshot): string | null {
+  return draft.heroUrl ?? null;
+}
+
 /** Fast Create build-meter categories — required set adapts to the selected sale type. */
 export function fastCreateReadinessCategories(draft: FastCreateDraftSnapshot): ReadinessCategoryLike[] {
   const req = getSaleTypeRequirements(draft.saleType, { b2bEnabled: draft.b2bEnabled });
