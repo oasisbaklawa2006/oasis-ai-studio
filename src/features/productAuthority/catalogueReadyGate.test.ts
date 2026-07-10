@@ -268,24 +268,66 @@ describe("packagingAuthorityFromRulesResult (Bugbot regression on PR #77)", () =
     expect(authority?.activeCodes.has("AS")).toBe(false);
   });
 
-  it("resolves to a genuinely empty (loaded) authority when the table has zero rows and no error", () => {
-    const authority = packagingAuthorityFromRulesResult({ rules: [], error: null });
-    expect(authority).toEqual({ activeCodes: new Set() });
+  it("returns null when zero rules come back, whether or not an error is attached", () => {
+    expect(packagingAuthorityFromRulesResult({ rules: [], error: null })).toBeNull();
+    expect(
+      packagingAuthorityFromRulesResult({ rules: [], error: "sku_code_rules returned zero active rows" }),
+    ).toBeNull();
+    expect(packagingAuthorityFromRulesResult({ rules: [], error: "network error" })).toBeNull();
   });
 
-  it("returns null on a failed load — never a false authoritative empty Set", () => {
-    const authority = packagingAuthorityFromRulesResult({
-      rules: [],
-      error: "sku_code_rules returned zero active rows",
-    });
-    expect(authority).toBeNull();
-  });
-
-  it("returns null even if rules happen to be present alongside an error", () => {
+  it("accepts a valid, non-empty fallback result even when an advisory error is still attached (Bugbot regression)", () => {
+    // fetchActiveSkuCodeRules() can recover via its unfiltered fallback and still surface
+    // the primary query's error message purely for diagnostics — that must not discard
+    // otherwise-usable rules.
     const authority = packagingAuthorityFromRulesResult({
       rules: [{ code_type: "packaging", code: "TIN" }],
-      error: "network error",
+      error: "primary query failed, used fallback",
     });
-    expect(authority).toBeNull();
+    expect(authority).not.toBeNull();
+    expect(authority?.activeCodes.has("TIN")).toBe(true);
+  });
+});
+
+describe("evaluateCatalogueReadyGate ignorePendingPackagingAuthority (Bugbot regression on PR #77)", () => {
+  it("by default, an unloaded packaging authority is a hard blocker on its own", () => {
+    const result = evaluateCatalogueReadyGate({ ...READY_INPUT, packagingAuthority: null });
+    expect(result.allowed).toBe(false);
+    expect(result.blockers.join(" ")).toContain("taxonomy not loaded");
+  });
+
+  it("with ignorePendingPackagingAuthority, an unloaded packaging authority alone does not block", () => {
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      packagingAuthority: null,
+      ignorePendingPackagingAuthority: true,
+    });
+    expect(result.allowed).toBe(true);
+    expect(result.blockers).toEqual([]);
+  });
+
+  it("with ignorePendingPackagingAuthority, other independently-confirmed blockers still apply", () => {
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      packagingAuthority: null,
+      ignorePendingPackagingAuthority: true,
+      pricing: resolvePricing({}), // MRP missing — unrelated to packaging
+      sku: "DRAFT-999", // invalid SKU — unrelated to packaging
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.blockers).toContain("MRP missing");
+    expect(result.blockers.join(" ")).toContain("SKU invalid");
+    expect(result.blockers.join(" ")).not.toContain("taxonomy not loaded");
+  });
+
+  it("with ignorePendingPackagingAuthority, a genuinely invalid packaging code is still caught once authority loads", () => {
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      packagingAuthority: PACKAGING_AUTHORITY,
+      ignorePendingPackagingAuthority: true,
+      packagingCode: "NOT_A_REAL_CODE",
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.blockers).toContain("Packaging missing");
   });
 });

@@ -22,6 +22,9 @@ export interface PackagingTaxonomyAuthority {
   activeCodes: Set<string>;
 }
 
+export const PACKAGING_AUTHORITY_NOT_LOADED_MESSAGE =
+  "Packaging taxonomy not loaded yet — cannot confirm packaging readiness";
+
 export interface CatalogueReadyGateInput {
   sku: string | null | undefined;
   saleType: SaleType;
@@ -39,6 +42,17 @@ export interface CatalogueReadyGateInput {
   truthMaxScore?: number | null;
   /** Central sync preview / validation blockers, when available. */
   centralBlockers?: string[];
+  /** When packaging is required and packagingAuthority is `null`, the default behaviour is
+   *  a hard `PACKAGING_AUTHORITY_NOT_LOADED_MESSAGE` blocker — correct for a save-time gate,
+   *  which must stay blocked while genuinely uncertain. Set this to `true` to omit that one
+   *  specific blocker instead, while every other independently-confirmed blocker (bad SKU,
+   *  missing price, missing hero, ...) is still reported normally. Used by callers whose
+   *  "don't act while data is merely still loading" protection must not become "never act
+   *  again if this one particular authority fails to load" — see ProductEdit.tsx's
+   *  catalogue-ready auto-clear effect (Bugbot-caught regression: a failed/slow packaging
+   *  taxonomy load was blocking the auto-clear of products with completely unrelated,
+   *  already-confirmed problems). */
+  ignorePendingPackagingAuthority?: boolean;
 }
 
 export interface CatalogueReadyGateResult {
@@ -63,7 +77,9 @@ export function evaluateCatalogueReadyGate(input: CatalogueReadyGateInput): Cata
 
   if (req.requiresPackaging) {
     if (!input.packagingAuthority) {
-      blockers.push("Packaging taxonomy not loaded yet — cannot confirm packaging readiness");
+      if (!input.ignorePendingPackagingAuthority) {
+        blockers.push(PACKAGING_AUTHORITY_NOT_LOADED_MESSAGE);
+      }
     } else if (
       !evaluatePackagingReadiness({
         packagingCode: input.packagingCode,
@@ -140,16 +156,21 @@ export interface PackagingRulesLoadResult {
 
 /**
  * Maps a sku_code_rules load result onto a PackagingTaxonomyAuthority snapshot — or `null`
- * when the load failed, so a transient fetch error can never resolve into an
- * authoritative-but-empty Set. Before this, a failed load produced `{ activeCodes: new
- * Set() }`, indistinguishable from "loaded, taxonomy is genuinely empty" — the gate would
- * then confidently report "Packaging missing" (and the caller's auto-clear effect could
- * act on it) for what was actually just a failed fetch (Bugbot-caught regression).
+ * when the load produced no usable rules, so that case can never resolve into an
+ * authoritative-but-empty Set. Before this, a non-null `error` alone caused a rejection,
+ * indistinguishable from "loaded, taxonomy is genuinely empty" — but
+ * fetchActiveSkuCodeRules() can return a perfectly valid, non-empty `rules` array from its
+ * unfiltered fallback while `error` still carries the (already-recovered-from) primary
+ * query's failure message purely for diagnostics; rejecting on `error` alone discarded
+ * that valid result (Bugbot-caught regression). Success is instead judged by whether any
+ * rules came back at all — an empty `rules` array (whether from a real failure or an
+ * actually-empty table; the two are indistinguishable from this shape) is the only case
+ * treated as "not loaded", since blocking is the safe default either way.
  */
 export function packagingAuthorityFromRulesResult(
   result: PackagingRulesLoadResult,
 ): PackagingTaxonomyAuthority | null {
-  if (result.error) return null;
+  if (!result.rules.length) return null;
   const activeCodes = new Set(
     result.rules.filter((r) => r.code_type === "packaging").map((r) => normalizePackagingCode(r.code)),
   );

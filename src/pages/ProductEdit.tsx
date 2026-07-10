@@ -802,12 +802,14 @@ const ProductEdit = () => {
     fetchActiveSkuCodeRules()
       .then((result) => {
         if (!mounted) return;
-        const authority = packagingAuthorityFromRulesResult(result);
-        if (authority) {
-          setPackagingAuthority(authority);
-        } else if (result.error && import.meta.env.DEV) {
-          console.error("[ProductEdit] sku_code_rules load failed:", result.error);
+        // Log any advisory error regardless of outcome — fetchActiveSkuCodeRules() can
+        // still return usable rules (via its fallback) alongside a non-null primary-query
+        // error, which is worth surfacing even though the load itself succeeds.
+        if (result.error && import.meta.env.DEV) {
+          console.error("[ProductEdit] sku_code_rules load issue:", result.error);
         }
+        const authority = packagingAuthorityFromRulesResult(result);
+        if (authority) setPackagingAuthority(authority);
       })
       .catch((error) => {
         if (mounted && import.meta.env.DEV) {
@@ -853,7 +855,10 @@ const ProductEdit = () => {
   // labelReadiness.ts docblock for why they must never be merged into one toggle.
   const labelReadiness = useMemo(() => computeLabelReadiness(form), [form]);
 
-  // Hard gate for the Catalogue-ready toggle — Active stays separate and ungated.
+  // Hard gate for the Catalogue-ready toggle — Active stays separate and ungated. Used for
+  // the visible blocker list and the save-time hard guard, both of which must treat "the
+  // packaging taxonomy authority hasn't loaded" as a real, active blocker (default
+  // behaviour) — the cost of a false block during that window is just a retry.
   const catalogueReadyGate = useMemo(
     () =>
       evaluateCatalogueReadyGate({
@@ -869,25 +874,47 @@ const ProductEdit = () => {
     [form, channelPrices, packagingAuthority, readinessSnapshot],
   );
 
+  // Same evaluation, but with `ignorePendingPackagingAuthority: true` — used only by the
+  // auto-clear effect below. A stalled/failed packaging taxonomy load must never block
+  // clearing readiness for *other*, independently-confirmed blockers (bad SKU, missing
+  // price, missing hero, ...); it must only suppress the specific packaging-related
+  // uncertainty (Bugbot-caught regression: the effect previously held off entirely
+  // whenever packagingAuthority was null, for any reason).
+  const autoClearGate = useMemo(
+    () =>
+      evaluateCatalogueReadyGate({
+        sku: form.sku,
+        saleType: saleTypeFromForm(form),
+        pricing: resolvePricing(form, channelPrices),
+        packagingCode: form.packaging_code,
+        packagingAuthority,
+        heroImageUrl: readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url,
+        truthScore: readinessSnapshot?.readiness.score ?? null,
+        truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
+        ignorePendingPackagingAuthority: true,
+      }),
+    [form, channelPrices, packagingAuthority, readinessSnapshot],
+  );
+
   // A product that was already catalogue-ready must not silently stay ready once it
   // develops a hard blocker (price removed, SKU invalidated, packaging cleared, etc.) —
   // recalculated on every relevant field change via the memo above. Auto-clear the local
   // flag and surface a visible warning rather than persisting a contradictory state.
   useEffect(() => {
     // Skip while channel pricing / product media are still hydrating for an existing
-    // product, or while the packaging taxonomy authority hasn't loaded yet — the gate
-    // would otherwise judge a genuinely-ready product against empty/absent authority and
-    // falsely clear it (Bugbot-flagged regression on this same fix, now also covering
-    // Defect 1's packaging taxonomy authority).
-    if (!authorityLoaded || !packagingAuthority) return;
-    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+    // product — the gate would otherwise judge a genuinely-ready product against the
+    // empty placeholder channelPrices/productMediaRows it starts render with and falsely
+    // clear it (Bugbot-flagged regression on this same fix). Packaging taxonomy loading
+    // state is handled inside autoClearGate itself, not here.
+    if (!authorityLoaded) return;
+    if (form.is_catalogue_ready && !autoClearGate.allowed) {
       set("is_catalogue_ready", false);
       toast.warning(
-        `Catalogue-ready was turned off — ${catalogueReadyBlockedMessage(catalogueReadyGate)}`,
+        `Catalogue-ready was turned off — ${catalogueReadyBlockedMessage(autoClearGate)}`,
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authorityLoaded, packagingAuthority, catalogueReadyGate.allowed, form.is_catalogue_ready]);
+  }, [authorityLoaded, autoClearGate.allowed, form.is_catalogue_ready]);
 
   const applyMediaAuthority = async (
     productId: string,
