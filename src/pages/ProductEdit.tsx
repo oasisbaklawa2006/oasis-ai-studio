@@ -929,6 +929,11 @@ const ProductEdit = () => {
     await Promise.all([loadProductMedia(productId), loadChannelAuthority(productId)]);
   };
 
+  // Tracks which product's authority load is the current, non-superseded one — a slower
+  // reload for a product the user has since navigated away from must not mark
+  // authorityLoaded true against the newer product's form (Bugbot-flagged regression).
+  const authorityRequestIdRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (isNew || !id || loadedId === id) return;
 
@@ -950,7 +955,10 @@ const ProductEdit = () => {
           setLoadedId(id);
           setForm(loaded);
           setAuthorityLoaded(false);
-          void reloadProductAuthority(id).then(() => setAuthorityLoaded(true));
+          authorityRequestIdRef.current = id;
+          void reloadProductAuthority(id).then(() => {
+            if (authorityRequestIdRef.current === id) setAuthorityLoaded(true);
+          });
         }
       });
   }, [id, isNew, loadedId]);
