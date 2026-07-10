@@ -37,8 +37,12 @@ export function buildApprovedCatalogueProductSnapshot(
   snapshot: CatalogueSnapshotJson,
   versionCode: string,
 ): ApprovedCatalogueProductSnapshot {
+  // "mrp" and "retail" are distinct channels (see pricingAuthority.ts's canonical-semantics
+  // note) — mrp is the Maximum Retail Price authority; retail is a separate selling-price
+  // channel used only for base_price below, never for mrp.
+  const mrpRule = getChannelPrice(snapshot.pricing_rules, "mrp");
   const retailPrice = getChannelPrice(snapshot.pricing_rules, "retail");
-  const mrp = retailPrice?.mrp ?? retailPrice?.sellingPrice ?? null;
+  const mrp = mrpRule?.mrp ?? mrpRule?.sellingPrice ?? null;
   const basePrice = retailPrice?.sellingPrice ?? retailPrice?.mrp ?? null;
 
   const packParts: string[] = [];

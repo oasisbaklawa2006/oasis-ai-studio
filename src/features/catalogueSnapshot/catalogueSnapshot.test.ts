@@ -263,3 +263,40 @@ describe("centralSyncPreviewService", () => {
     expect(mod.LIVE_CENTRAL_WRITE_ENABLED).toBe(false);
   });
 });
+
+describe("centralSyncPayload MRP channel consumption (pricing-authority fix)", () => {
+  function buildBundle(prices: ChannelPriceRecord[]) {
+    const snap = generateCatalogueSnapshot({
+      form: baseForm,
+      productId: String(baseForm.id),
+      complianceApproved: true,
+      prices,
+      moqRules,
+    });
+    const truth = productTruthInputFromForm(baseForm, {
+      complianceApproved: true,
+      prices,
+      moqRules,
+    });
+    const readiness = evaluateProductReadiness(truth);
+    const gate = validateSnapshotGate(readiness, { complianceManuallyApproved: true });
+    return buildCentralSyncPreviewBundle({
+      snapshot: snap,
+      catalogueVersionId: "ver-1",
+      versionCode: "PT-prod-v1",
+      versionNumber: 1,
+      validation: gate,
+    });
+  }
+
+  it("consumes the approved mrp-channel rule as MRP", () => {
+    const bundle = buildBundle([{ channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" }]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
+  });
+
+  it("does not silently redefine a retail-channel selling price as MRP — retail only feeds base_price", () => {
+    const bundle = buildBundle([{ channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" }]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+    expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(1000);
+  });
+});
