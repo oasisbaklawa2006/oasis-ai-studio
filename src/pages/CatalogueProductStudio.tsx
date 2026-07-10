@@ -71,7 +71,7 @@ import { fullEditorDeepLink, fullEditorTabForCategory } from "@/features/catalog
 import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
 import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
-import { saleTypeFromForm } from "@/features/productAuthority/saleType";
+import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
@@ -318,8 +318,10 @@ export default function CatalogueProductStudio() {
   );
 
   const shortSku = useMemo(() => (selected?.sku ? deriveShortSku(selected.sku) : null), [selected?.sku]);
-  const saleType = useMemo(
-    () => (selected ? saleTypeFromForm(selected as unknown as Record<string, unknown>) : null),
+  // Bugbot-caught: this used to render saleTypeFromForm()'s raw internal slug (e.g. "b2b_horeca")
+  // directly — always resolve it to a human label instead (see catalogueSaleTypeLabel.ts).
+  const saleTypeLabel = useMemo(
+    () => (selected ? saleTypeLabelFromForm(selected as unknown as Record<string, unknown>) : null),
     [selected],
   );
 
@@ -455,8 +457,11 @@ export default function CatalogueProductStudio() {
   const [mediaLoading, setMediaLoading] = useState(false);
   useEffect(() => {
     const productId = selected?.id ?? null;
+    // Cleared immediately on every switch (not just when no product is selected) — otherwise the
+    // anchor/media-tab hero summary would briefly reflect the previous product's media rows while
+    // this fetch is still in flight (the anchor now reads mediaSummary.heroUrl, not a static field).
+    setMediaRows([]);
     if (!productId) {
-      setMediaRows([]);
       setMediaLoading(false);
       return;
     }
@@ -785,7 +790,7 @@ export default function CatalogueProductStudio() {
                     </div>
                     <div>
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase">Sale Type</p>
-                      <p className="font-medium text-foreground">{saleType ?? "—"}</p>
+                      <p className="font-medium text-foreground">{saleTypeLabel ?? "—"}</p>
                     </div>
                     <div>
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase">Category</p>
@@ -804,9 +809,9 @@ export default function CatalogueProductStudio() {
                       <p className="font-medium text-foreground flex items-center gap-1">
                         <ImageIcon
                           size={12}
-                          className={selected.hero_image_url ? "text-emerald-600" : "text-muted-foreground/40"}
+                          className={mediaSummary.heroUrl ? "text-emerald-600" : "text-muted-foreground/40"}
                         />
-                        {selected.hero_image_url ? "Present" : "Not set"}
+                        {mediaSummary.heroUrl ? "Present" : "Not set"}
                       </p>
                     </div>
                     <div>
