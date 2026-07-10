@@ -647,7 +647,13 @@ const ProductEdit = () => {
   const [languageTermsRefreshKey, setLanguageTermsRefreshKey] = useState(0);
 
   const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
+  // ?tab= lets another page (e.g. Catalogue Product AI Studio's missing-field deep-link) open
+  // this product directly on the section that owns a given field. It only seeds the initial
+  // tab — once mounted, navigation within this page still goes through setTab/localStorage as
+  // before, so it never fights the operator's own tab clicks.
+  const deepLinkTab = searchParams.get("tab");
   const [tab, setTab] = useState<string>(() => {
+    if (deepLinkTab) return deepLinkTab;
     try {
       return localStorage.getItem(tabKey) || "identity";
     } catch {

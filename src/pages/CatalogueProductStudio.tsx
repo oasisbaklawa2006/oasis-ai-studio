@@ -67,19 +67,48 @@ import {
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
 import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
 import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
+import { fullEditorDeepLink, fullEditorTabForCategory } from "@/features/catalogueAiStudio/catalogueStudioNavigation";
+import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
+import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
+import { deriveShortSku } from "@/features/fastCreate/shortSku";
+import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
   hero_image_url?: string | null;
   is_active: boolean | null;
   is_catalogue_ready: boolean | null;
+  product_class?: string | null;
+  main_department?: string | null;
+  packaging_code?: string | null;
 };
 
-// b2b_price and carton_dimensions_cm are not present on production's products table
-// (schema drift from the AI-Studio reference implementation). Both fields are optional
-// everywhere they're consumed downstream, so omitting them from the select is safe.
-const PRODUCT_SELECT =
-  "id, product_name, sku, category, subcategory, description, short_description, hero_image_url, mrp, b2b_uom, pack_size, net_weight_g, carton_qty, master_carton_qty, pcs_per_carton, moq_text, moq_value, moq_uom, shelf_life_days, storage_instructions, temperature_requirement, hsn_code, gst_rate, is_active, is_catalogue_ready";
+// carton_dimensions_cm is not present on production's products table (schema drift from the
+// AI-Studio reference implementation) and is optional everywhere it's consumed, so it's safely
+// omitted from the select. b2b_price is NOT a real column either (see PR #77-79's pricing-authority
+// findings) — the real column is price_b2b, selected below and mapped onto the b2b_price field
+// name at the query boundary only (mapRowsFromSupabase), so every downstream consumer of
+// DraftProductInput/ReadinessProductInput keeps using the one field name they already expect.
+// image_url is likewise not a real column in the generated products Row type (same class of gap,
+// already documented in the audit SQL) — hero_image_url alone is selected.
+// price_b2b (and, like image_url above, the whole point of this array) is missing from the
+// generated types too, even though it's the real production column. Kept as an array joined at
+// the call site — same established pattern as DataCorrection.tsx — because a literal select
+// string lets Supabase's generated types statically reject any column absent from types.ts, and
+// that check has no way to know types.ts itself is stale.
+const PRODUCT_SELECT = [
+  "id", "product_name", "sku", "category", "subcategory", "description", "short_description",
+  "hero_image_url", "mrp", "price_b2b", "b2b_uom", "pack_size", "net_weight_g", "carton_qty",
+  "master_carton_qty", "pcs_per_carton", "moq_text", "moq_value", "moq_uom", "shelf_life_days",
+  "storage_instructions", "temperature_requirement", "hsn_code", "gst_rate", "is_active",
+  "is_catalogue_ready", "product_class", "main_department", "packaging_code",
+].join(", ");
+
+/** Maps the raw price_b2b column onto the shared b2b_price field name every readiness/draft-generator consumer expects. */
+function mapRowFromSupabase(row: Record<string, unknown>): CatalogueProductStudioProduct {
+  const { price_b2b, ...rest } = row;
+  return { ...rest, b2b_price: (price_b2b as number | null) ?? null } as CatalogueProductStudioProduct;
+}
 
 interface EditorState {
   productId: string;
@@ -175,7 +204,11 @@ const OVERALL_BADGE_CLASS: Record<ReadinessResult["overallLabel"], string> = {
   "Not ready": STATE_BADGE_CLASS.missing,
 };
 
-function ReadinessRow({ category }: { category: ReadinessCategory }) {
+function ReadinessRow({ category, productId, onGoToFullEditor }: {
+  category: ReadinessCategory;
+  productId?: string;
+  onGoToFullEditor?: (categoryKey: string) => void;
+}) {
   const Icon = STATE_ICON[category.state];
   return (
     <div className="flex items-start gap-3 rounded-lg border border-border p-3">
@@ -193,6 +226,17 @@ function ReadinessRow({ category }: { category: ReadinessCategory }) {
             <span className="font-semibold">Next: </span>
             {category.nextAction}
           </p>
+        )}
+        {productId && category.state !== "pass" && onGoToFullEditor && (
+          <Button
+            type="button"
+            size="sm"
+            variant="link"
+            className="h-auto p-0 mt-1 text-[11px]"
+            onClick={() => onGoToFullEditor(category.key)}
+          >
+            Fix in Full Editor ({fullEditorTabForCategory(category.key)}) →
+          </Button>
         )}
       </div>
     </div>
@@ -224,7 +268,7 @@ export default function CatalogueProductStudio() {
         setLoading(false);
         return;
       }
-      setProducts((data as CatalogueProductStudioProduct[]) || []);
+      setProducts(((data as unknown as Record<string, unknown>[]) || []).map(mapRowFromSupabase));
       setLoading(false);
     }
     fetchProducts();
@@ -263,6 +307,21 @@ export default function CatalogueProductStudio() {
     if (editorState && editorState.productId === selected.id) return editorState;
     return generateEditorState(selected);
   }, [selected, editorState]);
+
+  // Fresh-generated baseline for the "Edited" badge — always the pure output of the content
+  // generator for the current product, independent of editorState, so a field is marked edited
+  // the moment the operator's text diverges from what was originally generated (never from what
+  // was last saved).
+  const generatedBaseline: EditorState | null = useMemo(
+    () => (selected ? generateEditorState(selected) : null),
+    [selected],
+  );
+
+  const shortSku = useMemo(() => (selected?.sku ? deriveShortSku(selected.sku) : null), [selected?.sku]);
+  const saleType = useMemo(
+    () => (selected ? saleTypeFromForm(selected as unknown as Record<string, unknown>) : null),
+    [selected],
+  );
 
   const exportPreview = useMemo(() => {
     if (!selected || !editor) return "";
@@ -388,6 +447,46 @@ export default function CatalogueProductStudio() {
       cancelled = true;
     };
   }, [selected?.id, persistedDraft, auditLog]);
+
+  // Read-only product_media lookup for the Media tab's hero/approved-media preview. A separate,
+  // independent data source from the draft workflow above — same selectedIdRef guard so a slow
+  // fetch started before a product switch can never paint media for the wrong product.
+  const [mediaRows, setMediaRows] = useState<CatalogueMediaRow[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  useEffect(() => {
+    const productId = selected?.id ?? null;
+    if (!productId) {
+      setMediaRows([]);
+      setMediaLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setMediaLoading(true);
+    // Supabase's query builder returns a PromiseLike, not a full Promise (no .finally) — wrap it
+    // so the loading flag clears on both the success and error paths without duplicating the guard.
+    Promise.resolve(
+      supabase.from("product_media").select("id, type, file_url, status, created_at").eq("product_id", productId),
+    )
+      .then(({ data, error: mediaError }) => {
+        if (cancelled || selectedIdRef.current !== productId) return;
+        if (mediaError) {
+          setMediaRows([]);
+        } else {
+          setMediaRows((data as CatalogueMediaRow[]) ?? []);
+        }
+      })
+      .finally(() => {
+        if (!cancelled && selectedIdRef.current === productId) setMediaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.id]);
+
+  const mediaSummary = useMemo(
+    () => summarizeCatalogueMedia(selected, mediaRows),
+    [selected, mediaRows],
+  );
 
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
   // overwrite the new product's audit history with the previous draft's events.
@@ -650,9 +749,26 @@ export default function CatalogueProductStudio() {
             </Card>
           ) : (
             <>
+              {/* Always-visible product anchor. Product switching clears/reloads everything below it
+                  (see the product-switch effect) — this card itself never mixes fields from two
+                  products because it only ever reads from `selected`. */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">{selected.product_name || "Untitled product"}</CardTitle>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="text-sm">{selected.product_name || "Untitled product"}</CardTitle>
+                    <div className="flex items-center gap-1.5">
+                      {hasUnsavedChanges && (
+                        <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40">
+                          <PencilLine size={10} className="mr-1" /> Unsaved
+                        </Badge>
+                      )}
+                      {currentPersistedDraft && (
+                        <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
+                          {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                   <CardDescription className="text-[11px]">
                     Product summary is read-only here. Make master data changes in Products.
                   </CardDescription>
@@ -664,8 +780,20 @@ export default function CatalogueProductStudio() {
                       <p className="font-medium text-foreground">{selected.sku || "—"}</p>
                     </div>
                     <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Short SKU</p>
+                      <p className="font-medium text-foreground">{shortSku || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Sale Type</p>
+                      <p className="font-medium text-foreground">{saleType ?? "—"}</p>
+                    </div>
+                    <div>
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase">Category</p>
                       <p className="font-medium text-foreground">{selected.category || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Packaging</p>
+                      <p className="font-medium text-foreground">{selected.packaging_code || "—"}</p>
                     </div>
                     <div>
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase">Pack Size</p>
@@ -698,6 +826,11 @@ export default function CatalogueProductStudio() {
                       <p className="font-medium text-foreground">{selected.is_catalogue_ready ? "Yes" : "No"}</p>
                     </div>
                   </div>
+                  <div className="mt-3">
+                    <Button type="button" size="sm" variant="outline" onClick={() => nav(`/products/${selected.id}`)}>
+                      Edit master data in Full Editor
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -705,7 +838,7 @@ export default function CatalogueProductStudio() {
                 <BuildMeterBar
                   score={readiness.score}
                   categories={readiness.categories}
-                  onChipClick={() => nav(`/products/${selected.id}`)}
+                  onChipClick={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
                 />
               )}
 
@@ -724,7 +857,12 @@ export default function CatalogueProductStudio() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {readiness.categories.map((c) => (
-                      <ReadinessRow key={c.key} category={c} />
+                      <ReadinessRow
+                        key={c.key}
+                        category={c}
+                        productId={selected.id}
+                        onGoToFullEditor={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
+                      />
                     ))}
                   </CardContent>
                 </Card>
@@ -887,15 +1025,32 @@ export default function CatalogueProductStudio() {
                       <TabsContent value="content" className="space-y-4 pt-4">
                         <p className="text-[11px] text-muted-foreground">
                           Generated locally from this product's current fields — no external AI call in this studio.
+                          Language content here (Hindi/Hinglish copy) is informational only and never blocks catalogue
+                          readiness or Central Sync.
                         </p>
                         {DRAFT_BLOCK_META.map((block) => {
                           const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
+                          const blockIsEdited =
+                            !blockIsMissing &&
+                            !!generatedBaseline &&
+                            isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <label className="text-xs font-semibold text-foreground">{block.label}</label>
-                                  <p className="text-[10px] text-muted-foreground">{block.hint}</p>
+                                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    {block.label}
+                                    {blockIsEdited && (
+                                      <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                        Edited
+                                      </Badge>
+                                    )}
+                                  </label>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {block.key === "whatsapp_product_message"
+                                      ? "Draft message text only — approval workflow not active, this studio never sends WhatsApp messages."
+                                      : block.hint}
+                                  </p>
                                 </div>
                                 {!blockIsMissing && (
                                   <Button
@@ -922,16 +1077,74 @@ export default function CatalogueProductStudio() {
                       </TabsContent>
 
                       <TabsContent value="media" className="space-y-4 pt-4">
-                        <p className="text-[11px] text-muted-foreground">
-                          Prompt text only — this studio does not generate images.
-                        </p>
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-foreground">Current approved media</p>
+                          {mediaLoading ? (
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground py-2">
+                              <Loader2 size={12} className="animate-spin" /> Loading media…
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                {mediaSummary.heroUrl ? (
+                                  <img
+                                    src={mediaSummary.heroUrl}
+                                    alt="Approved hero"
+                                    className="h-16 w-16 rounded-md object-cover border border-border"
+                                  />
+                                ) : (
+                                  <div className="h-16 w-16 rounded-md border border-dashed border-border flex items-center justify-center">
+                                    <ImageIcon size={16} className="text-muted-foreground/40" />
+                                  </div>
+                                )}
+                                <div className="text-[11px] text-muted-foreground">
+                                  <p className="text-foreground font-medium">
+                                    {mediaSummary.heroUrl ? "Hero image approved" : "No approved hero image yet"}
+                                  </p>
+                                  <p>
+                                    {mediaSummary.approvedMedia.length} additional approved media{" "}
+                                    {mediaSummary.approvedMedia.length === 1 ? "asset" : "assets"}.
+                                  </p>
+                                </div>
+                              </div>
+                              {mediaSummary.approvedMedia.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {mediaSummary.approvedMedia.map((m) => (
+                                    <div key={m.id} className="flex flex-col items-center gap-1">
+                                      <img src={m.url} alt={m.typeLabel} className="h-12 w-12 rounded-md object-cover border border-border" />
+                                      <span className="text-[9px] text-muted-foreground">{m.typeLabel}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
+                          Image generation is not available in this studio — no generation service is wired up.
+                          The prompts below are text only, for use with an external tool or a future generation
+                          connector; nothing here uploads or approves media.
+                        </div>
+
                         {IMAGE_PROMPT_BLOCK_META.map((block) => {
                           const blockIsMissing = isMissingFieldOnlyMessage(editor.prompts[block.key]);
+                          const blockIsEdited =
+                            !blockIsMissing &&
+                            !!generatedBaseline &&
+                            isFieldEdited(editor.prompts[block.key], generatedBaseline.prompts[block.key]);
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <label className="text-xs font-semibold text-foreground">{block.label}</label>
+                                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    {block.label}
+                                    {blockIsEdited && (
+                                      <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                        Edited
+                                      </Badge>
+                                    )}
+                                  </label>
                                   <p className="text-[10px] text-muted-foreground">{block.hint}</p>
                                 </div>
                                 {!blockIsMissing && (
@@ -965,7 +1178,14 @@ export default function CatalogueProductStudio() {
                         {packagingCategories.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2">No packaging data available.</p>
                         ) : (
-                          packagingCategories.map((c) => <ReadinessRow key={c.key} category={c} />)
+                          packagingCategories.map((c) => (
+                            <ReadinessRow
+                              key={c.key}
+                              category={c}
+                              productId={selected.id}
+                              onGoToFullEditor={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
+                            />
+                          ))
                         )}
                       </TabsContent>
 
