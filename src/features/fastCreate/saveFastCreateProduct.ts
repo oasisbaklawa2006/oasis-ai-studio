@@ -105,20 +105,20 @@ export async function saveFastCreateProduct(
   const contributor = input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
 
   if (direct) {
-    if (!form.product_class) {
-      // Sale types without a persisted product_class (internal_bom, export,
-      // packaging_material — see saleType.ts) must never silently become a sellable
-      // "bulk_loose_product": that would make an internal/not-for-sale item look and
-      // gate like customer-facing B2B stock. Block direct creation with a clear reason
-      // instead of inventing an undocumented sentinel or guessing a sellable class.
-      if (input.saleType && !productClassForSaleType(input.saleType)) {
-        throw new Error(
-          `Sale type "${input.saleType}" ${FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX}. ` +
-            "Submit for admin review as a catalogue draft instead of direct creation, or choose a sale type with a supported product class.",
-        );
-      }
-      form.product_class = "bulk_loose_product";
+    // Sale types without a persisted product_class (internal_bom, export,
+    // packaging_material — see saleType.ts) must never silently become a sellable
+    // "bulk_loose_product": that would make an internal/not-for-sale item look and gate
+    // like customer-facing B2B stock. This check is unconditional — not just when
+    // form.product_class happens to be empty — because buildHeuristicSuggestions'
+    // category defaults always set a product_class regardless of the chosen sale type,
+    // so an emptiness check alone never fires for the exact case it exists to catch.
+    if (input.saleType && !productClassForSaleType(input.saleType)) {
+      throw new Error(
+        `Sale type "${input.saleType}" ${FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX}. ` +
+          "Submit for admin review as a catalogue draft instead of direct creation, or choose a sale type with a supported product class.",
+      );
     }
+    if (!form.product_class) form.product_class = "bulk_loose_product";
     if (!form.main_department) form.main_department = "ready_goods_store";
 
     const skuResult = await requireFastCreateSku(

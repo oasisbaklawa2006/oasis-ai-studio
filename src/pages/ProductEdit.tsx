@@ -1181,9 +1181,13 @@ const ProductEdit = () => {
       return;
     }
 
-    // Same authority-hydration guard as the auto-clear effect above — don't judge a
-    // save against a gate still evaluated on empty placeholder channelPrices/media.
-    if (authorityLoaded && form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+    // Unlike the auto-clear effect above, this hard save-time guard is NOT gated on
+    // authorityLoaded: "saving must not persist catalogue-ready=true while hard
+    // blockers exist" is an absolute requirement, not conditional on hydration timing.
+    // A false block during the brief hydration window just costs the user a retry;
+    // a false allow could persist a genuinely-blocked product (e.g. invalid SKU, read
+    // directly from form with no async dependency) as catalogue-ready.
+    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
       const message = catalogueReadyBlockedMessage(catalogueReadyGate);
       setSubmitError(message);
       toast.error(`Cannot save as catalogue-ready — ${message}`);

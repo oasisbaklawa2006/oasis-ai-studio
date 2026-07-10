@@ -109,6 +109,25 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
+  it("blocks internal_bom even when heuristic category defaults already set product_class (Bugbot regression)", async () => {
+    // buildHeuristicSuggestions' applyCategoryDefaults always sets a product_class,
+    // independent of the chosen sale type — the guard must not rely on product_class
+    // being empty, or this exact case (the real Fast Create flow) bypasses it entirely.
+    await expect(
+      saveFastCreateProduct({
+        suggestions: {
+          ...minimalSuggestions,
+          formPatch: { ...minimalSuggestions.formPatch, product_class: "bulk_loose_product" },
+        },
+        heroUrl: null,
+        roles: ["owner"],
+        categoryKey: "other",
+        saleType: "internal_bom",
+      }),
+    ).rejects.toThrow(FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX);
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
   it("still allows a b2b_horeca product to default to bulk_loose_product (unchanged behavior)", async () => {
     const result = await saveFastCreateProduct({
       suggestions: minimalSuggestions,
