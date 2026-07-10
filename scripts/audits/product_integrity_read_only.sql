@@ -11,27 +11,72 @@
 --   * Uses explicit column lists — no `SELECT *` in any final audit query.
 --   * Re-runnable: every query is a pure SELECT against current table state.
 --
--- STATUS AS WRITTEN (2026-07-10)
---   This file was authored during the audit but was NOT executed against any
---   database in this pass. Phase 2 (Environment Identity Gate) of the audit
---   could not conclusively determine which Supabase project backs the
---   deployed oasis-ai-studio production application — see the audit report,
---   section "Environment Identity". Per the audit's explicit read-only rule,
---   execution was deliberately withheld rather than guessed against an
---   unconfirmed database. This SQL is provided so a future session that DOES
---   have confirmed production access can run it immediately and safely.
+-- STATUS AS WRITTEN (2026-07-10, original audit draft)
+--   This file was originally authored during the PR #76 audit but was NOT
+--   executed against any database in that pass. Phase 2 (Environment Identity
+--   Gate) of that audit could not conclusively determine which Supabase
+--   project backs the deployed oasis-ai-studio production application.
+--
+-- STATUS AS OF PHASE 1 EXECUTION (2026-07-10, durable closeout)
+--   The PR #76 draft above was NEVER executed. This file WAS executed
+--   read-only against confirmed production project `tcxvcatsqqertcnycuop` on
+--   2026-07-10, against repository main commit
+--   d3b83e702f0471b91542cc78e8b48d9797b68365, after the owner independently
+--   verified the production Supabase project reference from the live
+--   deployed bundle (see docs/audits/2026-07-10-product-integrity-audit.md,
+--   "Phase 1 Durable Closeout" section, for the full evidence trail). Zero
+--   rows were mutated; every statement ran inside BEGIN TRANSACTION READ ONLY
+--   with an explicit SET LOCAL statement_timeout, followed by ROLLBACK.
+--   Mid-execution, this file's original pricing fallback columns
+--   (products.b2b_price, products.b2b_price_inr, products.export_price,
+--   products.export_price_usd) were found NOT to exist on production —
+--   confirmed via information_schema.columns — and have been corrected below
+--   (see "SCHEMA-DRIFT CORRECTION" comments at each site). The file as
+--   committed now matches the columns that actually exist and is re-runnable
+--   unchanged against the same project.
+--
+-- IMPORTANT — THIS FILE DOES NOT UNIFORMLY REPRODUCE CURRENT (POST-PR-#77)
+-- APPLICATION BEHAVIOUR. Two DIFFERENT packaging evaluations coexist below,
+-- deliberately, and must not be confused with each other:
+--   1. LEGACY TRUTHINESS BLAST-RADIUS MEASUREMENT (Audit A's
+--      `packaging_present_by_app_truthiness` / `blocker_packaging_missing`,
+--      and Audit D's `would_pass_app_hasPackagingTaxonomyCode`) — intentionally
+--      reproduces the PRE-PR-#77 `hasPackagingTaxonomyCode() = !!form.packaging_code`
+--      truthiness check (a bare non-empty check, no taxonomy or SKU-segment
+--      validation). Kept as-is on purpose, to measure how many products the
+--      OLD buggy check would have silently passed. This is historical
+--      measurement, NOT current app behaviour.
+--   2. CURRENT-GATE EVALUATION (Audit A's new `packaging_ready_under_current_gate`
+--      / `blocker_packaging_missing_current_gate` columns, and Audit D's new
+--      `packaging_ready_under_current_gate` column) — an exact SQL reproduction
+--      of `evaluatePackagingReadiness()` as merged in PR #77
+--      (src/features/productAuthority/catalogueReadyGate.ts): the saved
+--      packaging_code must be non-empty after normalization, must be an
+--      active `sku_code_rules` taxonomy code, AND — when the SKU itself
+--      encodes a packaging segment — that segment must agree with the saved
+--      code after normalization. This is what the live app actually enforces
+--      today. Any row where the two evaluations disagree (legacy truthiness
+--      says "present", current gate says "not ready") is exactly the kind of
+--      case PR #77 fixed going forward but that may still exist as
+--      already-saved data — see e.g. OAS-AS-BKL-ASS-RBOX-0002 in the report.
 --
 -- AUTHORITY SOURCE FOR EVERY RULE BELOW
 --   Every classification below is a direct SQL reproduction of the corrected
---   application logic merged in PR #75 (commit 443ba403523dcedb9552def684368b30aae28828):
+--   application logic merged in PR #75 (commit 443ba403523dcedb9552def684368b30aae28828)
+--   and PR #77 (commit d3b83e702f0471b91542cc78e8b48d9797b68365), except where
+--   explicitly marked above as the intentionally-retained legacy measurement:
 --     - Structured SKU validity: src/features/productAuthority/skuGuard.ts
 --         isStructuredOasisSku()
 --     - SKU packaging segment: 5th dash-separated part of OAS-DIV-CAT-SUBCAT-PKG-SEQ
---         (src/features/fastCreate/saveFastCreateProduct.ts skuPackagingSegment())
---     - Packaging presence for the gate: src/features/productAuthority/catalogueReadyGate.ts
---         hasPackagingTaxonomyCode() = !!form.packaging_code (JS truthiness — see
---         Section 8 "new code finding" in the report; this SQL reproduces that
---         truthiness gap deliberately so the audit can quantify its blast radius)
+--         (src/features/productAuthority/skuGuard.ts skuPackagingSegment(), exported
+--         there since PR #77; originally private to saveFastCreateProduct.ts)
+--     - Packaging readiness under the CURRENT gate: src/features/productAuthority/
+--         catalogueReadyGate.ts evaluatePackagingReadiness() (PR #77) — active
+--         taxonomy membership + SKU-segment agreement, see new columns described above.
+--     - Packaging presence under the LEGACY blast-radius measurement:
+--         hasPackagingTaxonomyCode() = !!form.packaging_code (JS truthiness, the
+--         pre-PR-#77 check — intentionally retained, see note above, NOT current
+--         app behaviour)
 --     - Sale type derivation: src/features/productAuthority/saleType.ts
 --         saleTypeFromForm() — product_class -> sale type inverse mapping
 --     - Pricing requirement by sale type: src/features/productAuthority/saleType.ts
@@ -62,6 +107,7 @@
 -- ============================================================================
 
 BEGIN TRANSACTION READ ONLY;
+SET LOCAL statement_timeout = '30s';
 
 -- ----------------------------------------------------------------------------
 -- 0. SCHEMA / COUNT SANITY CHECKS — run before any row-level query
@@ -107,8 +153,9 @@ HAVING count(*) > 1;
 --   fallback branch (`sku LIKE 'OAS-%' AND length(sku) >= 12`), which is a
 --   pre-existing legacy gap outside PR #75's scope, not invented by this audit.
 --
---   sku_packaging_segment mirrors skuPackagingSegment() (saveFastCreateProduct.ts,
---   PR #75) exactly, NOT isStructuredOasisSku()'s strict regex: uppercase the trimmed
+--   sku_packaging_segment mirrors skuPackagingSegment() (originally private to
+--   saveFastCreateProduct.ts as of PR #75, exported from skuGuard.ts since PR #77)
+--   exactly, NOT isStructuredOasisSku()'s strict regex: uppercase the trimmed
 --   SKU, split on "-", and take the 5th of exactly 6 parts when the first is "OAS" — no
 --   character-class or digit-suffix requirement. This is deliberately independent of
 --   is_structured_sku above; the two checks can disagree in either direction.
@@ -138,8 +185,9 @@ WITH sku_analysis AS (
       WHEN btrim(p.sku) LIKE 'OAS-%' AND length(btrim(p.sku)) >= 12 THEN true
       ELSE false
     END AS is_structured_sku,
-    -- sku_packaging_segment mirrors skuPackagingSegment() (saveFastCreateProduct.ts,
-    -- PR #75), NOT isStructuredOasisSku()'s strict regex — that function uppercases the
+    -- sku_packaging_segment mirrors skuPackagingSegment() (skuGuard.ts since PR #77,
+    -- originally private to saveFastCreateProduct.ts), NOT isStructuredOasisSku()'s
+    -- strict regex — that function uppercases the
     -- trimmed SKU and takes the 5th of exactly 6 dash-separated parts whenever the first
     -- is "OAS", with no character-class or digit-suffix requirement. A SKU can satisfy
     -- is_structured_sku above (including via its permissive fallback) yet not have
@@ -179,6 +227,42 @@ sale_type_requirements AS (
   -- Every cell mirrors REQUIREMENTS in saleType.ts exactly (retail_ready_pack's
   -- requires_b2b_price is false unless b2bEnabled is passed, which has no persisted
   -- column to query; export and gift_hamper both require a hero image).
+),
+active_packaging AS (
+  SELECT code FROM sku_code_rules WHERE code_type = 'packaging' AND is_active = true
+),
+current_gate_packaging AS (
+  -- CURRENT-GATE EVALUATION — exact SQL reproduction of evaluatePackagingReadiness()
+  -- (src/features/productAuthority/catalogueReadyGate.ts, PR #77). This is NOT the same
+  -- thing as packaging_present_by_app_truthiness below — see the file header's
+  -- "IMPORTANT" note for why both are kept, deliberately, side by side.
+  --   Ready requires ALL of:
+  --     1. normalized packaging_code (trim + uppercase) is non-empty;
+  --     2. that normalized code is an active sku_code_rules taxonomy code;
+  --     3. when the SKU itself encodes a packaging segment (sku_analysis above), that
+  --        segment agrees with the normalized packaging_code — a mismatch (e.g. SKU says
+  --        RBOX, saved code says MAAPET) blocks readiness even though both codes are
+  --        individually valid, active taxonomy entries.
+  SELECT
+    sa.id,
+    upper(btrim(coalesce(sa.packaging_code, ''))) AS normalized_packaging_code,
+    (upper(btrim(coalesce(sa.packaging_code, ''))) <> ''
+       -- Bugbot-caught: normalizePackagingCode() is applied to BOTH sides in the real
+       -- app (packagingAuthorityFromRulesResult() maps every rule's own .code through
+       -- normalizePackagingCode() when building the activeCodes Set, not just the
+       -- input) -- ap.code must be normalized here too, not just sa.packaging_code, or
+       -- a taxonomy row with stray casing/whitespace would wrongly fail to match.
+       AND EXISTS (SELECT 1 FROM active_packaging ap WHERE upper(btrim(ap.code)) = upper(btrim(sa.packaging_code)))
+       AND (
+         sa.sku_packaging_segment IS NULL
+         OR upper(btrim(sa.sku_packaging_segment)) = upper(btrim(sa.packaging_code))
+       )
+    ) AS packaging_ready_under_current_gate,
+    (sa.sku_packaging_segment IS NOT NULL
+       AND sa.packaging_code IS NOT NULL AND btrim(sa.packaging_code) <> ''
+       AND upper(btrim(sa.sku_packaging_segment)) <> upper(btrim(sa.packaging_code))
+    ) AS sku_packaging_code_mismatch
+  FROM sku_analysis sa
 ),
 derived_hero AS (
   -- Mirrors resolveProductCardHeroUrl() / latestApprovedHeroUrlFromMediaRows(): the
@@ -252,21 +336,29 @@ pricing_summary AS (
     bool_or(rr.channel = 'b2b')                                          AS b2b_review_required,
     bool_or(rr.channel = 'export')                                       AS export_review_required,
     -- product-row fallback prices, per pricingAuthority.ts resolvePricing().
-    -- NOTE: resolvePricing() also checks form.price_b2b, but that key is not a real
-    -- products column per the generated Supabase types (src/integrations/supabase/
-    -- types.ts) — only b2b_price and b2b_price_inr exist. Omitted here; see the audit
-    -- report's schema-gap note on this discrepancy (a code-level observation, not
-    -- something this SQL can resolve).
     CASE WHEN p.mrp > 0 THEN p.mrp END AS field_mrp,
-    CASE WHEN coalesce(p.b2b_price, p.b2b_price_inr) > 0
-      THEN coalesce(p.b2b_price, p.b2b_price_inr) END AS field_b2b,
-    CASE WHEN coalesce(p.export_price, p.export_price_usd) > 0
-      THEN coalesce(p.export_price, p.export_price_usd) END AS field_export
+    -- SCHEMA-DRIFT CORRECTION (Phase 1 durable closeout, 2026-07-10): the original draft
+    -- of this file coalesced products.b2b_price and products.b2b_price_inr, matching the
+    -- generated src/integrations/supabase/types.ts Row type. Neither column exists on
+    -- live production (confirmed via information_schema.columns on tcxvcatsqqertcnycuop
+    -- during Phase 1 execution) — the real column is products.price_b2b. types.ts is
+    -- stale relative to the deployed schema; see the audit report's schema-drift finding.
+    -- resolvePricing() itself also checks form.price_b2b as one of its candidate keys
+    -- (pricingAuthority.ts: `num(form.b2b_price) ?? num(form.price_b2b) ?? num(form.b2b_price_inr)`),
+    -- so this correction queries the one candidate column that is actually real.
+    CASE WHEN p.price_b2b > 0 THEN p.price_b2b END AS field_b2b,
+    -- SCHEMA-DRIFT CORRECTION: no export_price or export_price_usd column exists on live
+    -- production's products table at all (confirmed via information_schema.columns) — no
+    -- product-row fallback is possible for export, so this is a typed NULL, not a guess.
+    -- Channel-rule resolution for export (channel_export above, from
+    -- newest_approved_pricing/approved_pricing) is entirely unaffected by this gap — it
+    -- reads product_pricing_rules, not this column, and continues to work normally. Only
+    -- the product-row fallback tier is gapped.
+    NULL::numeric AS field_export
   FROM products p
   LEFT JOIN newest_approved_pricing ap ON ap.product_id = p.id
   LEFT JOIN pricing_review_required rr ON rr.product_id = p.id
-  GROUP BY p.id, p.mrp, p.b2b_price, p.b2b_price_inr,
-           p.export_price, p.export_price_usd
+  GROUP BY p.id, p.mrp, p.price_b2b
 )
 SELECT
   p.id                                        AS product_id,
@@ -278,7 +370,13 @@ SELECT
   sa.is_structured_sku,
   sa.sku_packaging_segment,
   p.packaging_code,
+  -- LEGACY blast-radius measurement (pre-PR-#77 truthiness) — see file header.
   (p.packaging_code IS NOT NULL AND p.packaging_code <> '')          AS packaging_present_by_app_truthiness,
+  -- CURRENT-GATE evaluation (PR #77 evaluatePackagingReadiness()) — see file header and
+  -- the current_gate_packaging CTE above. cgp.sku_packaging_code_mismatch is the exact
+  -- flag that catches the RBOX-vs-MAAPET class of case.
+  cgp.packaging_ready_under_current_gate,
+  cgp.sku_packaging_code_mismatch,
   coalesce(ps.channel_mrp, ps.field_mrp)                             AS resolved_mrp,
   coalesce(ps.channel_b2b, ps.field_b2b)                             AS resolved_b2b_price,
   coalesce(ps.channel_export, ps.field_export)                       AS resolved_export_price,
@@ -308,8 +406,13 @@ SELECT
     AND coalesce(ps.b2b_review_required, false))                    AS blocker_b2b_price_review_required,
   (req.customer_facing AND req.requires_export_price
     AND coalesce(ps.export_review_required, false))                 AS blocker_export_price_review_required,
+  -- LEGACY blast-radius blocker (pre-PR-#77 truthiness) — see file header.
   (req.customer_facing AND req.requires_packaging
     AND NOT (p.packaging_code IS NOT NULL AND p.packaging_code <> '')) AS blocker_packaging_missing,
+  -- CURRENT-GATE blocker (PR #77 evaluatePackagingReadiness()) — this is the blocker that
+  -- actually governs the live app's save-time/auto-clear behaviour today.
+  (req.customer_facing AND req.requires_packaging
+    AND NOT coalesce(cgp.packaging_ready_under_current_gate, false)) AS blocker_packaging_missing_current_gate,
   (req.customer_facing AND req.requires_hero_image
     AND (coalesce(dh.media_hero_url, p.hero_image_url) IS NULL
          OR btrim(coalesce(dh.media_hero_url, p.hero_image_url)) = '')) AS blocker_hero_image_missing,
@@ -318,6 +421,7 @@ FROM products p
 JOIN sku_analysis sa ON sa.id = p.id
 JOIN sale_type_derivation st ON st.id = p.id
 JOIN sale_type_requirements req ON req.sale_type = st.derived_sale_type
+LEFT JOIN current_gate_packaging cgp ON cgp.id = p.id
 LEFT JOIN pricing_summary ps ON ps.id = p.id
 LEFT JOIN derived_hero dh ON dh.product_id = p.id
 WHERE p.is_catalogue_ready = true
@@ -518,6 +622,43 @@ requires_packaging AS (
 ),
 active_packaging AS (
   SELECT code FROM sku_code_rules WHERE code_type = 'packaging' AND is_active = true
+),
+sku_analysis AS (
+  -- sku_packaging_segment mirrors skuPackagingSegment() (skuGuard.ts, exported there
+  -- since PR #77) — see Audit A's sku_analysis CTE for the full rationale.
+  SELECT
+    p.id, p.packaging_code,
+    CASE
+      WHEN array_length(string_to_array(upper(btrim(p.sku)), '-'), 1) = 6
+           AND (string_to_array(upper(btrim(p.sku)), '-'))[1] = 'OAS'
+        THEN (string_to_array(upper(btrim(p.sku)), '-'))[5]
+      ELSE NULL
+    END AS sku_packaging_segment
+  FROM products p
+),
+current_gate_packaging AS (
+  -- CURRENT-GATE EVALUATION — exact reproduction of evaluatePackagingReadiness()
+  -- (PR #77). See Audit A's current_gate_packaging CTE and the file header for the full
+  -- rationale; identical logic, scoped to this audit's row set.
+  SELECT
+    sa.id,
+    (upper(btrim(coalesce(sa.packaging_code, ''))) <> ''
+       -- Bugbot-caught: normalizePackagingCode() is applied to BOTH sides in the real
+       -- app (packagingAuthorityFromRulesResult() maps every rule's own .code through
+       -- normalizePackagingCode() when building the activeCodes Set, not just the
+       -- input) -- ap.code must be normalized here too, not just sa.packaging_code, or
+       -- a taxonomy row with stray casing/whitespace would wrongly fail to match.
+       AND EXISTS (SELECT 1 FROM active_packaging ap WHERE upper(btrim(ap.code)) = upper(btrim(sa.packaging_code)))
+       AND (
+         sa.sku_packaging_segment IS NULL
+         OR upper(btrim(sa.sku_packaging_segment)) = upper(btrim(sa.packaging_code))
+       )
+    ) AS packaging_ready_under_current_gate,
+    (sa.sku_packaging_segment IS NOT NULL
+       AND sa.packaging_code IS NOT NULL AND btrim(sa.packaging_code) <> ''
+       AND upper(btrim(sa.sku_packaging_segment)) <> upper(btrim(sa.packaging_code))
+    ) AS sku_packaging_code_mismatch
+  FROM sku_analysis sa
 )
 SELECT
   p.id                                AS product_id,
@@ -537,11 +678,16 @@ SELECT
                                                                         AS packaging_code_not_in_active_taxonomy,
   ((p.pcs_per_pack IS NOT NULL OR (p.pack_size IS NOT NULL AND p.pack_size <> ''))
      AND (p.packaging_code IS NULL OR p.packaging_code = ''))          AS qty_or_pack_text_without_taxonomy_code,
-  -- Reproduces the app's current (unsafe) gate check exactly, per Section 8 finding:
-  (p.packaging_code IS NOT NULL AND p.packaging_code <> '')            AS would_pass_app_hasPackagingTaxonomyCode
+  -- LEGACY blast-radius measurement (pre-PR-#77 truthiness) — see file header. NOT
+  -- current app behaviour.
+  (p.packaging_code IS NOT NULL AND p.packaging_code <> '')            AS would_pass_app_hasPackagingTaxonomyCode,
+  -- CURRENT-GATE evaluation (PR #77 evaluatePackagingReadiness()) — see file header.
+  cgp.packaging_ready_under_current_gate,
+  cgp.sku_packaging_code_mismatch
 FROM products p
 JOIN sale_type_derivation st ON st.id = p.id
 JOIN requires_packaging rp ON rp.sale_type = st.derived_sale_type
+LEFT JOIN current_gate_packaging cgp ON cgp.id = p.id
 WHERE rp.requires_packaging = true
   AND (
     p.packaging_code IS NULL
