@@ -144,14 +144,17 @@ sale_type_derivation AS (
 sale_type_requirements AS (
   -- Mirrors getSaleTypeRequirements() in saleType.ts.
   SELECT * FROM (VALUES
-    ('retail_ready_pack', true,  true, true,  false, true,  true),
-    ('b2b_horeca',        true,  false, true, false, true,  false),
-    ('export',            true,  false, false, true, true,  false),
-    ('internal_bom',      false, false, false, false, false, false),
-    ('gift_hamper',       true,  true, false,  false, true,  false),
+    ('retail_ready_pack', true,  true,  false, false, true,  true),
+    ('b2b_horeca',         true,  false, true,  false, true,  false),
+    ('export',             true,  false, false, true,  true,  true),
+    ('internal_bom',       false, false, false, false, false, false),
+    ('gift_hamper',        true,  true,  false, false, true,  true),
     ('packaging_material', false, false, false, false, false, false)
   ) AS req(sale_type, customer_facing, requires_mrp, requires_b2b_price,
            requires_export_price, requires_packaging, requires_hero_image)
+  -- Every cell mirrors REQUIREMENTS in saleType.ts exactly (retail_ready_pack's
+  -- requires_b2b_price is false unless b2bEnabled is passed, which has no persisted
+  -- column to query; export and gift_hamper both require a hero image).
 ),
 approved_pricing AS (
   SELECT
@@ -167,15 +170,20 @@ pricing_summary AS (
     max(CASE WHEN ap.channel IN ('retail', 'mrp') THEN ap.price_value END) AS channel_mrp,
     max(CASE WHEN ap.channel = 'b2b' THEN ap.price_value END)             AS channel_b2b,
     max(CASE WHEN ap.channel = 'export' THEN ap.price_value END)         AS channel_export,
-    -- product-row fallback prices, per pricingAuthority.ts resolvePricing()
+    -- product-row fallback prices, per pricingAuthority.ts resolvePricing().
+    -- NOTE: resolvePricing() also checks form.price_b2b, but that key is not a real
+    -- products column per the generated Supabase types (src/integrations/supabase/
+    -- types.ts) — only b2b_price and b2b_price_inr exist. Omitted here; see the audit
+    -- report's schema-gap note on this discrepancy (a code-level observation, not
+    -- something this SQL can resolve).
     CASE WHEN p.mrp > 0 THEN p.mrp END AS field_mrp,
-    CASE WHEN coalesce(p.b2b_price, p.price_b2b, p.b2b_price_inr) > 0
-      THEN coalesce(p.b2b_price, p.price_b2b, p.b2b_price_inr) END AS field_b2b,
+    CASE WHEN coalesce(p.b2b_price, p.b2b_price_inr) > 0
+      THEN coalesce(p.b2b_price, p.b2b_price_inr) END AS field_b2b,
     CASE WHEN coalesce(p.export_price, p.export_price_usd) > 0
       THEN coalesce(p.export_price, p.export_price_usd) END AS field_export
   FROM products p
   LEFT JOIN approved_pricing ap ON ap.product_id = p.id
-  GROUP BY p.id, p.mrp, p.b2b_price, p.price_b2b, p.b2b_price_inr,
+  GROUP BY p.id, p.mrp, p.b2b_price, p.b2b_price_inr,
            p.export_price, p.export_price_usd
 )
 SELECT

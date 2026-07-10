@@ -187,6 +187,28 @@ against "create" as a whole word inside a longer safety sentence, not as a SQL k
 manually confirmed by reading both lines directly). Zero actual mutation statements exist
 in the file.
 
+**Correction record:** Because this SQL was never executed against a real database (see
+Environment Identity), its correctness could only be checked by careful manual re-reading
+against source — exactly the kind of check that is easy to get subtly wrong by hand.
+Cursor Bugbot's review of this PR caught three such transcription errors, all now fixed
+in the committed file, and are recorded here rather than silently corrected, per this
+audit's own standard of not overstating verification:
+1. `pricing_summary` referenced `products.price_b2b`, which does not exist in the
+   generated `products` Row type (only `b2b_price` and `b2b_price_inr` do) — would have
+   failed with an undefined-column error on execution. Removed from the coalesce chain.
+2. `retail_ready_pack` was encoded with `requires_b2b_price = true`; the actual
+   `getSaleTypeRequirements()` in `saleType.ts` leaves it `false` unless `b2bEnabled` is
+   explicitly passed (a session/UI concept with no persisted column) — would have
+   produced false "B2B price missing" blockers for retail products. Corrected to `false`.
+3. `gift_hamper` was encoded with `requires_hero_image = false`; the actual requirement is
+   `true` — would have hidden real hero-image blockers on gift-hamper products.
+   Corrected to `true`.
+4. While re-verifying all six sale-type rows cell-by-cell after the above, a fourth,
+   Bugbot-independent error was found and fixed the same way: `export` was encoded with
+   `requires_hero_image = false`; the actual requirement is `true`.
+These were transcription errors in this audit's own SQL, not defects in the PR #75
+application code it describes.
+
 ---
 
 ## 10. Catalogue-Ready Integrity Results (Audit A)
