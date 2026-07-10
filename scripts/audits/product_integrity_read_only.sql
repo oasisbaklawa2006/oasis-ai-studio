@@ -247,7 +247,12 @@ current_gate_packaging AS (
     sa.id,
     upper(btrim(coalesce(sa.packaging_code, ''))) AS normalized_packaging_code,
     (upper(btrim(coalesce(sa.packaging_code, ''))) <> ''
-       AND EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = upper(btrim(sa.packaging_code)))
+       -- Bugbot-caught: normalizePackagingCode() is applied to BOTH sides in the real
+       -- app (packagingAuthorityFromRulesResult() maps every rule's own .code through
+       -- normalizePackagingCode() when building the activeCodes Set, not just the
+       -- input) -- ap.code must be normalized here too, not just sa.packaging_code, or
+       -- a taxonomy row with stray casing/whitespace would wrongly fail to match.
+       AND EXISTS (SELECT 1 FROM active_packaging ap WHERE upper(btrim(ap.code)) = upper(btrim(sa.packaging_code)))
        AND (
          sa.sku_packaging_segment IS NULL
          OR upper(btrim(sa.sku_packaging_segment)) = upper(btrim(sa.packaging_code))
@@ -638,7 +643,12 @@ current_gate_packaging AS (
   SELECT
     sa.id,
     (upper(btrim(coalesce(sa.packaging_code, ''))) <> ''
-       AND EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = upper(btrim(sa.packaging_code)))
+       -- Bugbot-caught: normalizePackagingCode() is applied to BOTH sides in the real
+       -- app (packagingAuthorityFromRulesResult() maps every rule's own .code through
+       -- normalizePackagingCode() when building the activeCodes Set, not just the
+       -- input) -- ap.code must be normalized here too, not just sa.packaging_code, or
+       -- a taxonomy row with stray casing/whitespace would wrongly fail to match.
+       AND EXISTS (SELECT 1 FROM active_packaging ap WHERE upper(btrim(ap.code)) = upper(btrim(sa.packaging_code)))
        AND (
          sa.sku_packaging_segment IS NULL
          OR upper(btrim(sa.sku_packaging_segment)) = upper(btrim(sa.packaging_code))
