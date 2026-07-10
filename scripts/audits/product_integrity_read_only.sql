@@ -1,0 +1,450 @@
+-- ============================================================================
+-- AI-Studio existing-product integrity audit — READ-ONLY
+-- Companion: docs/audits/2026-07-10-product-integrity-audit.md
+--
+-- SAFETY
+--   * This file contains ONLY SELECT statements.
+--   * No INSERT / UPDATE / DELETE / UPSERT / MERGE / TRUNCATE / ALTER / DROP /
+--     CREATE / GRANT / REVOKE / RPC call appears anywhere below.
+--   * Wrapped in a read-only transaction. If your client supports it, this
+--     transaction will refuse any accidental write statement added later.
+--   * Uses explicit column lists — no `SELECT *` in any final audit query.
+--   * Re-runnable: every query is a pure SELECT against current table state.
+--
+-- STATUS AS WRITTEN (2026-07-10)
+--   This file was authored during the audit but was NOT executed against any
+--   database in this pass. Phase 2 (Environment Identity Gate) of the audit
+--   could not conclusively determine which Supabase project backs the
+--   deployed oasis-ai-studio production application — see the audit report,
+--   section "Environment Identity". Per the audit's explicit read-only rule,
+--   execution was deliberately withheld rather than guessed against an
+--   unconfirmed database. This SQL is provided so a future session that DOES
+--   have confirmed production access can run it immediately and safely.
+--
+-- AUTHORITY SOURCE FOR EVERY RULE BELOW
+--   Every classification below is a direct SQL reproduction of the corrected
+--   application logic merged in PR #75 (commit 443ba403523dcedb9552def684368b30aae28828):
+--     - Structured SKU validity: src/features/productAuthority/skuGuard.ts
+--         isStructuredOasisSku()
+--     - SKU packaging segment: 5th dash-separated part of OAS-DIV-CAT-SUBCAT-PKG-SEQ
+--         (src/features/fastCreate/saveFastCreateProduct.ts skuPackagingSegment())
+--     - Packaging presence for the gate: src/features/productAuthority/catalogueReadyGate.ts
+--         hasPackagingTaxonomyCode() = !!form.packaging_code (JS truthiness — see
+--         Section 8 "new code finding" in the report; this SQL reproduces that
+--         truthiness gap deliberately so the audit can quantify its blast radius)
+--     - Sale type derivation: src/features/productAuthority/saleType.ts
+--         saleTypeFromForm() — product_class -> sale type inverse mapping
+--     - Pricing requirement by sale type: src/features/productAuthority/saleType.ts
+--         getSaleTypeRequirements() combined with
+--         src/features/productAuthority/pricingAuthority.ts pricingBlockers()
+--     - Active packaging taxonomy: sku_code_rules WHERE code_type = 'packaging'
+--         AND is_active = true (src/lib/skuCodeRules.ts fetchActiveSkuCodeRules())
+--   Product Truth score (readinessSnapshot.readiness.score / maxScore) is
+--   computed client-side in TypeScript from products + product_media +
+--   product_pricing_rules + product_moq_rules + compliance metadata
+--   (buildProductReadinessSnapshot, referenced from src/pages/ProductEdit.tsx).
+--   It is NOT reproduced in SQL here — reimplementing that scoring algorithm
+--   independently in SQL would be exactly the "independently invented
+--   approximation" the audit brief forbids. Every row below reports
+--   truth_score_reconstructable = false for this reason; treat the Product
+--   Truth dimension as UNVERIFIABLE from this SQL alone.
+-- ============================================================================
+
+BEGIN TRANSACTION READ ONLY;
+
+-- ----------------------------------------------------------------------------
+-- 0. SCHEMA / COUNT SANITY CHECKS — run before any row-level query
+-- ----------------------------------------------------------------------------
+
+-- 0a. Confirm the tables and row counts this audit depends on.
+SELECT
+  (SELECT count(*) FROM products)                                   AS products_total,
+  (SELECT count(*) FROM products WHERE is_catalogue_ready = true)   AS products_catalogue_ready,
+  (SELECT count(*) FROM products WHERE sku IS NOT NULL)             AS products_with_sku,
+  (SELECT count(*) FROM sku_code_rules)                             AS sku_code_rules_total,
+  (SELECT count(*) FROM sku_code_rules
+     WHERE code_type = 'packaging' AND is_active = true)            AS active_packaging_codes,
+  (SELECT count(*) FROM product_pricing_rules)                      AS pricing_rules_total,
+  (SELECT count(*) FROM product_pricing_rules
+     WHERE approval_status = 'approved')                            AS approved_pricing_rules;
+
+-- 0b. Active packaging taxonomy, for cross-reference while reading results below.
+SELECT
+  code,
+  label,
+  is_active,
+  sort_order
+FROM sku_code_rules
+WHERE code_type = 'packaging'
+ORDER BY is_active DESC, sort_order;
+
+-- 0c. Duplicate active packaging codes (same code registered more than once and active) —
+--     feeds Audit D "duplicate taxonomy codes".
+SELECT
+  code,
+  count(*) AS active_row_count
+FROM sku_code_rules
+WHERE code_type = 'packaging' AND is_active = true
+GROUP BY code
+HAVING count(*) > 1;
+
+-- ----------------------------------------------------------------------------
+-- SHARED CTE FRAGMENT (repeated per query below for standalone re-runnability):
+--   sku_analysis: reproduces isStructuredOasisSku() + the SKU packaging segment.
+--
+--   is_structured_sku mirrors skuGuard.ts exactly, INCLUDING its known-permissive
+--   fallback branch (`sku LIKE 'OAS-%' AND length(sku) >= 12`), which is a
+--   pre-existing legacy gap outside PR #75's scope, not invented by this audit.
+--
+--   sku_packaging_segment is only extracted when the SKU matches the STRICT
+--   6-part structured pattern (OAS-DIV-CAT-SUBCAT-PKG-SEQ) — for SKUs that only
+--   pass via the loose fallback, the segment is unreliable and reported NULL.
+-- ----------------------------------------------------------------------------
+
+-- ============================================================================
+-- AUDIT A — CATALOGUE-READY INTEGRITY
+-- Every product with is_catalogue_ready = true, re-evaluated against the
+-- corrected gate (catalogueReadyGate.ts + saleType.ts + pricingAuthority.ts).
+-- Product Truth is intentionally left UNVERIFIABLE (see header note).
+-- ============================================================================
+
+WITH sku_analysis AS (
+  SELECT
+    p.id,
+    p.sku,
+    p.packaging_code,
+    CASE
+      WHEN p.sku IS NULL OR btrim(p.sku) = '' THEN false
+      WHEN p.sku ~* '^DRAFT-' THEN false
+      WHEN p.sku ~* '^OAS-FC-' THEN false
+      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$' THEN true
+      WHEN p.sku LIKE 'OAS-%' AND length(p.sku) >= 12 THEN true
+      ELSE false
+    END AS is_structured_sku,
+    CASE
+      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
+        THEN split_part(p.sku, '-', 5)
+      ELSE NULL
+    END AS sku_packaging_segment
+  FROM products p
+),
+sale_type_derivation AS (
+  SELECT
+    p.id,
+    CASE
+      WHEN lower(coalesce(p.product_class, '')) = 'ready_pack' THEN 'retail_ready_pack'
+      WHEN lower(coalesce(p.product_class, '')) = 'gift_hamper' THEN 'gift_hamper'
+      WHEN lower(coalesce(p.product_class, '')) = 'bulk_loose_product' THEN 'b2b_horeca'
+      WHEN lower(coalesce(p.main_department, '')) = 'packing_material'
+        OR lower(coalesce(p.category, '')) LIKE '%packaging%' THEN 'packaging_material'
+      ELSE 'b2b_horeca'
+    END AS derived_sale_type
+  FROM products p
+),
+sale_type_requirements AS (
+  -- Mirrors getSaleTypeRequirements() in saleType.ts.
+  SELECT * FROM (VALUES
+    ('retail_ready_pack', true,  true, true,  false, true,  true),
+    ('b2b_horeca',        true,  false, true, false, true,  false),
+    ('export',            true,  false, false, true, true,  false),
+    ('internal_bom',      false, false, false, false, false, false),
+    ('gift_hamper',       true,  true, false,  false, true,  false),
+    ('packaging_material', false, false, false, false, false, false)
+  ) AS req(sale_type, customer_facing, requires_mrp, requires_b2b_price,
+           requires_export_price, requires_packaging, requires_hero_image)
+),
+approved_pricing AS (
+  SELECT
+    product_id,
+    lower(price_channel) AS channel,
+    coalesce(calculated_price, base_price) AS price_value
+  FROM product_pricing_rules
+  WHERE approval_status = 'approved'
+),
+pricing_summary AS (
+  SELECT
+    p.id,
+    max(CASE WHEN ap.channel IN ('retail', 'mrp') THEN ap.price_value END) AS channel_mrp,
+    max(CASE WHEN ap.channel = 'b2b' THEN ap.price_value END)             AS channel_b2b,
+    max(CASE WHEN ap.channel = 'export' THEN ap.price_value END)         AS channel_export,
+    -- product-row fallback prices, per pricingAuthority.ts resolvePricing()
+    CASE WHEN p.mrp > 0 THEN p.mrp END AS field_mrp,
+    CASE WHEN coalesce(p.b2b_price, p.price_b2b, p.b2b_price_inr) > 0
+      THEN coalesce(p.b2b_price, p.price_b2b, p.b2b_price_inr) END AS field_b2b,
+    CASE WHEN coalesce(p.export_price, p.export_price_usd) > 0
+      THEN coalesce(p.export_price, p.export_price_usd) END AS field_export
+  FROM products p
+  LEFT JOIN approved_pricing ap ON ap.product_id = p.id
+  GROUP BY p.id, p.mrp, p.b2b_price, p.price_b2b, p.b2b_price_inr,
+           p.export_price, p.export_price_usd
+)
+SELECT
+  p.id                                        AS product_id,
+  p.sku,
+  p.product_name,
+  p.product_class,
+  st.derived_sale_type,
+  p.is_catalogue_ready,
+  sa.is_structured_sku,
+  sa.sku_packaging_segment,
+  p.packaging_code,
+  (p.packaging_code IS NOT NULL AND p.packaging_code <> '')          AS packaging_present_by_app_truthiness,
+  coalesce(ps.channel_mrp, ps.field_mrp)                             AS resolved_mrp,
+  coalesce(ps.channel_b2b, ps.field_b2b)                             AS resolved_b2b_price,
+  coalesce(ps.channel_export, ps.field_export)                       AS resolved_export_price,
+  p.hero_image_url,
+  req.customer_facing,
+  req.requires_mrp,
+  req.requires_b2b_price,
+  req.requires_export_price,
+  req.requires_packaging,
+  req.requires_hero_image,
+  -- Individual blocker flags, mirroring evaluateCatalogueReadyGate() blocker list:
+  (NOT req.customer_facing)                                          AS blocker_not_customer_facing,
+  (req.customer_facing AND NOT sa.is_structured_sku)                 AS blocker_invalid_sku,
+  (req.customer_facing AND req.requires_mrp
+    AND coalesce(ps.channel_mrp, ps.field_mrp) IS NULL)              AS blocker_mrp_missing,
+  (req.customer_facing AND req.requires_b2b_price
+    AND coalesce(ps.channel_b2b, ps.field_b2b) IS NULL)              AS blocker_b2b_price_missing,
+  (req.customer_facing AND req.requires_export_price
+    AND coalesce(ps.channel_export, ps.field_export) IS NULL)        AS blocker_export_price_missing,
+  (req.customer_facing AND req.requires_packaging
+    AND NOT (p.packaging_code IS NOT NULL AND p.packaging_code <> '')) AS blocker_packaging_missing,
+  (req.customer_facing AND req.requires_hero_image
+    AND (p.hero_image_url IS NULL OR btrim(p.hero_image_url) = ''))  AS blocker_hero_image_missing,
+  false                                                               AS product_truth_reconstructable
+FROM products p
+JOIN sku_analysis sa ON sa.id = p.id
+JOIN sale_type_derivation st ON st.id = p.id
+JOIN sale_type_requirements req ON req.sale_type = st.derived_sale_type
+LEFT JOIN pricing_summary ps ON ps.id = p.id
+WHERE p.is_catalogue_ready = true
+ORDER BY p.sku;
+
+-- ============================================================================
+-- AUDIT B — SKU / PACKAGING CONSISTENCY
+-- Compares the SKU's 5th segment against products.packaging_code and the
+-- active sku_code_rules taxonomy. Classifies every row into exactly one of
+-- the 9 categories from the audit brief.
+-- ============================================================================
+
+WITH sku_analysis AS (
+  SELECT
+    p.id,
+    p.sku,
+    p.packaging_code,
+    CASE
+      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
+        THEN split_part(p.sku, '-', 5)
+      ELSE NULL
+    END AS sku_packaging_segment
+  FROM products p
+),
+active_packaging AS (
+  SELECT code FROM sku_code_rules WHERE code_type = 'packaging' AND is_active = true
+)
+SELECT
+  p.id                                 AS product_id,
+  p.sku,
+  p.product_name,
+  sa.sku_packaging_segment,
+  p.packaging_code,
+  (p.packaging_code IS NOT NULL AND btrim(p.packaging_code) = '' AND p.packaging_code <> '')
+                                        AS packaging_code_whitespace_only,
+  (sa.sku_packaging_segment IS NOT NULL
+     AND EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = sa.sku_packaging_segment))
+                                        AS sku_segment_in_active_taxonomy,
+  (p.packaging_code IS NOT NULL AND btrim(p.packaging_code) <> ''
+     AND EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code))
+                                        AS saved_code_in_active_taxonomy,
+  CASE
+    WHEN sa.sku_packaging_segment IS NULL AND (p.packaging_code IS NULL OR btrim(p.packaging_code) = '')
+      THEN 'NOT_APPLICABLE'
+    WHEN sa.sku_packaging_segment IS NULL
+      THEN 'SKU_PACKAGING_MISSING_OR_MALFORMED'
+    WHEN p.packaging_code IS NULL OR p.packaging_code = ''
+      THEN 'SAVED_PACKAGING_MISSING'
+    WHEN btrim(p.packaging_code) = '' AND p.packaging_code <> ''
+      THEN 'SAVED_PACKAGING_MISSING'  -- whitespace-only: SQL treats as missing; app truthiness does NOT (see report finding NEW-1)
+    WHEN upper(btrim(sa.sku_packaging_segment)) = upper(btrim(p.packaging_code))
+         AND sa.sku_packaging_segment <> p.packaging_code
+      THEN 'CASE_OR_WHITESPACE_NORMALIZATION_ONLY'
+    WHEN sa.sku_packaging_segment = p.packaging_code
+         AND NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code)
+      THEN 'BOTH_CODES_INVALID'
+    WHEN sa.sku_packaging_segment = p.packaging_code
+      THEN 'MATCH'
+    WHEN NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = sa.sku_packaging_segment)
+         AND NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code)
+      THEN 'BOTH_CODES_INVALID'
+    WHEN NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code)
+      THEN 'SAVED_CODE_NOT_IN_ACTIVE_TAXONOMY'
+    WHEN NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = sa.sku_packaging_segment)
+      THEN 'SKU_CODE_NOT_IN_ACTIVE_TAXONOMY'
+    ELSE 'SKU_VS_SAVED_PACKAGING_MISMATCH'
+  END AS classification
+FROM products p
+JOIN sku_analysis sa ON sa.id = p.id
+ORDER BY classification, p.sku;
+
+-- Audit B summary counts (run after inspecting the row-level query above).
+WITH sku_analysis AS (
+  SELECT
+    p.id,
+    p.sku,
+    p.packaging_code,
+    CASE
+      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
+        THEN split_part(p.sku, '-', 5)
+      ELSE NULL
+    END AS sku_packaging_segment
+  FROM products p
+),
+active_packaging AS (
+  SELECT code FROM sku_code_rules WHERE code_type = 'packaging' AND is_active = true
+),
+classified AS (
+  SELECT
+    CASE
+      WHEN sa.sku_packaging_segment IS NULL AND (p.packaging_code IS NULL OR btrim(p.packaging_code) = '')
+        THEN 'NOT_APPLICABLE'
+      WHEN sa.sku_packaging_segment IS NULL
+        THEN 'SKU_PACKAGING_MISSING_OR_MALFORMED'
+      WHEN p.packaging_code IS NULL OR p.packaging_code = ''
+        THEN 'SAVED_PACKAGING_MISSING'
+      WHEN btrim(p.packaging_code) = '' AND p.packaging_code <> ''
+        THEN 'SAVED_PACKAGING_MISSING'
+      WHEN upper(btrim(sa.sku_packaging_segment)) = upper(btrim(p.packaging_code))
+           AND sa.sku_packaging_segment <> p.packaging_code
+        THEN 'CASE_OR_WHITESPACE_NORMALIZATION_ONLY'
+      WHEN sa.sku_packaging_segment = p.packaging_code
+           AND NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code)
+        THEN 'BOTH_CODES_INVALID'
+      WHEN sa.sku_packaging_segment = p.packaging_code
+        THEN 'MATCH'
+      WHEN NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = sa.sku_packaging_segment)
+           AND NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code)
+        THEN 'BOTH_CODES_INVALID'
+      WHEN NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code)
+        THEN 'SAVED_CODE_NOT_IN_ACTIVE_TAXONOMY'
+      WHEN NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = sa.sku_packaging_segment)
+        THEN 'SKU_CODE_NOT_IN_ACTIVE_TAXONOMY'
+      ELSE 'SKU_VS_SAVED_PACKAGING_MISMATCH'
+    END AS classification
+  FROM products p
+  JOIN sku_analysis sa ON sa.id = p.id
+)
+SELECT classification, count(*) AS row_count
+FROM classified
+GROUP BY classification
+ORDER BY row_count DESC;
+
+-- ============================================================================
+-- AUDIT C — INTERNAL PRODUCT MISCLASSIFICATION CANDIDATES
+-- IMPORTANT: sale_type was never a persisted column at any point in this
+-- application's history (see saleType.ts docblock). There is NO durable field
+-- that can prove a product was originally intended as internal_bom. This
+-- query can only surface *candidates* via indirect signals — it cannot
+-- VERIFY original intent. Every row from this query is at best
+-- HIGH_CONFIDENCE_REVIEW or POSSIBLE_REVIEW, never VERIFIED_MISCLASSIFIED,
+-- unless cross-referenced against an external, durable record (e.g. a
+-- preserved catalogue draft payload) not queried here.
+-- ============================================================================
+
+SELECT
+  p.id                              AS product_id,
+  p.sku,
+  p.product_name,
+  p.product_class,
+  p.main_department,
+  p.production_department,
+  p.category,
+  p.subcategory,
+  p.bom_required,
+  p.is_catalogue_ready,
+  p.is_active,
+  p.hero_image_url,
+  (EXISTS (
+     SELECT 1 FROM product_pricing_rules ppr
+     WHERE ppr.product_id = p.id AND ppr.approval_status = 'approved'
+   ))                               AS has_any_approved_pricing,
+  CASE
+    WHEN p.bom_required = true AND p.is_catalogue_ready = true
+      THEN 'HIGH_CONFIDENCE_REVIEW'   -- flagged as a BOM/component input yet marked catalogue-ready
+    WHEN p.bom_required = true
+      THEN 'POSSIBLE_REVIEW'
+    ELSE 'UNVERIFIABLE_BECAUSE_SALE_TYPE_WAS_NOT_PERSISTED'
+  END AS classification
+FROM products p
+WHERE p.bom_required = true
+   OR lower(coalesce(p.main_department, '')) = 'packing_material'
+ORDER BY classification, p.sku;
+
+-- ============================================================================
+-- AUDIT D — PACKAGING TAXONOMY INTEGRITY
+-- Products where packaging is required by sale type (per saleType.ts) but the
+-- saved packaging_code fails one or more integrity checks.
+-- ============================================================================
+
+WITH sale_type_derivation AS (
+  SELECT
+    p.id,
+    CASE
+      WHEN lower(coalesce(p.product_class, '')) = 'ready_pack' THEN 'retail_ready_pack'
+      WHEN lower(coalesce(p.product_class, '')) = 'gift_hamper' THEN 'gift_hamper'
+      WHEN lower(coalesce(p.product_class, '')) = 'bulk_loose_product' THEN 'b2b_horeca'
+      WHEN lower(coalesce(p.main_department, '')) = 'packing_material'
+        OR lower(coalesce(p.category, '')) LIKE '%packaging%' THEN 'packaging_material'
+      ELSE 'b2b_horeca'
+    END AS derived_sale_type
+  FROM products p
+),
+requires_packaging AS (
+  SELECT sale_type, requires_packaging FROM (VALUES
+    ('retail_ready_pack', true),
+    ('b2b_horeca',        true),
+    ('export',            true),
+    ('internal_bom',      false),
+    ('gift_hamper',       true),
+    ('packaging_material', false)
+  ) AS r(sale_type, requires_packaging)
+),
+active_packaging AS (
+  SELECT code FROM sku_code_rules WHERE code_type = 'packaging' AND is_active = true
+)
+SELECT
+  p.id                                AS product_id,
+  p.sku,
+  p.product_name,
+  st.derived_sale_type,
+  p.packaging_code,
+  p.pcs_per_pack,
+  p.pack_size,
+  p.is_catalogue_ready,
+  (p.packaging_code IS NULL)                                          AS packaging_code_null,
+  (p.packaging_code = '')                                              AS packaging_code_blank,
+  (p.packaging_code IS NOT NULL AND btrim(p.packaging_code) = ''
+     AND p.packaging_code <> '')                                       AS packaging_code_whitespace_only,
+  (p.packaging_code IS NOT NULL AND btrim(p.packaging_code) <> ''
+     AND NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code))
+                                                                        AS packaging_code_not_in_active_taxonomy,
+  ((p.pcs_per_pack IS NOT NULL OR (p.pack_size IS NOT NULL AND p.pack_size <> ''))
+     AND (p.packaging_code IS NULL OR p.packaging_code = ''))          AS qty_or_pack_text_without_taxonomy_code,
+  -- Reproduces the app's current (unsafe) gate check exactly, per Section 8 finding:
+  (p.packaging_code IS NOT NULL AND p.packaging_code <> '')            AS would_pass_app_hasPackagingTaxonomyCode
+FROM products p
+JOIN sale_type_derivation st ON st.id = p.id
+JOIN requires_packaging rp ON rp.sale_type = st.derived_sale_type
+WHERE rp.requires_packaging = true
+  AND (
+    p.packaging_code IS NULL
+    OR p.packaging_code = ''
+    OR (p.packaging_code IS NOT NULL AND btrim(p.packaging_code) = '' AND p.packaging_code <> '')
+    OR NOT EXISTS (SELECT 1 FROM active_packaging ap WHERE ap.code = p.packaging_code)
+  )
+ORDER BY p.is_catalogue_ready DESC, p.sku;
+
+ROLLBACK;
+-- End of read-only audit. No statement above this line can mutate data —
+-- the transaction is rolled back unconditionally even though nothing was
+-- written, as an explicit safety guarantee for anyone re-running this file.
