@@ -15,6 +15,7 @@ import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
+  hasPackagingTaxonomyCode,
 } from "@/features/productAuthority/catalogueReadyGate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -817,13 +818,27 @@ const ProductEdit = () => {
         sku: form.sku,
         saleType: saleTypeFromForm(form),
         pricing: resolvePricing(form, channelPrices),
-        packagingPresent: !!(form.packaging_code || form.pcs_per_pack || form.pack_size),
+        packagingPresent: hasPackagingTaxonomyCode(form),
         heroImageUrl: readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url,
         truthScore: readinessSnapshot?.readiness.score ?? null,
         truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
       }),
     [form, channelPrices, readinessSnapshot],
   );
+
+  // A product that was already catalogue-ready must not silently stay ready once it
+  // develops a hard blocker (price removed, SKU invalidated, packaging cleared, etc.) —
+  // recalculated on every relevant field change via the memo above. Auto-clear the local
+  // flag and surface a visible warning rather than persisting a contradictory state.
+  useEffect(() => {
+    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+      set("is_catalogue_ready", false);
+      toast.warning(
+        `Catalogue-ready was turned off — ${catalogueReadyBlockedMessage(catalogueReadyGate)}`,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalogueReadyGate.allowed, form.is_catalogue_ready]);
 
   const applyMediaAuthority = async (
     productId: string,
@@ -1144,6 +1159,13 @@ const ProductEdit = () => {
 
       setSubmitError(message);
       toast.error(message);
+      return;
+    }
+
+    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+      const message = catalogueReadyBlockedMessage(catalogueReadyGate);
+      setSubmitError(message);
+      toast.error(`Cannot save as catalogue-ready — ${message}`);
       return;
     }
 
@@ -2249,7 +2271,7 @@ const ProductEdit = () => {
                 }}
               />
             </div>
-            {!catalogueReadyGate.allowed && !form.is_catalogue_ready && (
+            {!catalogueReadyGate.allowed && (
               <ul className="text-[11px] text-amber-700 dark:text-amber-400 space-y-0.5 list-disc pl-4">
                 {catalogueReadyGate.blockers.map((b) => (
                   <li key={b}>{b}</li>

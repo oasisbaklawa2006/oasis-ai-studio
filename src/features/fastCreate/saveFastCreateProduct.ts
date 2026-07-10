@@ -7,6 +7,7 @@ import {
 } from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
+import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
 import { generateFastCreateSku, type FastCreateSuggestions } from "./fastCreateSuggestions";
 import { resolveFastCreateSkuCodes, type FastCreateSkuCodeSet } from "./fastCreateSkuCodes";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
@@ -21,6 +22,12 @@ import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard
 export const FAST_CREATE_SKU_BLOCK_MESSAGE =
   "Structured SKU could not be generated. Ensure sku_code_rules are configured and generate_oasis_sku RPC is deployed. Placeholder SKUs (DRAFT-*, OAS-FC-*) are blocked.";
 
+/** Packaging segment (5th of 6 dash-separated parts) of a structured OAS-DIV-CAT-SUBCAT-PKG-SEQ SKU. */
+function skuPackagingSegment(sku: string): string | null {
+  const parts = sku.trim().toUpperCase().split("-");
+  return parts.length === 6 && parts[0] === "OAS" ? parts[4] : null;
+}
+
 /** Resolve structured Oasis SKU for Fast Create — throws if RPC/rules unavailable. */
 export async function requireFastCreateSku(
   categoryKey: FastCreateCategoryKey = "other",
@@ -31,7 +38,19 @@ export async function requireFastCreateSku(
   if (trimmed) {
     const existingCheck = assertStructuredSkuForSave(trimmed);
     if (existingCheck.ok) {
-      return { sku: existingCheck.sku, codes: resolveFastCreateSkuCodes(categoryKey) };
+      const skuPackaging = skuPackagingSegment(existingCheck.sku);
+      // Only reuse the existing SKU as-is when its own packaging segment still agrees with
+      // the operator's current selection — otherwise it's stale (packaging changed after this
+      // SKU was generated) and must be regenerated, not reused with mismatched preset codes.
+      if (!packagingCode || skuPackaging === packagingCode) {
+        return {
+          sku: existingCheck.sku,
+          codes: {
+            ...resolveFastCreateSkuCodes(categoryKey),
+            ...(skuPackaging ? { packaging_code: skuPackaging } : {}),
+          },
+        };
+      }
     }
   }
 
@@ -52,6 +71,8 @@ export async function requireFastCreateSku(
   return generated;
 }
 
+export const FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX = "has no supported catalogue classification yet";
+
 export type FastCreateSaveInput = {
   suggestions: FastCreateSuggestions;
   heroUrl: string | null;
@@ -61,6 +82,8 @@ export type FastCreateSaveInput = {
   resolvedSku?: string | null;
   /** Extra form fields from the Fast Create draft (sale-type patch, pack data, packaging). */
   extraFormPatch?: Record<string, unknown>;
+  /** Sale type selected in Fast Create — used to guard product_class defaulting. */
+  saleType?: SaleType;
 };
 
 export async function saveFastCreateProduct(
@@ -82,7 +105,20 @@ export async function saveFastCreateProduct(
   const contributor = input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
 
   if (direct) {
-    if (!form.product_class) form.product_class = "bulk_loose_product";
+    if (!form.product_class) {
+      // Sale types without a persisted product_class (internal_bom, export,
+      // packaging_material — see saleType.ts) must never silently become a sellable
+      // "bulk_loose_product": that would make an internal/not-for-sale item look and
+      // gate like customer-facing B2B stock. Block direct creation with a clear reason
+      // instead of inventing an undocumented sentinel or guessing a sellable class.
+      if (input.saleType && !productClassForSaleType(input.saleType)) {
+        throw new Error(
+          `Sale type "${input.saleType}" ${FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX}. ` +
+            "Submit for admin review as a catalogue draft instead of direct creation, or choose a sale type with a supported product class.",
+        );
+      }
+      form.product_class = "bulk_loose_product";
+    }
     if (!form.main_department) form.main_department = "ready_goods_store";
 
     const skuResult = await requireFastCreateSku(

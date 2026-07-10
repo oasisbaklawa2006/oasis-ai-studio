@@ -76,3 +76,14 @@ export function evaluateCatalogueReadyGate(input: CatalogueReadyGateInput): Cata
 export function catalogueReadyBlockedMessage(result: CatalogueReadyGateResult): string {
   return `Cannot mark catalogue-ready. Missing: ${result.blockers.join(", ")}.`;
 }
+
+/**
+ * Packaging readiness for the gate means a real taxonomy `packaging_code` was selected —
+ * qty-per-pack or free-text pack size alone do not prove that (Defect 5 regression: those
+ * used to satisfy this check and let products through with no actual packaging segment).
+ * Sale types that don't require packaging at all are exempted separately via
+ * `getSaleTypeRequirements(...).requiresPackaging`, so this stays a single strict check.
+ */
+export function hasPackagingTaxonomyCode(form: Record<string, unknown>): boolean {
+  return !!form.packaging_code;
+}

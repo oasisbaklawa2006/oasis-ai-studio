@@ -42,6 +42,7 @@ import {
   fastCreateFormPatchFromDraft,
   fastCreateReadinessCategories,
   fastCreateReadinessScore,
+  heroPreviewFromDraft,
   loadFastCreateDraft,
   saveFastCreateDraft,
   type FastCreateDraftSnapshot,
@@ -99,6 +100,7 @@ const FastCreateProduct = () => {
     const stored = loadFastCreateDraft();
     if (!stored) return;
     setDraft(stored);
+    setHeroPreview(heroPreviewFromDraft(stored));
     setRestoredFromDraft(true);
   }, []);
 
@@ -256,6 +258,7 @@ const FastCreateProduct = () => {
         categoryKey: draft.categoryKey,
         resolvedSku: skuResult.sku,
         extraFormPatch: fastCreateFormPatchFromDraft(draft),
+        saleType: draft.saleType,
       });
 
       clearFastCreateDraft();
