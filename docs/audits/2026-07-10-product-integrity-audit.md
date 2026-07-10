@@ -263,6 +263,21 @@ approximation limitation rather than a fixable transcription error:
    product should be treated as REVIEW_REQUIRED, not trusted at face value**, until
    verified directly against the live app for that specific product.
 
+A fourth Bugbot review pass found one more issue, a genuine and fully fixable one:
+10. **SKU packaging segment used the wrong function's rules (MEDIUM):** The audit's
+    `sku_packaging_segment` extraction was modeled on `isStructuredOasisSku()`'s strict
+    regex (`^OAS-[A-Z0-9]+-...-\d{4}$`), but the app's actual packaging-segment extraction
+    (`skuPackagingSegment()` in `saveFastCreateProduct.ts`, added in PR #75 for Defect 1)
+    is a *different, looser* function: it uppercases the trimmed SKU and takes the 5th of
+    exactly 6 dash-separated parts whenever the first is `"OAS"` — no character-class or
+    digit-suffix requirement at all. A SKU could satisfy `is_structured_sku` (including via
+    its permissive `OAS-`-prefix fallback) yet not have exactly 6 parts, or vice versa —
+    the app itself treats these as two independent checks, and this audit's SQL now does
+    too. Fixed by replacing the regex/`split_part` extraction with an array-based
+    reproduction of `skuPackagingSegment()`'s exact logic
+    (`string_to_array(upper(btrim(sku)), '-')`, checking length = 6 and `[1] = 'OAS'`,
+    taking `[5]`) across all three occurrences of the CTE.
+
 ---
 
 ## 10. Catalogue-Ready Integrity Results (Audit A)

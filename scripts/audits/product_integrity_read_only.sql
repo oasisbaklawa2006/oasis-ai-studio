@@ -96,9 +96,11 @@ HAVING count(*) > 1;
 --   fallback branch (`sku LIKE 'OAS-%' AND length(sku) >= 12`), which is a
 --   pre-existing legacy gap outside PR #75's scope, not invented by this audit.
 --
---   sku_packaging_segment is only extracted when the SKU matches the STRICT
---   6-part structured pattern (OAS-DIV-CAT-SUBCAT-PKG-SEQ) — for SKUs that only
---   pass via the loose fallback, the segment is unreliable and reported NULL.
+--   sku_packaging_segment mirrors skuPackagingSegment() (saveFastCreateProduct.ts,
+--   PR #75) exactly, NOT isStructuredOasisSku()'s strict regex: uppercase the trimmed
+--   SKU, split on "-", and take the 5th of exactly 6 parts when the first is "OAS" — no
+--   character-class or digit-suffix requirement. This is deliberately independent of
+--   is_structured_sku above; the two checks can disagree in either direction.
 -- ----------------------------------------------------------------------------
 
 -- ============================================================================
@@ -110,8 +112,8 @@ HAVING count(*) > 1;
 
 WITH sku_analysis AS (
   -- isStructuredOasisSku() trims whitespace before every check (skuGuard.ts:
-  -- "const s = String(sku).trim();") — every regex/split_part below runs against
-  -- btrim(p.sku), not the raw column, so leading/trailing spaces on an otherwise
+  -- "const s = String(sku).trim();") — every check below runs against btrim(p.sku),
+  -- not the raw column, so leading/trailing spaces on an otherwise
   -- valid SKU aren't misclassified.
   SELECT
     p.id,
@@ -125,9 +127,16 @@ WITH sku_analysis AS (
       WHEN btrim(p.sku) LIKE 'OAS-%' AND length(btrim(p.sku)) >= 12 THEN true
       ELSE false
     END AS is_structured_sku,
+    -- sku_packaging_segment mirrors skuPackagingSegment() (saveFastCreateProduct.ts,
+    -- PR #75), NOT isStructuredOasisSku()'s strict regex — that function uppercases the
+    -- trimmed SKU and takes the 5th of exactly 6 dash-separated parts whenever the first
+    -- is "OAS", with no character-class or digit-suffix requirement. A SKU can satisfy
+    -- is_structured_sku above (including via its permissive fallback) yet not have
+    -- exactly 6 parts, and vice versa — the two checks are independent in the real app.
     CASE
-      WHEN btrim(p.sku) ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
-        THEN split_part(btrim(p.sku), '-', 5)
+      WHEN array_length(string_to_array(upper(btrim(p.sku)), '-'), 1) = 6
+           AND (string_to_array(upper(btrim(p.sku)), '-'))[1] = 'OAS'
+        THEN (string_to_array(upper(btrim(p.sku)), '-'))[5]
       ELSE NULL
     END AS sku_packaging_segment
   FROM products p
@@ -287,15 +296,17 @@ ORDER BY p.sku;
 -- ============================================================================
 
 WITH sku_analysis AS (
-  -- Trimmed per isStructuredOasisSku()'s own String(sku).trim() — see Audit A's
-  -- sku_analysis CTE for the full rationale.
+  -- Trimmed per isStructuredOasisSku()'s own String(sku).trim(). sku_packaging_segment
+  -- mirrors skuPackagingSegment() (uppercased, 6 parts, first = "OAS") — see Audit A's
+  -- sku_analysis CTE for the full rationale on both.
   SELECT
     p.id,
     p.sku,
     p.packaging_code,
     CASE
-      WHEN btrim(p.sku) ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
-        THEN split_part(btrim(p.sku), '-', 5)
+      WHEN array_length(string_to_array(upper(btrim(p.sku)), '-'), 1) = 6
+           AND (string_to_array(upper(btrim(p.sku)), '-'))[1] = 'OAS'
+        THEN (string_to_array(upper(btrim(p.sku)), '-'))[5]
       ELSE NULL
     END AS sku_packaging_segment
   FROM products p
@@ -354,8 +365,9 @@ WITH sku_analysis AS (
     p.sku,
     p.packaging_code,
     CASE
-      WHEN btrim(p.sku) ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
-        THEN split_part(btrim(p.sku), '-', 5)
+      WHEN array_length(string_to_array(upper(btrim(p.sku)), '-'), 1) = 6
+           AND (string_to_array(upper(btrim(p.sku)), '-'))[1] = 'OAS'
+        THEN (string_to_array(upper(btrim(p.sku)), '-'))[5]
       ELSE NULL
     END AS sku_packaging_segment
   FROM products p
