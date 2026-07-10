@@ -64,6 +64,8 @@ export type PackagingHierarchy = {
   kgPerTray?: number | null;
   traysPerMasterCarton?: number | null;
   packsPerCarton?: number | null;
+  /** Pieces inside one retail pack (pack-based products). */
+  pcsPerPack?: number | null;
   allowPartialPack?: boolean;
   allowPartialCarton?: boolean;
   roundingRule?: RoundingRule;
@@ -122,4 +124,8 @@ export type ProductTruthInput = {
   mediaAssets?: MediaAsset[];
   mediaContext?: ProductMediaContext;
   dimensionStatuses?: Partial<Record<ReadinessDimension, ReadinessBadge>>;
+  /** Product-row prices (mrp / price_b2b / export) — legacy/Central-owned pricing read fallback. */
+  fallbackPrices?: { mrp: number | null; b2bPrice: number | null; exportPrice: number | null };
+  /** True when the product sells by pack/box (pcs_per_pack set or pack UOM) — pieces/kg not applicable. */
+  packBasedSelling?: boolean;
 };

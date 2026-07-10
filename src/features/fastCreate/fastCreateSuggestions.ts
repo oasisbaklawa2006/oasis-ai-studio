@@ -201,11 +201,16 @@ export type FastCreateSkuResult = {
   codes: FastCreateSkuCodeSet;
 };
 
-/** Generate structured Oasis SKU using category preset taxonomy codes. */
+/**
+ * Generate structured Oasis SKU using category preset taxonomy codes, with optional
+ * overrides — the operator's actual packaging selection must win over the preset's
+ * default (a Ready Pack in a paper box must not silently become RBOX).
+ */
 export async function generateFastCreateSku(
   categoryKey: FastCreateCategoryKey = "other",
+  overrides?: Partial<FastCreateSkuCodeSet>,
 ): Promise<FastCreateSkuResult | null> {
-  const codes = resolveFastCreateSkuCodes(categoryKey);
+  const codes: FastCreateSkuCodeSet = { ...resolveFastCreateSkuCodes(categoryKey), ...overrides };
 
   const { data, error } = await supabase.rpc("generate_oasis_sku", {
     _division_code: codes.division_code,

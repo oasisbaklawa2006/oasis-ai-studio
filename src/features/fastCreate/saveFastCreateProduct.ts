@@ -25,6 +25,7 @@ export const FAST_CREATE_SKU_BLOCK_MESSAGE =
 export async function requireFastCreateSku(
   categoryKey: FastCreateCategoryKey = "other",
   existing?: string | null,
+  packagingCode?: string | null,
 ): Promise<{ sku: string; codes: FastCreateSkuCodeSet }> {
   const trimmed = existing?.trim();
   if (trimmed) {
@@ -34,7 +35,10 @@ export async function requireFastCreateSku(
     }
   }
 
-  const generated = await generateFastCreateSku(categoryKey);
+  const generated = await generateFastCreateSku(
+    categoryKey,
+    packagingCode ? { packaging_code: packagingCode } : undefined,
+  );
   if (!generated) {
     throw new Error(FAST_CREATE_SKU_BLOCK_MESSAGE);
   }
@@ -55,6 +59,8 @@ export type FastCreateSaveInput = {
   categoryKey: FastCreateCategoryKey;
   /** Pre-resolved SKU shown in UI before save (optional). */
   resolvedSku?: string | null;
+  /** Extra form fields from the Fast Create draft (sale-type patch, pack data, packaging). */
+  extraFormPatch?: Record<string, unknown>;
 };
 
 export async function saveFastCreateProduct(
@@ -62,6 +68,7 @@ export async function saveFastCreateProduct(
 ): Promise<{ id: string; sku: string } | { draft: true }> {
   const form: Record<string, unknown> = {
     ...input.suggestions.formPatch,
+    ...(input.extraFormPatch ?? {}),
     hero_image_url: input.heroUrl,
     is_active: true,
     is_catalogue_ready: false,
@@ -81,6 +88,7 @@ export async function saveFastCreateProduct(
     const skuResult = await requireFastCreateSku(
       input.categoryKey,
       input.resolvedSku ?? (form.sku as string | null),
+      (input.extraFormPatch?.packaging_code as string | null) ?? null,
     );
     form.sku = skuResult.sku;
     form.division_code = skuResult.codes.division_code;
