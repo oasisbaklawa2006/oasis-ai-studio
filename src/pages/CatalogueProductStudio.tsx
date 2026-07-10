@@ -20,6 +20,8 @@ import {
   UserRound,
   Info,
   PencilLine,
+  RefreshCw,
+  Languages,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
@@ -72,6 +74,16 @@ import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEdited
 import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
+import {
+  INITIAL_MEDIA_LOAD_STATE,
+  isMediaResultEmpty,
+  mediaLoadFailed,
+  mediaLoadStarted,
+  mediaLoadSucceeded,
+  type MediaLoadState,
+} from "@/features/catalogueAiStudio/catalogueMediaLoadState";
+import { catalogueMediaTabDeepLink, catalogueRequiredMediaSlots } from "@/features/catalogueAiStudio/catalogueMediaSlots";
+import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
@@ -450,44 +462,67 @@ export default function CatalogueProductStudio() {
   // Read-only product_media lookup for the Media tab's hero/approved-media preview. A separate,
   // independent data source from the draft workflow above — same selectedIdRef guard so a slow
   // fetch started before a product switch can never paint media for the wrong product.
-  const [mediaRows, setMediaRows] = useState<CatalogueMediaRow[]>([]);
-  const [mediaLoading, setMediaLoading] = useState(false);
+  //
+  // mediaLoadState distinguishes loading / error / loaded (with isMediaResultEmpty() further
+  // splitting "loaded" into has-media vs. a genuine empty result) — a Supabase failure can never
+  // be silently presented as "no media" (Bugbot-adjacent correction requested by the owner).
+  const [mediaLoadState, setMediaLoadState] = useState<MediaLoadState>(INITIAL_MEDIA_LOAD_STATE);
+  // Bumped by the Retry button to re-run the fetch effect without duplicating its logic.
+  const [mediaRetryToken, setMediaRetryToken] = useState(0);
   useEffect(() => {
     const productId = selected?.id ?? null;
-    // Cleared immediately on every switch (not just when no product is selected) — otherwise the
-    // anchor/media-tab hero summary would briefly reflect the previous product's media rows while
-    // this fetch is still in flight (the anchor now reads mediaSummary.heroUrl, not a static field).
-    setMediaRows([]);
+    // Reset immediately on every switch/retry (not just when no product is selected) — otherwise
+    // the anchor/media-tab hero summary would briefly reflect the previous product's media (or a
+    // stale error) while this fetch is in flight.
+    setMediaLoadState(mediaLoadStarted());
     if (!productId) {
-      setMediaLoading(false);
       return;
     }
     let cancelled = false;
-    setMediaLoading(true);
     // Supabase's query builder returns a PromiseLike, not a full Promise (no .finally) — wrap it
-    // so the loading flag clears on both the success and error paths without duplicating the guard.
+    // so the state resolves on both the success and error paths without duplicating the guard.
     Promise.resolve(
       supabase.from("product_media").select("id, type, file_url, status, created_at").eq("product_id", productId),
-    )
-      .then(({ data, error: mediaError }) => {
-        if (cancelled || selectedIdRef.current !== productId) return;
-        if (mediaError) {
-          setMediaRows([]);
-        } else {
-          setMediaRows((data as CatalogueMediaRow[]) ?? []);
-        }
-      })
-      .finally(() => {
-        if (!cancelled && selectedIdRef.current === productId) setMediaLoading(false);
-      });
+    ).then(({ data, error: mediaError }) => {
+      if (cancelled || selectedIdRef.current !== productId) return;
+      if (mediaError) {
+        // Never expose the raw backend error to the operator — log it for diagnosis only.
+        if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", mediaError.message);
+        setMediaLoadState(mediaLoadFailed());
+      } else {
+        setMediaLoadState(mediaLoadSucceeded((data as CatalogueMediaRow[]) ?? []));
+      }
+    });
     return () => {
       cancelled = true;
     };
-  }, [selected?.id]);
+  }, [selected?.id, mediaRetryToken]);
+
+  const mediaLoading = mediaLoadState.status === "loading";
+  const mediaRows = mediaLoadState.rows;
+  const retryMediaLoad = () => setMediaRetryToken((n) => n + 1);
 
   const mediaSummary = useMemo(
     () => summarizeCatalogueMedia(selected, mediaRows),
     [selected, mediaRows],
+  );
+
+  const requiredMediaSlots = useMemo(
+    () =>
+      selected
+        ? catalogueRequiredMediaSlots(
+            {
+              productId: selected.id,
+              productName: selected.product_name,
+              category: selected.category,
+              subcategory: selected.subcategory,
+              productClass: selected.product_class,
+              isLegacy: !selected.sku,
+            },
+            mediaLoadState.status === "loaded" ? mediaRows : [],
+          )
+        : [],
+    [selected, mediaRows, mediaLoadState.status],
   );
 
   // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
@@ -1038,6 +1073,9 @@ export default function CatalogueProductStudio() {
                     <Tabs defaultValue="content">
                       <TabsList className="flex-wrap h-auto">
                         <TabsTrigger value="content">Content Draft Studio</TabsTrigger>
+                        <TabsTrigger value="language">
+                          <Languages size={12} className="mr-1.5" /> Language / Messaging
+                        </TabsTrigger>
                         <TabsTrigger value="media">Media / Hero Image Prompts</TabsTrigger>
                         <TabsTrigger value="packaging">Packaging + Variant Readiness</TabsTrigger>
                         <TabsTrigger value="export">Export / Copy Bundle Preview</TabsTrigger>
@@ -1046,10 +1084,8 @@ export default function CatalogueProductStudio() {
                       <TabsContent value="content" className="space-y-4 pt-4">
                         <p className="text-[11px] text-muted-foreground">
                           Generated locally from this product's current fields — no external AI call in this studio.
-                          Language content here (Hindi/Hinglish copy) is informational only and never blocks catalogue
-                          readiness or Central Sync.
                         </p>
-                        {DRAFT_BLOCK_META.map((block) => {
+                        {DRAFT_BLOCK_META.filter((block) => !isLanguageMessagingField(block.key)).map((block) => {
                           const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
                           const blockIsEdited =
                             !blockIsMissing &&
@@ -1097,6 +1133,70 @@ export default function CatalogueProductStudio() {
                         })}
                       </TabsContent>
 
+                      <TabsContent value="language" className="space-y-4 pt-4">
+                        <p className="text-[11px] text-muted-foreground">
+                          Language content here (Hindi/Hinglish copy, WhatsApp draft message) is informational only —
+                          it never blocks catalogue readiness or Central Sync. WhatsApp approval workflow is not
+                          active; this studio never sends WhatsApp messages.
+                        </p>
+                        {(() => {
+                          const languageBlocks = DRAFT_BLOCK_META.filter((block) => isLanguageMessagingField(block.key));
+                          if (languageBlocks.length === 0) {
+                            return (
+                              <p className="text-xs text-muted-foreground py-2">
+                                No language/messaging fields available for this product.
+                              </p>
+                            );
+                          }
+                          return languageBlocks.map((block) => {
+                            const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
+                            const blockIsEdited =
+                              !blockIsMissing &&
+                              !!generatedBaseline &&
+                              isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
+                            return (
+                              <div key={block.key} className="space-y-1.5">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div>
+                                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      {block.label}
+                                      {blockIsEdited && (
+                                        <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                          Edited
+                                        </Badge>
+                                      )}
+                                    </label>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {block.key === "whatsapp_product_message"
+                                        ? "Draft message text only — approval workflow not active, this studio never sends WhatsApp messages."
+                                        : block.hint}
+                                    </p>
+                                  </div>
+                                  {!blockIsMissing && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={draftLoading}
+                                      onClick={() => copyText(editor.content[block.key], block.label)}
+                                    >
+                                      <Copy size={12} className="mr-1.5" /> Copy
+                                    </Button>
+                                  )}
+                                </div>
+                                <Textarea
+                                  value={editor.content[block.key]}
+                                  onChange={(e) => updateContentBlock(block.key, e.target.value)}
+                                  rows={2}
+                                  className={`text-xs ${blockIsMissing ? "border-amber-400/60 bg-amber-500/5 text-amber-800 dark:text-amber-300" : ""}`}
+                                  disabled={textLocked || draftLoading}
+                                />
+                              </div>
+                            );
+                          });
+                        })()}
+                      </TabsContent>
+
                       <TabsContent value="media" className="space-y-4 pt-4">
                         <div className="space-y-2">
                           <p className="text-xs font-semibold text-foreground">Current approved media</p>
@@ -1104,6 +1204,17 @@ export default function CatalogueProductStudio() {
                             <div className="flex items-center gap-2 text-[11px] text-muted-foreground py-2">
                               <Loader2 size={12} className="animate-spin" /> Loading media…
                             </div>
+                          ) : mediaLoadState.status === "error" ? (
+                            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                              <p className="text-[11px] text-destructive">{mediaLoadState.errorMessage}</p>
+                              <Button type="button" size="sm" variant="outline" onClick={retryMediaLoad}>
+                                <RefreshCw size={12} className="mr-1.5" /> Retry
+                              </Button>
+                            </div>
+                          ) : isMediaResultEmpty(mediaLoadState) ? (
+                            <p className="text-[11px] text-muted-foreground py-2">
+                              No media on file for this product yet.
+                            </p>
                           ) : (
                             <div className="space-y-2">
                               <div className="flex items-center gap-3">
@@ -1141,6 +1252,35 @@ export default function CatalogueProductStudio() {
                             </div>
                           )}
                         </div>
+
+                        {mediaLoadState.status === "loaded" && requiredMediaSlots.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-semibold text-foreground">Required media slots</p>
+                            {requiredMediaSlots.map((slot) => (
+                              <div
+                                key={slot.type}
+                                className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-[11px]"
+                              >
+                                <span className="text-foreground">{slot.label}</span>
+                                {slot.status === "satisfied" ? (
+                                  <Badge variant="outline" className="text-[9px] uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-400/40">
+                                    Satisfied
+                                  </Badge>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => nav(catalogueMediaTabDeepLink(selected.id))}
+                                    className="flex items-center gap-1 text-amber-700 dark:text-amber-400 hover:underline"
+                                  >
+                                    <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 border-amber-400/40">
+                                      Missing
+                                    </Badge>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
                           Image generation is not available in this studio — no generation service is wired up.
