@@ -15,7 +15,179 @@ check actually achieved complete coverage.
 
 ---
 
+## PHASE 1 DURABLE CLOSEOUT (2026-07-10)
+
+This section is the authoritative, current record of what was actually executed. It
+supersedes the "UNVERIFIABLE — blocked" language in the Executive Table and sections
+5–13 below **only as to whether Audits A–D were executed** — those original sections are
+left intact as an accurate historical record of the PR #76 pass, which genuinely did not
+execute anything.
+
+### Two distinct audit passes — do not conflate them
+
+- **Original PR #76 audit (this document's original body, sections 1–20 below, dated
+  2026-07-10):** drafted the SQL and the full audit methodology, but **Audits A–D were
+  NOT executed** against any database. The Environment Identity blocker documented in
+  this file was genuine at that time — this session's own tooling could not conclusively
+  bind a Vercel project or Supabase project to the deployed application.
+- **Phase 1 execution (this section, also 2026-07-10, later the same day):** the repo
+  owner independently verified production identity from the **live deployed browser
+  bundle** (`https://oasis-ai-studio.vercel.app/assets/index-BfI2ZiSI.js`, embedding
+  `https://tcxvcatsqqertcnycuop.supabase.co`) and supplied that evidence directly. On
+  that basis, `scripts/audits/product_integrity_read_only.sql` was **executed read-only
+  against Supabase project `tcxvcatsqqertcnycuop`**, at repository commit
+  **`d3b83e702f0471b91542cc78e8b48d9797b68365`** (the current `main`, which is the merge
+  commit of PR #77). Every statement ran inside `BEGIN TRANSACTION READ ONLY` with an
+  explicit `SET LOCAL statement_timeout = '30s'`, followed by `ROLLBACK`. **Zero rows
+  were mutated.** Only `tcxvcatsqqertcnycuop` was queried; the separate active project
+  `mrkgjemisgbsugfyllwr` (`oasis-baklawa-dev`) was never touched.
+
+### Schema drift found during execution
+
+Mid-execution, the file's original pricing-fallback columns failed with a real Postgres
+error (`column p.b2b_price does not exist`). Direct `information_schema.columns`
+inspection of `tcxvcatsqqertcnycuop` (VERIFIED) confirmed: **`products.b2b_price`,
+`products.b2b_price_inr`, `products.export_price`, and `products.export_price_usd` do
+not exist on live production.** The real B2B fallback column is `products.price_b2b`;
+no export product-row fallback column exists at all. The generated
+`src/integrations/supabase/types.ts` (and this audit's original SQL, which mirrored it)
+is stale relative to the deployed schema — this is a genuine, independent finding, not
+a guess. `scripts/audits/product_integrity_read_only.sql` has been corrected to query
+the real column (`price_b2b`) and use a typed `NULL` where no export fallback exists;
+channel-rule pricing resolution (from `product_pricing_rules`) is entirely unaffected by
+this gap and was not changed.
+
+### Results (VERIFIED — executed against `tcxvcatsqqertcnycuop`)
+
+**Scale:** 364 products (all with SKUs), 11 catalogue-ready, 36 `sku_code_rules` (13
+active packaging codes, 0 inactive, 0 duplicates), 117 pricing rules (104 approved).
+
+**Audit A — catalogue-ready integrity (all 11 rows reviewed).** **4 of 11
+catalogue-ready products have no blockers across the SQL-reconstructable dimensions.
+Product Truth and Central-preview dimensions remain unverified** — this SQL cannot and
+does not reproduce `buildProductReadinessSnapshot()` (client-side TypeScript) or any
+Central-side preview validator; see the "Code-to-Data Authority Map" note on Product
+Truth. Of the other 7 catalogue-ready products: 4 are legacy pilot SKUs blocked on
+missing packaging (pre-existing gap, predates the packaging-segment SKU convention); 2
+blocked on missing MRP; 1 blocked on missing B2B price; 1
+(`OAS-AS-BKL-ASS-RBOX-0002`) has a genuine SKU-vs-saved-packaging-code mismatch that the
+file's new `packaging_ready_under_current_gate` / `sku_packaging_code_mismatch` columns
+now surface directly (see "Current-gate packaging classification" below). Zero
+invalid-SKU or missing-hero blockers. Zero pricing review-required disagreements among
+currently-valid approved rows.
+
+**Audit B — SKU/packaging consistency (full 364 reviewed via summary + targeted
+row).** 322 not-applicable, 41 match, **exactly 1 mismatch** —
+`OAS-AS-BKL-ASS-RBOX-0002` (SKU encodes `RBOX`, saved `packaging_code = MAAPET`; both
+are individually valid active taxonomy codes — they simply disagree with each other).
+
+**Audit C — internal-classification review candidates.** 3 `HIGH_CONFIDENCE_REVIEW`
+rows — `OAS-AS-BKL-ASS-RBOX-0002`, `OAS-AS-BKL-PST-RBOX-0001`,
+`OAS-AS-BKL-ROL-MAAPET-0001` — all simultaneously `bom_required = true` and
+`is_catalogue_ready = true`. Per the audit's own rule (see section 12 below): these are
+**review candidates only, never verified misclassifications** — `sale_type` was never a
+persisted column at any point in this application's history, so original intent is
+structurally unreconstructable from data alone.
+
+**Audit D — packaging taxonomy integrity.** 318 of 364 products fail the packaging
+requirement, all for the same reason (missing code — zero whitespace-only, zero
+unknown/invalid codes present in this row set). Only 4 are catalogue-ready — the same 4
+legacy pilot SKUs from Audit A. The newly added `packaging_ready_under_current_gate` /
+`sku_packaging_code_mismatch` columns are uniformly `false`/`0` across this specific row
+set by construction (Audit D's `WHERE` clause already excludes any row with a valid,
+active `packaging_code` — the current-gate and SKU-mismatch dimensions only become
+non-trivial once a valid code exists, which is exactly the scenario Audit A/B surface
+for `OAS-AS-BKL-ASS-RBOX-0002`).
+
+### Current-gate packaging classification (new, resolves closeout requirement #3)
+
+`scripts/audits/product_integrity_read_only.sql` now computes **two separate packaging
+evaluations side by side, clearly labeled, and never conflated**:
+
+1. **Legacy blast-radius measurement** (`packaging_present_by_app_truthiness`,
+   `blocker_packaging_missing`, `would_pass_app_hasPackagingTaxonomyCode`) — the
+   pre-PR-#77 `hasPackagingTaxonomyCode() = !!form.packaging_code` truthiness check.
+   Retained intentionally to measure the historical blast radius of NEW-1 (below); this
+   is **not** current app behaviour.
+2. **Current-gate evaluation** (`packaging_ready_under_current_gate`,
+   `blocker_packaging_missing_current_gate`, `sku_packaging_code_mismatch`) — an exact
+   SQL reproduction of `evaluatePackagingReadiness()` as merged in PR #77
+   (`src/features/productAuthority/catalogueReadyGate.ts`): active-taxonomy membership
+   **and** SKU-packaging-segment agreement, both required. This is what the live app
+   actually enforces today.
+
+For `OAS-AS-BKL-ASS-RBOX-0002` specifically: `packaging_code = MAAPET`,
+`sku_packaging_segment = RBOX`. Both `MAAPET` and `RBOX` are individually valid, active
+`sku_code_rules` entries — under the legacy truthiness check this product's packaging
+reads as "present" (`packaging_present_by_app_truthiness = true`,
+`blocker_packaging_missing = false`); under the current gate it is correctly blocked
+(`packaging_ready_under_current_gate = false`, `blocker_packaging_missing_current_gate
+= true`, `sku_packaging_code_mismatch = true`). This is the concrete, live, single
+product where PR #77's fix changes the catalogue-ready outcome for already-saved data.
+
+### Corrected operator-attention synthesis
+
+**Priority 1** (multiple confirmed blockers, including the live SKU/packaging
+disagreement):
+- `OAS-AS-BKL-ASS-RBOX-0002` — SKU/packaging mismatch (current gate) + missing MRP +
+  BOM-required-yet-catalogue-ready
+- `OAS-AS-BKL-PST-RBOX-0001` — missing MRP + BOM-required-yet-catalogue-ready
+
+**Priority 2** (single confirmed pricing/classification blocker):
+- `OAS-AS-BKL-PST-BULK-0001` — missing B2B price
+- `OAS-AS-BKL-ROL-MAAPET-0001` — BOM-required-yet-catalogue-ready (HIGH_CONFIDENCE_REVIEW,
+  no pricing/packaging blocker)
+
+**Priority 3** (pre-existing legacy pilot SKUs, packaging gap predates any code defect
+fixed in PR #75/#77):
+- `OAS-AS-BKL-0007`
+- `OAS-AS-BKL-0020`
+- `OAS-AS-BKL-0024`
+- `OAS-AS-BKL-0025`
+
+### Compliance confirmation
+
+Zero rows mutated. No migrations applied. Only `tcxvcatsqqertcnycuop` queried —
+`mrkgjemisgbsugfyllwr` was never touched. No keys, tokens, service-role credentials, or
+customer data exposed in this document or in any session output — only product
+IDs/SKUs/booleans/numbers, all of which are internal catalogue identifiers, not customer
+data. No internal_bom history is described as verified anywhere in this section —
+Audit C's classifications are explicitly review-candidate labels, never
+`VERIFIED_MISCLASSIFIED`.
+
+### R1 queue (existing-product impact handling — not authorized to begin without a
+separate explicit instruction)
+
+- **R1A — Owner decision worksheet.** A short, human-reviewed document listing the 8
+  products above with their exact blockers, for the owner to decide the correct
+  resolution per product (e.g., for `ASS-RBOX-0002`: is `RBOX` or `MAAPET` the correct
+  packaging? Is MRP simply missing or should the product be un-marked catalogue-ready
+  until priced?). No mutation in this step.
+- **R1B — Exact-ID correction script.** Once R1A decisions are made, a SQL script
+  (or equivalent) that mutates **only the exact product IDs** listed in R1A's approved
+  decisions — no bulk/heuristic correction, no `WHERE` clause broader than an explicit
+  ID list.
+- **R1C — Staging/dry-run verification.** Run R1B against a verified non-production
+  target first (or a `BEGIN ... ROLLBACK` dry-run against production) to confirm the
+  exact row-level effect before any real mutation.
+- **R1D — Separately approved production correction.** Execute R1B against production
+  only after explicit, separate approval — distinct from the approval that authorizes
+  R1A/R1B/R1C's preparation.
+- **R1E — Controlled generated-types/schema reconciliation.** Regenerate
+  `src/integrations/supabase/types.ts` from `tcxvcatsqqertcnycuop` (already flagged as
+  needed in `docs/AI_STUDIO_CATALOGUE_AUTHORITY_AUDIT.md`), now with concrete evidence
+  of exactly which columns drifted (this section's schema-drift finding). Read-only
+  generation only — no migration, no schema change to the live database itself unless
+  separately authorized.
+
+---
+
 ## Executive Table
+
+**This table describes the original PR #76 pass only (Audits A–D genuinely not
+executed at that time). See "PHASE 1 DURABLE CLOSEOUT" above for the actual executed
+results, dated the same day, after the Environment Identity blocker below was
+independently resolved by the repository owner.**
 
 | Audit area | Total checked | Verified valid | Verified invalid | Review required | Unverifiable |
 |---|---|---|---|---|---|
@@ -26,8 +198,9 @@ check actually achieved complete coverage.
 | Code-to-data authority map | 10/10 dimensions traced | — | — | — | 1 (Product Truth score, by design — see below) |
 | Async navigation-race check | 1 code path examined | — | 1 confirmed | — | 0 |
 
-**Zero database rows were queried in this pass.** The blocker below explains why, and
-is the single governing fact for every "Unverifiable" cell above.
+**Zero database rows were queried in this original pass.** The blocker below explains
+why, and is the single governing fact for every "Unverifiable" cell above — as it stood
+at the time this table was written.
 
 ---
 
@@ -58,22 +231,33 @@ and `git log -1 --oneline origin/main` both confirmed this before the audit bran
 No commits were found on `origin/main` after `443ba403` at audit start.
 
 ## 5. Production Project Reference
-**UNVERIFIABLE.** See "Environment Identity" below for the full evidence trail.
+**UNVERIFIABLE at original write time.** See "Environment Identity" below for the full
+evidence trail from that pass. **RESOLVED as of PHASE 1 DURABLE CLOSEOUT above:**
+`tcxvcatsqqertcnycuop` (`oasis-baklawa`), confirmed by the repository owner directly
+from the live deployed browser bundle's embedded `VITE_SUPABASE_URL`.
 
 ## 6. Deployed SHA
-**UNVERIFIABLE** — cannot be determined without first confirming which Vercel project/
-deployment is live production (see below).
+**UNVERIFIABLE at original write time** — cannot be determined without first confirming
+which Vercel project/deployment is live production (see below). **Still not
+independently re-verified this session** — the owner's bundle inspection confirmed the
+Supabase project reference, not a specific deployed git SHA. Audits A–D were executed
+against repository commit `d3b83e702f0471b91542cc78e8b48d9797b68365` (current `main`);
+whether that exact SHA is what Vercel currently serves in production was not
+re-confirmed via the Vercel API in this pass (that access gap, documented below,
+persisted).
 
 ## 7. Audited SHA vs Deployed SHA
-**UNVERIFIABLE** — depends on item 6.
+**UNVERIFIABLE at original write time** — depended on item 6. **Still UNVERIFIABLE this
+pass** for the same reason — see item 6.
 
 ---
 
-## Environment Identity — BLOCKER (governs items 5–7 and Audits A–D)
+## Environment Identity — BLOCKER (governs items 5–7 and Audits A–D in the ORIGINAL
+## PR #76 pass; see "PHASE 1 DURABLE CLOSEOUT" above for how this was resolved)
 
-**Status: UNVERIFIABLE.** Every safe, read-only avenue available in this session was
-exhausted without conclusively identifying which Supabase project backs the deployed
-`oasis-ai-studio` production application.
+**Status at original write time: UNVERIFIABLE.** Every safe, read-only avenue available
+in this session was exhausted without conclusively identifying which Supabase project
+backs the deployed `oasis-ai-studio` production application.
 
 Evidence trail (all VERIFIED as tool outputs, none conclusive as to production identity):
 
@@ -323,32 +507,42 @@ Restated briefly per that PR's explicit "document only" scope:
 ---
 
 ## 10. Catalogue-Ready Integrity Results (Audit A)
-**UNVERIFIABLE — not executed.** Query drafted in `product_integrity_read_only.sql`
-(section "AUDIT A"). It reproduces `evaluateCatalogueReadyGate()`'s blocker list
-(structured-SKU check, sale-type-aware MRP/B2B/export price blockers, packaging presence,
-hero image presence) as SQL, with Product Truth explicitly left unverifiable per the
-authority-map note above. Zero rows have been classified because zero rows were fetched.
+**UNVERIFIABLE at original write time — not executed then.** Query drafted in
+`product_integrity_read_only.sql` (section "AUDIT A"). It reproduces
+`evaluateCatalogueReadyGate()`'s blocker list (structured-SKU check, sale-type-aware
+MRP/B2B/export price blockers, packaging presence, hero image presence) as SQL, with
+Product Truth explicitly left unverifiable per the authority-map note above.
+**EXECUTED as of PHASE 1 DURABLE CLOSEOUT above** — see that section for full results
+(4 of 11 catalogue-ready products with no SQL-reconstructable blockers; Product Truth
+still unverified by design).
 
 ## 11. SKU/Packaging Consistency Results (Audit B)
-**UNVERIFIABLE — not executed.** Full 9-category classifier (`MATCH` through
-`NOT_APPLICABLE`) is drafted, including the two subtle cases the brief specifically asked
-to be tested for: whitespace-only `packaging_code` (drafted to classify as
-`SAVED_PACKAGING_MISSING` at the SQL level, distinct from how the *application* would
-treat it — see Finding NEW-1 below) and case-mismatch-only agreement
-(`CASE_OR_WHITESPACE_NORMALIZATION_ONLY`).
+**UNVERIFIABLE at original write time — not executed then.** Full 9-category classifier
+(`MATCH` through `NOT_APPLICABLE`) is drafted, including the two subtle cases the brief
+specifically asked to be tested for: whitespace-only `packaging_code` (drafted to
+classify as `SAVED_PACKAGING_MISSING` at the SQL level, distinct from how the
+*application* would treat it — see Finding NEW-1 below) and case-mismatch-only agreement
+(`CASE_OR_WHITESPACE_NORMALIZATION_ONLY`). **EXECUTED as of PHASE 1 DURABLE CLOSEOUT
+above** — 364 products: 322 not-applicable, 41 match, exactly 1 mismatch
+(`OAS-AS-BKL-ASS-RBOX-0002`).
 
 ## 12. Internal-Classification Results (Audit C)
-**UNVERIFIABLE — not executed**, and separately, **structurally limited even once
-executed** — see Finding NEW-2 below. The drafted query can only ever produce
-`HIGH_CONFIDENCE_REVIEW` / `POSSIBLE_REVIEW` / `UNVERIFIABLE_BECAUSE_SALE_TYPE_WAS_NOT_PERSISTED`,
-never `VERIFIED_MISCLASSIFIED`, because no durable field in this schema has ever recorded
-original sale-type intent.
+**UNVERIFIABLE at original write time — not executed then**, and separately,
+**structurally limited even once executed** — see Finding NEW-2 below. The drafted
+query can only ever produce `HIGH_CONFIDENCE_REVIEW` / `POSSIBLE_REVIEW` /
+`UNVERIFIABLE_BECAUSE_SALE_TYPE_WAS_NOT_PERSISTED`, never `VERIFIED_MISCLASSIFIED`,
+because no durable field in this schema has ever recorded original sale-type intent.
+**EXECUTED as of PHASE 1 DURABLE CLOSEOUT above** — 3 `HIGH_CONFIDENCE_REVIEW` rows,
+still never claimed as verified misclassifications.
 
 ## 13. Packaging Taxonomy Results (Audit D)
-**UNVERIFIABLE — not executed.** Query drafted; see Finding NEW-1 for the code-level
-conclusion this section was specifically asked to reach (`hasPackagingTaxonomyCode`
-safety classification), which **was** completed via static analysis independent of
-database access.
+**UNVERIFIABLE at original write time — not executed then.** Query drafted; see Finding
+NEW-1 for the code-level conclusion this section was specifically asked to reach
+(`hasPackagingTaxonomyCode` safety classification), which **was** completed via static
+analysis independent of database access. **EXECUTED as of PHASE 1 DURABLE CLOSEOUT
+above** — 318 of 364 products fail on missing packaging code, only 4 catalogue-ready
+(the same 4 legacy pilot SKUs as Audit A); new current-gate columns added and verified
+uniformly consistent for this row set.
 
 ## 14. Async Navigation-Race Conclusion
 **CONFIRMED_RACE** — see Finding NEW-3 below for full evidence.
@@ -504,13 +698,22 @@ report; none were taken.
 
 ## 20. Confirmation: No Production Data Changed
 
-- **No SQL was executed against any database** in this session — confirmed by the fact
-  that no Supabase/Postgres query tool call targeting row data appears anywhere in this
+**At original write time (PR #76 pass):**
+- No SQL was executed against any database in that session — confirmed by the fact that
+  no Supabase/Postgres query tool call targeting row data appeared anywhere in that
   audit's tool-call history; only `list_projects` (metadata only) was called.
-- No `products`, `sku_code_rules`, `product_pricing_rules`, or `product_media` row was
-  read, written, or otherwise touched.
+
+**As of PHASE 1 DURABLE CLOSEOUT (this pass, after identity was resolved):**
+- `scripts/audits/product_integrity_read_only.sql` WAS executed, read-only, against
+  `tcxvcatsqqertcnycuop` — `products`, `sku_code_rules`, `product_pricing_rules`,
+  `product_media`, and `information_schema.columns` rows WERE read.
+- **Zero rows were written, updated, deleted, or otherwise mutated.** Every statement
+  ran inside `BEGIN TRANSACTION READ ONLY` with `SET LOCAL statement_timeout = '30s'`,
+  followed by unconditional `ROLLBACK`.
 - No `is_catalogue_ready`, `sku`, `product_class`, or `packaging_code` value was changed
-  anywhere, in any repository.
+  anywhere, in any repository, at any point across either pass.
+- Only `tcxvcatsqqertcnycuop` was queried. `mrkgjemisgbsugfyllwr` was never touched.
+- No migration applied, no schema altered.
 - **Confirmed by explicit tool-call log**, not merely asserted.
 
 ---
