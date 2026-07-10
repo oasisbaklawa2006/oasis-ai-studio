@@ -60,6 +60,28 @@
 --      case PR #77 fixed going forward but that may still exist as
 --      already-saved data — see e.g. OAS-AS-BKL-ASS-RBOX-0002 in the report.
 --
+-- STATUS AS OF POST-R1A PRICING-AUTHORITY RECOVERY (2026-07-10)
+--   R1A (owner product-decision worksheet) surfaced a second, distinct application
+--   defect: resolvePricing() (src/features/productAuthority/pricingAuthority.ts) queried
+--   channelOf("retail") to compute MRP and never queried the "mrp" channel at all. In
+--   production, "mrp" and "retail" are separate, independently-used price_channel values
+--   (28 approved 'retail' rows vs. 15 approved 'mrp' rows database-wide) — every approved
+--   mrp-channel rule was being silently ignored by the app. This was fixed in
+--   pricingAuthority.ts (resolvePricing now calls channelOf("mrp", ...)) and mirrored here:
+--     - pricing_summary_raw's channel_mrp now reads channel = 'mrp' (was 'retail').
+--     - A new mrp_field_conflict diagnostic (pricing_summary CTE) flags when the selected
+--       approved mrp-channel rule disagrees with a positive products.mrp fallback value —
+--       mirroring pricingAuthority.ts's new conflict check — rather than silently trusting
+--       either source. Production example: OAS-AS-BKL-0007 (mrp-channel rule = 25 vs.
+--       products.mrp = 40).
+--     - blocker_mrp_review_required now also considers mrp_field_conflict, not only
+--       multiple-disagreeing-approved-rows.
+--   A read-only blast-radius query (tcxvcatsqqertcnycuop) confirmed ZERO catalogue-ready
+--   products had any approved 'retail'-channel rule at all, so "retail" is not retained as
+--   an MRP fallback anywhere in this file or in the app — removing it created no verified
+--   regression. See pricingAuthority.ts's canonical-semantics docblock for the full
+--   producer/consumer contract this file now reproduces.
+--
 -- AUTHORITY SOURCE FOR EVERY RULE BELOW
 --   Every classification below is a direct SQL reproduction of the corrected
 --   application logic merged in PR #75 (commit 443ba403523dcedb9552def684368b30aae28828)
@@ -321,18 +343,23 @@ pricing_review_required AS (
     ON nap.product_id = ap.product_id AND nap.channel = ap.channel
   WHERE ap.id <> nap.id AND ap.price_value IS DISTINCT FROM nap.price_value
 ),
-pricing_summary AS (
+pricing_summary_raw AS (
   SELECT
     p.id,
-    -- resolvePricing() derives MRP from the 'retail' channel only (channelOf("retail")),
-    -- never from a channel literally named 'mrp' — pricingRuleRowToChannelPrice's
-    -- isMrpChannel branch only ever populates a field the app never reads back out.
-    -- max() here is a no-op selector: newest_approved_pricing has at most one row per
-    -- (product_id, channel) already.
-    max(CASE WHEN ap.channel = 'retail' THEN ap.price_value END)          AS channel_mrp,
+    -- PRICING-AUTHORITY FIX (POST-R1A recovery, 2026-07-10): resolvePricing() previously
+    -- derived MRP from the 'retail' channel only (channelOf("retail")) and never queried
+    -- the 'mrp' channel at all — production-wide, "mrp" and "retail" are distinct channel
+    -- values (28 approved 'retail' rows vs. 15 approved 'mrp' rows database-wide; a
+    -- read-only blast-radius query confirmed ZERO catalogue-ready products had any
+    -- approved 'retail'-channel rule at all, so the "retail" channel is not retained as an
+    -- MRP fallback — see pricingAuthority.ts's canonical-semantics docblock). Fixed to read
+    -- the 'mrp' channel, matching pricingRuleRowToChannelPrice()'s isMrpChannel branch and
+    -- the app-side fix in pricingAuthority.ts resolvePricing(). max() here is a no-op
+    -- selector: newest_approved_pricing has at most one row per (product_id, channel) already.
+    max(CASE WHEN ap.channel = 'mrp' THEN ap.price_value END)             AS channel_mrp,
     max(CASE WHEN ap.channel = 'b2b' THEN ap.price_value END)             AS channel_b2b,
     max(CASE WHEN ap.channel = 'export' THEN ap.price_value END)         AS channel_export,
-    bool_or(rr.channel = 'retail')                                       AS mrp_review_required,
+    bool_or(rr.channel = 'mrp')                                          AS mrp_review_required,
     bool_or(rr.channel = 'b2b')                                          AS b2b_review_required,
     bool_or(rr.channel = 'export')                                       AS export_review_required,
     -- product-row fallback prices, per pricingAuthority.ts resolvePricing().
@@ -359,6 +386,18 @@ pricing_summary AS (
   LEFT JOIN newest_approved_pricing ap ON ap.product_id = p.id
   LEFT JOIN pricing_review_required rr ON rr.product_id = p.id
   GROUP BY p.id, p.mrp, p.price_b2b
+),
+pricing_summary AS (
+  -- Conflict diagnostic (not silent): mirrors pricingAuthority.ts's new field-vs-rule
+  -- conflict check — the approved mrp-channel rule remains authoritative (channel_mrp is
+  -- still what resolved_mrp below uses), but a disagreeing positive products.mrp value
+  -- must surface for operator review rather than being silently discarded. Production
+  -- example: OAS-AS-BKL-0007 (approved mrp-channel rule = 25, products.mrp = 40).
+  SELECT
+    psr.*,
+    (psr.channel_mrp IS NOT NULL AND psr.field_mrp IS NOT NULL
+       AND psr.channel_mrp <> psr.field_mrp)                              AS mrp_field_conflict
+  FROM pricing_summary_raw psr
 )
 SELECT
   p.id                                        AS product_id,
@@ -398,10 +437,15 @@ SELECT
     AND coalesce(ps.channel_b2b, ps.field_b2b) IS NULL)              AS blocker_b2b_price_missing,
   (req.customer_facing AND req.requires_export_price
     AND coalesce(ps.channel_export, ps.field_export) IS NULL)        AS blocker_export_price_missing,
-  -- Multiple currently-valid approved rows disagree — mirrors pricingBlockers()'s
-  -- reviewRequiredChannels handling, a diagnostic rather than a silently-picked value.
+  -- Multiple currently-valid approved rows disagree, OR the selected mrp-channel rule
+  -- disagrees with a positive products.mrp fallback — mirrors pricingBlockers()'s
+  -- reviewRequiredChannels handling (both diagnostics), a review signal rather than a
+  -- silently-picked value. ps.mrp_field_conflict alone is the exact flag for the
+  -- OAS-AS-BKL-0007-style rule-vs-field disagreement.
   (req.customer_facing AND req.requires_mrp
-    AND coalesce(ps.mrp_review_required, false))                    AS blocker_mrp_review_required,
+    AND (coalesce(ps.mrp_review_required, false) OR coalesce(ps.mrp_field_conflict, false)))
+                                                                     AS blocker_mrp_review_required,
+  ps.mrp_field_conflict,
   (req.customer_facing AND req.requires_b2b_price
     AND coalesce(ps.b2b_review_required, false))                    AS blocker_b2b_price_review_required,
   (req.customer_facing AND req.requires_export_price
@@ -551,15 +595,26 @@ GROUP BY classification
 ORDER BY row_count DESC;
 
 -- ============================================================================
--- AUDIT C — INTERNAL PRODUCT MISCLASSIFICATION CANDIDATES
+-- AUDIT C — BOM / CATALOGUE COHERENCE REVIEW (renamed; see POST-R1A correction)
 -- IMPORTANT: sale_type was never a persisted column at any point in this
 -- application's history (see saleType.ts docblock). There is NO durable field
 -- that can prove a product was originally intended as internal_bom. This
--- query can only surface *candidates* via indirect signals — it cannot
--- VERIFY original intent. Every row from this query is at best
--- HIGH_CONFIDENCE_REVIEW or POSSIBLE_REVIEW, never VERIFIED_MISCLASSIFIED,
--- unless cross-referenced against an external, durable record (e.g. a
--- preserved catalogue draft payload) not queried here.
+-- query can only surface *candidates* for a coherence review via indirect
+-- signals — it cannot VERIFY original intent, and it does NOT claim
+-- high-confidence internal misclassification.
+--
+-- CORRECTION (POST-R1A pricing-authority recovery, 2026-07-10): this audit
+-- previously labelled bom_required=true AND is_catalogue_ready=true rows
+-- 'HIGH_CONFIDENCE_REVIEW' for "potential internal misclassification". That
+-- was unsupported by the source: bom_required proves only that a BOM is
+-- required. It does not prove the product is internal or non-sellable.
+-- Packing & Assembly (main_department = 'packing_assembly') products
+-- automatically require a BOM by design — they are EXPECTED BOM candidates,
+-- not probable internal products — and gift hampers and other sellable
+-- manufactured products can legitimately require a BOM too. Do not
+-- recommend changing bom_required or catalogue-ready for any row below
+-- without external operational evidence (production-team confirmation);
+-- this query alone is never sufficient grounds for that change.
 -- ============================================================================
 
 SELECT
@@ -581,7 +636,10 @@ SELECT
    ))                               AS has_any_approved_pricing,
   CASE
     WHEN p.bom_required = true AND p.is_catalogue_ready = true
-      THEN 'HIGH_CONFIDENCE_REVIEW'   -- flagged as a BOM/component input yet marked catalogue-ready
+         AND lower(coalesce(p.main_department, '')) = 'packing_assembly'
+      THEN 'EXPECTED_BOM_CANDIDATE_PACKING_ASSEMBLY'  -- BOM is the normal/expected state for this department; not a review signal
+    WHEN p.bom_required = true AND p.is_catalogue_ready = true
+      THEN 'BOM_CATALOGUE_COHERENCE_REVIEW'  -- worth a human look at the BOM/catalogue combination; NOT an internal-intent claim
     WHEN p.bom_required = true
       THEN 'POSSIBLE_REVIEW'
     ELSE 'UNVERIFIABLE_BECAUSE_SALE_TYPE_WAS_NOT_PERSISTED'

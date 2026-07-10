@@ -182,6 +182,110 @@ separate explicit instruction)
 
 ---
 
+## POST-R1A PRICING-AUTHORITY RECOVERY (2026-07-10)
+
+R1A (the owner product-decision worksheet, produced and returned in-session, not
+committed) surfaced a second, distinct application defect on top of the packaging
+mismatch already documented above, plus an unsupported classification in Audit C. Both
+are fixed in code and mirrored in `scripts/audits/product_integrity_read_only.sql`;
+**neither fix mutated any product row.**
+
+### Defect: MRP channel writer/reader mismatch (fixed)
+
+`resolvePricing()` (`src/features/productAuthority/pricingAuthority.ts`) queried
+`channelOf("retail")` to compute MRP and never queried the `"mrp"` channel at all. In
+production, `"mrp"` and `"retail"` are separate, independently-used `price_channel`
+values (28 approved `retail` rows vs. 15 approved `mrp` rows database-wide) — every
+approved mrp-channel rule was being silently ignored by the app, and MRP fell through to
+the (usually empty) `products.mrp` field. A read-only blast-radius query confirmed **zero
+catalogue-ready products had any approved `retail`-channel rule at all**, so `"retail"`
+is not retained as an MRP fallback anywhere — removing it created no verified regression.
+Fixed: `resolvePricing()` now calls `channelOf("mrp", ...)`; `products.mrp` remains the
+only legacy fallback. A new conflict diagnostic (`reviewRequiredChannels` gains `"mrp"`,
+surfaced in `pricingBlockers()` as "MRP needs review — pricing sources disagree") fires
+when the selected approved mrp-channel rule disagrees with a positive `products.mrp`
+value — the channel rule stays authoritative, but the disagreement is no longer silent.
+See `pricingAuthority.ts`'s canonical-semantics docblock for the full producer/consumer
+contract and the complete traced-consumer table in the accompanying PR description.
+
+### Defect: BOM-audit heuristic overclaimed internal intent (fixed)
+
+Audit C previously labelled every `bom_required = true AND is_catalogue_ready = true`
+row `HIGH_CONFIDENCE_REVIEW` for "potential internal misclassification." That wording was
+unsupported by the source: **`bom_required` proves only that a BOM is required. It does
+not prove the product is internal or non-sellable.** Packing & Assembly
+(`main_department = 'packing_assembly'`) products automatically require a BOM by
+design — they are expected BOM candidates, not probable internal products — and gift
+hampers and other sellable manufactured products can legitimately require a BOM too.
+Fixed: Audit C now classifies packing-assembly rows as
+`EXPECTED_BOM_CANDIDATE_PACKING_ASSEMBLY` (not a review signal) and all other
+bom_required-and-catalogue-ready rows as `BOM_CATALOGUE_COHERENCE_REVIEW` (worth a human
+look at the combination, explicitly not an internal-intent claim). **Do not recommend
+changing `bom_required` or `is_catalogue_ready` for any row based on this audit alone —
+external, production-team operational evidence is required first.**
+
+### Results (VERIFIED — rerun against `tcxvcatsqqertcnycuop`, exact committed SQL text)
+
+Both changed blocks (the `pricing_summary`/`pricing_summary_raw` CTEs in Audit A, and
+Audit C's classification `CASE`) were re-executed read-only, using the literal committed
+file text, against the same 11 catalogue-ready rows as the original Phase 1 pass:
+
+- `OAS-AS-BKL-ASS-RBOX-0002`: `resolved_mrp` is now **750** (was `null`); `blocker_mrp_missing`
+  is now **false** (was `true`). The product's only remaining SQL-reconstructable blocker
+  is the pre-existing SKU-vs-packaging-code mismatch (`blocker_packaging_missing_current_gate
+  = true`, unchanged by this fix).
+- `OAS-AS-BKL-PST-RBOX-0001`: `resolved_mrp` is now **350** (was `null`);
+  `blocker_mrp_missing` is now **false**. This product now has **zero** SQL-reconstructable
+  blockers.
+- `OAS-AS-BKL-PST-BULK-0001`: unchanged — still blocked on missing B2B price
+  (`blocker_b2b_price_missing = true`); its `mrp`-channel rule (₹105/pcs) is not required
+  by its `b2b_horeca` sale type and does not affect this blocker.
+- `OAS-AS-BKL-0007`: `resolved_mrp` is now **25** (the approved mrp-channel rule, taking
+  precedence over `products.mrp = 40` per the declared write-authority rule) and
+  `mrp_field_conflict = true` — the ₹25-vs-₹40 disagreement is surfaced directly in this
+  new column. It does not gate a blocker (`blocker_mrp_review_required = false`) because
+  `0007`'s derived sale type (`b2b_horeca`) does not require MRP at all — the same rule
+  `pricingBlockers()` applies app-side. `0007` remains blocked on missing packaging
+  (unchanged).
+- Every other catalogue-ready row's `resolved_mrp` / blocker set is unchanged by this fix
+  (their `mrp`-channel and `products.mrp` values already agreed, or no `mrp`-channel rule
+  existed).
+
+**Updated scale:** of the 11 catalogue-ready products, **5 of 11** now have zero
+blockers across the SQL-reconstructable dimensions (was 4 of 11) —
+`OAS-AS-BKL-CSH-BULK-0001`, `OAS-AS-BKL-PST-LOOSE-9922`, `OAS-AS-BKL-PST-MAAPET-0001`,
+`OAS-AS-BKL-PST-RBOX-0001` (newly clean), and `OAS-AS-BKL-ROL-MAAPET-0001`. Product Truth
+and Central-preview dimensions remain unverified, as before. Audit C's classification
+change is a relabeling only — no row's `bom_required` or `is_catalogue_ready` value
+changed, and the same 3 rows (`ASS-RBOX-0002`, `PST-RBOX-0001`, `ROL-MAAPET-0001`) still
+surface, now as `EXPECTED_BOM_CANDIDATE_PACKING_ASSEMBLY` (the first two, both
+`packing_assembly` department) or `BOM_CATALOGUE_COHERENCE_REVIEW` (`ROL-MAAPET-0001`,
+`ready_goods_store`/`arabic_sweets`).
+
+### Revised operator-attention synthesis (supersedes the Priority 1/2/3 list above)
+
+**Priority 1** (remaining confirmed blocker after the pricing fix):
+- `OAS-AS-BKL-ASS-RBOX-0002` — SKU/packaging mismatch (current gate) only; MRP is now
+  resolved (₹750, approved). BOM-required-yet-catalogue-ready is informational
+  (`EXPECTED_BOM_CANDIDATE_PACKING_ASSEMBLY`), not itself a blocker.
+
+**Priority 2** (single confirmed pricing blocker):
+- `OAS-AS-BKL-PST-BULK-0001` — missing B2B price (unchanged).
+
+**Priority 3** (pre-existing legacy pilot SKUs, packaging gap predates any code defect
+fixed in PR #75/#77/pricing-authority recovery):
+- `OAS-AS-BKL-0007` — also carries an `mrp_field_conflict` (₹25 approved rule vs. ₹40
+  product field) that does not currently gate a blocker (MRP not required for its sale
+  type) but is a genuine, unresolved pricing-source disagreement worth owner attention.
+- `OAS-AS-BKL-0020`, `OAS-AS-BKL-0024`, `OAS-AS-BKL-0025` — unchanged.
+
+`OAS-AS-BKL-PST-RBOX-0001` and `OAS-AS-BKL-ROL-MAAPET-0001` are removed from the priority
+list — the former now has zero SQL-reconstructable blockers; the latter always did, and
+its BOM/catalogue-ready combination is now correctly classified as informational, not a
+review-worthy pricing/packaging blocker.
+
+---
+
 ## Executive Table
 
 **This table describes the original PR #76 pass only (Audits A–D genuinely not
@@ -498,8 +602,11 @@ Restated briefly per that PR's explicit "document only" scope:
 - `bom_required = true` and `main_department = 'packing_material'` are the only two
   available signals, and both are weak/indirect (a `bom_required` product can still be
   legitimately sold as a component) — the audit SQL's Audit C therefore classifies matches
-  as `HIGH_CONFIDENCE_REVIEW` / `POSSIBLE_REVIEW` candidates only, never as
-  `VERIFIED_MISCLASSIFIED`.
+  as review candidates only, never as `VERIFIED_MISCLASSIFIED`. (Naming updated by the
+  POST-R1A PRICING-AUTHORITY RECOVERY section above: the former `HIGH_CONFIDENCE_REVIEW`
+  label overclaimed internal-intent confidence and has been replaced with
+  `EXPECTED_BOM_CANDIDATE_PACKING_ASSEMBLY` / `BOM_CATALOGUE_COHERENCE_REVIEW` —
+  `POSSIBLE_REVIEW` is unchanged.)
 - A durable fix would need a real `sale_type` (or `is_for_sale`) column — a schema/migration
   change that belongs to a separately approved Supabase Core design task, not this frontend
   PR. No schema, migration, or product data change was made here for this gap.
@@ -513,8 +620,10 @@ Restated briefly per that PR's explicit "document only" scope:
 MRP/B2B/export price blockers, packaging presence, hero image presence) as SQL, with
 Product Truth explicitly left unverifiable per the authority-map note above.
 **EXECUTED as of PHASE 1 DURABLE CLOSEOUT above** — see that section for full results
-(4 of 11 catalogue-ready products with no SQL-reconstructable blockers; Product Truth
-still unverified by design).
+(4 of 11 catalogue-ready products with no SQL-reconstructable blockers at that time;
+Product Truth still unverified by design). **Updated by POST-R1A PRICING-AUTHORITY
+RECOVERY above — now 5 of 11**, after the MRP channel-consumption fix resolved
+`OAS-AS-BKL-PST-RBOX-0001`'s previously-missing MRP.
 
 ## 11. SKU/Packaging Consistency Results (Audit B)
 **UNVERIFIABLE at original write time — not executed then.** Full 9-category classifier
@@ -532,8 +641,13 @@ above** — 364 products: 322 not-applicable, 41 match, exactly 1 mismatch
 query can only ever produce `HIGH_CONFIDENCE_REVIEW` / `POSSIBLE_REVIEW` /
 `UNVERIFIABLE_BECAUSE_SALE_TYPE_WAS_NOT_PERSISTED`, never `VERIFIED_MISCLASSIFIED`,
 because no durable field in this schema has ever recorded original sale-type intent.
-**EXECUTED as of PHASE 1 DURABLE CLOSEOUT above** — 3 `HIGH_CONFIDENCE_REVIEW` rows,
-still never claimed as verified misclassifications.
+**EXECUTED as of PHASE 1 DURABLE CLOSEOUT above** — 3 rows flagged (originally labelled
+`HIGH_CONFIDENCE_REVIEW`), still never claimed as verified misclassifications. **Updated
+by POST-R1A PRICING-AUTHORITY RECOVERY above** — the label itself overclaimed
+internal-intent confidence and has been corrected to
+`EXPECTED_BOM_CANDIDATE_PACKING_ASSEMBLY` (2 of the 3 rows, both `packing_assembly`
+department) / `BOM_CATALOGUE_COHERENCE_REVIEW` (the third); no row's underlying
+`bom_required` or `is_catalogue_ready` value changed.
 
 ## 13. Packaging Taxonomy Results (Audit D)
 **UNVERIFIABLE at original write time — not executed then.** Query drafted; see Finding
@@ -689,9 +803,13 @@ report; none were taken.
 3. **Data review — once Audits A/B/D can execute**: any `is_catalogue_ready = true` row
    flagged `VERIFIED_INVALID` should go to operator review, not automated correction —
    per the audit brief, catalogue-ready should never be silently toggled by an audit.
-4. **Data review — internal-classification candidates** (Finding NEW-2 category):
-   `HIGH_CONFIDENCE_REVIEW` rows (currently: `bom_required = true AND is_catalogue_ready = true`)
-   warrant operator review once queryable; cannot be auto-corrected without provable original intent.
+4. **Data review — BOM/catalogue coherence candidates** (Finding NEW-2 category;
+   reclassified by POST-R1A PRICING-AUTHORITY RECOVERY above — the original
+   `HIGH_CONFIDENCE_REVIEW` label overclaimed internal-intent confidence):
+   `BOM_CATALOGUE_COHERENCE_REVIEW` rows (`bom_required = true AND is_catalogue_ready = true`,
+   excluding `packing_assembly`-department rows, which are expected BOM candidates, not
+   review candidates) warrant operator review once queryable; cannot be auto-corrected
+   without provable original intent or external production-team confirmation.
 5. **Schema follow-up (separate, larger effort, not scoped here):** a persisted
    `sale_type`/`is_for_sale` column and a persisted Product Truth snapshot would close
    the two structural schema gaps above.
@@ -715,6 +833,18 @@ report; none were taken.
 - Only `tcxvcatsqqertcnycuop` was queried. `mrkgjemisgbsugfyllwr` was never touched.
 - No migration applied, no schema altered.
 - **Confirmed by explicit tool-call log**, not merely asserted.
+
+**As of POST-R1A PRICING-AUTHORITY RECOVERY (this pass, after the MRP-channel and
+BOM-audit-classification fixes):**
+- The corrected `scripts/audits/product_integrity_read_only.sql` (Audit A's
+  `pricing_summary`/`pricing_summary_raw` CTEs, Audit C's classification `CASE`) WAS
+  re-executed, read-only, against `tcxvcatsqqertcnycuop`, using the exact committed file
+  text, inside `BEGIN TRANSACTION READ ONLY` / `SET LOCAL statement_timeout = '30s'` /
+  `ROLLBACK`. **Zero rows were written, updated, deleted, or otherwise mutated.**
+- No `products`, `product_pricing_rules`, or `sku_code_rules` row was changed anywhere,
+  in any repository, at any point across all three passes.
+- Only `tcxvcatsqqertcnycuop` was queried. `mrkgjemisgbsugfyllwr` was never touched.
+- No migration applied, no schema altered.
 
 ---
 

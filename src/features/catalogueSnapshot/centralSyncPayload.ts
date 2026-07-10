@@ -37,8 +37,21 @@ export function buildApprovedCatalogueProductSnapshot(
   snapshot: CatalogueSnapshotJson,
   versionCode: string,
 ): ApprovedCatalogueProductSnapshot {
-  const retailPrice = getChannelPrice(snapshot.pricing_rules, "retail");
-  const mrp = retailPrice?.mrp ?? retailPrice?.sellingPrice ?? null;
+  // "mrp" and "retail" are distinct channels (see pricingAuthority.ts's canonical-semantics
+  // note) — mrp is the Maximum Retail Price authority; retail is a separate selling-price
+  // channel used only for base_price below, never for mrp.
+  //
+  // getChannelPrice() deliberately falls back to the best non-archived (e.g. pending/draft)
+  // row when no approved row exists for a channel — correct for its other callers (previews),
+  // but this snapshot is declared "approved" (ApprovedCatalogueProductSnapshot) and must never
+  // populate mrp/base_price from an unapproved rule. Pre-filter to approved rows first, same
+  // guard pricingAuthority.ts's resolvePricing() already applies.
+  const approvedPricingRules = snapshot.pricing_rules.filter(
+    (rule) => rule.priceStatus === "approved",
+  );
+  const mrpRule = getChannelPrice(approvedPricingRules, "mrp");
+  const retailPrice = getChannelPrice(approvedPricingRules, "retail");
+  const mrp = mrpRule?.mrp ?? mrpRule?.sellingPrice ?? null;
   const basePrice = retailPrice?.sellingPrice ?? retailPrice?.mrp ?? null;
 
   const packParts: string[] = [];
