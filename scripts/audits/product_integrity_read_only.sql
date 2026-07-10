@@ -109,21 +109,25 @@ HAVING count(*) > 1;
 -- ============================================================================
 
 WITH sku_analysis AS (
+  -- isStructuredOasisSku() trims whitespace before every check (skuGuard.ts:
+  -- "const s = String(sku).trim();") — every regex/split_part below runs against
+  -- btrim(p.sku), not the raw column, so leading/trailing spaces on an otherwise
+  -- valid SKU aren't misclassified.
   SELECT
     p.id,
     p.sku,
     p.packaging_code,
     CASE
       WHEN p.sku IS NULL OR btrim(p.sku) = '' THEN false
-      WHEN p.sku ~* '^DRAFT-' THEN false
-      WHEN p.sku ~* '^OAS-FC-' THEN false
-      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$' THEN true
-      WHEN p.sku LIKE 'OAS-%' AND length(p.sku) >= 12 THEN true
+      WHEN btrim(p.sku) ~* '^DRAFT-' THEN false
+      WHEN btrim(p.sku) ~* '^OAS-FC-' THEN false
+      WHEN btrim(p.sku) ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$' THEN true
+      WHEN btrim(p.sku) LIKE 'OAS-%' AND length(btrim(p.sku)) >= 12 THEN true
       ELSE false
     END AS is_structured_sku,
     CASE
-      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
-        THEN split_part(p.sku, '-', 5)
+      WHEN btrim(p.sku) ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
+        THEN split_part(btrim(p.sku), '-', 5)
       ELSE NULL
     END AS sku_packaging_segment
   FROM products p
@@ -178,12 +182,28 @@ approved_pricing AS (
   -- negative, and non-numeric values as "missing" — an approved rule saved as 0 must
   -- not satisfy a pricing blocker here just because a row exists.
   SELECT
+    id,
     product_id,
     lower(price_channel) AS channel,
-    coalesce(calculated_price, base_price) AS price_value
+    coalesce(calculated_price, base_price) AS price_value,
+    created_at
   FROM product_pricing_rules
   WHERE approval_status = 'approved'
     AND coalesce(calculated_price, base_price) > 0
+),
+first_approved_pricing AS (
+  -- resolvePricing()'s channelOf(name) = approved.find(p => channel === name) takes the
+  -- FIRST approved row per channel in whatever order Supabase returned them — the app
+  -- issues no explicit .order(), so that row order is not formally guaranteed by
+  -- Postgres/PostgREST. This is a best-effort approximation (earliest created_at, ties
+  -- broken by lowest id) of "first returned," not a provable match to the app's actual
+  -- selection when multiple approved rows exist for the same product+channel. Flagged as
+  -- an approximation in the audit report, not a guaranteed reproduction like the rest of
+  -- this file's rules.
+  SELECT DISTINCT ON (product_id, channel)
+    product_id, channel, price_value
+  FROM approved_pricing
+  ORDER BY product_id, channel, created_at ASC NULLS LAST, id ASC
 ),
 pricing_summary AS (
   SELECT
@@ -191,6 +211,8 @@ pricing_summary AS (
     -- resolvePricing() derives MRP from the 'retail' channel only (channelOf("retail")),
     -- never from a channel literally named 'mrp' — pricingRuleRowToChannelPrice's
     -- isMrpChannel branch only ever populates a field the app never reads back out.
+    -- max() here is a no-op selector: first_approved_pricing has at most one row per
+    -- (product_id, channel) already.
     max(CASE WHEN ap.channel = 'retail' THEN ap.price_value END)          AS channel_mrp,
     max(CASE WHEN ap.channel = 'b2b' THEN ap.price_value END)             AS channel_b2b,
     max(CASE WHEN ap.channel = 'export' THEN ap.price_value END)         AS channel_export,
@@ -206,7 +228,7 @@ pricing_summary AS (
     CASE WHEN coalesce(p.export_price, p.export_price_usd) > 0
       THEN coalesce(p.export_price, p.export_price_usd) END AS field_export
   FROM products p
-  LEFT JOIN approved_pricing ap ON ap.product_id = p.id
+  LEFT JOIN first_approved_pricing ap ON ap.product_id = p.id
   GROUP BY p.id, p.mrp, p.b2b_price, p.b2b_price_inr,
            p.export_price, p.export_price_usd
 )
@@ -265,13 +287,15 @@ ORDER BY p.sku;
 -- ============================================================================
 
 WITH sku_analysis AS (
+  -- Trimmed per isStructuredOasisSku()'s own String(sku).trim() — see Audit A's
+  -- sku_analysis CTE for the full rationale.
   SELECT
     p.id,
     p.sku,
     p.packaging_code,
     CASE
-      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
-        THEN split_part(p.sku, '-', 5)
+      WHEN btrim(p.sku) ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
+        THEN split_part(btrim(p.sku), '-', 5)
       ELSE NULL
     END AS sku_packaging_segment
   FROM products p
@@ -330,8 +354,8 @@ WITH sku_analysis AS (
     p.sku,
     p.packaging_code,
     CASE
-      WHEN p.sku ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
-        THEN split_part(p.sku, '-', 5)
+      WHEN btrim(p.sku) ~ '^OAS-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[A-Z0-9]+-[0-9]{4}$'
+        THEN split_part(btrim(p.sku), '-', 5)
       ELSE NULL
     END AS sku_packaging_segment
   FROM products p

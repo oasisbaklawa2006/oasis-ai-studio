@@ -238,6 +238,31 @@ All three of this second round were caught by Bugbot before this SQL was ever ex
 consistent with this audit's position that the SQL's correctness could only be verified
 by review, not by a live run, in this pass.
 
+A third Bugbot review pass found two more issues, one a clear bug and one a documented
+approximation limitation rather than a fixable transcription error:
+8. **SKU checks skipped trimming (MEDIUM):** `isStructuredOasisSku()` trims whitespace
+   before every check (`String(sku).trim()`), but `sku_analysis` applied its regex and
+   `split_part` extraction to the raw `sku` column in all three audits. A SKU with
+   leading/trailing spaces could be structured in the app but misclassified invalid, or
+   lose its packaging segment, in this SQL. Fixed by wrapping every check in `btrim(p.sku)`
+   across all three occurrences of the CTE.
+9. **Pricing aggregation used MAX instead of FIRST (HIGH, approximation, not a full fix):**
+   `resolvePricing()`'s `channelOf(name) = approved.find(p => channel === name)` takes the
+   **first** approved `product_pricing_rules` row per channel, in whatever order Supabase
+   returns them — the app issues no explicit `.order()`. The original SQL used `MAX()`
+   across *all* approved rows per channel, which can differ from the app's actual answer
+   whenever more than one approved row exists for the same product+channel with different
+   values. **This cannot be fixed with full certainty**, because the app's own "first
+   returned" order is not formally guaranteed by Postgres/PostgREST in the absence of an
+   explicit `ORDER BY` on the client query — reproducing an unspecified order deterministically
+   in a separate query is not possible. The SQL was changed to select the earliest
+   `created_at` (ties broken by `id`) per product+channel as the closest practical
+   approximation, and both the query (`first_approved_pricing` CTE) and this report flag
+   it explicitly as an approximation: **if multiple approved pricing rows exist for the
+   same product and channel with different values, Audit A's resolved price for that
+   product should be treated as REVIEW_REQUIRED, not trusted at face value**, until
+   verified directly against the live app for that specific product.
+
 ---
 
 ## 10. Catalogue-Ready Integrity Results (Audit A)
