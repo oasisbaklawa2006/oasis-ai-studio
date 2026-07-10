@@ -300,3 +300,103 @@ describe("centralSyncPayload MRP channel consumption (pricing-authority fix)", (
     expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(1000);
   });
 });
+
+describe("centralSyncPayload restricts the approved snapshot to approved-only pricing rules", () => {
+  // getChannelPrice() deliberately falls back to the best non-archived (pending/draft) row
+  // when no approved row exists — correct for its other callers (previews), but
+  // buildApprovedCatalogueProductSnapshot() must never populate mrp/base_price from an
+  // unapproved rule, since the payload is declared "approved" (ApprovedCatalogueProductSnapshot).
+  function buildBundle(prices: ChannelPriceRecord[]) {
+    const snap = generateCatalogueSnapshot({
+      form: baseForm,
+      productId: String(baseForm.id),
+      complianceApproved: true,
+      prices,
+      moqRules,
+    });
+    const truth = productTruthInputFromForm(baseForm, {
+      complianceApproved: true,
+      prices,
+      moqRules,
+    });
+    const readiness = evaluateProductReadiness(truth);
+    const gate = validateSnapshotGate(readiness, { complianceManuallyApproved: true });
+    return buildCentralSyncPreviewBundle({
+      snapshot: snap,
+      catalogueVersionId: "ver-1",
+      versionCode: "PT-prod-v1",
+      versionNumber: 1,
+      validation: gate,
+    });
+  }
+
+  // Far future/past absolute dates, not the real current clock — deterministic regardless
+  // of when the test suite runs.
+  const FAR_FUTURE = "2099-01-01T00:00:00Z";
+  const FAR_PAST = "2000-01-01T00:00:00Z";
+
+  it("an approved mrp-channel rule populates MRP", () => {
+    const bundle = buildBundle([{ channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" }]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
+  });
+
+  it("a pending mrp-channel rule does not populate MRP", () => {
+    const bundle = buildBundle([{ channel: "mrp", priceStatus: "pending_approval", mrp: 750, currency: "INR" }]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+  });
+
+  it("a draft mrp-channel rule does not populate MRP", () => {
+    const bundle = buildBundle([{ channel: "mrp", priceStatus: "draft", mrp: 750, currency: "INR" }]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+  });
+
+  it("an archived mrp-channel rule does not populate MRP", () => {
+    const bundle = buildBundle([{ channel: "mrp", priceStatus: "archived", mrp: 750, currency: "INR" }]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+  });
+
+  it("a future approved MRP rule does not populate MRP before its effectiveFrom", () => {
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", effectiveFrom: FAR_FUTURE },
+    ]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+  });
+
+  it("an expired approved MRP rule does not populate MRP after its effectiveTo", () => {
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", effectiveTo: FAR_PAST },
+    ]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+  });
+
+  it("when approved and pending MRP rows coexist, the approved effective row wins", () => {
+    const bundle = buildBundle([
+      { id: "pending", channel: "mrp", priceStatus: "pending_approval", mrp: 999, currency: "INR" },
+      { id: "approved", channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" },
+    ]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
+  });
+
+  it("an approved retail rule populates base_price but never MRP", () => {
+    const bundle = buildBundle([{ channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" }]);
+    expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(1000);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+  });
+
+  it("a pending/draft retail rule does not populate base_price", () => {
+    const pending = buildBundle([{ channel: "retail", priceStatus: "pending_approval", sellingPrice: 1000, currency: "INR" }]);
+    expect(pending.approved_catalogue_product_snapshot.base_price).toBeNull();
+
+    const draft = buildBundle([{ channel: "retail", priceStatus: "draft", sellingPrice: 1000, currency: "INR" }]);
+    expect(draft.approved_catalogue_product_snapshot.base_price).toBeNull();
+  });
+
+  it("retail remains distinct from MRP even when both are approved simultaneously", () => {
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" },
+      { channel: "retail", priceStatus: "approved", sellingPrice: 620, currency: "INR" },
+    ]);
+    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
+    expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(620);
+  });
+});
