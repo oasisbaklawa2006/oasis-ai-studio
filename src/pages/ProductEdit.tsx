@@ -654,6 +654,11 @@ const ProductEdit = () => {
   const [moqRuleRows, setMoqRuleRows] = useState<MoqRuleRow[]>([]);
   const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
   const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
+  // A new product has no channel pricing/media rows to hydrate, so authority is
+  // trivially "loaded" already; an existing product isn't until reloadProductAuthority
+  // resolves — the catalogue-ready gate must not judge a product on the empty
+  // placeholder channelPrices/productMediaRows it starts render with.
+  const [authorityLoaded, setAuthorityLoaded] = useState(isNew);
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
@@ -831,6 +836,11 @@ const ProductEdit = () => {
   // recalculated on every relevant field change via the memo above. Auto-clear the local
   // flag and surface a visible warning rather than persisting a contradictory state.
   useEffect(() => {
+    // Skip while channel pricing / product media are still hydrating for an existing
+    // product — the gate would otherwise judge a genuinely-ready product against the
+    // empty placeholder channelPrices/productMediaRows it starts render with and
+    // falsely clear it (Bugbot-flagged regression on this same fix).
+    if (!authorityLoaded) return;
     if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
       set("is_catalogue_ready", false);
       toast.warning(
@@ -838,7 +848,7 @@ const ProductEdit = () => {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catalogueReadyGate.allowed, form.is_catalogue_ready]);
+  }, [authorityLoaded, catalogueReadyGate.allowed, form.is_catalogue_ready]);
 
   const applyMediaAuthority = async (
     productId: string,
@@ -939,7 +949,8 @@ const ProductEdit = () => {
           setComplianceMetaMap(buildComplianceMetaFromSavedProduct(loaded));
           setLoadedId(id);
           setForm(loaded);
-          void reloadProductAuthority(id);
+          setAuthorityLoaded(false);
+          void reloadProductAuthority(id).then(() => setAuthorityLoaded(true));
         }
       });
   }, [id, isNew, loadedId]);
@@ -1162,7 +1173,9 @@ const ProductEdit = () => {
       return;
     }
 
-    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+    // Same authority-hydration guard as the auto-clear effect above — don't judge a
+    // save against a gate still evaluated on empty placeholder channelPrices/media.
+    if (authorityLoaded && form.is_catalogue_ready && !catalogueReadyGate.allowed) {
       const message = catalogueReadyBlockedMessage(catalogueReadyGate);
       setSubmitError(message);
       toast.error(`Cannot save as catalogue-ready — ${message}`);
