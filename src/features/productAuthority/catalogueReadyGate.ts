@@ -132,3 +132,26 @@ export function evaluatePackagingReadiness(input: PackagingReadinessInput): bool
 
   return true;
 }
+
+export interface PackagingRulesLoadResult {
+  rules: { code_type?: string | null; code?: string | null }[];
+  error: string | null;
+}
+
+/**
+ * Maps a sku_code_rules load result onto a PackagingTaxonomyAuthority snapshot — or `null`
+ * when the load failed, so a transient fetch error can never resolve into an
+ * authoritative-but-empty Set. Before this, a failed load produced `{ activeCodes: new
+ * Set() }`, indistinguishable from "loaded, taxonomy is genuinely empty" — the gate would
+ * then confidently report "Packaging missing" (and the caller's auto-clear effect could
+ * act on it) for what was actually just a failed fetch (Bugbot-caught regression).
+ */
+export function packagingAuthorityFromRulesResult(
+  result: PackagingRulesLoadResult,
+): PackagingTaxonomyAuthority | null {
+  if (result.error) return null;
+  const activeCodes = new Set(
+    result.rules.filter((r) => r.code_type === "packaging").map((r) => normalizePackagingCode(r.code)),
+  );
+  return { activeCodes };
+}

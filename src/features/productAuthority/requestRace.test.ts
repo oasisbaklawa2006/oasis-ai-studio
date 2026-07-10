@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCurrentAsyncRequest } from "./requestRace";
+import { isCurrentAsyncRequest, shouldFetchById } from "./requestRace";
 
 describe("isCurrentAsyncRequest (Defect 2 regression)", () => {
   it("normal single-product load — the only request in flight is current", () => {
@@ -48,5 +48,31 @@ describe("isCurrentAsyncRequest (Defect 2 regression)", () => {
     expect(isCurrentAsyncRequest("x", true, "x")).toBe(false);
     expect(isCurrentAsyncRequest("x", false, "y")).toBe(false);
     expect(isCurrentAsyncRequest("x", true, "y")).toBe(false);
+  });
+});
+
+describe("shouldFetchById (Bugbot regression on PR #77)", () => {
+  it("fetches a not-yet-loaded existing id", () => {
+    expect(shouldFetchById(false, "product-a", null)).toBe(true);
+  });
+
+  it("does not fetch for a new/placeholder route", () => {
+    expect(shouldFetchById(true, "new", null)).toBe(false);
+  });
+
+  it("does not fetch when there is no id", () => {
+    expect(shouldFetchById(false, undefined, null)).toBe(false);
+    expect(shouldFetchById(false, null, null)).toBe(false);
+  });
+
+  it("does not re-fetch an id that is already loaded", () => {
+    expect(shouldFetchById(false, "product-a", "product-a")).toBe(false);
+  });
+
+  it("re-navigating to a previously-abandoned id fetches it again if it never finished loading", () => {
+    // A started loading, user left before it resolved (loadedId never became "product-a"),
+    // then the user returns — loadedId is still whatever it was (e.g. "product-b" from the
+    // product they navigated to and which *did* finish loading).
+    expect(shouldFetchById(false, "product-a", "product-b")).toBe(true);
   });
 });

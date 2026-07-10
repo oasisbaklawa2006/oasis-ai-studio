@@ -3,6 +3,7 @@ import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
   evaluatePackagingReadiness,
+  packagingAuthorityFromRulesResult,
   type PackagingTaxonomyAuthority,
 } from "./catalogueReadyGate";
 import { resolvePricing } from "./pricingAuthority";
@@ -248,5 +249,43 @@ describe("evaluateCatalogueReadyGate", () => {
     expect(msg).toMatch(/^Cannot mark catalogue-ready\. Missing: /);
     expect(msg).toContain("MRP missing");
     expect(msg).toContain("Hero image missing");
+  });
+});
+
+describe("packagingAuthorityFromRulesResult (Bugbot regression on PR #77)", () => {
+  it("builds an active-codes snapshot from a successful load", () => {
+    const authority = packagingAuthorityFromRulesResult({
+      rules: [
+        { code_type: "packaging", code: "paperbox" },
+        { code_type: "division", code: "AS" },
+        { code_type: "packaging", code: "TIN" },
+      ],
+      error: null,
+    });
+    expect(authority).not.toBeNull();
+    expect(authority?.activeCodes.has("PAPERBOX")).toBe(true);
+    expect(authority?.activeCodes.has("TIN")).toBe(true);
+    expect(authority?.activeCodes.has("AS")).toBe(false);
+  });
+
+  it("resolves to a genuinely empty (loaded) authority when the table has zero rows and no error", () => {
+    const authority = packagingAuthorityFromRulesResult({ rules: [], error: null });
+    expect(authority).toEqual({ activeCodes: new Set() });
+  });
+
+  it("returns null on a failed load — never a false authoritative empty Set", () => {
+    const authority = packagingAuthorityFromRulesResult({
+      rules: [],
+      error: "sku_code_rules returned zero active rows",
+    });
+    expect(authority).toBeNull();
+  });
+
+  it("returns null even if rules happen to be present alongside an error", () => {
+    const authority = packagingAuthorityFromRulesResult({
+      rules: [{ code_type: "packaging", code: "TIN" }],
+      error: "network error",
+    });
+    expect(authority).toBeNull();
   });
 });

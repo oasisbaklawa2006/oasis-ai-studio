@@ -15,7 +15,7 @@ import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
-  normalizePackagingCode,
+  packagingAuthorityFromRulesResult,
   type PackagingTaxonomyAuthority,
 } from "@/features/productAuthority/catalogueReadyGate";
 import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
@@ -89,7 +89,7 @@ import {
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
-import { isCurrentAsyncRequest } from "@/features/productAuthority/requestRace";
+import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   mapMoqRules,
@@ -800,23 +800,19 @@ const ProductEdit = () => {
     let mounted = true;
 
     fetchActiveSkuCodeRules()
-      .then(({ rules, error }) => {
+      .then((result) => {
         if (!mounted) return;
-        if (error && import.meta.env.DEV) {
-          console.error("[ProductEdit] sku_code_rules load failed:", error);
+        const authority = packagingAuthorityFromRulesResult(result);
+        if (authority) {
+          setPackagingAuthority(authority);
+        } else if (result.error && import.meta.env.DEV) {
+          console.error("[ProductEdit] sku_code_rules load failed:", result.error);
         }
-        const activeCodes = new Set(
-          rules
-            .filter((r) => r.code_type === "packaging")
-            .map((r) => normalizePackagingCode(r.code)),
-        );
-        setPackagingAuthority({ activeCodes });
       })
       .catch((error) => {
         if (mounted && import.meta.env.DEV) {
           console.error("[ProductEdit] sku_code_rules load failed:", error);
         }
-        if (mounted) setPackagingAuthority({ activeCodes: new Set() });
       });
 
     return () => {
@@ -994,7 +990,14 @@ const ProductEdit = () => {
   const productFetchRequestIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (isNew || !id || loadedId === id) return;
+    if (!shouldFetchById(isNew, id, loadedId)) {
+      // No fetch will start on this effect run. Force-clear pending rather than leaving it
+      // as whatever a previous, now-abandoned effect instance (for a different id) last set
+      // it to — that abandoned fetch's own .then() will never run (it's superseded) or
+      // isn't guaranteed to resolve, so nothing else is guaranteed to clear the flag here.
+      setProductFetchPending(false);
+      return;
+    }
 
     let cancelled = false;
     productFetchRequestIdRef.current = id;

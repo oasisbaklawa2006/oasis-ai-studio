@@ -18,3 +18,20 @@ export function isCurrentAsyncRequest(
 ): boolean {
   return !cancelled && latestId === requestId;
 }
+
+/**
+ * Whether an id-keyed fetch effect should start a new fetch this render. When it
+ * shouldn't (no id yet, a "new" placeholder route, or the id is already loaded), any
+ * fetch-in-flight UI state (e.g. a "pending" flag) must be explicitly reset by the caller
+ * in that same branch — an abandoned fetch for a *previous* id is not guaranteed to ever
+ * resolve and clear it itself (Bugbot-caught regression: navigating away and back to an
+ * already-loaded id could leave a pending flag stuck true forever, since no new fetch
+ * starts to eventually flip it back to false).
+ */
+export function shouldFetchById(
+  isNew: boolean,
+  id: string | null | undefined,
+  loadedId: string | null,
+): boolean {
+  return !isNew && !!id && loadedId !== id;
+}
