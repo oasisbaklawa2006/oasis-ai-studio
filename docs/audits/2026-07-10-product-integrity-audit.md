@@ -209,6 +209,35 @@ audit's own standard of not overstating verification:
 These were transcription errors in this audit's own SQL, not defects in the PR #75
 application code it describes.
 
+A second Bugbot review pass, run after the corrections above, found three further
+transcription errors, all now fixed:
+5. **MRP channel misalignment (HIGH):** `pricing_summary` treated any approved
+   `product_pricing_rules` row with `price_channel IN ('retail', 'mrp')` as resolved MRP.
+   The real `resolvePricing()` only ever reads the `retail` channel
+   (`channelOf("retail")`) — a channel literally named `mrp` is never consulted by the
+   app, even though `pricingRuleRowToChannelPrice()` happens to populate a `.mrp` field
+   for such rows. Removed `'mrp'` from the channel match; MRP now derives from `retail`
+   only, matching the app exactly.
+6. **Channel prices skipped the app's positivity check (MEDIUM):** `approved_pricing`
+   used `coalesce(calculated_price, base_price)` with no floor, while the real
+   `resolvePricing()` treats zero/negative/non-numeric values as missing via its `num()`
+   helper. An approved rule saved as `0` could have satisfied a pricing blocker here while
+   still failing the live gate. Added `AND coalesce(calculated_price, base_price) > 0` to
+   the CTE's `WHERE` clause.
+7. **Hero check ignored `product_media` (MEDIUM):** Audit A's hero blocker only inspected
+   `products.hero_image_url`, but the real gate's `heroImageUrl` input is
+   `readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url`, and `derivedHeroUrl` prefers
+   the latest **approved** `product_media` row of `type = 'hero_image'` over the column.
+   Products with an approved media-table hero but an empty `hero_image_url` column could
+   have been wrongly flagged invalid. Added a `derived_hero` CTE reproducing
+   `latestApprovedHeroUrlFromMediaRows()` exactly (traced to
+   `src/lib/productImage.ts:58-75`) and changed the blocker to check
+   `coalesce(media_hero_url, hero_image_url)`.
+
+All three of this second round were caught by Bugbot before this SQL was ever executed —
+consistent with this audit's position that the SQL's correctness could only be verified
+by review, not by a live run, in this pass.
+
 ---
 
 ## 10. Catalogue-Ready Integrity Results (Audit A)

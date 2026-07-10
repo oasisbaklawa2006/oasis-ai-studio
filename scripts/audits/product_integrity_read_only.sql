@@ -156,18 +156,42 @@ sale_type_requirements AS (
   -- requires_b2b_price is false unless b2bEnabled is passed, which has no persisted
   -- column to query; export and gift_hamper both require a hero image).
 ),
+derived_hero AS (
+  -- Mirrors resolveProductCardHeroUrl() / latestApprovedHeroUrlFromMediaRows(): the
+  -- gate's actual heroImageUrl input is readinessSnapshot?.derivedHeroUrl ??
+  -- form.hero_image_url, and derivedHeroUrl itself prefers the latest APPROVED
+  -- product_media row of type='hero_image' over the products.hero_image_url column.
+  -- (The function's third fallback tier, products.image_url, is omitted — that column
+  -- does not exist in the generated products Row type, same class of gap as price_b2b.)
+  SELECT DISTINCT ON (pm.product_id)
+    pm.product_id,
+    pm.file_url AS media_hero_url
+  FROM product_media pm
+  WHERE pm.type = 'hero_image'
+    AND pm.status = 'approved'
+    AND pm.file_url IS NOT NULL
+    AND btrim(pm.file_url) <> ''
+  ORDER BY pm.product_id, pm.created_at DESC NULLS LAST
+),
 approved_pricing AS (
+  -- Positivity filter mirrors pricingAuthority.ts's num() helper, which treats zero,
+  -- negative, and non-numeric values as "missing" — an approved rule saved as 0 must
+  -- not satisfy a pricing blocker here just because a row exists.
   SELECT
     product_id,
     lower(price_channel) AS channel,
     coalesce(calculated_price, base_price) AS price_value
   FROM product_pricing_rules
   WHERE approval_status = 'approved'
+    AND coalesce(calculated_price, base_price) > 0
 ),
 pricing_summary AS (
   SELECT
     p.id,
-    max(CASE WHEN ap.channel IN ('retail', 'mrp') THEN ap.price_value END) AS channel_mrp,
+    -- resolvePricing() derives MRP from the 'retail' channel only (channelOf("retail")),
+    -- never from a channel literally named 'mrp' — pricingRuleRowToChannelPrice's
+    -- isMrpChannel branch only ever populates a field the app never reads back out.
+    max(CASE WHEN ap.channel = 'retail' THEN ap.price_value END)          AS channel_mrp,
     max(CASE WHEN ap.channel = 'b2b' THEN ap.price_value END)             AS channel_b2b,
     max(CASE WHEN ap.channel = 'export' THEN ap.price_value END)         AS channel_export,
     -- product-row fallback prices, per pricingAuthority.ts resolvePricing().
@@ -201,6 +225,8 @@ SELECT
   coalesce(ps.channel_b2b, ps.field_b2b)                             AS resolved_b2b_price,
   coalesce(ps.channel_export, ps.field_export)                       AS resolved_export_price,
   p.hero_image_url,
+  dh.media_hero_url,
+  coalesce(dh.media_hero_url, p.hero_image_url)                      AS resolved_hero_url,
   req.customer_facing,
   req.requires_mrp,
   req.requires_b2b_price,
@@ -219,13 +245,15 @@ SELECT
   (req.customer_facing AND req.requires_packaging
     AND NOT (p.packaging_code IS NOT NULL AND p.packaging_code <> '')) AS blocker_packaging_missing,
   (req.customer_facing AND req.requires_hero_image
-    AND (p.hero_image_url IS NULL OR btrim(p.hero_image_url) = ''))  AS blocker_hero_image_missing,
+    AND (coalesce(dh.media_hero_url, p.hero_image_url) IS NULL
+         OR btrim(coalesce(dh.media_hero_url, p.hero_image_url)) = '')) AS blocker_hero_image_missing,
   false                                                               AS product_truth_reconstructable
 FROM products p
 JOIN sku_analysis sa ON sa.id = p.id
 JOIN sale_type_derivation st ON st.id = p.id
 JOIN sale_type_requirements req ON req.sale_type = st.derived_sale_type
 LEFT JOIN pricing_summary ps ON ps.id = p.id
+LEFT JOIN derived_hero dh ON dh.product_id = p.id
 WHERE p.is_catalogue_ready = true
 ORDER BY p.sku;
 
