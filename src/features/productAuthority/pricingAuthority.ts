@@ -45,19 +45,30 @@ function num(v: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+/** Mirrors resolvePricing()'s own per-channel precedence — retail reads mrp, falling back
+ *  to sellingPrice; b2b/export read sellingPrice only. Two rows must be compared by this
+ *  *effective* value, not by raw field equality: a row with mrp=500,sellingPrice=null and
+ *  another with mrp=null,sellingPrice=500 both resolve to 500 and must not be flagged as
+ *  disagreeing just because the raw fields differ (Bugbot-caught regression). */
+type EffectiveValueOf = (p: ChannelPriceLike) => number | null;
+const effectiveRetailValue: EffectiveValueOf = (p) => num(p.mrp) ?? num(p.sellingPrice);
+const effectiveSellingValue: EffectiveValueOf = (p) => num(p.sellingPrice);
+
 function disagreesWithSelected(
   approvedPrices: ChannelPriceLike[],
   channel: string,
   selected: ChannelPriceLike,
   at: Date,
+  effectiveValueOf: EffectiveValueOf,
 ): boolean {
   const normalized = channel.toLowerCase();
+  const selectedValue = effectiveValueOf(selected);
   return approvedPrices.some(
     (p) =>
       p !== selected &&
       String(p.channel ?? "").toLowerCase() === normalized &&
       isPriceEffective(p, at) &&
-      (num(p.mrp) !== num(selected.mrp) || num(p.sellingPrice) !== num(selected.sellingPrice)),
+      effectiveValueOf(p) !== selectedValue,
   );
 }
 
@@ -73,17 +84,17 @@ export function resolvePricing(
   // resolvePricing() has always ignored pending/draft rows entirely.
   const approvedChannelPrices = channelPrices.filter((p) => p.priceStatus === "approved");
 
-  const channelOf = (name: string) => {
+  const channelOf = (name: string, effectiveValueOf: EffectiveValueOf) => {
     const selected = getChannelPrice(approvedChannelPrices, name, at);
-    if (selected && disagreesWithSelected(approvedChannelPrices, name, selected, at)) {
+    if (selected && disagreesWithSelected(approvedChannelPrices, name, selected, at, effectiveValueOf)) {
       reviewRequiredChannels.push(name);
     }
     return selected;
   };
 
-  const retailRule = channelOf("retail");
-  const b2bRule = channelOf("b2b");
-  const exportRule = channelOf("export");
+  const retailRule = channelOf("retail", effectiveRetailValue);
+  const b2bRule = channelOf("b2b", effectiveSellingValue);
+  const exportRule = channelOf("export", effectiveSellingValue);
 
   const fieldMrp = num(form.mrp);
   const fieldB2b = num(form.b2b_price) ?? num(form.price_b2b) ?? num(form.b2b_price_inr);
