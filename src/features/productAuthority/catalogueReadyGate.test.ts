@@ -2,15 +2,21 @@ import { describe, expect, it } from "vitest";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
-  hasPackagingTaxonomyCode,
+  evaluatePackagingReadiness,
+  type PackagingTaxonomyAuthority,
 } from "./catalogueReadyGate";
 import { resolvePricing } from "./pricingAuthority";
+
+const PACKAGING_AUTHORITY: PackagingTaxonomyAuthority = {
+  activeCodes: new Set(["PAPERBOX", "TIN"]),
+};
 
 const READY_INPUT = {
   sku: "OAS-AS-BKL-ASS-PAPERBOX-0002",
   saleType: "retail_ready_pack" as const,
   pricing: resolvePricing({ mrp: 450, price_b2b: 380 }),
-  packagingPresent: true,
+  packagingCode: "PAPERBOX",
+  packagingAuthority: PACKAGING_AUTHORITY,
   heroImageUrl: "https://example.com/hero.jpg",
   truthScore: 7,
   truthMaxScore: 8,
@@ -38,11 +44,18 @@ describe("evaluateCatalogueReadyGate", () => {
   it("blocks missing packaging and missing hero image", () => {
     const result = evaluateCatalogueReadyGate({
       ...READY_INPUT,
-      packagingPresent: false,
+      packagingCode: null,
       heroImageUrl: null,
     });
     expect(result.blockers).toContain("Packaging missing");
     expect(result.blockers).toContain("Hero image missing");
+  });
+
+  it("blocks (with a distinct reason) when packaging taxonomy authority hasn't loaded", () => {
+    const result = evaluateCatalogueReadyGate({ ...READY_INPUT, packagingAuthority: null });
+    expect(result.allowed).toBe(false);
+    expect(result.blockers.join(" ")).toContain("taxonomy not loaded");
+    expect(result.blockers).not.toContain("Packaging missing");
   });
 
   it("blocks Product Truth below the 70% threshold", () => {
@@ -56,9 +69,24 @@ describe("evaluateCatalogueReadyGate", () => {
     expect(result.blockers).toContain("Central preview: SKU not mapped");
   });
 
-  it("internal products can never be catalogue-ready", () => {
-    const result = evaluateCatalogueReadyGate({ ...READY_INPUT, saleType: "internal_bom" });
+  it("internal products can never be catalogue-ready, regardless of packaging authority state", () => {
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      saleType: "internal_bom",
+      packagingAuthority: null,
+    });
     expect(result.allowed).toBe(false);
+    expect(result.blockers).toEqual(["Internal / not-for-sale products cannot be catalogue-ready"]);
+  });
+
+  it("packaging_material never requires packaging readiness either", () => {
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      saleType: "packaging_material",
+      packagingAuthority: null,
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.blockers).toEqual(["Internal / not-for-sale products cannot be catalogue-ready"]);
   });
 
   // ProductEdit.tsx re-evaluates this gate from `form` on every render (useMemo) and an
@@ -93,7 +121,7 @@ describe("evaluateCatalogueReadyGate", () => {
     it("flips to blocked when packaging is cleared", () => {
       const before = evaluateCatalogueReadyGate(READY_INPUT);
       expect(before.allowed).toBe(true);
-      const after = evaluateCatalogueReadyGate({ ...READY_INPUT, packagingPresent: false });
+      const after = evaluateCatalogueReadyGate({ ...READY_INPUT, packagingCode: null });
       expect(after.allowed).toBe(false);
       expect(after.blockers).toContain("Packaging missing");
     });
@@ -107,27 +135,106 @@ describe("evaluateCatalogueReadyGate", () => {
     });
   });
 
-  describe("hasPackagingTaxonomyCode (Defect 5 regression)", () => {
-    it("blocks when only qty-per-pack is set, with no packaging_code", () => {
-      expect(hasPackagingTaxonomyCode({ pcs_per_pack: 6 })).toBe(false);
+  describe("evaluatePackagingReadiness (Defect 1 regression)", () => {
+    it("passes for a valid active taxonomy code with an agreeing SKU segment", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "PAPERBOX",
+          sku: "OAS-AS-BKL-ASS-PAPERBOX-0002",
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(true);
     });
 
-    it("blocks when only free-text pack_size is set, with no packaging_code", () => {
-      expect(hasPackagingTaxonomyCode({ pack_size: "6 pcs box" })).toBe(false);
+    it("blocks a whitespace-only code", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "   ",
+          sku: null,
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(false);
     });
 
-    it("blocks when neither is set", () => {
-      expect(hasPackagingTaxonomyCode({})).toBe(false);
+    it("blocks an arbitrary code that isn't in the active taxonomy", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "RANDOM_STRING",
+          sku: null,
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(false);
     });
 
-    it("passes when a real taxonomy packaging_code is set", () => {
-      expect(hasPackagingTaxonomyCode({ packaging_code: "PAPERBOX" })).toBe(true);
+    it("blocks an inactive/retired code (not present in the active set)", () => {
+      const authorityWithoutRetired: PackagingTaxonomyAuthority = { activeCodes: new Set(["TIN"]) };
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "PAPERBOX", // was active once, retired — no longer in the set
+          sku: null,
+          packagingAuthority: authorityWithoutRetired,
+        }),
+      ).toBe(false);
     });
 
-    it("passes when packaging_code is set alongside qty/pack text", () => {
-      expect(hasPackagingTaxonomyCode({ packaging_code: "PAPERBOX", pcs_per_pack: 6, pack_size: "6 pcs box" })).toBe(
-        true,
-      );
+    it("blocks a valid active code that disagrees with the SKU's own packaging segment", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "TIN",
+          sku: "OAS-AS-BKL-ASS-PAPERBOX-0002", // SKU still encodes PAPERBOX — stale relative to TIN
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(false);
+    });
+
+    it("passes on a normalized case-insensitive match", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "paperbox",
+          sku: "oas-as-bkl-ass-paperbox-0002",
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(true);
+    });
+
+    it("never silently passes when the taxonomy authority hasn't loaded", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "PAPERBOX",
+          sku: "OAS-AS-BKL-ASS-PAPERBOX-0002",
+          packagingAuthority: null,
+        }),
+      ).toBe(false);
+    });
+
+    it("blocks when only qty-per-pack-shaped input is passed as the code (not a real taxonomy code)", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "6",
+          sku: null,
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(false);
+    });
+
+    it("blocks when a free-text pack description is passed as the code", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "6 pcs box",
+          sku: null,
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(false);
+    });
+
+    it("passes when the SKU has no structured packaging segment to cross-check (e.g. draft SKU)", () => {
+      expect(
+        evaluatePackagingReadiness({
+          packagingCode: "PAPERBOX",
+          sku: "DRAFT-1234",
+          packagingAuthority: PACKAGING_AUTHORITY,
+        }),
+      ).toBe(true);
     });
   });
 

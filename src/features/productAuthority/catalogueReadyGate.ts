@@ -4,7 +4,7 @@
  * Pure: callers assemble the input from their own authorities (skuGuard, pricing
  * authority, Product Truth) so the gate itself never queries anything.
  */
-import { isStructuredOasisSku } from "./skuGuard";
+import { isStructuredOasisSku, skuPackagingSegment } from "./skuGuard";
 import type { SaleType } from "./saleType";
 import { getSaleTypeRequirements } from "./saleType";
 import type { ResolvedPricing } from "./pricingAuthority";
@@ -12,13 +12,27 @@ import { pricingBlockers } from "./pricingAuthority";
 
 export const CATALOGUE_READY_TRUTH_THRESHOLD = 0.7;
 
+/**
+ * Active packaging taxonomy snapshot (sku_code_rules where code_type = 'packaging',
+ * is_active = true), normalized (trim + uppercase) by the caller before it reaches this
+ * pure gate — the gate itself never queries Supabase. `null` on the wrapping
+ * CatalogueReadyGateInput field means the authority hasn't loaded yet.
+ */
+export interface PackagingTaxonomyAuthority {
+  activeCodes: Set<string>;
+}
+
 export interface CatalogueReadyGateInput {
   sku: string | null | undefined;
   saleType: SaleType;
   b2bEnabled?: boolean;
   pricing: ResolvedPricing;
-  /** Packaging selection state for sale products (packaging_code or pack type present). */
-  packagingPresent: boolean;
+  /** Raw packaging_code as saved on the product row — validated against packagingAuthority
+   *  and cross-checked against the SKU's own packaging segment inside the gate. */
+  packagingCode: string | null | undefined;
+  /** `null` means the packaging taxonomy authority hasn't loaded yet — the gate must not
+   *  treat that as "packaging present" just because a form field happens to be non-empty. */
+  packagingAuthority: PackagingTaxonomyAuthority | null;
   heroImageUrl: string | null | undefined;
   /** Product Truth score/maxScore, when available. */
   truthScore?: number | null;
@@ -47,8 +61,18 @@ export function evaluateCatalogueReadyGate(input: CatalogueReadyGateInput): Cata
 
   blockers.push(...pricingBlockers(input.pricing, input.saleType, { b2bEnabled: input.b2bEnabled }));
 
-  if (req.requiresPackaging && !input.packagingPresent) {
-    blockers.push("Packaging missing");
+  if (req.requiresPackaging) {
+    if (!input.packagingAuthority) {
+      blockers.push("Packaging taxonomy not loaded yet — cannot confirm packaging readiness");
+    } else if (
+      !evaluatePackagingReadiness({
+        packagingCode: input.packagingCode,
+        sku: input.sku,
+        packagingAuthority: input.packagingAuthority,
+      })
+    ) {
+      blockers.push("Packaging missing");
+    }
   }
 
   if (req.requiresHeroImage && !String(input.heroImageUrl ?? "").trim()) {
@@ -77,13 +101,34 @@ export function catalogueReadyBlockedMessage(result: CatalogueReadyGateResult): 
   return `Cannot mark catalogue-ready. Missing: ${result.blockers.join(", ")}.`;
 }
 
+export function normalizePackagingCode(code: unknown): string {
+  return String(code ?? "").trim().toUpperCase();
+}
+
+export interface PackagingReadinessInput {
+  packagingCode: unknown;
+  sku: unknown;
+  packagingAuthority: PackagingTaxonomyAuthority | null;
+}
+
 /**
- * Packaging readiness for the gate means a real taxonomy `packaging_code` was selected —
- * qty-per-pack or free-text pack size alone do not prove that (Defect 5 regression: those
- * used to satisfy this check and let products through with no actual packaging segment).
- * Sale types that don't require packaging at all are exempted separately via
- * `getSaleTypeRequirements(...).requiresPackaging`, so this stays a single strict check.
+ * Packaging readiness for the gate means a real, currently-active taxonomy
+ * `packaging_code` was selected — qty-per-pack, free-text pack size, whitespace, or an
+ * arbitrary/stale/inactive string do not prove that (original Defect 5 regression, then a
+ * second regression where truthiness alone was accepted regardless of taxonomy validity).
+ * When the SKU itself encodes a packaging segment, the saved packaging_code must agree
+ * with it after normalization — a mismatch means the SKU is stale relative to the current
+ * packaging selection. Sale types that don't require packaging at all are exempted
+ * separately via `getSaleTypeRequirements(...).requiresPackaging`.
  */
-export function hasPackagingTaxonomyCode(form: Record<string, unknown>): boolean {
-  return !!form.packaging_code;
+export function evaluatePackagingReadiness(input: PackagingReadinessInput): boolean {
+  if (!input.packagingAuthority) return false;
+  const code = normalizePackagingCode(input.packagingCode);
+  if (!code) return false;
+  if (!input.packagingAuthority.activeCodes.has(code)) return false;
+
+  const skuSegment = skuPackagingSegment(String(input.sku ?? ""));
+  if (skuSegment && normalizePackagingCode(skuSegment) !== code) return false;
+
+  return true;
 }

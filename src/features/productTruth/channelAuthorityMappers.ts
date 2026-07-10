@@ -47,6 +47,7 @@ export function pricingRuleRowToChannelPrice(row: PricingRuleRow): ChannelPriceR
   const isMrpChannel = channel.toLowerCase() === "mrp";
 
   return {
+    id: row.id ?? null,
     channel,
     priceType: row.price_type ?? undefined,
     mrp: isMrpChannel ? (calculated ?? base) : null,

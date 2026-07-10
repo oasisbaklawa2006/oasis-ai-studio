@@ -79,6 +79,9 @@ export type ConversionRule = {
 };
 
 export type ChannelPriceRecord = {
+  /** Stable tie-breaker when multiple approved rows share the same channel and timestamp —
+   *  required for deterministic selection in getChannelPrice(). */
+  id?: string | null;
   channel: ProductTruthChannel | string;
   priceType?: "mrp" | "selling" | "b2b_base" | "horeca" | "wholesale" | "franchise" | "export_exw" | "export_fob" | "corporate" | "wedding" | string;
   mrp?: number | null;
