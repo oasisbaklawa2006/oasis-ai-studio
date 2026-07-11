@@ -841,10 +841,24 @@ export default function CatalogueProductStudio() {
     selected?.id,
     mediaLoadState.status !== "loading",
   );
+  // Bugbot-caught: applyDirectHeroAuthority (in ProductMediaUploader.tsx) fires onHeroChange then
+  // onMediaChange synchronously back-to-back for a single hero write — both are wired to this same
+  // handler below, since neither onHeroChange's arguments nor a separate identity is needed here
+  // (unlike Full Editor, which does use them). Without deduplication, one logical change could call
+  // retryMediaLoad() twice in the same synchronous tick. A microtask-scoped guard coalesces any
+  // number of same-tick calls into exactly one reload, then resets cleanly before the next genuine
+  // change (a later click, a later async resolution) can arrive.
+  const mediaReloadRequestedThisTickRef = useRef(false);
   const handleMediaUploaderChanged = () => {
     const { shouldForward, nextState } = consumeMediaUploaderChange(mediaUploaderGuardRef.current);
     mediaUploaderGuardRef.current = nextState;
-    if (shouldForward) retryMediaLoad();
+    if (!shouldForward) return;
+    if (mediaReloadRequestedThisTickRef.current) return;
+    mediaReloadRequestedThisTickRef.current = true;
+    queueMicrotask(() => {
+      mediaReloadRequestedThisTickRef.current = false;
+    });
+    retryMediaLoad();
   };
 
   // Bugbot-caught: while media is loading or a fetch failed, mediaRows is deliberately [] — passing
