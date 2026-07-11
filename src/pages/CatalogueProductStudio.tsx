@@ -1701,13 +1701,21 @@ export default function CatalogueProductStudio() {
                               product's saved facts — it never invents price, ingredients, allergens, nutrition,
                               or compliance claims, and never overwrites fields you've already edited.
                             </p>
-                            <div className="flex items-center gap-2">
+                            {/* Bugbot-caught (authenticated mobile smoke test): this row was a non-wrapping
+                                flex container holding a fixed-width Select plus a long-label Button (Button's
+                                own base styling is whitespace-nowrap, so the label itself never shrinks) —
+                                on a narrow phone viewport neither item could give way, so the Button overflowed
+                                past the right edge, its label clipped, and introduced horizontal page scroll.
+                                flex-wrap plus full-width-until-sm sizing lets the tone selector and Generate
+                                button stack cleanly on mobile while reverting to the original fixed-width,
+                                side-by-side desktop/tablet layout at the sm breakpoint (640px+) unchanged. */}
+                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                               <Select
                                 value={aiTone}
                                 onValueChange={(v) => setAiTone(v as CatalogueAiTone)}
                                 disabled={aiGenerationState === "generating"}
                               >
-                                <SelectTrigger className="h-8 w-[140px] text-[11px]">
+                                <SelectTrigger className="h-8 w-full sm:w-[140px] text-[11px]">
                                   <SelectValue placeholder="Tone" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1721,6 +1729,7 @@ export default function CatalogueProductStudio() {
                               <Button
                                 type="button"
                                 size="sm"
+                                className="w-full sm:w-auto"
                                 disabled={aiGenerationBlocked || aiGenerationState === "generating" || textLocked || draftLoading}
                                 onClick={handleGenerateAiDraft}
                               >
@@ -2006,7 +2015,11 @@ export default function CatalogueProductStudio() {
                       </TabsContent>
 
                       <TabsContent value="export" className="space-y-3 pt-4">
-                        <div className="flex items-center justify-between gap-2">
+                        {/* Bugbot-caught (same mobile-overflow audit as the Content tab's Generate row):
+                            this row had no flex-wrap, so the heading text plus button could not give way to
+                            each other on a narrow phone viewport. flex-wrap lets the button drop to its own
+                            line on mobile without affecting desktop/tablet, where both already fit on one row. */}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                             <FileText size={14} /> Export / copy bundle preview
                           </div>
