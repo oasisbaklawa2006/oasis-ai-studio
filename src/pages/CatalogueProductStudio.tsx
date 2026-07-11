@@ -109,6 +109,8 @@ import {
   buildAiGenerationProvenance,
   isAiGenerationBlockedByIdentity,
   mergeAiGeneratedContent,
+  readPersistedAiGenerationProvenance,
+  restoreAiGenerationState,
 } from "@/features/catalogueAiStudio/catalogueAiGenerationMerge";
 import { Sparkles } from "lucide-react";
 import {
@@ -212,18 +214,23 @@ function buildSourceSnapshot(
 
 /**
  * A3 AI safety/provenance wrapper: resolves the AI baseline/applied-fields state into the pure
- * `buildAiGenerationProvenance` (catalogueAiGenerationMerge.ts, unit-tested) and returns null when
- * this draft version was never touched by AI generation, so old drafts and products that never
- * used AI keep an unchanged `source_snapshot` shape.
+ * `buildAiGenerationProvenance` (catalogueAiGenerationMerge.ts, unit-tested). When no fresh AI
+ * generation happened this session (no in-memory baseline — e.g. the studio was just reopened),
+ * falls back to re-reading whatever provenance the previous save already recorded rather than
+ * overwriting it with null, which would silently erase that history (Bugbot regression).
  */
 function resolveAiGenerationProvenance(
   editor: EditorState,
   aiGeneratedBaseline: EditorState | null,
   aiGeneratedFields: CatalogueDraftContentKey[] | null,
   tone: CatalogueAiTone | null,
+  previouslyPersistedSourceSnapshot: unknown,
 ): Record<string, unknown> | null {
-  if (!aiGeneratedBaseline || aiGeneratedBaseline.productId !== editor.productId || !aiGeneratedFields) return null;
-  return { ...buildAiGenerationProvenance(editor.content, aiGeneratedBaseline.content, aiGeneratedFields, tone) };
+  if (aiGeneratedBaseline && aiGeneratedBaseline.productId === editor.productId && aiGeneratedFields) {
+    return { ...buildAiGenerationProvenance(editor.content, aiGeneratedBaseline.content, aiGeneratedFields, tone) };
+  }
+  const persisted = readPersistedAiGenerationProvenance(previouslyPersistedSourceSnapshot);
+  return persisted ? { ...persisted } : null;
 }
 
 /** Reads a known string field out of an audit row's jsonb `metadata` — never throws on shape drift. */
@@ -656,7 +663,15 @@ export default function CatalogueProductStudio() {
         setPersistedDraft(row);
         patchDraftStatus(productId, (row?.status as CatalogueDraftStatus | undefined) ?? null);
         if (row) {
-          setEditorState({ productId, ...mapRowToEditor(row) });
+          const mapped = mapRowToEditor(row);
+          setEditorState({ productId, ...mapped });
+          // Bugbot-caught: without this, reopening a previously AI-generated draft showed every
+          // AI-filled field as falsely "Edited" (compared against the raw template instead of what
+          // was actually loaded) and the next save would silently erase the saved provenance.
+          const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
+          setAiGeneratedBaseline(restored?.baseline ?? null);
+          setAiGeneratedFields(restored?.appliedFields ?? null);
+          setAiGeneratedTone(restored?.tone ?? null);
           const log = await fetchDraftAuditLog(row.id);
           if (!cancelled && selectedIdRef.current === productId) setAuditLog(log);
         }
@@ -829,10 +844,22 @@ export default function CatalogueProductStudio() {
   const [aiGeneratedBaseline, setAiGeneratedBaseline] = useState<EditorState | null>(null);
   const [aiGeneratedFields, setAiGeneratedFields] = useState<CatalogueDraftContentKey[] | null>(null);
   const [aiGeneratedTone, setAiGeneratedTone] = useState<CatalogueAiTone | null>(null);
+  const [aiGenerationState, setAiGenerationState] = useState<"idle" | "generating" | "success" | "error">("idle");
+  const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
+  const [aiTone, setAiTone] = useState<CatalogueAiTone>("Informational");
+  // Bugbot-caught: resetFromProduct cleared the AI baseline state, but an in-flight
+  // generateCatalogueContentDraft() call from BEFORE the reset would still resolve and merge its
+  // result afterward, undoing the reset. Every clearAiGeneration() call bumps this so
+  // handleGenerateAiDraft can recognize its own request is no longer current and bail out instead
+  // of applying a stale response.
+  const aiGenerationRequestIdRef = useRef(0);
   const clearAiGeneration = () => {
+    aiGenerationRequestIdRef.current += 1;
     setAiGeneratedBaseline(null);
     setAiGeneratedFields(null);
     setAiGeneratedTone(null);
+    setAiGenerationState("idle");
+    setAiGenerationError(null);
   };
   useEffect(() => {
     clearAiGeneration();
@@ -842,19 +869,12 @@ export default function CatalogueProductStudio() {
       ? aiGeneratedBaseline
       : generatedBaseline;
 
-  const [aiGenerationState, setAiGenerationState] = useState<"idle" | "generating" | "success" | "error">("idle");
-  const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
-  const [aiTone, setAiTone] = useState<CatalogueAiTone>("Informational");
-  useEffect(() => {
-    setAiGenerationState("idle");
-    setAiGenerationError(null);
-  }, [selected?.id]);
-
   const aiGenerationBlocked = isAiGenerationBlockedByIdentity(readiness);
 
   const handleGenerateAiDraft = async () => {
     if (!selected || !editor || aiGenerationBlocked) return;
     const productId = selected.id;
+    const requestId = ++aiGenerationRequestIdRef.current;
     setAiGenerationState("generating");
     setAiGenerationError(null);
     const facts: CatalogueAiSourceFacts = {
@@ -867,7 +887,7 @@ export default function CatalogueProductStudio() {
       shelfLifeDays: selected.shelf_life_days,
     };
     const result = await generateCatalogueContentDraft(facts, aiTone);
-    if (selectedIdRef.current !== productId) return;
+    if (selectedIdRef.current !== productId || aiGenerationRequestIdRef.current !== requestId) return;
     if (result.ok === false) {
       setAiGenerationState("error");
       setAiGenerationError(result.reason);
@@ -966,7 +986,13 @@ export default function CatalogueProductStudio() {
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
           source_snapshot: buildSourceSnapshot(
             selected,
-            resolveAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedFields, aiGeneratedTone),
+            resolveAiGenerationProvenance(
+              editor,
+              aiGeneratedBaseline,
+              aiGeneratedFields,
+              aiGeneratedTone,
+              currentPersistedDraft?.source_snapshot ?? null,
+            ),
           ),
         },
         actorId: user?.id ?? null,
@@ -997,7 +1023,12 @@ export default function CatalogueProductStudio() {
       }
       setPersistedDraft(row);
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
-      setEditorState({ productId, ...mapRowToEditor(row) });
+      const mapped = mapRowToEditor(row);
+      setEditorState({ productId, ...mapped });
+      const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
+      setAiGeneratedBaseline(restored?.baseline ?? null);
+      setAiGeneratedFields(restored?.appliedFields ?? null);
+      setAiGeneratedTone(restored?.tone ?? null);
       await refreshAuditLog(row.id, productId);
       toast.success(`Loaded v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`);
     } catch (err) {
@@ -1027,7 +1058,13 @@ export default function CatalogueProductStudio() {
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
           source_snapshot: buildSourceSnapshot(
             selected,
-            resolveAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedFields, aiGeneratedTone),
+            resolveAiGenerationProvenance(
+              editor,
+              aiGeneratedBaseline,
+              aiGeneratedFields,
+              aiGeneratedTone,
+              currentPersistedDraft?.source_snapshot ?? null,
+            ),
           ),
         },
         actorId: user?.id ?? null,

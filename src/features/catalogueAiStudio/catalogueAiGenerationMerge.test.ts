@@ -3,13 +3,24 @@ import {
   buildAiGenerationProvenance,
   isAiGenerationBlockedByIdentity,
   mergeAiGeneratedContent,
+  readPersistedAiGenerationProvenance,
+  restoreAiGenerationState,
 } from "./catalogueAiGenerationMerge";
-import { CATALOGUE_DRAFT_CONTENT_KEYS, type CatalogueDraftContent } from "./catalogueDraftTypes";
+import {
+  CATALOGUE_DRAFT_CONTENT_KEYS,
+  CATALOGUE_DRAFT_PROMPT_KEYS,
+  type CatalogueDraftContent,
+  type CatalogueDraftPrompts,
+} from "./catalogueDraftTypes";
 import type { ReadinessCategory, ReadinessResult } from "./catalogueProductReadiness";
 
 function content(fill: string, overrides: Partial<CatalogueDraftContent> = {}): CatalogueDraftContent {
   const base = Object.fromEntries(CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, fill])) as CatalogueDraftContent;
   return { ...base, ...overrides };
+}
+
+function prompts(): CatalogueDraftPrompts {
+  return Object.fromEntries(CATALOGUE_DRAFT_PROMPT_KEYS.map((k) => [k, "prompt"])) as CatalogueDraftPrompts;
 }
 
 function category(key: string, state: ReadinessCategory["state"]): ReadinessCategory {
@@ -99,6 +110,85 @@ describe("buildAiGenerationProvenance", () => {
       expect(provenance.fields_human_edited_after_generation).not.toContain("catalogue_title");
       expect(provenance.fields_ai_generated).not.toContain("catalogue_title");
       expect(provenance.fields_preserved_from_prior_edit).toContain("catalogue_title");
+    },
+  );
+});
+
+describe("readPersistedAiGenerationProvenance", () => {
+  it("returns null when there is no source_snapshot, no ai_generation blob, or an empty one", () => {
+    expect(readPersistedAiGenerationProvenance(null)).toBeNull();
+    expect(readPersistedAiGenerationProvenance({})).toBeNull();
+    expect(readPersistedAiGenerationProvenance({ ai_generation: null })).toBeNull();
+    expect(
+      readPersistedAiGenerationProvenance({
+        ai_generation: { service: "oasis-ai-chat", fields_ai_generated: [], fields_human_edited_after_generation: [] },
+      }),
+    ).toBeNull();
+  });
+
+  it(
+    "reads a previously saved blob back out unchanged, for preserving provenance history on a " +
+      "save that involves no fresh AI generation this session (Bugbot regression: a save used to " +
+      "silently overwrite prior provenance with null the moment the studio was reopened)",
+    () => {
+      const snapshot = {
+        product_name: "Pineapple Dragees",
+        ai_generation: {
+          service: "oasis-ai-chat",
+          tone: "Premium",
+          fields_ai_generated: ["catalogue_title", "short_description"],
+          fields_human_edited_after_generation: ["long_description"],
+          fields_preserved_from_prior_edit: ["b2b_sales_copy"],
+        },
+      };
+      const result = readPersistedAiGenerationProvenance(snapshot);
+      expect(result).not.toBeNull();
+      expect(result?.tone).toBe("Premium");
+      expect(result?.fields_ai_generated).toEqual(["catalogue_title", "short_description"]);
+      expect(result?.fields_human_edited_after_generation).toEqual(["long_description"]);
+      expect(result?.fields_preserved_from_prior_edit).toEqual(["b2b_sales_copy"]);
+    },
+  );
+
+  it("ignores an unrecognized tone or content key rather than throwing", () => {
+    const result = readPersistedAiGenerationProvenance({
+      ai_generation: {
+        tone: "Aggressive", // not a real CatalogueAiTone
+        fields_ai_generated: ["catalogue_title", "not_a_real_field"],
+        fields_human_edited_after_generation: [],
+      },
+    });
+    expect(result?.tone).toBeNull();
+    expect(result?.fields_ai_generated).toEqual(["catalogue_title"]);
+  });
+});
+
+describe("restoreAiGenerationState", () => {
+  it("returns null when the loaded draft was never touched by AI generation", () => {
+    expect(restoreAiGenerationState("p1", content("template"), prompts(), null)).toBeNull();
+    expect(restoreAiGenerationState("p1", content("template"), prompts(), { some_other_key: 1 })).toBeNull();
+  });
+
+  it(
+    "reconstructs the baseline from the freshly loaded content for every AI-touched field, so a " +
+      "reopened draft's 'Edited' badge doesn't compare untouched AI fields against the raw " +
+      "template (Bugbot regression)",
+    () => {
+      const loaded = content("loaded from server");
+      const snapshot = {
+        ai_generation: {
+          tone: "Concise",
+          fields_ai_generated: ["catalogue_title"],
+          fields_human_edited_after_generation: ["short_description"],
+          fields_preserved_from_prior_edit: ["long_description"],
+        },
+      };
+      const restored = restoreAiGenerationState("p1", loaded, prompts(), snapshot);
+      expect(restored).not.toBeNull();
+      expect(restored?.baseline.productId).toBe("p1");
+      expect(restored?.baseline.content).toEqual(loaded);
+      expect(restored?.appliedFields).toEqual(["catalogue_title", "short_description"]);
+      expect(restored?.tone).toBe("Concise");
     },
   );
 });

@@ -5,11 +5,11 @@
  * `mergeAiGeneratedContent` inside a React functional state update to stay race-safe against
  * concurrent typing while the AI request is in flight (see handleGenerateAiDraft).
  */
-import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
+import type { CatalogueDraftContent, CatalogueDraftContentKey, CatalogueDraftPrompts } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
 import { isFieldEdited } from "./catalogueFieldEditedState";
 import type { ReadinessResult } from "./catalogueProductReadiness";
-import type { CatalogueAiTone } from "./catalogueAiGateway";
+import { CATALOGUE_AI_TONES, type CatalogueAiTone } from "./catalogueAiGateway";
 
 /**
  * Bugbot-caught: the gate used to key off `readiness.overallLabel`, which is "Not ready" the
@@ -92,5 +92,83 @@ export function buildAiGenerationProvenance(
     fields_preserved_from_prior_edit: CATALOGUE_DRAFT_CONTENT_KEYS.filter(
       (key) => !appliedFields.includes(key),
     ),
+  };
+}
+
+function extractAiGenerationBlob(sourceSnapshot: unknown): Record<string, unknown> | null {
+  if (!sourceSnapshot || typeof sourceSnapshot !== "object" || Array.isArray(sourceSnapshot)) return null;
+  const aiGeneration = (sourceSnapshot as Record<string, unknown>).ai_generation;
+  if (!aiGeneration || typeof aiGeneration !== "object" || Array.isArray(aiGeneration)) return null;
+  return aiGeneration as Record<string, unknown>;
+}
+
+function readContentKeyArray(value: unknown): CatalogueDraftContentKey[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(
+    (key): key is CatalogueDraftContentKey =>
+      typeof key === "string" && (CATALOGUE_DRAFT_CONTENT_KEYS as readonly string[]).includes(key),
+  );
+}
+
+function readTone(value: unknown): CatalogueAiTone | null {
+  return typeof value === "string" && (CATALOGUE_AI_TONES as readonly string[]).includes(value)
+    ? (value as CatalogueAiTone)
+    : null;
+}
+
+/**
+ * Reads a previously saved `source_snapshot.ai_generation` blob back out unchanged, so a save that
+ * doesn't involve a fresh AI generation this session (e.g. the studio was reopened and no new
+ * "Generate Complete Catalogue Draft" run happened yet) preserves prior provenance history instead
+ * of silently overwriting it with null (Bugbot regression).
+ */
+export function readPersistedAiGenerationProvenance(sourceSnapshot: unknown): AiGenerationProvenance | null {
+  const blob = extractAiGenerationBlob(sourceSnapshot);
+  if (!blob) return null;
+  const fieldsAiGenerated = readContentKeyArray(blob.fields_ai_generated);
+  const fieldsHumanEdited = readContentKeyArray(blob.fields_human_edited_after_generation);
+  if (fieldsAiGenerated.length === 0 && fieldsHumanEdited.length === 0) return null;
+  return {
+    service: "oasis-ai-chat",
+    tone: readTone(blob.tone),
+    fields_ai_generated: fieldsAiGenerated,
+    fields_human_edited_after_generation: fieldsHumanEdited,
+    fields_preserved_from_prior_edit: readContentKeyArray(blob.fields_preserved_from_prior_edit),
+  };
+}
+
+export interface RestoredAiGeneration {
+  baseline: { productId: string; content: CatalogueDraftContent; prompts: CatalogueDraftPrompts };
+  appliedFields: CatalogueDraftContentKey[];
+  tone: CatalogueAiTone | null;
+}
+
+/**
+ * Reconstructs in-memory AI-generation state (baseline/appliedFields/tone) from a draft row's
+ * persisted `source_snapshot.ai_generation`, so reopening a previously AI-generated draft doesn't
+ * show untouched AI fields as falsely "Edited" against the raw template (Bugbot regression).
+ *
+ * The exact original AI-generated text isn't persisted (only which fields it touched), so the
+ * baseline content for AI-touched fields is taken from the freshly loaded row itself — meaning the
+ * "Edited" badge reflects changes made from this point forward, the same "compare against what was
+ * last loaded" approximation `hasUnsavedChanges` already uses elsewhere on this page.
+ */
+export function restoreAiGenerationState(
+  productId: string,
+  loadedContent: CatalogueDraftContent,
+  loadedPrompts: CatalogueDraftPrompts,
+  sourceSnapshot: unknown,
+): RestoredAiGeneration | null {
+  const blob = extractAiGenerationBlob(sourceSnapshot);
+  if (!blob) return null;
+  const appliedFields = [
+    ...readContentKeyArray(blob.fields_ai_generated),
+    ...readContentKeyArray(blob.fields_human_edited_after_generation),
+  ];
+  if (appliedFields.length === 0) return null;
+  return {
+    baseline: { productId, content: loadedContent, prompts: loadedPrompts },
+    appliedFields,
+    tone: readTone(blob.tone),
   };
 }
