@@ -388,6 +388,20 @@ export default function CatalogueProductStudio() {
     };
   }, []);
 
+  // Bugbot-caught: save/submit/approve/reject only ever updated the SELECTED product's own
+  // `persistedDraft` state, never the bulk `draftStatuses` map the work queue reads — so a queue
+  // badge/filter could show a stale status (e.g. "Ready for Generation" for a product that now has
+  // a draft) until a full page reload. Every handler below patches this map with the server's own
+  // returned row status immediately after a successful mutation.
+  const patchDraftStatus = (productId: string, status: CatalogueDraftStatus | null) => {
+    setDraftStatuses((prev) => {
+      const next = new Map(prev);
+      if (status) next.set(productId, status);
+      else next.delete(productId);
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (products.length === 0) {
       setDraftStatuses(new Map());
@@ -408,12 +422,55 @@ export default function CatalogueProductStudio() {
     };
   }, [products]);
 
+  // Bugbot-caught: work-queue readiness/completion% used the raw hero_image_url column only, while
+  // the selected product's own readiness/sticky-bar/Build Meter resolve hero via the media authority
+  // (product_media rows win once any exist). A bulk, hero-only read (same table, filtered to just
+  // the one type this affects) lets every queue row use the identical summarizeCatalogueMedia()
+  // resolution, so queue metrics can never disagree with what the operator sees after selecting the
+  // same product.
+  const [bulkHeroMedia, setBulkHeroMedia] = useState<Map<string, CatalogueMediaRow[]>>(new Map());
+  useEffect(() => {
+    if (products.length === 0) {
+      setBulkHeroMedia(new Map());
+      return;
+    }
+    let cancelled = false;
+    Promise.resolve(
+      supabase
+        .from("product_media")
+        .select("id, product_id, type, file_url, status, created_at")
+        .eq("type", "hero_image")
+        .in("product_id", products.map((p) => p.id)),
+    )
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error || !data) {
+          setBulkHeroMedia(new Map());
+          return;
+        }
+        const grouped = new Map<string, CatalogueMediaRow[]>();
+        for (const row of data as (CatalogueMediaRow & { product_id: string })[]) {
+          const list = grouped.get(row.product_id) ?? [];
+          list.push(row);
+          grouped.set(row.product_id, list);
+        }
+        setBulkHeroMedia(grouped);
+      })
+      .catch(() => {
+        if (!cancelled) setBulkHeroMedia(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [products]);
+
   // Per-product work-queue classification for every loaded product (not just the selected one) —
   // readiness itself only reads fields already in the bulk `products` fetch, so this is cheap.
   const productWorkQueueInfo = useMemo(() => {
     const map = new Map<string, { readiness: ReadinessResult; status: WorkQueueStatus }>();
     for (const p of products) {
-      const readiness = computeCatalogueProductReadiness(p);
+      const resolvedHeroUrl = summarizeCatalogueMedia(p, bulkHeroMedia.get(p.id) ?? []).heroUrl;
+      const readiness = computeCatalogueProductReadiness({ ...p, hero_image_url: resolvedHeroUrl });
       const status = classifyWorkQueueStatus({
         readinessOverallLabel: readiness.overallLabel,
         draftStatus: draftStatuses.get(p.id) ?? null,
@@ -421,7 +478,7 @@ export default function CatalogueProductStudio() {
       map.set(p.id, { readiness, status });
     }
     return map;
-  }, [products, draftStatuses]);
+  }, [products, draftStatuses, bulkHeroMedia]);
 
   const recentProductIds = useMemo(() => new Set(recentProducts.map((r) => r.productId)), [recentProducts]);
 
@@ -559,6 +616,7 @@ export default function CatalogueProductStudio() {
       .then(async (row) => {
         if (cancelled || selectedIdRef.current !== productId) return;
         setPersistedDraft(row);
+        patchDraftStatus(productId, (row?.status as CatalogueDraftStatus | undefined) ?? null);
         if (row) {
           setEditorState({ productId, ...mapRowToEditor(row) });
           const log = await fetchDraftAuditLog(row.id);
@@ -787,6 +845,7 @@ export default function CatalogueProductStudio() {
       });
       if (selectedIdRef.current !== productId) return;
       setPersistedDraft(row);
+      patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
       await refreshAuditLog(row.id, productId);
       toast.success(`Draft saved — v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`);
@@ -809,6 +868,7 @@ export default function CatalogueProductStudio() {
         return;
       }
       setPersistedDraft(row);
+      patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
       await refreshAuditLog(row.id, productId);
       toast.success(`Loaded v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`);
@@ -845,6 +905,7 @@ export default function CatalogueProductStudio() {
       const row = await submitDraftForReview(saved.id, user?.id ?? null);
       if (selectedIdRef.current !== productId) return;
       setPersistedDraft(row);
+      patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
       await refreshAuditLog(row.id, productId);
       toast.success("Submitted for review.");
@@ -868,6 +929,7 @@ export default function CatalogueProductStudio() {
       const row = await approveDraft(draftId, user?.id ?? null);
       if (selectedIdRef.current !== productId) return;
       setPersistedDraft(row);
+      patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
       await refreshAuditLog(row.id, productId);
       toast.success("Draft approved.");
@@ -891,6 +953,7 @@ export default function CatalogueProductStudio() {
       const row = await rejectDraft(draftId, user?.id ?? null, rejectReason.trim());
       if (selectedIdRef.current !== productId) return;
       setPersistedDraft(row);
+      patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
       await refreshAuditLog(row.id, productId);
       setRejectReasonOpen(false);
