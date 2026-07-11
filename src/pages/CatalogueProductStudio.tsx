@@ -106,11 +106,13 @@ import {
   type CatalogueAiTone,
 } from "@/features/catalogueAiStudio/catalogueAiGateway";
 import {
+  advanceAiFieldTracking,
   buildAiGenerationProvenance,
   isAiGenerationBlockedByIdentity,
   mergeAiGeneratedContent,
   readPersistedAiGenerationProvenance,
   restoreAiGenerationState,
+  type AiFieldTracking,
 } from "@/features/catalogueAiStudio/catalogueAiGenerationMerge";
 import { Sparkles } from "lucide-react";
 import {
@@ -222,12 +224,14 @@ function buildSourceSnapshot(
 function resolveAiGenerationProvenance(
   editor: EditorState,
   aiGeneratedBaseline: EditorState | null,
-  aiGeneratedFields: CatalogueDraftContentKey[] | null,
+  aiFieldTracking: AiFieldTracking | null,
   tone: CatalogueAiTone | null,
   previouslyPersistedSourceSnapshot: unknown,
 ): Record<string, unknown> | null {
-  if (aiGeneratedBaseline && aiGeneratedBaseline.productId === editor.productId && aiGeneratedFields) {
-    return { ...buildAiGenerationProvenance(editor.content, aiGeneratedBaseline.content, aiGeneratedFields, tone) };
+  if (aiGeneratedBaseline && aiGeneratedBaseline.productId === editor.productId && aiFieldTracking) {
+    return {
+      ...buildAiGenerationProvenance(editor.content, aiGeneratedBaseline.content, aiFieldTracking, tone),
+    };
   }
   const persisted = readPersistedAiGenerationProvenance(previouslyPersistedSourceSnapshot);
   return persisted ? { ...persisted } : null;
@@ -670,7 +674,7 @@ export default function CatalogueProductStudio() {
           // was actually loaded) and the next save would silently erase the saved provenance.
           const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
           setAiGeneratedBaseline(restored?.baseline ?? null);
-          setAiGeneratedFields(restored?.appliedFields ?? null);
+          setAiFieldTracking(restored?.tracking ?? null);
           setAiGeneratedTone(restored?.tone ?? null);
           const log = await fetchDraftAuditLog(row.id);
           if (!cancelled && selectedIdRef.current === productId) setAuditLog(log);
@@ -842,7 +846,7 @@ export default function CatalogueProductStudio() {
   // immediately show as "Edited" just for differing from the template it replaced. Reset on
   // product switch so a stale AI baseline from a previous product is never possible.
   const [aiGeneratedBaseline, setAiGeneratedBaseline] = useState<EditorState | null>(null);
-  const [aiGeneratedFields, setAiGeneratedFields] = useState<CatalogueDraftContentKey[] | null>(null);
+  const [aiFieldTracking, setAiFieldTracking] = useState<AiFieldTracking | null>(null);
   const [aiGeneratedTone, setAiGeneratedTone] = useState<CatalogueAiTone | null>(null);
   const [aiGenerationState, setAiGenerationState] = useState<"idle" | "generating" | "success" | "error">("idle");
   const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
@@ -856,7 +860,7 @@ export default function CatalogueProductStudio() {
   const clearAiGeneration = () => {
     aiGenerationRequestIdRef.current += 1;
     setAiGeneratedBaseline(null);
-    setAiGeneratedFields(null);
+    setAiFieldTracking(null);
     setAiGeneratedTone(null);
     setAiGenerationState("idle");
     setAiGenerationError(null);
@@ -900,12 +904,21 @@ export default function CatalogueProductStudio() {
     // check ignores a stale response if the operator has since switched products (belt-and-braces
     // alongside the `selectedIdRef` check above, which only catches the common case). The actual
     // field-by-field merge is the pure, unit-tested `mergeAiGeneratedContent`.
+    //
+    // Bugbot-caught: fields already known human-edited/preserved from a prior session (restored via
+    // restoreAiGenerationState) must never be silently overwritten by a fresh regeneration just
+    // because their loaded value happens to match the restored baseline — `lockedFields` excludes
+    // them from `mergeAiGeneratedContent` unconditionally, regardless of that diff.
+    const lockedFields = new Set([
+      ...(aiFieldTracking?.lockedHumanEditedFields ?? []),
+      ...(aiFieldTracking?.lockedPreservedFields ?? []),
+    ]);
     let appliedFields: CatalogueDraftContentKey[] = [];
     let preservedCount = 0;
     let mergedState: EditorState | null = null;
     setEditorState((prev) => {
       if (!prev || prev.productId !== productId) return prev;
-      const merge = mergeAiGeneratedContent(prev.content, result.content, activeBaseline?.content ?? null);
+      const merge = mergeAiGeneratedContent(prev.content, result.content, activeBaseline?.content ?? null, lockedFields);
       appliedFields = merge.appliedFields;
       preservedCount = merge.preservedCount;
       mergedState = { productId, content: merge.content, prompts: prev.prompts };
@@ -923,10 +936,11 @@ export default function CatalogueProductStudio() {
     // preserved above because the operator had already edited them — comparing the final editor
     // against that raw baseline made preserved fields look "human-edited after generation" (as if
     // AI had written them first). Storing the merged state instead means a preserved field's
-    // baseline exactly matches its current value, and `aiGeneratedFields` records which keys AI
-    // actually wrote so provenance can classify only those.
+    // baseline exactly matches its current value. `advanceAiFieldTracking` folds this round's newly
+    // applied fields into the watched set and graduates any newly-diverged watched field into the
+    // locked human-edited set, so a field's history survives across generations, not just one round.
     setAiGeneratedBaseline(mergedState);
-    setAiGeneratedFields(appliedFields);
+    setAiFieldTracking(advanceAiFieldTracking(aiFieldTracking, appliedFields));
     setAiGeneratedTone(aiTone);
     setAiGenerationState("success");
     if (preservedCount > 0) {
@@ -996,7 +1010,7 @@ export default function CatalogueProductStudio() {
             resolveAiGenerationProvenance(
               editor,
               aiGeneratedBaseline,
-              aiGeneratedFields,
+              aiFieldTracking,
               aiGeneratedTone,
               currentPersistedDraft?.source_snapshot ?? null,
             ),
@@ -1034,7 +1048,7 @@ export default function CatalogueProductStudio() {
       setEditorState({ productId, ...mapped });
       const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
       setAiGeneratedBaseline(restored?.baseline ?? null);
-      setAiGeneratedFields(restored?.appliedFields ?? null);
+      setAiFieldTracking(restored?.tracking ?? null);
       setAiGeneratedTone(restored?.tone ?? null);
       await refreshAuditLog(row.id, productId);
       toast.success(`Loaded v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`);
@@ -1068,7 +1082,7 @@ export default function CatalogueProductStudio() {
             resolveAiGenerationProvenance(
               editor,
               aiGeneratedBaseline,
-              aiGeneratedFields,
+              aiFieldTracking,
               aiGeneratedTone,
               currentPersistedDraft?.source_snapshot ?? null,
             ),

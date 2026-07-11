@@ -1,15 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  advanceAiFieldTracking,
   buildAiGenerationProvenance,
   isAiGenerationBlockedByIdentity,
   mergeAiGeneratedContent,
   readPersistedAiGenerationProvenance,
   restoreAiGenerationState,
+  type AiFieldTracking,
 } from "./catalogueAiGenerationMerge";
 import {
   CATALOGUE_DRAFT_CONTENT_KEYS,
   CATALOGUE_DRAFT_PROMPT_KEYS,
   type CatalogueDraftContent,
+  type CatalogueDraftContentKey,
   type CatalogueDraftPrompts,
 } from "./catalogueDraftTypes";
 import type { ReadinessCategory, ReadinessResult } from "./catalogueProductReadiness";
@@ -21,6 +24,10 @@ function content(fill: string, overrides: Partial<CatalogueDraftContent> = {}): 
 
 function prompts(): CatalogueDraftPrompts {
   return Object.fromEntries(CATALOGUE_DRAFT_PROMPT_KEYS.map((k) => [k, "prompt"])) as CatalogueDraftPrompts;
+}
+
+function tracking(overrides: Partial<AiFieldTracking>): AiFieldTracking {
+  return { watchedFields: [], lockedHumanEditedFields: [], lockedPreservedFields: [], ...overrides };
 }
 
 function category(key: string, state: ReadinessCategory["state"]): ReadinessCategory {
@@ -78,38 +85,124 @@ describe("mergeAiGeneratedContent", () => {
     expect(result.appliedFields).toContain("short_description");
     expect(result.preservedCount).toBe(1);
   });
+
+  it(
+    "always preserves a locked field regardless of whether it matches the baseline, so a " +
+      "regeneration never overwrites content already known to be human-authored (Bugbot regression: " +
+      "a restored human-edited field, whose baseline is the loaded — already edited — value, looked " +
+      "'unchanged' to a plain diff and would otherwise be silently overwritten by fresh AI text)",
+    () => {
+      const baseline = content("loaded value"); // baseline equals current — a plain diff would NOT flag this as edited
+      const current = content("loaded value");
+      const ai = content("fresh ai text");
+      const result = mergeAiGeneratedContent(current, ai, baseline, new Set(["catalogue_title"]));
+      expect(result.content.catalogue_title).toBe("loaded value");
+      expect(result.appliedFields).not.toContain("catalogue_title");
+    },
+  );
+});
+
+describe("advanceAiFieldTracking", () => {
+  it("starts fresh (all preserved fields become lockedPreservedFields) when there is no prior tracking", () => {
+    const appliedFields: CatalogueDraftContentKey[] = ["catalogue_title", "short_description"];
+    const next = advanceAiFieldTracking(null, appliedFields);
+    expect(next.watchedFields).toEqual(appliedFields);
+    expect(next.lockedHumanEditedFields).toEqual([]);
+    expect(next.lockedPreservedFields).toEqual(
+      CATALOGUE_DRAFT_CONTENT_KEYS.filter((k) => !appliedFields.includes(k)),
+    );
+  });
+
+  it("carries locked fields forward unchanged, since mergeAiGeneratedContent never touches them", () => {
+    const remaining = CATALOGUE_DRAFT_CONTENT_KEYS.filter(
+      (k) => k !== "catalogue_title" && k !== "short_description",
+    );
+    const prior = tracking({
+      watchedFields: ["catalogue_title"],
+      lockedHumanEditedFields: ["short_description"],
+      lockedPreservedFields: [...remaining],
+    });
+    const next = advanceAiFieldTracking(prior, ["catalogue_title"]);
+    expect(next.lockedHumanEditedFields).toEqual(["short_description"]);
+    expect(next.lockedPreservedFields).toEqual([...remaining]);
+  });
+
+  it(
+    "graduates a previously-watched field into lockedHumanEditedFields when it was preserved this " +
+      "round (diverged from its AI baseline — a genuine human edit, which must stick)",
+    () => {
+      const prior = tracking({ watchedFields: ["catalogue_title", "short_description"] });
+      // Only short_description was freshly applied; catalogue_title was preserved (diverged).
+      const next = advanceAiFieldTracking(prior, ["short_description"]);
+      expect(next.watchedFields).toEqual(["short_description"]);
+      expect(next.lockedHumanEditedFields).toEqual(["catalogue_title"]);
+    },
+  );
 });
 
 describe("buildAiGenerationProvenance", () => {
-  it("classifies an untouched AI-applied field as fields_ai_generated", () => {
+  it("classifies an untouched watched field as fields_ai_generated", () => {
     const ai = content("ai generated");
-    const provenance = buildAiGenerationProvenance(ai, ai, [...CATALOGUE_DRAFT_CONTENT_KEYS], "Informational");
+    const provenance = buildAiGenerationProvenance(
+      ai,
+      ai,
+      tracking({ watchedFields: [...CATALOGUE_DRAFT_CONTENT_KEYS] }),
+      "Informational",
+    );
     expect(provenance.fields_ai_generated).toEqual([...CATALOGUE_DRAFT_CONTENT_KEYS]);
     expect(provenance.fields_human_edited_after_generation).toEqual([]);
     expect(provenance.fields_preserved_from_prior_edit).toEqual([]);
   });
 
-  it("classifies an AI-applied field the operator then changed as human_edited_after_generation", () => {
+  it("classifies a watched field the operator then changed as human_edited_after_generation", () => {
     const aiBaseline = content("ai generated");
     const final = content("ai generated", { catalogue_title: "operator rewrote this" });
-    const provenance = buildAiGenerationProvenance(final, aiBaseline, [...CATALOGUE_DRAFT_CONTENT_KEYS], "Premium");
+    const provenance = buildAiGenerationProvenance(
+      final,
+      aiBaseline,
+      tracking({ watchedFields: [...CATALOGUE_DRAFT_CONTENT_KEYS] }),
+      "Premium",
+    );
     expect(provenance.fields_human_edited_after_generation).toEqual(["catalogue_title"]);
     expect(provenance.fields_ai_generated).not.toContain("catalogue_title");
   });
 
+  it("passes locked fields through unconditionally, never re-diffing them", () => {
+    const aiBaseline = content("ai generated");
+    const final = content("ai generated");
+    const provenance = buildAiGenerationProvenance(
+      final,
+      aiBaseline,
+      tracking({
+        watchedFields: ["short_description"],
+        lockedHumanEditedFields: ["catalogue_title"],
+        lockedPreservedFields: ["long_description"],
+      }),
+      "Concise",
+    );
+    expect(provenance.fields_human_edited_after_generation).toContain("catalogue_title");
+    expect(provenance.fields_preserved_from_prior_edit).toEqual(["long_description"]);
+  });
+
   it(
-    "never labels a field AI didn't apply as human_edited_after_generation, even if it differs " +
-      "from the AI baseline (Bugbot regression: a field preserved because it was already edited " +
-      "BEFORE generation used to be misclassified as edited AFTER generation)",
+    "a load-and-save cycle with no new edit keeps a human_edited_after_generation field human-edited " +
+      "— it must never move back into fields_ai_generated (Bugbot regression: restoreAiGenerationState " +
+      "used to treat fields_human_edited_after_generation the same as fields_ai_generated, diffing it " +
+      "against the loaded — already-edited — value, which trivially looked 'unchanged' and silently " +
+      "reclassified it as untouched AI content)",
     () => {
-      // catalogue_title was never in appliedFields — it was preserved from a prior edit.
-      const appliedFields = CATALOGUE_DRAFT_CONTENT_KEYS.filter((k) => k !== "catalogue_title");
-      const aiBaseline = content("ai generated"); // includes a value for catalogue_title AI never applied
-      const final = content("ai generated", { catalogue_title: "operator's pre-existing edit" });
-      const provenance = buildAiGenerationProvenance(final, aiBaseline, appliedFields, "Concise");
-      expect(provenance.fields_human_edited_after_generation).not.toContain("catalogue_title");
+      const loaded = content("operator's prior edit", { catalogue_title: "operator's prior edit" });
+      // Simulate exactly what restoreAiGenerationState does: baseline = loadedContent, tracking from
+      // the persisted blob with catalogue_title in lockedHumanEditedFields (not watchedFields).
+      const finalContentUnchangedSinceLoad = loaded;
+      const provenance = buildAiGenerationProvenance(
+        finalContentUnchangedSinceLoad,
+        loaded,
+        tracking({ lockedHumanEditedFields: ["catalogue_title"] }),
+        "Premium",
+      );
+      expect(provenance.fields_human_edited_after_generation).toContain("catalogue_title");
       expect(provenance.fields_ai_generated).not.toContain("catalogue_title");
-      expect(provenance.fields_preserved_from_prior_edit).toContain("catalogue_title");
     },
   );
 });
@@ -184,19 +277,25 @@ describe("readPersistedAiGenerationProvenance", () => {
 });
 
 describe("restoreAiGenerationState", () => {
-  it("returns null when the loaded draft was never touched by AI generation", () => {
+  it("returns null when there is no source_snapshot, no ai_generation blob, or one missing the service marker", () => {
     expect(restoreAiGenerationState("p1", content("template"), prompts(), null)).toBeNull();
     expect(restoreAiGenerationState("p1", content("template"), prompts(), { some_other_key: 1 })).toBeNull();
+    expect(
+      restoreAiGenerationState("p1", content("template"), prompts(), {
+        ai_generation: { fields_ai_generated: ["catalogue_title"] },
+      }),
+    ).toBeNull();
   });
 
   it(
-    "reconstructs the baseline from the freshly loaded content for every AI-touched field, so a " +
-      "reopened draft's 'Edited' badge doesn't compare untouched AI fields against the raw " +
-      "template (Bugbot regression)",
+    "splits persisted fields into watchedFields (re-diffable) and locked fields (sticky), instead " +
+      "of lumping fields_ai_generated and fields_human_edited_after_generation into one re-diffable " +
+      "set (Bugbot regression — see buildAiGenerationProvenance's load-and-save test)",
     () => {
       const loaded = content("loaded from server");
       const snapshot = {
         ai_generation: {
+          service: "oasis-ai-chat",
           tone: "Concise",
           fields_ai_generated: ["catalogue_title"],
           fields_human_edited_after_generation: ["short_description"],
@@ -207,8 +306,89 @@ describe("restoreAiGenerationState", () => {
       expect(restored).not.toBeNull();
       expect(restored?.baseline.productId).toBe("p1");
       expect(restored?.baseline.content).toEqual(loaded);
-      expect(restored?.appliedFields).toEqual(["catalogue_title", "short_description"]);
+      expect(restored?.tracking.watchedFields).toEqual(["catalogue_title"]);
+      expect(restored?.tracking.lockedHumanEditedFields).toEqual(["short_description"]);
+      expect(restored?.tracking.lockedPreservedFields).toEqual(["long_description"]);
       expect(restored?.tone).toBe("Concise");
     },
   );
+
+  it("restores an all-preserved record too (nothing watched, everything locked-preserved)", () => {
+    const loaded = content("loaded from server");
+    const snapshot = {
+      ai_generation: {
+        service: "oasis-ai-chat",
+        tone: "Technical",
+        fields_ai_generated: [],
+        fields_human_edited_after_generation: [],
+        fields_preserved_from_prior_edit: [...CATALOGUE_DRAFT_CONTENT_KEYS],
+      },
+    };
+    const restored = restoreAiGenerationState("p1", loaded, prompts(), snapshot);
+    expect(restored).not.toBeNull();
+    expect(restored?.tracking.watchedFields).toEqual([]);
+    expect(restored?.tracking.lockedPreservedFields).toEqual([...CATALOGUE_DRAFT_CONTENT_KEYS]);
+  });
+});
+
+describe("end-to-end: reload-and-save cycle (restoreAiGenerationState + buildAiGenerationProvenance)", () => {
+  // Simulates CatalogueProductStudio.tsx's actual flow: a draft was saved once with real provenance,
+  // the studio was reopened (restoreAiGenerationState), and the operator saves again — with or
+  // without a further edit. This is the exact defect an independent audit found on top of the round
+  // 1-3 Bugbot fixes: the reload path used to lump fields_ai_generated and
+  // fields_human_edited_after_generation into one re-diffable set, so an unchanged reload-then-save
+  // silently reclassified a human-edited field back into fields_ai_generated.
+  const persistedSnapshot = {
+    ai_generation: {
+      service: "oasis-ai-chat",
+      tone: "Premium",
+      fields_ai_generated: ["short_description"],
+      fields_human_edited_after_generation: ["catalogue_title"],
+      fields_preserved_from_prior_edit: CATALOGUE_DRAFT_CONTENT_KEYS.filter(
+        (k) => k !== "short_description" && k !== "catalogue_title",
+      ),
+    },
+  };
+  const loaded = content("saved text", { catalogue_title: "operator's prior edit" });
+
+  it("an unchanged reload-then-save keeps a human-edited field human-edited, never ai_generated", () => {
+    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
+    expect(restored).not.toBeNull();
+    // No new edit — final content is exactly what was loaded.
+    const provenance = buildAiGenerationProvenance(loaded, restored!.baseline.content, restored!.tracking, "Premium");
+    expect(provenance.fields_human_edited_after_generation).toEqual(["catalogue_title"]);
+    expect(provenance.fields_ai_generated).toEqual(["short_description"]);
+    expect(provenance.fields_ai_generated).not.toContain("catalogue_title");
+  });
+
+  it("a further edit after reload keeps the field human-edited (trivially — it's still different)", () => {
+    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
+    const finalAfterFurtherEdit = { ...loaded, catalogue_title: "operator's newest edit" };
+    const provenance = buildAiGenerationProvenance(
+      finalAfterFurtherEdit,
+      restored!.baseline.content,
+      restored!.tracking,
+      "Premium",
+    );
+    expect(provenance.fields_human_edited_after_generation).toContain("catalogue_title");
+  });
+
+  it("an untouched AI-generated (watched) field remains ai_generated after reload-then-save", () => {
+    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
+    const provenance = buildAiGenerationProvenance(loaded, restored!.baseline.content, restored!.tracking, "Premium");
+    expect(provenance.fields_ai_generated).toContain("short_description");
+  });
+
+  it("a watched field edited after reload correctly transitions to human_edited_after_generation", () => {
+    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
+    const finalWithWatchedFieldEdited = { ...loaded, short_description: "operator rewrote this after reload" };
+    const provenance = buildAiGenerationProvenance(
+      finalWithWatchedFieldEdited,
+      restored!.baseline.content,
+      restored!.tracking,
+      "Premium",
+    );
+    expect(provenance.fields_human_edited_after_generation).toContain("short_description");
+    expect(provenance.fields_ai_generated).not.toContain("short_description");
+  });
 });

@@ -25,6 +25,25 @@ export function isAiGenerationBlockedByIdentity(readiness: ReadinessResult | nul
   return identity?.state === "missing";
 }
 
+/**
+ * Per-field AI provenance status, tracked across sessions (not just within one generation call):
+ * - `watchedFields`: still exactly the last-known AI-generated text — safe to live-diff against
+ *   `aiGeneratedBaseline` on every save to detect a fresh edit, and safe to overwrite on a new
+ *   generation.
+ * - `lockedHumanEditedFields` / `lockedPreservedFields`: their classification is sticky. Once a
+ *   field is known to carry human-authored content (whether AI wrote it first and a human changed
+ *   it, or AI never touched it because it was already edited), that fact must never be re-derived
+ *   from a value diff — the original AI text isn't persisted, so a diff can only ever compare
+ *   against the loaded (already human) value, which trivially looks "unchanged" and would silently
+ *   erase the history (Bugbot regression: a load-and-save cycle with no new edit reclassified a
+ *   `fields_human_edited_after_generation` field back into `fields_ai_generated`).
+ */
+export interface AiFieldTracking {
+  watchedFields: CatalogueDraftContentKey[];
+  lockedHumanEditedFields: CatalogueDraftContentKey[];
+  lockedPreservedFields: CatalogueDraftContentKey[];
+}
+
 export interface AiGenerationMergeResult {
   content: CatalogueDraftContent;
   appliedFields: CatalogueDraftContentKey[];
@@ -33,22 +52,25 @@ export interface AiGenerationMergeResult {
 
 /**
  * Any field already diverged from the active baseline (i.e. already edited by the operator before
- * this generation ran) is preserved; every other field is overwritten with the AI result.
- * `appliedFields` records exactly which keys AI actually wrote this round, so provenance can later
- * classify a preserved field correctly instead of conflating it with an AI-authored one.
+ * this generation ran), or explicitly `lockedFields` (already known human-edited/preserved content
+ * from a prior session — see `AiFieldTracking`), is preserved; every other field is overwritten
+ * with the AI result. `appliedFields` records exactly which keys AI actually wrote this round, so
+ * provenance can later classify a preserved field correctly instead of conflating it with an
+ * AI-authored one.
  */
 export function mergeAiGeneratedContent(
   currentContent: CatalogueDraftContent,
   aiContent: CatalogueDraftContent,
   activeBaselineContent: CatalogueDraftContent | null,
+  lockedFields: ReadonlySet<CatalogueDraftContentKey> = new Set(),
 ): AiGenerationMergeResult {
   const nextContent = { ...currentContent };
   const appliedFields: CatalogueDraftContentKey[] = [];
   let preservedCount = 0;
   for (const key of CATALOGUE_DRAFT_CONTENT_KEYS) {
-    const alreadyEdited = activeBaselineContent
-      ? isFieldEdited(currentContent[key], activeBaselineContent[key])
-      : false;
+    const alreadyEdited =
+      lockedFields.has(key) ||
+      (activeBaselineContent ? isFieldEdited(currentContent[key], activeBaselineContent[key]) : false);
     if (alreadyEdited) {
       preservedCount += 1;
     } else {
@@ -57,6 +79,38 @@ export function mergeAiGeneratedContent(
     }
   }
   return { content: nextContent, appliedFields, preservedCount };
+}
+
+/**
+ * Advances per-field tracking after a generation round: fields AI just wrote become the new
+ * `watchedFields` (their fresh content is now the AI baseline to diff future edits against).
+ * Fields that were previously watched but got preserved this round (diverged from their AI
+ * baseline) graduate into `lockedHumanEditedFields` — that divergence is a genuine human edit and
+ * must stick. Fields with no prior tracking at all (first-ever generation) that got preserved this
+ * round join `lockedPreservedFields`, matching the original semantics for a product that's never
+ * been AI-generated before. Previously-locked fields are always carried forward unchanged, since
+ * `mergeAiGeneratedContent`'s `lockedFields` guarantees they were never touched this round.
+ */
+export function advanceAiFieldTracking(
+  priorTracking: AiFieldTracking | null,
+  appliedFields: CatalogueDraftContentKey[],
+): AiFieldTracking {
+  const prior = priorTracking ?? { watchedFields: [], lockedHumanEditedFields: [], lockedPreservedFields: [] };
+  const appliedSet = new Set(appliedFields);
+  const trackedSet = new Set([
+    ...prior.watchedFields,
+    ...prior.lockedHumanEditedFields,
+    ...prior.lockedPreservedFields,
+  ]);
+  const newlyHumanEdited = prior.watchedFields.filter((key) => !appliedSet.has(key));
+  const newlyPreserved = CATALOGUE_DRAFT_CONTENT_KEYS.filter(
+    (key) => !trackedSet.has(key) && !appliedSet.has(key),
+  );
+  return {
+    watchedFields: [...appliedFields],
+    lockedHumanEditedFields: [...prior.lockedHumanEditedFields, ...newlyHumanEdited],
+    lockedPreservedFields: [...prior.lockedPreservedFields, ...newlyPreserved],
+  };
 }
 
 export interface AiGenerationProvenance {
@@ -69,29 +123,32 @@ export interface AiGenerationProvenance {
 
 /**
  * A3 AI safety/provenance: records which content fields came from the governed AI gateway versus
- * a human edit made after generation, versus a field AI never touched because it was already
- * edited before generation ran. `appliedFields` (from `mergeAiGeneratedContent`, or restored from
- * a saved draft) is the authoritative set of AI-authored keys — classification never guesses this
- * from a value diff alone, which is what previously mislabeled preserved fields as
- * "human_edited_after_generation" (Bugbot regression).
+ * a human edit made after generation, versus a field AI never touched at all. Only `watchedFields`
+ * are re-diffed against `baselineContent` to detect a fresh edit since they were last confirmed
+ * pure-AI text; `lockedHumanEditedFields`/`lockedPreservedFields` pass through unconditionally,
+ * since their history is already established and the original AI text (needed to diff them
+ * correctly) isn't persisted (Bugbot regression: reclassifying a locked field via a value diff
+ * against the loaded — already human-edited — value always looked "unchanged" and silently
+ * reverted it to `fields_ai_generated`).
  */
 export function buildAiGenerationProvenance(
   finalContent: CatalogueDraftContent,
-  aiBaselineContent: CatalogueDraftContent,
-  appliedFields: CatalogueDraftContentKey[],
+  baselineContent: CatalogueDraftContent,
+  tracking: AiFieldTracking,
   tone: CatalogueAiTone | null,
 ): AiGenerationProvenance {
-  const fieldsEditedAfterGeneration = appliedFields.filter((key) =>
-    isFieldEdited(finalContent[key], aiBaselineContent[key]),
+  const fieldsEditedAfterGeneration = tracking.watchedFields.filter((key) =>
+    isFieldEdited(finalContent[key], baselineContent[key]),
   );
   return {
     service: "oasis-ai-chat",
     tone,
-    fields_ai_generated: appliedFields.filter((key) => !fieldsEditedAfterGeneration.includes(key)),
-    fields_human_edited_after_generation: fieldsEditedAfterGeneration,
-    fields_preserved_from_prior_edit: CATALOGUE_DRAFT_CONTENT_KEYS.filter(
-      (key) => !appliedFields.includes(key),
-    ),
+    fields_ai_generated: tracking.watchedFields.filter((key) => !fieldsEditedAfterGeneration.includes(key)),
+    fields_human_edited_after_generation: [
+      ...tracking.lockedHumanEditedFields,
+      ...fieldsEditedAfterGeneration,
+    ],
+    fields_preserved_from_prior_edit: [...tracking.lockedPreservedFields],
   };
 }
 
@@ -142,19 +199,23 @@ export function readPersistedAiGenerationProvenance(sourceSnapshot: unknown): Ai
 
 export interface RestoredAiGeneration {
   baseline: { productId: string; content: CatalogueDraftContent; prompts: CatalogueDraftPrompts };
-  appliedFields: CatalogueDraftContentKey[];
+  tracking: AiFieldTracking;
   tone: CatalogueAiTone | null;
 }
 
 /**
- * Reconstructs in-memory AI-generation state (baseline/appliedFields/tone) from a draft row's
- * persisted `source_snapshot.ai_generation`, so reopening a previously AI-generated draft doesn't
- * show untouched AI fields as falsely "Edited" against the raw template (Bugbot regression).
+ * Reconstructs in-memory AI-generation state (baseline/tracking/tone) from a draft row's persisted
+ * `source_snapshot.ai_generation`, so reopening a previously AI-generated draft doesn't show
+ * untouched AI fields as falsely "Edited" against the raw template (Bugbot regression), and a
+ * load-and-save cycle with no new edit never reclassifies a `fields_human_edited_after_generation`
+ * field back into `fields_ai_generated` (Bugbot regression — see `buildAiGenerationProvenance`).
  *
  * The exact original AI-generated text isn't persisted (only which fields it touched), so the
- * baseline content for AI-touched fields is taken from the freshly loaded row itself — meaning the
- * "Edited" badge reflects changes made from this point forward, the same "compare against what was
- * last loaded" approximation `hasUnsavedChanges` already uses elsewhere on this page.
+ * baseline content for `watchedFields` (still-untouched-since-generation fields only) is taken from
+ * the freshly loaded row itself — that's still valid because, by definition, nothing has changed
+ * those fields since they were saved as pure AI text. `lockedHumanEditedFields`/
+ * `lockedPreservedFields` never need a baseline at all, since their classification never gets
+ * re-derived from a diff.
  */
 export function restoreAiGenerationState(
   productId: string,
@@ -163,15 +224,14 @@ export function restoreAiGenerationState(
   sourceSnapshot: unknown,
 ): RestoredAiGeneration | null {
   const blob = extractAiGenerationBlob(sourceSnapshot);
-  if (!blob) return null;
-  const appliedFields = [
-    ...readContentKeyArray(blob.fields_ai_generated),
-    ...readContentKeyArray(blob.fields_human_edited_after_generation),
-  ];
-  if (appliedFields.length === 0) return null;
+  if (!blob || blob.service !== "oasis-ai-chat") return null;
   return {
     baseline: { productId, content: loadedContent, prompts: loadedPrompts },
-    appliedFields,
+    tracking: {
+      watchedFields: readContentKeyArray(blob.fields_ai_generated),
+      lockedHumanEditedFields: readContentKeyArray(blob.fields_human_edited_after_generation),
+      lockedPreservedFields: readContentKeyArray(blob.fields_preserved_from_prior_edit),
+    },
     tone: readTone(blob.tone),
   };
 }
