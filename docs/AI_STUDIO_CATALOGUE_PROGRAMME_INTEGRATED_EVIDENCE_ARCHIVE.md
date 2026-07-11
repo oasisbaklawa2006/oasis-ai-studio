@@ -3,7 +3,14 @@
 Documentation only. No code, schema, dependency, or CI/CD change. Produced as task #61 of the
 autonomous stacked delivery programme, covering the complete PR chain #80 → #81 (A2) → #82 (A3) →
 #84 (A4). All GitHub evidence below was re-fetched live via the GitHub API on 2026-07-11 (not
-reused from earlier cached session state) immediately before this document was written.
+reused from earlier cached session state) immediately before this document was originally written.
+
+> **Update (2026-07-11, same day):** committing this archive itself triggered a fresh full-diff
+> Bugbot re-scan of PR #84, which found one further genuine, High-severity issue — a self-inflicted
+> infinite reload loop introduced by the round-4 fix described in this document. It has since been
+> fixed, tested, and pushed (head `816f0e0`); this document has been updated in place (not
+> append-only, unlike Issue #83) to reflect the corrected final state. See §4 and §5 for the full
+> account.
 
 ---
 
@@ -14,7 +21,7 @@ reused from earlier cached session state) immediately before this document was w
 | [#80](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/80) | Foundation / hardening | `feat/catalogue-product-studio-completion-2026-07-11` | `main` | `a6575f60b8895842623c435d87575f25456f7cd2` | `d3be922457d3f3f054a1dfc4fe6dca352d9c1472` | draft, open, unmerged |
 | [#81](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/81) | A2 — operator cockpit | `feat/catalogue-studio-operator-cockpit-2026-07-11` | PR #80's branch | `d3be922457d3f3f054a1dfc4fe6dca352d9c1472` | `17e6699d10e3381a78a8d51954bf004d834070ae` | draft, open, unmerged |
 | [#82](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/82) | A3 — governed AI content | `feat/catalogue-studio-ai-content-and-localisation-2026-07-11` | PR #81's branch | `17e6699d10e3381a78a8d51954bf004d834070ae` | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | draft, open, unmerged |
-| [#84](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/84) | A4 — governed media workspace | `feat/catalogue-studio-media-workspace-2026-07-11` | PR #82's branch | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | `debf7ac20660da52fa7b02761d817b9529ea1042` | draft, open, unmerged |
+| [#84](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/84) | A4 — governed media workspace | `feat/catalogue-studio-media-workspace-2026-07-11` | PR #82's branch | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | `816f0e036c8c15157326344a4576586dd2b98d73` | draft, open, unmerged |
 
 Verified via `pull_request_read` (`get`) on all four PR numbers immediately before this document
 was written: all four report `state: open`, `draft: true`, `merged: false`,
@@ -124,7 +131,7 @@ All thread IDs and resolution states below were re-fetched live via `pull_reques
 `mergeAiGeneratedContent` test, and a 4-scenario end-to-end "reload-and-save cycle" suite) ·
 `git diff --check` clean.
 
-### PR #84 / A4 (5 Bugbot findings across 5 rounds, 5/5 threads resolved)
+### PR #84 / A4 (6 Bugbot findings across 6 rounds, 6/6 threads resolved)
 
 | # | Round | Finding | Severity | Fixing head | Regression evidence |
 |---|---|---|---|---|---|
@@ -133,24 +140,32 @@ All thread IDs and resolution states below were re-fetched live via `pull_reques
 | 3 | 3 | Stale callback survives a product switch while the Media tab stays open | Medium | `24e1c82` | root fix moved into `ProductMediaUploader.tsx` itself (`isCurrentAsyncRequest`, reused from `ProductEdit.tsx`) — the external guard structurally couldn't distinguish this case |
 | 4 | 4 | Null-hero race during page load could auto-promote an upload to hero over an existing approved one | Medium | `debf7ac` | uploader mount deferred until the page's own media fetch finishes loading |
 | 5 | 4 | Success toast ("Hero cleared"/"Photo deleted") shown after a stale skip, misleading the operator | Low | `debf7ac` | toasts gated on the same staleness check as the callback suppression |
+| 6 | 6 | **Regression introduced by finding #4's own fix**: deferring the uploader's mount during loading meant a genuine mutation's own `retryMediaLoad()` call now also unmounts-then-remounts the uploader once its reload finishes — the mount guard's key never changed across that cycle, so the remount's own redundant mount call was never re-absorbed, forwarded again, and looped indefinitely | High | `816f0e0` | `computeMediaUploaderMountKey` now also depends on whether the uploader is actually eligible to render (the same condition the page's JSX already uses) + 2 new regression tests reproducing the exact loop, plus a repeated-cycle test |
 
-Round 5 (final, on head `debf7ac`): Bugbot check run `completed`/`success`, **zero new findings**.
+Round 5 (on head `debf7ac`): Bugbot check run `completed`/`success`, zero new findings. Round 6
+(triggered by committing this very archive, which caused a fresh full-diff re-scan) found finding
+#6 above — a real regression this archive's own §4/§5 content did not yet reflect at the time it
+was first written. It has since been fixed and this document corrected in place.
 
-**Final validation (head `debf7ac20660da52fa7b02761d817b9529ea1042`):** `check:boundaries` 0 new ·
+**Final validation (head `816f0e036c8c15157326344a4576586dd2b98d73`):** `check:boundaries` 0 new ·
 `typecheck` clean · `typecheck:build` 128 pre-existing (confirmed identical via `git stash` diff
 each round), 0 new · `lint` 0 new (pre-existing warnings confirmed identical each round) · `build`
-succeeds · `test` 650/650 passing (+16 new: 5 for `composeCatalogueImagePrompt`, 11 for the mount
-guard) · `git diff --check` clean.
+succeeds · `test` 653/653 passing (+19 new vs. PR #82's baseline: 5 for
+`composeCatalogueImagePrompt`, 14 for the mount guard including the 2 loop-regression tests) ·
+`git diff --check` clean.
 
 ### Programme totals
 
-- **28 findings total** across the 4 PRs (12 + 2 + 8 + 5 = 27 formal Bugbot review threads, + 1
+- **29 findings total** across the 4 PRs (12 + 2 + 8 + 6 = 28 formal Bugbot review threads, + 1
   independent-audit finding on PR #82 relayed via PR comment, not a formal Bugbot thread).
-- **27/27 formal review threads confirmed `is_resolved: true`** via a live API re-check across all
-  four PRs immediately before this document was written. **Zero unresolved threads anywhere in the
-  stack.**
+- **28/28 formal review threads confirmed `is_resolved: true`** via a live API re-check across all
+  four PRs immediately before this document was corrected. **Zero unresolved threads anywhere in
+  the stack.**
 - The 1 independent-audit finding was verified directly against source before fixing and closed
   with a dedicated 4-scenario end-to-end regression suite reproducing the exact reported defect.
+- One finding (PR #84 #6 above) was itself a regression introduced by an earlier fix in this same
+  programme — a reminder that the safe merge plan (§11) and post-merge verification (§12) matter
+  regardless of how many rounds have already passed clean.
 
 ---
 
@@ -161,7 +176,7 @@ guard) · `git diff --check` clean.
 | PR #80 | `d3be922` | 579/579 | clean | 128 pre-existing, 0 new | not separately itemized in PR body (repo-wide baseline predates this PR's lint-tracking convention) | succeeds | 0 new violations | clean |
 | PR #81 | `17e6699` | 593/593 (+14) | clean | 128 pre-existing, 0 new | not separately itemized (same as above) | succeeds | 0 new violations | clean |
 | PR #82 | `ff9e141` | 634/634 (+41 vs. #81) | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
-| PR #84 | `debf7ac` | 650/650 (+16 vs. #82) | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
+| PR #84 | `816f0e0` | 653/653 (+19 vs. #82) | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
 
 The `128 pre-existing errors, 0 new` result for `typecheck:build` was independently re-verified at
 every single Bugbot-fix round within PR #84 (not just once per PR) via `git stash` diffing against
@@ -263,7 +278,7 @@ section, which was itself produced from real command output, not asserted):
 ## 10. Owner-facing authenticated smoke-test checklist (final integrated preview)
 
 **Preview URL:** https://oasis-ai-studio-git-feat-7125f4-oasisbaklawa2006-6222s-projects.vercel.app
-(auto-redeploys on every push to PR #84's branch; currently serving commit `debf7ac`)
+(auto-redeploys on every push to PR #84's branch; currently serving commit `816f0e0`)
 
 Sign in with a real account, then walk through:
 
