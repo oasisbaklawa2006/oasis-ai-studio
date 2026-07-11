@@ -470,6 +470,17 @@ export default function CatalogueProductStudio() {
   const [mediaLoadState, setMediaLoadState] = useState<MediaLoadState>(INITIAL_MEDIA_LOAD_STATE);
   // Bumped by the Retry button to re-run the fetch effect without duplicating its logic.
   const [mediaRetryToken, setMediaRetryToken] = useState(0);
+  // Bugbot-caught: the useEffect below resets mediaLoadState on product switch, but effects run
+  // after the render commits — for one painted frame, mediaSummary/anchor hero/readiness/required
+  // slots would still read the PREVIOUS product's loaded rows against the newly selected product.
+  // Resetting synchronously during render (React's documented pattern for keying derived state to
+  // a changing value) means no stale frame is ever painted; the effect below still owns the actual
+  // async fetch.
+  const mediaLoadProductIdRef = useRef<string | null>(null);
+  if (mediaLoadProductIdRef.current !== (selected?.id ?? null)) {
+    mediaLoadProductIdRef.current = selected?.id ?? null;
+    setMediaLoadState(mediaLoadStarted());
+  }
   useEffect(() => {
     const productId = selected?.id ?? null;
     // Reset immediately on every switch/retry (not just when no product is selected) — otherwise
