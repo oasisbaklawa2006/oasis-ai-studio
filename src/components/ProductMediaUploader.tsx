@@ -341,8 +341,13 @@ export function ProductMediaUploader({
       }
       const url = await uploadFileDirect(files[0], asHero, false);
       if (url && asHero) {
+        const requestProductId = productId;
         await applyDirectHeroAuthority(url);
-        toast.success("Hero image uploaded");
+        // Bugbot-caught: applyDirectHeroAuthority already silently no-ops once the operator has
+        // switched products mid-request (see isStaleUploaderRequest inside it), but this toast
+        // still fired unconditionally — misleadingly implying the hero designation applied to
+        // whatever product is on screen now, when it may have applied to the previous one instead.
+        if (!isStaleUploaderRequest(requestProductId)) toast.success("Hero image uploaded");
       } else if (url) {
         toast.success(`${mediaTypeLabel(slot)} uploaded`);
         await load();
@@ -426,8 +431,11 @@ export function ProductMediaUploader({
       return;
     }
 
+    const requestProductId = productId;
     await setAsHeroDirect(m.file_url);
-    toast.success("Set as hero photo");
+    // Bugbot-caught: same reasoning as uploadToSlot's hero-upload toast above — suppress once the
+    // operator has moved on to a different product since this click started.
+    if (!isStaleUploaderRequest(requestProductId)) toast.success("Set as hero photo");
   };
 
   const removeAsHero = async () => {
