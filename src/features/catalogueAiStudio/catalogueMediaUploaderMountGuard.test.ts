@@ -9,21 +9,33 @@ import {
 
 describe("computeMediaUploaderMountKey", () => {
   it("is null when the Media tab is not active, regardless of product", () => {
-    expect(computeMediaUploaderMountKey("content", "prod-1")).toBeNull();
+    expect(computeMediaUploaderMountKey("content", "prod-1", true)).toBeNull();
   });
 
-  it("is the product id when the Media tab is active", () => {
-    expect(computeMediaUploaderMountKey("media", "prod-1")).toBe("prod-1");
+  it("is the product id when the Media tab is active and the uploader is eligible to render", () => {
+    expect(computeMediaUploaderMountKey("media", "prod-1", true)).toBe("prod-1");
   });
 
   it("is null when the Media tab is active but no product is selected", () => {
-    expect(computeMediaUploaderMountKey("media", null)).toBeNull();
-    expect(computeMediaUploaderMountKey("media", undefined)).toBeNull();
+    expect(computeMediaUploaderMountKey("media", null, true)).toBeNull();
+    expect(computeMediaUploaderMountKey("media", undefined, true)).toBeNull();
+  });
+
+  it("is null when the uploader is not eligible to render, even on the Media tab with a product selected", () => {
+    expect(computeMediaUploaderMountKey("media", "prod-1", false)).toBeNull();
   });
 });
 
-function step(state: MediaUploaderMountGuardState, studioTab: string, productId: string | null): MediaUploaderMountGuardState {
-  return advanceMediaUploaderMountGuard(state, computeMediaUploaderMountKey(studioTab, productId));
+function step(
+  state: MediaUploaderMountGuardState,
+  studioTab: string,
+  productId: string | null,
+  uploaderEligibleToRender = true,
+): MediaUploaderMountGuardState {
+  return advanceMediaUploaderMountGuard(
+    state,
+    computeMediaUploaderMountKey(studioTab, productId, uploaderEligibleToRender),
+  );
 }
 
 describe("advanceMediaUploaderMountGuard + consumeMediaUploaderChange (uploader mount-call absorption)", () => {
@@ -107,5 +119,53 @@ describe("consumeMediaUploaderChange (Bugbot round 2: stale callback after unmou
     expect(mountCall.shouldForward).toBe(false); // this uploader's own mount call is still absorbed
     const genuineChange = consumeMediaUploaderChange(mountCall.nextState);
     expect(genuineChange.shouldForward).toBe(true); // but a real change after that propagates again
+  });
+});
+
+describe("consumeMediaUploaderChange (Bugbot: retry loop after a genuine mutation triggers a reload)", () => {
+  it("does not loop: a genuine mutation's own reload-induced remount absorbs its own mount call instead of forwarding again", () => {
+    // Opening the Media tab: uploader mounts, its own initial load() call is absorbed.
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState;
+
+    // Operator uploads a photo: a genuine onMediaChange call while the uploader is still mounted
+    // and the page isn't loading — must forward (this is what triggers retryMediaLoad()).
+    const genuineMutation = consumeMediaUploaderChange(state);
+    expect(genuineMutation.shouldForward).toBe(true);
+    state = genuineMutation.nextState;
+
+    // retryMediaLoad() flips the page's mediaLoadState to "loading" — the uploader is no longer
+    // eligible to render and unmounts.
+    state = step(state, "media", "prod-1", false);
+    const whileUnmountedForReload = consumeMediaUploaderChange(state);
+    expect(whileUnmountedForReload.shouldForward).toBe(false); // nothing is mounted right now
+
+    // The page's fetch resolves; mediaLoadState flips back to "loaded" — the uploader remounts
+    // fresh and fires its own initial load() -> onMediaChange. This must be absorbed, not
+    // forwarded, or it would call retryMediaLoad() again and loop forever.
+    state = step(state, "media", "prod-1", true);
+    const remountAfterReload = consumeMediaUploaderChange(state);
+    expect(remountAfterReload.shouldForward).toBe(false);
+    state = remountAfterReload.nextState;
+
+    // A further genuine change after that (e.g. a second real upload) must still propagate —
+    // the fix must not have permanently wedged forwarding off.
+    const secondGenuineMutation = consumeMediaUploaderChange(state);
+    expect(secondGenuineMutation.shouldForward).toBe(true);
+  });
+
+  it("treats every loading-to-eligible transition as a fresh mount, even with no tab/product change", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState; // absorb initial mount
+
+    // Simulate several loading/reload cycles in a row (e.g. Retry clicked repeatedly) with no
+    // change to tab or product at all — each cycle's remount must still be absorbed once.
+    for (let i = 0; i < 3; i += 1) {
+      state = step(state, "media", "prod-1", false); // page fetch starts, uploader unmounts
+      state = step(state, "media", "prod-1", true); // page fetch resolves, uploader remounts
+      const result = consumeMediaUploaderChange(state);
+      expect(result.shouldForward).toBe(false);
+      state = result.nextState;
+    }
   });
 });

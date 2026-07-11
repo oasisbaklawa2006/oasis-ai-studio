@@ -24,6 +24,18 @@
  * whatever tab is now active. `consumeMediaUploaderChange` therefore also refuses to forward any
  * call while `mountKey` is null (i.e. no uploader is currently mounted at all), regardless of the
  * one-shot skip's state.
+ *
+ * Bugbot (post-round-4 regression): once the page started deferring the uploader's own mount until
+ * its independent media fetch finishes loading (closing the hero-race in round 4), every loading
+ * cycle — including the one a genuine mutation itself triggers via `retryMediaLoad()` — now
+ * unmounts and remounts the uploader. `computeMediaUploaderMountKey` originally only depended on
+ * (tab-open, productId), neither of which changes across that loading cycle, so the skip was never
+ * re-armed for the remount's own redundant mount call — that call was forwarded, calling
+ * `retryMediaLoad()` again, causing another loading cycle, another remount, and so on indefinitely.
+ * The key must therefore also depend on whether the uploader is actually eligible to be rendered
+ * right now (i.e. the same condition the page's JSX uses to decide whether to mount it at all) —
+ * every loading→eligible transition is a real (re)mount, and must re-arm the skip exactly like a
+ * tab-reopen or product-switch does.
  */
 
 export interface MediaUploaderMountGuardState {
@@ -36,12 +48,19 @@ export const INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE: MediaUploaderMountGuardSt
   skipNextChange: false,
 };
 
-/** The uploader is only mounted while the Media tab is the active tab. */
+/**
+ * The uploader is only mounted while the Media tab is active, a product is selected, AND it's
+ * actually eligible to render right now — pass the exact same condition the page's JSX uses to
+ * decide whether to mount `ProductMediaUploader` (currently: the page's own media fetch isn't
+ * "loading"). Any moment this condition is false is a moment nothing is mounted; any transition
+ * from false to true is a fresh (re)mount about to fire its own redundant load.
+ */
 export function computeMediaUploaderMountKey(
   studioTab: string,
   productId: string | null | undefined,
+  uploaderEligibleToRender: boolean,
 ): string | null {
-  return studioTab === "media" ? (productId ?? null) : null;
+  return studioTab === "media" && uploaderEligibleToRender ? (productId ?? null) : null;
 }
 
 /**

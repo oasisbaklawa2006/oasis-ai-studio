@@ -819,10 +819,17 @@ export default function CatalogueProductStudio() {
   // as mediaLoadProductIdRef above) so it's guaranteed set before the uploader's own mount effect
   // can fire. Shared by both onMediaChange and onHeroChange since the mount-only-fires-onMediaChange
   // fact means a shared one-shot skip can never wrongly absorb a genuine onHeroChange call.
+  //
+  // Bugbot-caught (post-round-4 regression): the uploader's mount is deferred below while
+  // mediaLoadState.status === "loading" (closing the round-4 hero-race), so a genuine mutation's
+  // own retryMediaLoad() now also unmounts-then-remounts the uploader once that reload finishes.
+  // The mount key must include that same "loading" condition — otherwise the remount's own
+  // redundant mount call isn't recognized as a fresh mount, gets forwarded, triggers another
+  // retryMediaLoad(), and loops indefinitely.
   const mediaUploaderGuardRef = useRef<MediaUploaderMountGuardState>(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE);
   mediaUploaderGuardRef.current = advanceMediaUploaderMountGuard(
     mediaUploaderGuardRef.current,
-    computeMediaUploaderMountKey(studioTab, selected?.id),
+    computeMediaUploaderMountKey(studioTab, selected?.id, mediaLoadState.status !== "loading"),
   );
   const handleMediaUploaderChanged = () => {
     const { shouldForward, nextState } = consumeMediaUploaderChange(mediaUploaderGuardRef.current);
