@@ -32,7 +32,7 @@ reused from earlier cached session state) immediately before this document was o
 | [#80](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/80) | Foundation / hardening | `feat/catalogue-product-studio-completion-2026-07-11` | `main` | `a6575f60b8895842623c435d87575f25456f7cd2` | `d3be922457d3f3f054a1dfc4fe6dca352d9c1472` | draft, open, unmerged |
 | [#81](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/81) | A2 — operator cockpit | `feat/catalogue-studio-operator-cockpit-2026-07-11` | PR #80's branch | `d3be922457d3f3f054a1dfc4fe6dca352d9c1472` | `17e6699d10e3381a78a8d51954bf004d834070ae` | draft, open, unmerged |
 | [#82](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/82) | A3 — governed AI content | `feat/catalogue-studio-ai-content-and-localisation-2026-07-11` | PR #81's branch | `17e6699d10e3381a78a8d51954bf004d834070ae` | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | draft, open, unmerged |
-| [#84](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/84) | A4 — governed media workspace | `feat/catalogue-studio-media-workspace-2026-07-11` | PR #82's branch | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | `d85fa4acb746e3a5e66f089106f403ea71fef2e4` | draft, open, unmerged |
+| [#84](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/84) | A4 — governed media workspace | `feat/catalogue-studio-media-workspace-2026-07-11` | PR #82's branch | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | `2e782a871159abb4b8869489fa229357d72257f1` | draft, open, unmerged |
 
 Verified via `pull_request_read` (`get`) on all four PR numbers immediately before this document
 was written: all four report `state: open`, `draft: true`, `merged: false`,
@@ -142,7 +142,7 @@ All thread IDs and resolution states below were re-fetched live via `pull_reques
 `mergeAiGeneratedContent` test, and a 4-scenario end-to-end "reload-and-save cycle" suite) ·
 `git diff --check` clean.
 
-### PR #84 / A4 (9 Bugbot findings across 9 rounds + 1 owner-smoke-test finding, 9/9 threads resolved)
+### PR #84 / A4 (10 Bugbot findings across 10 rounds + 1 owner-smoke-test finding, 10/10 threads resolved)
 
 | # | Round | Finding | Severity | Fixing head | Regression evidence |
 |---|---|---|---|---|---|
@@ -155,21 +155,23 @@ All thread IDs and resolution states below were re-fetched live via `pull_reques
 | 7 | owner smoke test | **Mobile responsive-layout defect** (found by the owner's authenticated iPhone/Safari test, not Bugbot): the Content tab's tone-selector + "Generate Complete Catalogue Draft" row was a non-wrapping flex container holding a fixed-width `Select` plus a long-label `Button` (Button's base styling is `whitespace-nowrap`, so the label itself never shrinks) — on a narrow phone viewport neither item could give way, overflowing past the right edge with a clipped label and horizontal page scroll | Medium (UX) | `9f96527` | `flex-wrap` + `w-full sm:w-auto`/`sm:w-[140px]` on both the Generate row and one further instance of the same pattern found on audit in the Export tab header row; reverts to the original fixed-width layout at Tailwind's unmodified default `sm` breakpoint (640px), confirmed present in the compiled `dist` CSS. No component/layout test harness exists in this repo (no RTL/jsdom rendering convention) — verified by exact breakpoint math instead (documented in §5) |
 | 8 | 8 | Hero-upload success toasts (`uploadToSlot`'s "Hero image uploaded", `setAsHero`'s "Set as hero photo") fired unconditionally after `applyDirectHeroAuthority`, not gated on the same staleness check already applied to `removeAsHero`/`remove`'s toasts (findings #5) — same misleading-toast class, two call sites finding #5 didn't cover | Medium | `d15ab07` | both toasts now gated on `isStaleUploaderRequest`, matching the established pattern; `upload()`'s and the URL-add's toasts were deliberately left ungated since they describe the underlying mutation itself (always genuinely true), not a hero-specific claim |
 | 9 | 9 | The mount guard absorbed **every** fresh uploader mount unconditionally, assuming the page's own media-fetch effect was always concurrently covering the same data — true for a product switch or the tail of a reload cycle, but not for a bare Media-tab close-then-reopen for the *same* product with neither in between (the page's `[selected.id, mediaRetryToken]`-keyed effect never reruns on a tab-visibility change alone). If a hero/media mutation completed — and was correctly dropped as stale by `ProductMediaUploader` — while the tab was closed, absorbing the reopen's mount call meant `retryMediaLoad()` never fired again, silently leaving the sticky bar/Build Meter/readiness out of sync with the database indefinitely | Medium | `d85fa4a` | `advanceMediaUploaderMountGuard` now takes the raw (tab-open, productId, eligible) triple instead of a collapsed key, distinguishing a provably-redundant mount (product switch, or the tail of a loading cycle) from a bare reopen — only the former is still absorbed. Test suite rewritten (12 tests) for the new API, including 3 new tests for the bare-reopen case and confirming the round-3/round-6 cases still pass |
+| 10 | 10 | `applyDirectHeroAuthority` fires `onHeroChange` then `onMediaChange` synchronously back-to-back for one hero write; the page wires both to the same `handleMediaUploaderChanged` handler, so a single hero upload or "set as hero" could call `retryMediaLoad()` twice in the same tick | Medium | `2e782a8` | Page-level `mediaReloadRequestedThisTickRef` + `queueMicrotask` guard in `handleMediaUploaderChanged` coalesces same-tick duplicate forwards into a single `retryMediaLoad()` call, without touching the shared `ProductMediaUploader.tsx` component (Full Editor also depends on its `onHeroChange` contract) or `removeAsHero` (which relies solely on `onHeroChange` to trigger any reload at all) |
 
 Round 5 (on head `debf7ac`): Bugbot `completed`/`success`, zero new findings. Round 6 (triggered by
 committing the archive itself) found finding #6. Round 7 was the owner's own authenticated mobile
 smoke test (finding #7, not from Bugbot) — fixed the same day. Round 8 (triggered by that fix's
-push) found finding #8. Round 9 (triggered by that fix's push) found finding #9. Round 10 (final,
-head `d85fa4a`): pending confirmation at time of writing — see the ledger entry for the confirmed
-final status.
+push) found finding #8. Round 9 (triggered by that fix's push) found finding #9. Round 10 (triggered
+by that fix's push) found finding #10 (head `2e782a8`). Round 11, on the exact head that fixed
+finding #10: Bugbot `completed`/`success`, and all 9 formal review threads on this PR independently
+re-confirmed `is_resolved: true` — zero unresolved threads. This is the current terminal state.
 
-**Final validation (head `d85fa4acb746e3a5e66f089106f403ea71fef2e4`):** `check:boundaries` 0 new ·
+**Final validation (head `2e782a871159abb4b8869489fa229357d72257f1`):** `check:boundaries` 0 new ·
 `typecheck` clean · `typecheck:build` 128 pre-existing (confirmed identical via `git stash` diff
 each round), 0 new · `lint` 0 new (pre-existing warnings confirmed identical each round) · `build`
 succeeds, and the compiled CSS was directly grepped to confirm the new `sm:w-auto`/`sm:w-[140px]`
-utility classes were actually generated (not silently dropped) · `test` 651/651 passing (the mount
-guard test suite was rewritten for the new API — net -2 vs. the prior round, from replacing 14 old
-tests with 12 restructured ones covering strictly more scenarios) · `git diff --check` clean.
+utility classes were actually generated (not silently dropped) · `test` 651/651 passing (finding #10
+was page-level wiring only — no new test file convention applies, so no test-count change from the
+prior round) · `git diff --check` clean.
 
 ### Separate investigation: rejected draft's B2B copy vs. live readiness (no defect, no data changed)
 
@@ -191,21 +193,22 @@ no database read or write was performed:
 
 ### Programme totals
 
-- **32 findings total** across the 4 PRs (12 + 2 + 8 + 9 = 31 formal Bugbot review threads, + 1
+- **33 findings total** across the 4 PRs (12 + 2 + 8 + 10 = 32 formal Bugbot review threads, + 1
   independent-audit finding on PR #82 relayed via PR comment (not a formal Bugbot thread), + 1
   owner-smoke-test finding (not from Bugbot, found by direct authenticated device testing)).
 - All formal review threads confirmed `is_resolved: true` via live API re-checks throughout —
-  **zero unresolved threads anywhere in the stack** at every point verified.
+  **zero unresolved threads anywhere in the stack** at every point verified, most recently on PR
+  #84's exact final head `2e782a8`.
 - The 1 independent-audit finding was verified directly against source before fixing and closed
   with a dedicated 4-scenario end-to-end regression suite reproducing the exact reported defect.
 - The 1 owner-smoke-test finding is the only defect in this entire programme found by actually
   running the app on a real device rather than by static analysis — a reminder that Bugbot and
   local validation, however thorough, are not a substitute for the authenticated smoke test.
-- Three findings (PR #84 #6, #8, and #9) were themselves regressions/gaps introduced or exposed by
-  earlier fixes in this same programme's own mount-guard logic — a reminder that the safe merge
-  plan (§11) and post-merge verification (§12) matter regardless of how many rounds have already
-  passed clean, and that the mount guard's final design (§4, finding #9) was reached only after
-  three iterations, each closing a gap the previous one didn't anticipate.
+- Four findings (PR #84 #6, #8, #9, and #10) were themselves regressions/gaps introduced or exposed
+  by earlier fixes in this same programme's own media-uploader/mount-guard logic — a reminder that
+  the safe merge plan (§11) and post-merge verification (§12) matter regardless of how many rounds
+  have already passed clean, and that this logic's final design (§4, finding #10) was reached only
+  after four iterations, each closing a gap the previous one didn't anticipate.
 
 ---
 
@@ -216,7 +219,7 @@ no database read or write was performed:
 | PR #80 | `d3be922` | 579/579 | clean | 128 pre-existing, 0 new | not separately itemized in PR body (repo-wide baseline predates this PR's lint-tracking convention) | succeeds | 0 new violations | clean |
 | PR #81 | `17e6699` | 593/593 (+14) | clean | 128 pre-existing, 0 new | not separately itemized (same as above) | succeeds | 0 new violations | clean |
 | PR #82 | `ff9e141` | 634/634 (+41 vs. #81) | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
-| PR #84 | `d85fa4a` | 651/651 | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
+| PR #84 | `2e782a8` | 651/651 | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
 
 The `128 pre-existing errors, 0 new` result for `typecheck:build` was independently re-verified at
 every single Bugbot-fix round within PR #84 (not just once per PR) via `git stash` diffing against
@@ -318,7 +321,8 @@ section, which was itself produced from real command output, not asserted):
 ## 10. Owner-facing authenticated smoke-test checklist (final integrated preview)
 
 **Preview URL:** https://oasis-ai-studio-git-feat-7125f4-oasisbaklawa2006-6222s-projects.vercel.app
-(auto-redeploys on every push to PR #84's branch; currently serving commit `d85fa4a`)
+(auto-redeploys on every push to PR #84's branch; currently serving commit `2e782a8`, confirmed
+Vercel `Ready`)
 
 Sign in with a real account, then walk through:
 
