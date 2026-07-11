@@ -79,6 +79,13 @@ import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingF
 import { fullEditorDeepLink, fullEditorTabForCategory } from "@/features/catalogueAiStudio/catalogueStudioNavigation";
 import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
 import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
+import {
+  advanceMediaUploaderMountGuard,
+  computeMediaUploaderMountKey,
+  consumeMediaUploaderChange,
+  INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE,
+  type MediaUploaderMountGuardState,
+} from "@/features/catalogueAiStudio/catalogueMediaUploaderMountGuard";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
 import {
@@ -792,6 +799,29 @@ export default function CatalogueProductStudio() {
 
   const mediaRows = mediaLoadState.rows;
   const retryMediaLoad = () => setMediaRetryToken((n) => n + 1);
+
+  // Bugbot-caught: ProductMediaUploader calls onMediaChange after every internal load(), including
+  // the mount-triggered fetch that fires every time the Media tab is (re)opened (Radix unmounts
+  // inactive TabsContent) or the selected product changes while it's already mounted. Forwarding
+  // that straight into retryMediaLoad() forced this page's already-independently-fetching
+  // mediaLoadState back into "loading" and cleared mediaRows, so mediaSummary/anchor/readiness
+  // could briefly drop an approved hero right after selecting a product or reopening the tab — even
+  // though the effect above already fetches the identical rows for this exact (selected.id,
+  // mediaRetryToken). The guard below (pure, unit-tested in catalogueMediaUploaderMountGuard.ts)
+  // absorbs exactly that one redundant mount call per (tab-open, product) pair; genuine post-mount
+  // mutations (upload, hero change, approval submit, delete) still propagate. Advanced render-phase
+  // (same idiom as mediaLoadProductIdRef above) so it's guaranteed set before the uploader's own
+  // mount effect can fire.
+  const mediaUploaderGuardRef = useRef<MediaUploaderMountGuardState>(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE);
+  mediaUploaderGuardRef.current = advanceMediaUploaderMountGuard(
+    mediaUploaderGuardRef.current,
+    computeMediaUploaderMountKey(studioTab, selected?.id),
+  );
+  const handleMediaUploaderChanged = () => {
+    const { shouldForward, nextState } = consumeMediaUploaderChange(mediaUploaderGuardRef.current);
+    mediaUploaderGuardRef.current = nextState;
+    if (shouldForward) retryMediaLoad();
+  };
 
   // Bugbot-caught: while media is loading or a fetch failed, mediaRows is deliberately [] — passing
   // the raw `selected` product through unconditionally let summarizeCatalogueMedia's zero-rows
@@ -1837,15 +1867,19 @@ export default function CatalogueProductStudio() {
                             Full Editor. Same component Full Editor uses — same role-gated write mode
                             (direct write vs. submit-for-approval vs. read-only), same required-slot rules
                             (VITE_MEDIA_GOVERNANCE_MODE), same product_media/storage authority. No new
-                            authority code. onHeroChange/onMediaChange call the existing retryMediaLoad() so
-                            the anchor/Build Meter/readiness elsewhere on this page stay in sync. */}
+                            authority code. onHeroChange always reflects a genuine hero mutation, so it
+                            calls retryMediaLoad() directly; onMediaChange also fires on the uploader's own
+                            mount-triggered fetch, so it's routed through handleMediaUploaderChanged, which
+                            absorbs that one redundant call (see comment above) and forwards only real
+                            post-mount changes to retryMediaLoad(), keeping the anchor/Build Meter/readiness
+                            elsewhere on this page in sync without a spurious loading/empty flicker. */}
                         <ProductMediaUploader
                           productId={selected.id}
                           productSku={selected.sku}
                           currentHero={mediaSummary.heroUrl}
                           variant={isTestingMediaGovernance() ? "hero-only" : "full"}
                           onHeroChange={() => retryMediaLoad()}
-                          onMediaChange={() => retryMediaLoad()}
+                          onMediaChange={handleMediaUploaderChanged}
                         />
 
                         <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
