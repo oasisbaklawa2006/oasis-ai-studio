@@ -1,41 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
   advanceMediaUploaderMountGuard,
-  computeMediaUploaderMountKey,
   consumeMediaUploaderChange,
   INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE,
   type MediaUploaderMountGuardState,
 } from "./catalogueMediaUploaderMountGuard";
 
-describe("computeMediaUploaderMountKey", () => {
-  it("is null when the Media tab is not active, regardless of product", () => {
-    expect(computeMediaUploaderMountKey("content", "prod-1", true)).toBeNull();
-  });
-
-  it("is the product id when the Media tab is active and the uploader is eligible to render", () => {
-    expect(computeMediaUploaderMountKey("media", "prod-1", true)).toBe("prod-1");
-  });
-
-  it("is null when the Media tab is active but no product is selected", () => {
-    expect(computeMediaUploaderMountKey("media", null, true)).toBeNull();
-    expect(computeMediaUploaderMountKey("media", undefined, true)).toBeNull();
-  });
-
-  it("is null when the uploader is not eligible to render, even on the Media tab with a product selected", () => {
-    expect(computeMediaUploaderMountKey("media", "prod-1", false)).toBeNull();
-  });
-});
-
 function step(
   state: MediaUploaderMountGuardState,
   studioTab: string,
   productId: string | null,
-  uploaderEligibleToRender = true,
+  eligible = true,
 ): MediaUploaderMountGuardState {
-  return advanceMediaUploaderMountGuard(
-    state,
-    computeMediaUploaderMountKey(studioTab, productId, uploaderEligibleToRender),
-  );
+  return advanceMediaUploaderMountGuard(state, studioTab, productId, eligible);
 }
 
 describe("advanceMediaUploaderMountGuard + consumeMediaUploaderChange (uploader mount-call absorption)", () => {
@@ -66,16 +43,6 @@ describe("advanceMediaUploaderMountGuard + consumeMediaUploaderChange (uploader 
     state = step(state, "media", "prod-2"); // product switch while still on Media tab
     const result = consumeMediaUploaderChange(state);
     expect(result.shouldForward).toBe(false); // absorb prod-2's redundant reload
-  });
-
-  it("re-arms a skip when the Media tab is closed and reopened for the same product", () => {
-    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1");
-    state = consumeMediaUploaderChange(state).nextState; // absorb the first mount call
-
-    state = step(state, "content", "prod-1"); // leave the Media tab (uploader unmounts)
-    state = step(state, "media", "prod-1"); // reopen it (uploader remounts, fires load() again)
-    const result = consumeMediaUploaderChange(state);
-    expect(result.shouldForward).toBe(false);
   });
 
   it("never forwards while the Media tab is inactive or no product is selected — nothing is mounted to justify it", () => {
@@ -167,5 +134,48 @@ describe("consumeMediaUploaderChange (Bugbot: retry loop after a genuine mutatio
       expect(result.shouldForward).toBe(false);
       state = result.nextState;
     }
+  });
+});
+
+describe("consumeMediaUploaderChange (Bugbot: bare tab close/reopen must not silently swallow a real change)", () => {
+  it("forwards the mount call on a bare Media-tab reopen for the same product with no reload in between", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState; // absorb the initial mount call
+
+    // Operator switches to a different tab (uploader unmounts) — no product switch, no reload.
+    state = step(state, "content", "prod-1", true);
+    // ...and reopens the Media tab for the *same* product. Unlike a product switch or a
+    // reload-induced remount, the page's own media-fetch effect never reran in between, so a hero
+    // or media mutation that completed (and was correctly dropped as stale) while the tab was
+    // closed would otherwise never reach retryMediaLoad() again. This mount call must forward.
+    state = step(state, "media", "prod-1", true);
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(true);
+  });
+
+  it("still absorbs a product switch that happens to coincide with reopening the tab", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState;
+
+    state = step(state, "content", "prod-1", true); // leave the tab
+    // Product changes while away from the Media tab, then the tab is reopened for the new product
+    // in the same transition — the page's product-switch effect covers this, so still absorb.
+    state = step(state, "media", "prod-2", true);
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(false);
+  });
+
+  it("forwards again after a second bare reopen with no change in between", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState;
+
+    state = step(state, "content", "prod-1", true);
+    state = step(state, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState; // forwarded (bare reopen)
+
+    state = step(state, "content", "prod-1", true);
+    state = step(state, "media", "prod-1", true);
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(true);
   });
 });

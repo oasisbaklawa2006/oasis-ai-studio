@@ -81,7 +81,6 @@ import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEdited
 import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
 import {
   advanceMediaUploaderMountGuard,
-  computeMediaUploaderMountKey,
   consumeMediaUploaderChange,
   INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE,
   type MediaUploaderMountGuardState,
@@ -820,16 +819,27 @@ export default function CatalogueProductStudio() {
   // can fire. Shared by both onMediaChange and onHeroChange since the mount-only-fires-onMediaChange
   // fact means a shared one-shot skip can never wrongly absorb a genuine onHeroChange call.
   //
-  // Bugbot-caught (post-round-4 regression): the uploader's mount is deferred below while
-  // mediaLoadState.status === "loading" (closing the round-4 hero-race), so a genuine mutation's
-  // own retryMediaLoad() now also unmounts-then-remounts the uploader once that reload finishes.
-  // The mount key must include that same "loading" condition — otherwise the remount's own
-  // redundant mount call isn't recognized as a fresh mount, gets forwarded, triggers another
-  // retryMediaLoad(), and loops indefinitely.
+  // Bugbot-caught (post-round-4 regression, closed in round 6): the uploader's mount is deferred
+  // below while mediaLoadState.status === "loading" (closing the round-4 hero-race), so a genuine
+  // mutation's own retryMediaLoad() now also unmounts-then-remounts the uploader once that reload
+  // finishes — the guard must recognize that remount as a fresh mount and re-absorb its own
+  // redundant load, or it loops indefinitely.
+  //
+  // Bugbot-caught (this round): but a BARE tab close-then-reopen for the same product (no product
+  // switch, no page-triggered reload in between) is also a "fresh mount" — and this page's own
+  // media fetch effect above does NOT rerun on a tab-visibility change alone. If a hero/media
+  // mutation completed (and was correctly dropped as stale by ProductMediaUploader) while the tab
+  // was closed, absorbing the reopen's mount call would mean retryMediaLoad() never fires again,
+  // silently leaving the sticky bar/Build Meter/readiness out of sync with the database
+  // indefinitely. advanceMediaUploaderMountGuard takes the raw (tab-open, productId, eligible)
+  // triple directly (not a collapsed key) so it can tell a provably-redundant mount (product
+  // switch, or the tail of our own reload cycle) apart from a bare reopen that must still forward.
   const mediaUploaderGuardRef = useRef<MediaUploaderMountGuardState>(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE);
   mediaUploaderGuardRef.current = advanceMediaUploaderMountGuard(
     mediaUploaderGuardRef.current,
-    computeMediaUploaderMountKey(studioTab, selected?.id, mediaLoadState.status !== "loading"),
+    studioTab,
+    selected?.id,
+    mediaLoadState.status !== "loading",
   );
   const handleMediaUploaderChanged = () => {
     const { shouldForward, nextState } = consumeMediaUploaderChange(mediaUploaderGuardRef.current);
