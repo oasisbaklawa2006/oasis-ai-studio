@@ -800,18 +800,25 @@ export default function CatalogueProductStudio() {
   const mediaRows = mediaLoadState.rows;
   const retryMediaLoad = () => setMediaRetryToken((n) => n + 1);
 
-  // Bugbot-caught: ProductMediaUploader calls onMediaChange after every internal load(), including
-  // the mount-triggered fetch that fires every time the Media tab is (re)opened (Radix unmounts
-  // inactive TabsContent) or the selected product changes while it's already mounted. Forwarding
-  // that straight into retryMediaLoad() forced this page's already-independently-fetching
+  // Bugbot-caught (round 1): ProductMediaUploader calls onMediaChange after every internal load(),
+  // including the mount-triggered fetch that fires every time the Media tab is (re)opened (Radix
+  // unmounts inactive TabsContent) or the selected product changes while it's already mounted.
+  // Bugbot-caught (round 2): ProductMediaUploader also never cancels an in-flight load() on
+  // unmount, so leaving the Media tab entirely while a fetch (or hero mutation) is still pending
+  // lets that stale callback fire anyway once it resolves, after the uploader is gone. Forwarding
+  // either straight into retryMediaLoad() forced this page's already-independently-fetching
   // mediaLoadState back into "loading" and cleared mediaRows, so mediaSummary/anchor/readiness
-  // could briefly drop an approved hero right after selecting a product or reopening the tab — even
-  // though the effect above already fetches the identical rows for this exact (selected.id,
-  // mediaRetryToken). The guard below (pure, unit-tested in catalogueMediaUploaderMountGuard.ts)
-  // absorbs exactly that one redundant mount call per (tab-open, product) pair; genuine post-mount
-  // mutations (upload, hero change, approval submit, delete) still propagate. Advanced render-phase
-  // (same idiom as mediaLoadProductIdRef above) so it's guaranteed set before the uploader's own
-  // mount effect can fire.
+  // could briefly drop an approved hero right after selecting a product, reopening the tab, or on
+  // whatever tab is active once a stale callback from an abandoned uploader instance resolves —
+  // even though the effect above already fetches the identical rows for this exact (selected.id,
+  // mediaRetryToken) whenever a mounted uploader is really there to justify it. The guard below
+  // (pure, unit-tested in catalogueMediaUploaderMountGuard.ts) absorbs exactly the one redundant
+  // mount call per (tab-open, product) pair and refuses to forward anything at all while no
+  // uploader is currently mounted; genuine post-mount mutations (upload, hero change, approval
+  // submit, delete) while it's still on screen still propagate. Advanced render-phase (same idiom
+  // as mediaLoadProductIdRef above) so it's guaranteed set before the uploader's own mount effect
+  // can fire. Shared by both onMediaChange and onHeroChange since the mount-only-fires-onMediaChange
+  // fact means a shared one-shot skip can never wrongly absorb a genuine onHeroChange call.
   const mediaUploaderGuardRef = useRef<MediaUploaderMountGuardState>(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE);
   mediaUploaderGuardRef.current = advanceMediaUploaderMountGuard(
     mediaUploaderGuardRef.current,
@@ -1867,18 +1874,18 @@ export default function CatalogueProductStudio() {
                             Full Editor. Same component Full Editor uses — same role-gated write mode
                             (direct write vs. submit-for-approval vs. read-only), same required-slot rules
                             (VITE_MEDIA_GOVERNANCE_MODE), same product_media/storage authority. No new
-                            authority code. onHeroChange always reflects a genuine hero mutation, so it
-                            calls retryMediaLoad() directly; onMediaChange also fires on the uploader's own
-                            mount-triggered fetch, so it's routed through handleMediaUploaderChanged, which
-                            absorbs that one redundant call (see comment above) and forwards only real
-                            post-mount changes to retryMediaLoad(), keeping the anchor/Build Meter/readiness
-                            elsewhere on this page in sync without a spurious loading/empty flicker. */}
+                            authority code. Both onHeroChange and onMediaChange are routed through
+                            handleMediaUploaderChanged (see comment above), which absorbs the uploader's own
+                            mount-triggered fetch and refuses to forward anything at all once it's unmounted
+                            (a stale in-flight load() can still resolve after that), forwarding only real
+                            post-mount changes to retryMediaLoad() so the anchor/Build Meter/readiness
+                            elsewhere on this page stay in sync without a spurious loading/empty flicker. */}
                         <ProductMediaUploader
                           productId={selected.id}
                           productSku={selected.sku}
                           currentHero={mediaSummary.heroUrl}
                           variant={isTestingMediaGovernance() ? "hero-only" : "full"}
-                          onHeroChange={() => retryMediaLoad()}
+                          onHeroChange={() => handleMediaUploaderChanged()}
                           onMediaChange={handleMediaUploaderChanged}
                         />
 

@@ -16,6 +16,14 @@
  * uploader) about to fire its own redundant load. Only the next `onMediaChange` call after that is
  * absorbed; any call after that is a genuine post-mount mutation (upload, hero change, approval
  * submit, delete) and must still propagate.
+ *
+ * Bugbot round 2: ProductMediaUploader doesn't cancel its in-flight `load()` on unmount, so leaving
+ * the Media tab entirely (or switching products) while a fetch is still pending lets that stale
+ * callback fire anyway once it resolves — after the uploader is gone. Forwarding it would still
+ * force the page's independent media state back into "loading" and flicker anchor/readiness on
+ * whatever tab is now active. `consumeMediaUploaderChange` therefore also refuses to forward any
+ * call while `mountKey` is null (i.e. no uploader is currently mounted at all), regardless of the
+ * one-shot skip's state.
  */
 
 export interface MediaUploaderMountGuardState {
@@ -49,11 +57,19 @@ export function advanceMediaUploaderMountGuard(
   return { mountKey, skipNextChange: mountKey !== null };
 }
 
-/** Call this from the `onMediaChange` handler itself to decide whether to forward the change. */
+/**
+ * Call this from the `onMediaChange`/`onHeroChange` handler itself to decide whether to forward
+ * the change. Never forwards while no uploader is currently mounted (`mountKey === null`) — that
+ * can only mean the callback is a stale one from an in-flight `load()` that outlived its unmounted
+ * component, since a real operator interaction requires the uploader to still be on screen.
+ */
 export function consumeMediaUploaderChange(state: MediaUploaderMountGuardState): {
   shouldForward: boolean;
   nextState: MediaUploaderMountGuardState;
 } {
+  if (state.mountKey === null) {
+    return { shouldForward: false, nextState: state };
+  }
   if (state.skipNextChange) {
     return { shouldForward: false, nextState: { ...state, skipNextChange: false } };
   }
