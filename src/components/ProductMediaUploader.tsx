@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isCurrentAsyncRequest } from "@/features/productAuthority/requestRace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -123,18 +124,47 @@ export function ProductMediaUploader({
 
   const storageFolder = productSku || productId;
 
+  // Bugbot-caught (PR #84 round 3): none of this component's async operations were cancelled on
+  // unmount or on a `productId` prop change, so a slow request kicked off for one product (or
+  // before the component unmounted) could still land after the operator had already unmounted it
+  // or switched to a different product on the same page (e.g. Catalogue Studio's Media tab, which
+  // keeps this component mounted while the operator switches between products). Firing setMedia /
+  // onHeroChange / onMediaChange at that point would silently show a stale product's media as the
+  // current one, or force a caller's independent media state back into "loading" for no reason.
+  // productIdRef always holds the latest prop (updated render-phase, so it's current before any
+  // async continuation can check it); mountedRef flips false in the unmount cleanup below. Every
+  // function that ends in setMedia/onHeroChange/onMediaChange captures the productId it started
+  // for and bails out if either has moved on by the time its request resolves — reusing the same
+  // isCurrentAsyncRequest latest-request-wins guard ProductEdit.tsx already uses for its own
+  // product fetch, rather than re-deriving the same cancelled/latestId logic here.
+  const productIdRef = useRef(productId);
+  productIdRef.current = productId;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const isStaleUploaderRequest = (requestProductId: string) =>
+    !isCurrentAsyncRequest(requestProductId, !mountedRef.current, productIdRef.current);
+
   const load = async (opts?: { fallbackHeroUrl?: string | null }) => {
+    const requestProductId = productId;
     const { data } = await supabase
       .from("product_media")
       .select("*")
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
+    if (isStaleUploaderRequest(requestProductId)) return;
     setMedia(data ?? []);
     onMediaChange?.(opts);
   };
 
   const applyDirectHeroAuthority = async (url: string) => {
+    const requestProductId = productId;
     const result = await persistDirectHeroUpload(productId, url);
+    if (isStaleUploaderRequest(requestProductId)) return result;
     setMedia(result.rows);
     onHeroChange?.(result.hero_image_url, result.media_status);
     onMediaChange?.({ fallbackHeroUrl: result.hero_image_url });
@@ -428,12 +458,13 @@ export function ProductMediaUploader({
       return;
     }
 
+    const requestProductId = productId;
     const { error } = await supabase
       .from("products")
       .update(heroUrlWritePayload(null))
       .eq("id", productId);
     if (error) return toast.error(error.message);
-    onHeroChange?.(null);
+    if (!isStaleUploaderRequest(requestProductId)) onHeroChange?.(null);
     toast.success("Hero cleared");
   };
 
@@ -469,11 +500,12 @@ export function ProductMediaUploader({
       return;
     }
 
+    const requestProductId = productId;
     const { error } = await supabase.from("product_media").delete().eq("id", m.id);
     if (error) return toast.error(error.message);
     if (m.file_url === currentHero) {
       await supabase.from("products").update(heroUrlWritePayload(null)).eq("id", productId);
-      onHeroChange?.(null);
+      if (!isStaleUploaderRequest(requestProductId)) onHeroChange?.(null);
     }
     toast.success("Photo deleted");
     await load();
