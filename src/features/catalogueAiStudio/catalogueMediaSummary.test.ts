@@ -47,4 +47,16 @@ describe("summarizeCatalogueMedia", () => {
     expect(summary.heroUrl).toBeNull();
     expect(summary.approvedCount).toBe(0);
   });
+
+  // Bugbot-caught: once product_media rows exist, they must be the sole hero source — a legacy
+  // hero_image_url must not surface as "present" when the actual rows have no approved hero, since
+  // catalogueRequiredMediaSlots (authoritativeMediaAssets) follows this same "rows exist → rows are
+  // sole source" rule and would correctly report the slot as missing in this exact situation.
+  it("does NOT fall back to the legacy hero column when product_media rows exist but none is an approved hero", () => {
+    const summary = summarizeCatalogueMedia(
+      { hero_image_url: "https://cdn.example/legacy-hero.jpg" },
+      [{ id: "p", type: "hero_image", status: "pending_approval", file_url: "https://cdn.example/p.jpg" }],
+    );
+    expect(summary.heroUrl).toBeNull();
+  });
 });

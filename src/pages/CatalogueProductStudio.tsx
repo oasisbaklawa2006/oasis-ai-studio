@@ -493,7 +493,15 @@ export default function CatalogueProductStudio() {
       } else {
         setMediaLoadState(mediaLoadSucceeded((data as CatalogueMediaRow[]) ?? []));
       }
-    });
+    })
+      // Bugbot-caught: the Supabase `{ error }` branch above only covers a resolved response —
+      // an actual promise rejection (network abort, unexpected runtime failure) left mediaLoadState
+      // stuck on "loading" forever with no error panel or retry path.
+      .catch((err: unknown) => {
+        if (cancelled || selectedIdRef.current !== productId) return;
+        if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", err);
+        setMediaLoadState(mediaLoadFailed());
+      });
     return () => {
       cancelled = true;
     };

@@ -23,7 +23,13 @@ export function summarizeCatalogueMedia(
   productHero: { hero_image_url?: string | null; image_url?: string | null } | null,
   rows: CatalogueMediaRow[],
 ): CatalogueMediaSummary {
-  const heroUrl = resolveProductCardHeroUrl(productHero, rows);
+  // Bugbot-caught: resolveProductCardHeroUrl() falls back to the legacy hero_image_url/image_url
+  // columns whenever no *approved hero* row is found, even if other product_media rows exist.
+  // authoritativeMediaAssets() (used by catalogueRequiredMediaSlots for the same product) instead
+  // treats "any product_media rows exist" as "rows are the sole source of truth, never fall back."
+  // Matching that rule here — legacy columns are only consulted when there are zero rows — keeps
+  // the anchor/hero preview and the required-slots list from disagreeing about the same product.
+  const heroUrl = resolveProductCardHeroUrl(rows.length > 0 ? null : productHero, rows);
 
   const approvedMedia = rows
     .filter((r) => String(r.status ?? "").toLowerCase() === "approved" && !isApprovedHeroMediaRow(r))

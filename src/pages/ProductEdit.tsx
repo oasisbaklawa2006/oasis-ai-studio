@@ -1,6 +1,6 @@
 import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { LabelReadinessPanel } from "@/components/LabelReadinessPanel";
@@ -628,6 +628,7 @@ const pickComplianceBaseline = (form: Record<string, unknown>) => {
 const ProductEdit = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const duplicateFrom = searchParams.get("duplicateFrom");
   const isNew = !id || id === "new";
   const nav = useNavigate();
@@ -661,22 +662,20 @@ const ProductEdit = () => {
     }
   });
 
-  // Bugbot-caught: the initializer above only seeds `tab` on first mount. Since React Router
-  // re-renders this same component instance (no remount) when only the id/tab params change —
-  // e.g. one deep link followed by another without leaving this page — a later `?tab=` was
-  // silently ignored. Re-apply it whenever a genuinely new id/tab pair arrives, tracked via a
-  // ref so it never re-fires for the operator's own subsequent tab clicks.
-  const appliedDeepLinkRef = useRef<{ id: string | undefined; tab: string | null }>({
-    id,
-    tab: deepLinkTab,
-  });
+  // Bugbot-caught (twice): the initializer above only seeds `tab` on first mount, so a later
+  // `?tab=` was silently ignored when React Router re-renders this same component instance (no
+  // remount) for a param-only navigation. An id/tab-value comparison isn't enough either — a
+  // repeat click of the exact same deep link (e.g. "Fix in Full Editor" for the same product+tab)
+  // leaves those values unchanged and would still be skipped. `location.key` changes on every
+  // navigation, even to an identical URL, so it reliably distinguishes "a fresh navigation
+  // happened" from "the operator clicked a tab locally" (which never touches the router).
+  const appliedLocationKeyRef = useRef<string>(location.key);
   useEffect(() => {
-    const applied = appliedDeepLinkRef.current;
-    if (deepLinkTab && (deepLinkTab !== applied.tab || id !== applied.id)) {
+    if (deepLinkTab && appliedLocationKeyRef.current !== location.key) {
       setTab(deepLinkTab);
     }
-    appliedDeepLinkRef.current = { id, tab: deepLinkTab };
-  }, [id, deepLinkTab]);
+    appliedLocationKeyRef.current = location.key;
+  }, [location.key, deepLinkTab]);
 
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);
