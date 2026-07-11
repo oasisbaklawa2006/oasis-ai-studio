@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -84,6 +84,12 @@ import {
 } from "@/features/catalogueAiStudio/catalogueMediaLoadState";
 import { catalogueMediaTabDeepLink, catalogueRequiredMediaSlots } from "@/features/catalogueAiStudio/catalogueMediaSlots";
 import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
+import {
+  isInvalidCatalogueStudioTab,
+  resolveCatalogueStudioTab,
+  withSelectedProduct,
+  withStudioTab,
+} from "@/features/catalogueAiStudio/catalogueStudioUrlState";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
@@ -263,7 +269,33 @@ export default function CatalogueProductStudio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // URL-authoritative: the selected product and active studio tab live only in the URL (?product=,
+  // ?tab=), never in a separate useState — so there is exactly one source of truth. This makes
+  // browser Back/Forward, page reload, and a second/repeat navigation to the same deep link all
+  // restore correctly, instead of silently doing nothing because a local useState never noticed the
+  // URL changed underneath it (the owner-reported smoke-test failures this closes). The decision
+  // logic itself lives in catalogueStudioUrlState.ts (pure, unit-tested); this only wires it to
+  // useSearchParams().
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedId = searchParams.get("product");
+  const selectProduct = (productId: string) => {
+    setSearchParams((prev) => withSelectedProduct(prev, productId), { replace: false });
+  };
+
+  const rawStudioTab = searchParams.get("tab");
+  const studioTab = resolveCatalogueStudioTab(rawStudioTab);
+  const selectStudioTab = (tab: string) => {
+    setSearchParams((prev) => withStudioTab(prev, tab), { replace: false });
+  };
+  // A stale/invalid ?tab= (e.g. an old bookmark) must fall back safely rather than ever crash the
+  // Tabs component — correct the URL itself via replace so it doesn't linger, without adding an
+  // extra Back/Forward history entry for a correction the operator didn't ask for.
+  useEffect(() => {
+    if (isInvalidCatalogueStudioTab(rawStudioTab)) {
+      setSearchParams((prev) => withStudioTab(prev, "content"), { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawStudioTab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -806,7 +838,7 @@ export default function CatalogueProductStudio() {
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setSelectedId(p.id)}
+                    onClick={() => selectProduct(p.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
                       selectedId === p.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
                     }`}
@@ -1096,7 +1128,7 @@ export default function CatalogueProductStudio() {
               {editor && (
                 <Card>
                   <CardContent className="pt-6">
-                    <Tabs defaultValue="content">
+                    <Tabs value={studioTab} onValueChange={selectStudioTab}>
                       <TabsList className="flex-wrap h-auto">
                         <TabsTrigger value="content">Content Draft Studio</TabsTrigger>
                         <TabsTrigger value="language">
