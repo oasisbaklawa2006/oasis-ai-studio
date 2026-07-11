@@ -57,6 +57,7 @@ import {
   approveDraft,
   fetchDraftAuditLog,
   fetchLatestDraft,
+  fetchLatestDraftStatuses,
   rejectDraft,
   saveDraft,
   submitDraftForReview,
@@ -90,6 +91,19 @@ import {
   withSelectedProduct,
   withStudioTab,
 } from "@/features/catalogueAiStudio/catalogueStudioUrlState";
+import {
+  classifyWorkQueueStatus,
+  WORK_QUEUE_STATUS_LABEL,
+  WORK_QUEUE_STATUSES,
+  type WorkQueueStatus,
+} from "@/features/catalogueAiStudio/catalogueWorkQueueStatus";
+import {
+  lastOpenedProduct,
+  parseRecentProductEntries,
+  recordRecentProduct,
+  type RecentProductEntry,
+} from "@/features/catalogueAiStudio/catalogueRecentProducts";
+import { ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
@@ -186,6 +200,23 @@ function auditMetadataString(entry: CatalogueDraftAuditRow, key: string): string
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+const RECENT_PRODUCTS_STORAGE_KEY = "oasis_catalogue_studio_recent_products";
+
+const QUEUE_FILTER_OPTIONS: { key: WorkQueueStatus | "all" | "recent"; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "recent", label: "Recently Worked On" },
+  ...WORK_QUEUE_STATUSES.map((s) => ({ key: s, label: WORK_QUEUE_STATUS_LABEL[s] })),
+];
+
+const WORK_QUEUE_STATUS_BADGE_CLASS: Record<WorkQueueStatus, string> = {
+  needs_truth: "bg-destructive/10 text-destructive border-destructive/40",
+  ready_for_generation: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40",
+  draft: "bg-muted text-muted-foreground border-border",
+  under_review: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40",
+  rejected: "bg-destructive/10 text-destructive border-destructive/40",
+  approved: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-400/40",
+};
+
 const DRAFT_STATUS_BADGE_CLASS: Record<CatalogueDraftStatus, string> = {
   DRAFT: "bg-muted text-muted-foreground border-border",
   UNDER_REVIEW: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40",
@@ -269,6 +300,39 @@ export default function CatalogueProductStudio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<WorkQueueStatus | "all" | "recent">("all");
+  const [queueExpanded, setQueueExpanded] = useState(true);
+  const [governanceExpanded, setGovernanceExpanded] = useState(false);
+  const [auditExpanded, setAuditExpanded] = useState(false);
+  const [anchorDetailsExpanded, setAnchorDetailsExpanded] = useState(false);
+
+  // "Recently Worked On" / "Continue Last Product" — client-side only (localStorage), no schema
+  // change. Read once on mount; every product selection updates and persists it.
+  const [recentProducts, setRecentProducts] = useState<RecentProductEntry[]>([]);
+  useEffect(() => {
+    try {
+      setRecentProducts(parseRecentProductEntries(localStorage.getItem(RECENT_PRODUCTS_STORAGE_KEY)));
+    } catch {
+      setRecentProducts([]);
+    }
+  }, []);
+  const recordProductOpened = (productId: string) => {
+    setRecentProducts((prev) => {
+      const next = recordRecentProduct(prev, productId);
+      try {
+        localStorage.setItem(RECENT_PRODUCTS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // localStorage unavailable (private browsing, quota) — recency tracking degrades to
+        // session-only state, never a hard failure.
+      }
+      return next;
+    });
+  };
+
+  // Every product's latest draft status, for the work queue (not just the selected product's) —
+  // read-only, additive query against the existing catalogue_ai_studio_drafts table.
+  const [draftStatuses, setDraftStatuses] = useState<Map<string, CatalogueDraftStatus>>(new Map());
+
   // URL-authoritative: the selected product and active studio tab live only in the URL (?product=,
   // ?tab=), never in a separate useState — so there is exactly one source of truth. This makes
   // browser Back/Forward, page reload, and a second/repeat navigation to the same deep link all
@@ -280,6 +344,8 @@ export default function CatalogueProductStudio() {
   const selectedId = searchParams.get("product");
   const selectProduct = (productId: string) => {
     setSearchParams((prev) => withSelectedProduct(prev, productId), { replace: false });
+    recordProductOpened(productId);
+    setQueueExpanded(false);
   };
 
   const rawStudioTab = searchParams.get("tab");
@@ -322,16 +388,59 @@ export default function CatalogueProductStudio() {
     };
   }, []);
 
+  useEffect(() => {
+    if (products.length === 0) {
+      setDraftStatuses(new Map());
+      return;
+    }
+    let cancelled = false;
+    fetchLatestDraftStatuses(products.map((p) => p.id))
+      .then((statuses) => {
+        if (!cancelled) setDraftStatuses(statuses);
+      })
+      .catch(() => {
+        // Non-critical for the work queue — statuses just show as unknown (readiness-only
+        // classification) rather than blocking the whole page.
+        if (!cancelled) setDraftStatuses(new Map());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [products]);
+
+  // Per-product work-queue classification for every loaded product (not just the selected one) —
+  // readiness itself only reads fields already in the bulk `products` fetch, so this is cheap.
+  const productWorkQueueInfo = useMemo(() => {
+    const map = new Map<string, { readiness: ReadinessResult; status: WorkQueueStatus }>();
+    for (const p of products) {
+      const readiness = computeCatalogueProductReadiness(p);
+      const status = classifyWorkQueueStatus({
+        readinessOverallLabel: readiness.overallLabel,
+        draftStatus: draftStatuses.get(p.id) ?? null,
+      });
+      map.set(p.id, { readiness, status });
+    }
+    return map;
+  }, [products, draftStatuses]);
+
+  const recentProductIds = useMemo(() => new Set(recentProducts.map((r) => r.productId)), [recentProducts]);
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return products;
-    return products.filter(
+    let list = products;
+    if (statusFilter === "recent") {
+      list = list.filter((p) => recentProductIds.has(p.id));
+    } else if (statusFilter !== "all") {
+      list = list.filter((p) => productWorkQueueInfo.get(p.id)?.status === statusFilter);
+    }
+    if (!q) return list;
+    return list.filter(
       (p) =>
         (p.product_name || "").toLowerCase().includes(q) ||
         (p.sku || "").toLowerCase().includes(q) ||
         (p.category || "").toLowerCase().includes(q),
     );
-  }, [products, search]);
+  }, [products, search, statusFilter, recentProductIds, productWorkQueueInfo]);
 
   const selected = useMemo(() => products.find((p) => p.id === selectedId) || null, [products, selectedId]);
   // readiness/packagingCategories are computed further down, once mediaSummary (below) is
@@ -608,6 +717,15 @@ export default function CatalogueProductStudio() {
     [readiness],
   );
 
+  // Single "next action" for the sticky command bar — the highest-priority unmet readiness
+  // category's own guidance, or a truthful all-clear once every category passes.
+  const nextActionText = useMemo(() => {
+    if (!readiness) return null;
+    const blocker = readiness.categories.find((c) => c.state !== "pass");
+    if (blocker) return blocker.nextAction ?? `Address: ${blocker.label}`;
+    return "Product Truth complete — review content, media, and language, then submit for review.";
+  }, [readiness]);
+
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
   // overwrite the new product's audit history with the previous draft's events.
   const refreshAuditLog = async (draftId: string, expectedProductId: string) => {
@@ -792,73 +910,146 @@ export default function CatalogueProductStudio() {
         subtitle="Select a product to draft, review, and approve catalogue copy and image prompts."
       />
 
-      <div className="flex items-center gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 p-3 text-xs font-semibold text-amber-800 dark:text-amber-300">
-        <AlertTriangle size={14} className="shrink-0" />
-        Catalogue Product AI Studio writes drafts only. Live product master changes are not performed here.
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] font-medium text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-foreground">
+          <ShieldCheck size={13} className="shrink-0" />
+          Governed draft workspace · Product Master is never changed here
+        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="h-auto px-2 py-1 text-[11px]"
+          onClick={() => setGovernanceExpanded((v) => !v)}
+        >
+          {governanceExpanded ? "Hide details" : "Learn more"}
+        </Button>
       </div>
 
-      <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
-        <Info size={14} className="shrink-0 mt-0.5" />
-        <div className="space-y-0.5">
-          <p className="text-foreground font-semibold">How this fits together</p>
-          <p>1. This app creates and governs the draft (save → submit → approve/reject) shown below.</p>
-          <p>2. oasis-supabase-core owns the draft/audit schema this app reads and writes.</p>
-          <p>3. Oasis-Baklawa-Central is meant to consume only an <em>approved, final</em> snapshot — never a raw in-progress draft.</p>
-          <p>4. oasis-trace should only ever receive final product identity via Central's product master, never directly from this app.</p>
-          <p className="text-foreground">
-            Note: steps 3 and 4 describe the intended design. There is currently no automated connector
-            publishing an approved draft from here into Central — an approved draft stays a governed
-            record in this app until that connector exists.
-          </p>
+      {governanceExpanded && (
+        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
+          <Info size={14} className="shrink-0 mt-0.5" />
+          <div className="space-y-0.5">
+            <p className="text-foreground font-semibold">How this fits together</p>
+            <p>1. This app creates and governs the draft (save → submit → approve/reject) shown below.</p>
+            <p>2. oasis-supabase-core owns the draft/audit schema this app reads and writes.</p>
+            <p>3. Oasis-Baklawa-Central is meant to consume only an <em>approved, final</em> snapshot — never a raw in-progress draft.</p>
+            <p>4. oasis-trace should only ever receive final product identity via Central's product master, never directly from this app.</p>
+            <p className="text-foreground">
+              Note: steps 3 and 4 describe the intended design. There is currently no automated connector
+              publishing an approved draft from here into Central — an approved draft stays a governed
+              record in this app until that connector exists.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Search size={14} /> Select a product
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Input
-              placeholder="Search by name, SKU, or category…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="animate-spin text-muted-foreground" size={20} />
-              </div>
-            ) : error ? (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
-                <AlertTriangle size={14} /> {error}
-              </div>
-            ) : filtered.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-4 text-center">
-                {products.length === 0 ? "No products in the catalogue yet." : "No products match your search."}
-              </p>
-            ) : (
-              <div className="max-h-[60vh] overflow-y-auto space-y-1">
-                {filtered.map((p) => (
+        {selected && !queueExpanded ? (
+          <Card>
+            <CardContent className="pt-6 space-y-2">
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Working on</p>
+              <p className="text-xs font-semibold text-foreground truncate">{selected.product_name || "Untitled product"}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{selected.sku || "No SKU"}</p>
+              <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setQueueExpanded(true)}>
+                Change product
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Search size={14} /> Product work queue
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                placeholder="Search by name, SKU, or category…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <div className="flex flex-wrap gap-1.5">
+                {QUEUE_FILTER_OPTIONS.map((opt) => (
                   <button
-                    key={p.id}
+                    key={opt.key}
                     type="button"
-                    onClick={() => selectProduct(p.id)}
-                    className={`w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
-                      selectedId === p.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                    onClick={() => setStatusFilter(opt.key)}
+                    className={`rounded-full border px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                      statusFilter === opt.key
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:bg-muted/50"
                     }`}
                   >
-                    <div className="font-semibold text-foreground truncate">{p.product_name || "Untitled product"}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {p.sku || "No SKU"} · {p.category || "No category"}
-                    </div>
+                    {opt.label}
                   </button>
                 ))}
               </div>
-            )}
-          </CardContent>
-        </Card>
+              {recentProducts.length > 0 && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="w-full justify-start gap-1.5 text-[11px]"
+                  onClick={() => {
+                    const last = lastOpenedProduct(recentProducts);
+                    if (last) selectProduct(last.productId);
+                  }}
+                >
+                  <Clock size={12} /> Continue Last Product
+                </Button>
+              )}
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="animate-spin text-muted-foreground" size={20} />
+                </div>
+              ) : error ? (
+                <div className="flex items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                  <AlertTriangle size={14} /> {error}
+                </div>
+              ) : filtered.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-4 text-center">
+                  {products.length === 0 ? "No products in the catalogue yet." : "No products match this filter/search."}
+                </p>
+              ) : (
+                <div className="max-h-[60vh] overflow-y-auto space-y-1">
+                  {filtered.map((p) => {
+                    const info = productWorkQueueInfo.get(p.id);
+                    const blockerCount = info?.readiness.categories.filter((c) => c.state !== "pass").length ?? 0;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => selectProduct(p.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
+                          selectedId === p.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="font-semibold text-foreground truncate">{p.product_name || "Untitled product"}</div>
+                          {info && (
+                            <Badge variant="outline" className={`shrink-0 text-[8px] uppercase ${WORK_QUEUE_STATUS_BADGE_CLASS[info.status]}`}>
+                              {WORK_QUEUE_STATUS_LABEL[info.status]}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground truncate">
+                          {p.sku || "No SKU"} · {p.category || "No category"}
+                        </div>
+                        {info && (
+                          <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                            <span>{info.readiness.score}% complete</span>
+                            {blockerCount > 0 && <span>· {blockerCount} blocker{blockerCount === 1 ? "" : "s"}</span>}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-5">
           {!selected ? (
@@ -869,26 +1060,72 @@ export default function CatalogueProductStudio() {
             </Card>
           ) : (
             <>
-              {/* Always-visible product anchor. Product switching clears/reloads everything below it
-                  (see the product-switch effect) — this card itself never mixes fields from two
+              {/* Sticky product command bar. Product switching clears/reloads everything below it
+                  (see the product-switch effect) — this bar itself never mixes fields from two
                   products because it only ever reads from `selected`. */}
+              <div className="sticky top-2 z-20">
+                <Card className="border-primary/30 shadow-sm">
+                  <CardContent className="pt-4 pb-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      {mediaSummary.heroUrl ? (
+                        <img
+                          src={mediaSummary.heroUrl}
+                          alt=""
+                          className="h-10 w-10 rounded-md object-cover border border-border shrink-0"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-md border border-dashed border-border flex items-center justify-center shrink-0">
+                          <ImageIcon size={14} className="text-muted-foreground/40" />
+                        </div>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-sm font-semibold text-foreground truncate">
+                            {selected.product_name || "Untitled product"}
+                          </span>
+                          {shortSku && <span className="text-[10px] text-muted-foreground">{shortSku}</span>}
+                          {hasUnsavedChanges && (
+                            <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40">
+                              <PencilLine size={10} className="mr-1" /> Unsaved
+                            </Badge>
+                          )}
+                          {currentPersistedDraft && (
+                            <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
+                              {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} · v{currentPersistedDraft.version_number}
+                            </Badge>
+                          )}
+                          {readiness && (
+                            <Badge className={OVERALL_BADGE_CLASS[readiness.overallLabel]}>{readiness.score}% complete</Badge>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {selected.packaging_code || "No packaging"} · {saleTypeLabel ?? "No sale type"}
+                        </p>
+                        {nextActionText && (
+                          <p className="text-[11px] text-foreground mt-0.5 truncate">
+                            <span className="font-semibold">Next: </span>
+                            {nextActionText}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setAnchorDetailsExpanded((v) => !v)}
+                        aria-label={anchorDetailsExpanded ? "Hide product details" : "Show product details"}
+                      >
+                        {anchorDetailsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {anchorDetailsExpanded && (
               <Card>
                 <CardHeader className="pb-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="text-sm">{selected.product_name || "Untitled product"}</CardTitle>
-                    <div className="flex items-center gap-1.5">
-                      {hasUnsavedChanges && (
-                        <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40">
-                          <PencilLine size={10} className="mr-1" /> Unsaved
-                        </Badge>
-                      )}
-                      {currentPersistedDraft && (
-                        <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
-                          {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
+                  <CardTitle className="text-sm">Product details</CardTitle>
                   <CardDescription className="text-[11px]">
                     Product summary is read-only here. Make master data changes in Products.
                   </CardDescription>
@@ -953,6 +1190,7 @@ export default function CatalogueProductStudio() {
                   </div>
                 </CardContent>
               </Card>
+              )}
 
               {readiness && (
                 <BuildMeterBar
@@ -1090,12 +1328,22 @@ export default function CatalogueProductStudio() {
 
                   {currentPersistedDraft && (
                     <CardContent>
-                      <div className="flex items-center gap-2 mb-1">
-                        <History size={14} className="text-muted-foreground" />
-                        <span className="text-xs font-semibold text-foreground">
-                          History / audit — v{currentPersistedDraft.version_number}
+                      <button
+                        type="button"
+                        onClick={() => setAuditExpanded((v) => !v)}
+                        className="flex w-full items-center justify-between gap-2 mb-1"
+                      >
+                        <span className="flex items-center gap-2">
+                          <History size={14} className="text-muted-foreground" />
+                          <span className="text-xs font-semibold text-foreground">
+                            History / audit — v{currentPersistedDraft.version_number}
+                            {auditLog.length > 0 && ` (${auditLog.length})`}
+                          </span>
                         </span>
-                      </div>
+                        {auditExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                      {auditExpanded && (
+                      <>
                       <p className="text-[10px] text-muted-foreground mb-2">
                         Scoped to this version only. Reasons from a prior rejected version, if any, carry forward
                         into the "CREATE_NEW_VERSION" entry below.
@@ -1126,6 +1374,8 @@ export default function CatalogueProductStudio() {
                           })}
                         </div>
                       )}
+                      </>
+                      )}
                     </CardContent>
                   )}
                 </Card>
@@ -1134,15 +1384,18 @@ export default function CatalogueProductStudio() {
               {editor && (
                 <Card>
                   <CardContent className="pt-6">
+                    {/* Five predictable stages (A2): the underlying tab values/content are unchanged
+                        from the prior single-purpose tabs — only the sequence and step labeling are
+                        new, so nothing about draft persistence or per-tab logic is touched here. */}
                     <Tabs value={studioTab} onValueChange={selectStudioTab}>
                       <TabsList className="flex-wrap h-auto">
-                        <TabsTrigger value="content">Content Draft Studio</TabsTrigger>
+                        <TabsTrigger value="packaging">1. Complete Truth</TabsTrigger>
+                        <TabsTrigger value="content">2. Content</TabsTrigger>
                         <TabsTrigger value="language">
-                          <Languages size={12} className="mr-1.5" /> Language / Messaging
+                          <Languages size={12} className="mr-1.5" /> 3. Languages &amp; Channels
                         </TabsTrigger>
-                        <TabsTrigger value="media">Media / Hero Image Prompts</TabsTrigger>
-                        <TabsTrigger value="packaging">Packaging + Variant Readiness</TabsTrigger>
-                        <TabsTrigger value="export">Export / Copy Bundle Preview</TabsTrigger>
+                        <TabsTrigger value="media">4. Media</TabsTrigger>
+                        <TabsTrigger value="export">5. Preview &amp; Approval</TabsTrigger>
                       </TabsList>
 
                       <TabsContent value="content" className="space-y-4 pt-4">
