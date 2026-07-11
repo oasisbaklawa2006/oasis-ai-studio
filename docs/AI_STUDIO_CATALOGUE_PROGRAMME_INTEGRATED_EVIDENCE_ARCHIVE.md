@@ -11,6 +11,17 @@ reused from earlier cached session state) immediately before this document was o
 > fixed, tested, and pushed (head `816f0e0`); this document has been updated in place (not
 > append-only, unlike Issue #83) to reflect the corrected final state. See §4 and §5 for the full
 > account.
+>
+> **Update 2 (2026-07-11, same day):** the owner's authenticated mobile smoke test (iPhone/Safari)
+> found a real responsive-layout defect on the Content tab's "Generate Complete Catalogue Draft"
+> row (overflow past the viewport edge, clipped label, horizontal page scroll) at head `9266e64`.
+> Fixed — plus one more instance of the same non-wrapping-row pattern found in the Export tab on
+> audit — at head `9f96527`. That push triggered a further Bugbot round which found one genuine
+> Medium finding (a hero-upload success toast not gated on the same staleness check as other toasts
+> in the same file); fixed at head `d15ab07`. Separately investigated (code-only, no data changed)
+> why a rejected draft's B2B sales copy read "Add missing field first: B2B price" while readiness
+> showed a live B2B price — confirmed as expected historical snapshot behavior, not a defect. See
+> §4 and §5 for the full account.
 
 ---
 
@@ -21,7 +32,7 @@ reused from earlier cached session state) immediately before this document was o
 | [#80](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/80) | Foundation / hardening | `feat/catalogue-product-studio-completion-2026-07-11` | `main` | `a6575f60b8895842623c435d87575f25456f7cd2` | `d3be922457d3f3f054a1dfc4fe6dca352d9c1472` | draft, open, unmerged |
 | [#81](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/81) | A2 — operator cockpit | `feat/catalogue-studio-operator-cockpit-2026-07-11` | PR #80's branch | `d3be922457d3f3f054a1dfc4fe6dca352d9c1472` | `17e6699d10e3381a78a8d51954bf004d834070ae` | draft, open, unmerged |
 | [#82](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/82) | A3 — governed AI content | `feat/catalogue-studio-ai-content-and-localisation-2026-07-11` | PR #81's branch | `17e6699d10e3381a78a8d51954bf004d834070ae` | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | draft, open, unmerged |
-| [#84](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/84) | A4 — governed media workspace | `feat/catalogue-studio-media-workspace-2026-07-11` | PR #82's branch | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | `816f0e036c8c15157326344a4576586dd2b98d73` | draft, open, unmerged |
+| [#84](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/84) | A4 — governed media workspace | `feat/catalogue-studio-media-workspace-2026-07-11` | PR #82's branch | `ff9e1415f3944e8d0f6ca9622de23fb9119f1dcc` | `d15ab0721090519bb888c0bd4c55762aaa35bae8` | draft, open, unmerged |
 
 Verified via `pull_request_read` (`get`) on all four PR numbers immediately before this document
 was written: all four report `state: open`, `draft: true`, `merged: false`,
@@ -131,7 +142,7 @@ All thread IDs and resolution states below were re-fetched live via `pull_reques
 `mergeAiGeneratedContent` test, and a 4-scenario end-to-end "reload-and-save cycle" suite) ·
 `git diff --check` clean.
 
-### PR #84 / A4 (6 Bugbot findings across 6 rounds, 6/6 threads resolved)
+### PR #84 / A4 (8 Bugbot findings across 8 rounds + 1 owner-smoke-test finding, 8/8 threads resolved)
 
 | # | Round | Finding | Severity | Fixing head | Regression evidence |
 |---|---|---|---|---|---|
@@ -141,31 +152,56 @@ All thread IDs and resolution states below were re-fetched live via `pull_reques
 | 4 | 4 | Null-hero race during page load could auto-promote an upload to hero over an existing approved one | Medium | `debf7ac` | uploader mount deferred until the page's own media fetch finishes loading |
 | 5 | 4 | Success toast ("Hero cleared"/"Photo deleted") shown after a stale skip, misleading the operator | Low | `debf7ac` | toasts gated on the same staleness check as the callback suppression |
 | 6 | 6 | **Regression introduced by finding #4's own fix**: deferring the uploader's mount during loading meant a genuine mutation's own `retryMediaLoad()` call now also unmounts-then-remounts the uploader once its reload finishes — the mount guard's key never changed across that cycle, so the remount's own redundant mount call was never re-absorbed, forwarded again, and looped indefinitely | High | `816f0e0` | `computeMediaUploaderMountKey` now also depends on whether the uploader is actually eligible to render (the same condition the page's JSX already uses) + 2 new regression tests reproducing the exact loop, plus a repeated-cycle test |
+| 7 | owner smoke test | **Mobile responsive-layout defect** (found by the owner's authenticated iPhone/Safari test, not Bugbot): the Content tab's tone-selector + "Generate Complete Catalogue Draft" row was a non-wrapping flex container holding a fixed-width `Select` plus a long-label `Button` (Button's base styling is `whitespace-nowrap`, so the label itself never shrinks) — on a narrow phone viewport neither item could give way, overflowing past the right edge with a clipped label and horizontal page scroll | Medium (UX) | `9f96527` | `flex-wrap` + `w-full sm:w-auto`/`sm:w-[140px]` on both the Generate row and one further instance of the same pattern found on audit in the Export tab header row; reverts to the original fixed-width layout at Tailwind's unmodified default `sm` breakpoint (640px), confirmed present in the compiled `dist` CSS. No component/layout test harness exists in this repo (no RTL/jsdom rendering convention) — verified by exact breakpoint math instead (documented in §5) |
+| 8 | 8 | Hero-upload success toasts (`uploadToSlot`'s "Hero image uploaded", `setAsHero`'s "Set as hero photo") fired unconditionally after `applyDirectHeroAuthority`, not gated on the same staleness check already applied to `removeAsHero`/`remove`'s toasts (findings #5) — same misleading-toast class, two call sites finding #5 didn't cover | Medium | `d15ab07` | both toasts now gated on `isStaleUploaderRequest`, matching the established pattern; `upload()`'s and the URL-add's toasts were deliberately left ungated since they describe the underlying mutation itself (always genuinely true), not a hero-specific claim |
 
-Round 5 (on head `debf7ac`): Bugbot check run `completed`/`success`, zero new findings. Round 6
-(triggered by committing this very archive, which caused a fresh full-diff re-scan) found finding
-#6 above — a real regression this archive's own §4/§5 content did not yet reflect at the time it
-was first written. It has since been fixed and this document corrected in place.
+Round 5 (on head `debf7ac`): Bugbot `completed`/`success`, zero new findings. Round 6 (triggered by
+committing the archive itself) found finding #6. Round 7 was the owner's own authenticated mobile
+smoke test (finding #7, not from Bugbot) — fixed the same day. Round 8 (triggered by that fix's
+push) found finding #8. Round 9 (final, head `d15ab07`): pending confirmation at time of writing —
+see the ledger entry for the confirmed final status.
 
-**Final validation (head `816f0e036c8c15157326344a4576586dd2b98d73`):** `check:boundaries` 0 new ·
+**Final validation (head `d15ab0721090519bb888c0bd4c55762aaa35bae8`):** `check:boundaries` 0 new ·
 `typecheck` clean · `typecheck:build` 128 pre-existing (confirmed identical via `git stash` diff
 each round), 0 new · `lint` 0 new (pre-existing warnings confirmed identical each round) · `build`
-succeeds · `test` 653/653 passing (+19 new vs. PR #82's baseline: 5 for
-`composeCatalogueImagePrompt`, 14 for the mount guard including the 2 loop-regression tests) ·
-`git diff --check` clean.
+succeeds, and the compiled CSS was directly grepped to confirm the new `sm:w-auto`/`sm:w-[140px]`
+utility classes were actually generated (not silently dropped) · `test` 653/653 passing (unchanged
+from the loop-fix round — the mobile-layout and toast-gating fixes are pure Tailwind-class/staleness
+-check changes with no new testable pure-function surface) · `git diff --check` clean.
+
+### Separate investigation: rejected draft's B2B copy vs. live readiness (no defect, no data changed)
+
+The owner also asked why a rejected draft's `b2b_sales_copy` read "Add missing field first: B2B
+price." while readiness showed a live B2B price of ₹650. Investigated by source inspection only —
+no database read or write was performed:
+- `mapRowToEditor()` (`CatalogueProductStudio.tsx`) does a pure 1:1 mapping of the saved draft row's
+  text columns straight into editor state — no re-templating against current product data.
+- `computeCatalogueProductReadiness()` independently reads the *live* `product.b2b_price` — entirely
+  decoupled from any draft row.
+- Conclusion: the draft's `b2b_sales_copy` was generated (by the local template or a prior AI run)
+  at a point when the product's B2B price was not yet set; the price was set/edited *after* that
+  draft was last saved and rejected. Draft content is an intentional frozen snapshot at save time by
+  design (the whole point of a versioned approval workflow — a reviewer sees exactly what was
+  submitted), while readiness always reflects current Product Truth. This is expected historical
+  content, not a stale-baseline defect. Clicking "Reset draft from product data" or regenerating
+  would produce fresh copy reflecting the current price; no code change was made since none is
+  needed.
 
 ### Programme totals
 
-- **29 findings total** across the 4 PRs (12 + 2 + 8 + 6 = 28 formal Bugbot review threads, + 1
-  independent-audit finding on PR #82 relayed via PR comment, not a formal Bugbot thread).
-- **28/28 formal review threads confirmed `is_resolved: true`** via a live API re-check across all
-  four PRs immediately before this document was corrected. **Zero unresolved threads anywhere in
-  the stack.**
+- **31 findings total** across the 4 PRs (12 + 2 + 8 + 8 = 30 formal Bugbot review threads, + 1
+  independent-audit finding on PR #82 relayed via PR comment (not a formal Bugbot thread), + 1
+  owner-smoke-test finding (not from Bugbot, found by direct authenticated device testing)).
+- All formal review threads confirmed `is_resolved: true` via live API re-checks throughout —
+  **zero unresolved threads anywhere in the stack** at every point verified.
 - The 1 independent-audit finding was verified directly against source before fixing and closed
   with a dedicated 4-scenario end-to-end regression suite reproducing the exact reported defect.
-- One finding (PR #84 #6 above) was itself a regression introduced by an earlier fix in this same
-  programme — a reminder that the safe merge plan (§11) and post-merge verification (§12) matter
-  regardless of how many rounds have already passed clean.
+- The 1 owner-smoke-test finding is the only defect in this entire programme found by actually
+  running the app on a real device rather than by static analysis — a reminder that Bugbot and
+  local validation, however thorough, are not a substitute for the authenticated smoke test.
+- Two findings (PR #84 #6 and, arguably, #8) were themselves regressions/gaps introduced or exposed
+  by earlier fixes in this same programme — a reminder that the safe merge plan (§11) and
+  post-merge verification (§12) matter regardless of how many rounds have already passed clean.
 
 ---
 
@@ -176,7 +212,7 @@ succeeds · `test` 653/653 passing (+19 new vs. PR #82's baseline: 5 for
 | PR #80 | `d3be922` | 579/579 | clean | 128 pre-existing, 0 new | not separately itemized in PR body (repo-wide baseline predates this PR's lint-tracking convention) | succeeds | 0 new violations | clean |
 | PR #81 | `17e6699` | 593/593 (+14) | clean | 128 pre-existing, 0 new | not separately itemized (same as above) | succeeds | 0 new violations | clean |
 | PR #82 | `ff9e141` | 634/634 (+41 vs. #81) | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
-| PR #84 | `816f0e0` | 653/653 (+19 vs. #82) | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
+| PR #84 | `d15ab07` | 653/653 (+19 vs. #82) | clean | 128 pre-existing, 0 new | 0 new findings in touched files | succeeds | 0 new violations | clean |
 
 The `128 pre-existing errors, 0 new` result for `typecheck:build` was independently re-verified at
 every single Bugbot-fix round within PR #84 (not just once per PR) via `git stash` diffing against
@@ -278,7 +314,7 @@ section, which was itself produced from real command output, not asserted):
 ## 10. Owner-facing authenticated smoke-test checklist (final integrated preview)
 
 **Preview URL:** https://oasis-ai-studio-git-feat-7125f4-oasisbaklawa2006-6222s-projects.vercel.app
-(auto-redeploys on every push to PR #84's branch; currently serving commit `816f0e0`)
+(auto-redeploys on every push to PR #84's branch; currently serving commit `d15ab07`)
 
 Sign in with a real account, then walk through:
 
