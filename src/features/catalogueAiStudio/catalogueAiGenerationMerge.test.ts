@@ -115,16 +115,35 @@ describe("buildAiGenerationProvenance", () => {
 });
 
 describe("readPersistedAiGenerationProvenance", () => {
-  it("returns null when there is no source_snapshot, no ai_generation blob, or an empty one", () => {
+  it("returns null when there is no source_snapshot, no ai_generation blob, or one missing the service marker", () => {
     expect(readPersistedAiGenerationProvenance(null)).toBeNull();
     expect(readPersistedAiGenerationProvenance({})).toBeNull();
     expect(readPersistedAiGenerationProvenance({ ai_generation: null })).toBeNull();
-    expect(
-      readPersistedAiGenerationProvenance({
-        ai_generation: { service: "oasis-ai-chat", fields_ai_generated: [], fields_human_edited_after_generation: [] },
-      }),
-    ).toBeNull();
+    expect(readPersistedAiGenerationProvenance({ ai_generation: { fields_ai_generated: ["catalogue_title"] } })).toBeNull();
   });
+
+  it(
+    "recognizes a real record where every field was preserved (nothing applied), instead of " +
+      "treating it as absent (Bugbot regression: a run where the operator had already edited every " +
+      "field before generation left fields_ai_generated/fields_human_edited_after_generation both " +
+      "empty — a real, intentional record — but was wrongly discarded as if no run had occurred, " +
+      "wiping it on the next save)",
+    () => {
+      const result = readPersistedAiGenerationProvenance({
+        ai_generation: {
+          service: "oasis-ai-chat",
+          tone: "Concise",
+          fields_ai_generated: [],
+          fields_human_edited_after_generation: [],
+          fields_preserved_from_prior_edit: [...CATALOGUE_DRAFT_CONTENT_KEYS],
+        },
+      });
+      expect(result).not.toBeNull();
+      expect(result?.fields_ai_generated).toEqual([]);
+      expect(result?.fields_human_edited_after_generation).toEqual([]);
+      expect(result?.fields_preserved_from_prior_edit).toEqual([...CATALOGUE_DRAFT_CONTENT_KEYS]);
+    },
+  );
 
   it(
     "reads a previously saved blob back out unchanged, for preserving provenance history on a " +
@@ -153,6 +172,7 @@ describe("readPersistedAiGenerationProvenance", () => {
   it("ignores an unrecognized tone or content key rather than throwing", () => {
     const result = readPersistedAiGenerationProvenance({
       ai_generation: {
+        service: "oasis-ai-chat",
         tone: "Aggressive", // not a real CatalogueAiTone
         fields_ai_generated: ["catalogue_title", "not_a_real_field"],
         fields_human_edited_after_generation: [],

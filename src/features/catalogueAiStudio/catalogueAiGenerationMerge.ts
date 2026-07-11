@@ -121,18 +121,21 @@ function readTone(value: unknown): CatalogueAiTone | null {
  * doesn't involve a fresh AI generation this session (e.g. the studio was reopened and no new
  * "Generate Complete Catalogue Draft" run happened yet) preserves prior provenance history instead
  * of silently overwriting it with null (Bugbot regression).
+ *
+ * Presence is decided by the `service` marker, not by any field-array being non-empty — a run where
+ * every field was already edited before generation (so nothing was applied) is still a real,
+ * intentional record with a non-empty `fields_preserved_from_prior_edit` and empty
+ * `fields_ai_generated`/`fields_human_edited_after_generation`; treating that as "absent" wiped a
+ * genuine provenance record on the next save (Bugbot regression).
  */
 export function readPersistedAiGenerationProvenance(sourceSnapshot: unknown): AiGenerationProvenance | null {
   const blob = extractAiGenerationBlob(sourceSnapshot);
-  if (!blob) return null;
-  const fieldsAiGenerated = readContentKeyArray(blob.fields_ai_generated);
-  const fieldsHumanEdited = readContentKeyArray(blob.fields_human_edited_after_generation);
-  if (fieldsAiGenerated.length === 0 && fieldsHumanEdited.length === 0) return null;
+  if (!blob || blob.service !== "oasis-ai-chat") return null;
   return {
     service: "oasis-ai-chat",
     tone: readTone(blob.tone),
-    fields_ai_generated: fieldsAiGenerated,
-    fields_human_edited_after_generation: fieldsHumanEdited,
+    fields_ai_generated: readContentKeyArray(blob.fields_ai_generated),
+    fields_human_edited_after_generation: readContentKeyArray(blob.fields_human_edited_after_generation),
     fields_preserved_from_prior_edit: readContentKeyArray(blob.fields_preserved_from_prior_edit),
   };
 }

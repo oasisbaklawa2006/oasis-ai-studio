@@ -911,7 +911,14 @@ export default function CatalogueProductStudio() {
       mergedState = { productId, content: merge.content, prompts: prev.prompts };
       return mergedState;
     });
-    if (!mergedState) return;
+    if (!mergedState) {
+      // Bugbot-caught: this branch is only reachable if the editor state moved out from under this
+      // request between the guard above and this functional update — leaving aiGenerationState
+      // stuck at "generating" forever would disable the button with no way to recover short of a
+      // reset or product switch.
+      setAiGenerationState("idle");
+      return;
+    }
     // Bugbot-caught: the baseline used to store the raw AI result for every key, including ones
     // preserved above because the operator had already edited them — comparing the final editor
     // against that raw baseline made preserved fields look "human-edited after generation" (as if
