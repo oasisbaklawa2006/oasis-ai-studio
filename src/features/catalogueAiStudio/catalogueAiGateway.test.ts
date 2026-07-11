@@ -31,6 +31,13 @@ describe("buildCatalogueContentPrompt", () => {
     const prompt = buildCatalogueContentPrompt({ productName: "Test Product" });
     expect(prompt).toContain("(not set)");
   });
+
+  it("defaults to an Informational tone and honours an explicit tone override", () => {
+    const defaultPrompt = buildCatalogueContentPrompt({ productName: "Test Product" });
+    expect(defaultPrompt).toContain("Informational tone");
+    const premiumPrompt = buildCatalogueContentPrompt({ productName: "Test Product" }, "Premium");
+    expect(premiumPrompt).toContain("Premium tone");
+  });
 });
 
 describe("parseChatCompletionStreamText", () => {

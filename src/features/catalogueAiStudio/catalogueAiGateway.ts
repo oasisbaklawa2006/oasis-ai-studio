@@ -28,11 +28,31 @@ export interface CatalogueAiSourceFacts {
 }
 
 /**
+ * Tone steers HOW the existing per-channel fields are written; it does not add new fields or
+ * channels — the schema has one column per channel already (b2b_sales_copy, export_catalogue_copy,
+ * whatsapp_product_message, catalogue_title/short/long_description), so a full channel/audience/tone
+ * matrix would need new columns per variant, which is a schema change out of this PR's scope.
+ */
+export const CATALOGUE_AI_TONES = [
+  "Premium",
+  "Informational",
+  "Concise",
+  "Sales-focused",
+  "Technical",
+] as const;
+export type CatalogueAiTone = (typeof CATALOGUE_AI_TONES)[number];
+
+const DEFAULT_TONE: CatalogueAiTone = "Informational";
+
+/**
  * Structured-only prompt: the model is told exactly which facts it may use and instructed never to
  * invent price, ingredients, allergens, nutrition, tax/compliance, or shelf-life/storage specifics
  * beyond what's given here — those are separate, human-owned fields this studio never lets AI set.
  */
-export function buildCatalogueContentPrompt(facts: CatalogueAiSourceFacts): string {
+export function buildCatalogueContentPrompt(
+  facts: CatalogueAiSourceFacts,
+  tone: CatalogueAiTone = DEFAULT_TONE,
+): string {
   const factLines = [
     `product_name: ${facts.productName}`,
     `category: ${facts.category ?? "(not set)"}`,
@@ -45,6 +65,7 @@ export function buildCatalogueContentPrompt(facts: CatalogueAiSourceFacts): stri
 
   return [
     "You are writing wholesale/retail catalogue marketing copy for a bakery/confectionery brand called Oasis.",
+    `Write in a ${tone} tone throughout.`,
     "Base every statement strictly on the facts given below. Do not invent or imply price, ingredients,",
     "allergens, nutrition values, tax/HSN/GST information, or any compliance/legal claim — those are set",
     "elsewhere by a human and are not part of this task.",
@@ -146,6 +167,7 @@ export type CatalogueAiGenerationResult =
  */
 export async function generateCatalogueContentDraft(
   facts: CatalogueAiSourceFacts,
+  tone: CatalogueAiTone = DEFAULT_TONE,
 ): Promise<CatalogueAiGenerationResult> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -162,7 +184,7 @@ export async function generateCatalogueContentDraft(
         Authorization: `Bearer ${anonKey}`,
       },
       body: JSON.stringify({
-        messages: [{ role: "user", content: buildCatalogueContentPrompt(facts) }],
+        messages: [{ role: "user", content: buildCatalogueContentPrompt(facts, tone) }],
       }),
     });
   } catch {

@@ -31,6 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   computeCatalogueProductReadiness,
@@ -98,8 +99,10 @@ import {
   type WorkQueueStatus,
 } from "@/features/catalogueAiStudio/catalogueWorkQueueStatus";
 import {
+  CATALOGUE_AI_TONES,
   generateCatalogueContentDraft,
   type CatalogueAiSourceFacts,
+  type CatalogueAiTone,
 } from "@/features/catalogueAiStudio/catalogueAiGateway";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "@/features/catalogueAiStudio/catalogueDraftTypes";
 import { Sparkles } from "lucide-react";
@@ -185,7 +188,10 @@ function mapRowToEditor(row: CatalogueDraftRow): { content: CatalogueDraftConten
   };
 }
 
-function buildSourceSnapshot(product: CatalogueProductStudioProduct): Record<string, unknown> {
+function buildSourceSnapshot(
+  product: CatalogueProductStudioProduct,
+  aiGeneration: Record<string, unknown> | null = null,
+): Record<string, unknown> {
   return {
     product_name: product.product_name ?? null,
     sku: product.sku ?? null,
@@ -195,6 +201,32 @@ function buildSourceSnapshot(product: CatalogueProductStudioProduct): Record<str
     is_active: product.is_active ?? null,
     is_catalogue_ready: product.is_catalogue_ready ?? null,
     snapshotted_at: new Date().toISOString(),
+    ai_generation: aiGeneration,
+  };
+}
+
+/**
+ * A3 AI safety/provenance: records which content fields came from the governed AI gateway versus
+ * a human edit made after generation, using only the existing `source_snapshot` jsonb column — no
+ * schema change. Returns null when this draft version was never touched by AI generation, so old
+ * drafts and products that never used AI keep an unchanged snapshot shape.
+ */
+function buildAiGenerationProvenance(
+  editor: EditorState,
+  aiGeneratedBaseline: EditorState | null,
+  tone: CatalogueAiTone | null,
+): Record<string, unknown> | null {
+  if (!aiGeneratedBaseline || aiGeneratedBaseline.productId !== editor.productId) return null;
+  const fieldsEditedAfterGeneration = CATALOGUE_DRAFT_CONTENT_KEYS.filter((key) =>
+    isFieldEdited(editor.content[key], aiGeneratedBaseline.content[key]),
+  );
+  return {
+    service: "oasis-ai-chat",
+    tone,
+    fields_ai_generated: CATALOGUE_DRAFT_CONTENT_KEYS.filter(
+      (key) => !fieldsEditedAfterGeneration.includes(key),
+    ),
+    fields_human_edited_after_generation: fieldsEditedAfterGeneration,
   };
 }
 
@@ -795,8 +827,10 @@ export default function CatalogueProductStudio() {
   // immediately show as "Edited" just for differing from the template it replaced. Reset on
   // product switch so a stale AI baseline from a previous product is never possible.
   const [aiGeneratedBaseline, setAiGeneratedBaseline] = useState<EditorState | null>(null);
+  const [aiGeneratedTone, setAiGeneratedTone] = useState<CatalogueAiTone | null>(null);
   useEffect(() => {
     setAiGeneratedBaseline(null);
+    setAiGeneratedTone(null);
   }, [selected?.id]);
   const activeBaseline: EditorState | null =
     aiGeneratedBaseline && selected && aiGeneratedBaseline.productId === selected.id
@@ -805,6 +839,7 @@ export default function CatalogueProductStudio() {
 
   const [aiGenerationState, setAiGenerationState] = useState<"idle" | "generating" | "success" | "error">("idle");
   const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
+  const [aiTone, setAiTone] = useState<CatalogueAiTone>("Informational");
   useEffect(() => {
     setAiGenerationState("idle");
     setAiGenerationError(null);
@@ -829,7 +864,7 @@ export default function CatalogueProductStudio() {
       storageInstructions: selected.storage_instructions,
       shelfLifeDays: selected.shelf_life_days,
     };
-    const result = await generateCatalogueContentDraft(facts);
+    const result = await generateCatalogueContentDraft(facts, aiTone);
     if (selectedIdRef.current !== productId) return;
     if (result.ok === false) {
       setAiGenerationState("error");
@@ -850,6 +885,7 @@ export default function CatalogueProductStudio() {
     }
     setEditorState({ productId, content: nextContent, prompts: editor.prompts });
     setAiGeneratedBaseline({ productId, content: result.content, prompts: editor.prompts });
+    setAiGeneratedTone(aiTone);
     setAiGenerationState("success");
     if (preservedCount > 0) {
       toast.info(`AI draft applied — ${preservedCount} field(s) you'd already edited were left unchanged.`);
@@ -913,7 +949,10 @@ export default function CatalogueProductStudio() {
           ...editor.content,
           ...editor.prompts,
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
-          source_snapshot: buildSourceSnapshot(selected),
+          source_snapshot: buildSourceSnapshot(
+            selected,
+            buildAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedTone),
+          ),
         },
         actorId: user?.id ?? null,
       });
@@ -971,7 +1010,10 @@ export default function CatalogueProductStudio() {
           ...editor.content,
           ...editor.prompts,
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
-          source_snapshot: buildSourceSnapshot(selected),
+          source_snapshot: buildSourceSnapshot(
+            selected,
+            buildAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedTone),
+          ),
         },
         actorId: user?.id ?? null,
       });
@@ -1545,19 +1587,37 @@ export default function CatalogueProductStudio() {
                               product's saved facts — it never invents price, ingredients, allergens, nutrition,
                               or compliance claims, and never overwrites fields you've already edited.
                             </p>
-                            <Button
-                              type="button"
-                              size="sm"
-                              disabled={aiGenerationBlocked || aiGenerationState === "generating" || textLocked || draftLoading}
-                              onClick={handleGenerateAiDraft}
-                            >
-                              {aiGenerationState === "generating" ? (
-                                <Loader2 size={12} className="mr-1.5 animate-spin" />
-                              ) : (
-                                <Sparkles size={12} className="mr-1.5" />
-                              )}
-                              Generate Complete Catalogue Draft
-                            </Button>
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={aiTone}
+                                onValueChange={(v) => setAiTone(v as CatalogueAiTone)}
+                                disabled={aiGenerationState === "generating"}
+                              >
+                                <SelectTrigger className="h-8 w-[140px] text-[11px]">
+                                  <SelectValue placeholder="Tone" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CATALOGUE_AI_TONES.map((tone) => (
+                                    <SelectItem key={tone} value={tone} className="text-[11px]">
+                                      {tone}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={aiGenerationBlocked || aiGenerationState === "generating" || textLocked || draftLoading}
+                                onClick={handleGenerateAiDraft}
+                              >
+                                {aiGenerationState === "generating" ? (
+                                  <Loader2 size={12} className="mr-1.5 animate-spin" />
+                                ) : (
+                                  <Sparkles size={12} className="mr-1.5" />
+                                )}
+                                Generate Complete Catalogue Draft
+                              </Button>
+                            </div>
                           </div>
                           {aiGenerationBlocked && (
                             <p className="text-[10px] text-amber-700 dark:text-amber-400">
