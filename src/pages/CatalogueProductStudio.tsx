@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
+import { ProductMediaUploader } from "@/components/ProductMediaUploader";
+import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +45,7 @@ import {
   DRAFT_BLOCK_META,
   IMAGE_PROMPT_BLOCK_META,
   buildExportBundlePreview,
+  composeCatalogueImagePrompt,
   generateCatalogueDraftContent,
   generateCatalogueImagePrompts,
   type DraftProductInput,
@@ -51,6 +54,7 @@ import type {
   CatalogueDraftAuditRow,
   CatalogueDraftContent,
   CatalogueDraftContentKey,
+  CatalogueDraftPromptKey,
   CatalogueDraftPrompts,
   CatalogueDraftRow,
   CatalogueDraftStatus,
@@ -79,13 +83,11 @@ import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
 import {
   INITIAL_MEDIA_LOAD_STATE,
-  isMediaResultEmpty,
   mediaLoadFailed,
   mediaLoadStarted,
   mediaLoadSucceeded,
   type MediaLoadState,
 } from "@/features/catalogueAiStudio/catalogueMediaLoadState";
-import { catalogueMediaTabDeepLink, catalogueRequiredMediaSlots } from "@/features/catalogueAiStudio/catalogueMediaSlots";
 import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
 import {
   isInvalidCatalogueStudioTab,
@@ -609,6 +611,20 @@ export default function CatalogueProductStudio() {
     });
   };
 
+  // A4: ephemeral per-slot operator instruction for prompt composition — never persisted on its
+  // own (only the composed text it produces is saved, into the same existing prompt column), so no
+  // schema change. Reset on product switch so an instruction never leaks onto a different product.
+  const [promptInstructions, setPromptInstructions] = useState<Partial<Record<CatalogueDraftPromptKey, string>>>({});
+  useEffect(() => {
+    setPromptInstructions({});
+  }, [selected?.id]);
+
+  const composePromptBlock = (key: CatalogueDraftPromptKey) => {
+    if (!selected) return;
+    const composed = composeCatalogueImagePrompt(selected, key, promptInstructions[key]);
+    updatePromptBlock(key, composed);
+  };
+
   const copyText = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -774,7 +790,6 @@ export default function CatalogueProductStudio() {
     };
   }, [selected?.id, mediaRetryToken]);
 
-  const mediaLoading = mediaLoadState.status === "loading";
   const mediaRows = mediaLoadState.rows;
   const retryMediaLoad = () => setMediaRetryToken((n) => n + 1);
 
@@ -789,24 +804,6 @@ export default function CatalogueProductStudio() {
     [selected, mediaRows, mediaLoadState.status],
   );
 
-  const requiredMediaSlots = useMemo(
-    () =>
-      selected
-        ? catalogueRequiredMediaSlots(
-            {
-              productId: selected.id,
-              productName: selected.product_name,
-              category: selected.category,
-              subcategory: selected.subcategory,
-              productClass: selected.product_class,
-              isLegacy: !selected.sku,
-            },
-            mediaLoadState.status === "loaded" ? mediaRows : [],
-            { hero_image_url: selected.hero_image_url, media_status: selected.media_status },
-          )
-        : [],
-    [selected, mediaRows, mediaLoadState.status],
-  );
 
   // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
   // untouched — it just needs an accurate hero_image_url to check. mediaSummary.heroUrl (the same
@@ -1823,94 +1820,41 @@ export default function CatalogueProductStudio() {
                       </TabsContent>
 
                       <TabsContent value="media" className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-foreground">Current approved media</p>
-                          {mediaLoading ? (
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground py-2">
-                              <Loader2 size={12} className="animate-spin" /> Loading media…
-                            </div>
-                          ) : mediaLoadState.status === "error" ? (
-                            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
-                              <p className="text-[11px] text-destructive">{mediaLoadState.errorMessage}</p>
-                              <Button type="button" size="sm" variant="outline" onClick={retryMediaLoad}>
-                                <RefreshCw size={12} className="mr-1.5" /> Retry
-                              </Button>
-                            </div>
-                          ) : isMediaResultEmpty(mediaLoadState) ? (
-                            <p className="text-[11px] text-muted-foreground py-2">
-                              No media on file for this product yet.
+                        {mediaLoadState.status === "error" && (
+                          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                            <p className="text-[11px] text-destructive">
+                              {mediaLoadState.errorMessage} Readiness/Build Meter may be showing stale media status
+                              until this is retried — the uploader below still reflects live data.
                             </p>
-                          ) : (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-3">
-                                {mediaSummary.heroUrl ? (
-                                  <img
-                                    src={mediaSummary.heroUrl}
-                                    alt="Approved hero"
-                                    className="h-16 w-16 rounded-md object-cover border border-border"
-                                  />
-                                ) : (
-                                  <div className="h-16 w-16 rounded-md border border-dashed border-border flex items-center justify-center">
-                                    <ImageIcon size={16} className="text-muted-foreground/40" />
-                                  </div>
-                                )}
-                                <div className="text-[11px] text-muted-foreground">
-                                  <p className="text-foreground font-medium">
-                                    {mediaSummary.heroUrl ? "Hero image approved" : "No approved hero image yet"}
-                                  </p>
-                                  <p>
-                                    {mediaSummary.approvedMedia.length} additional approved media{" "}
-                                    {mediaSummary.approvedMedia.length === 1 ? "asset" : "assets"}.
-                                  </p>
-                                </div>
-                              </div>
-                              {mediaSummary.approvedMedia.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {mediaSummary.approvedMedia.map((m) => (
-                                    <div key={m.id} className="flex flex-col items-center gap-1">
-                                      <img src={m.url} alt={m.typeLabel} className="h-12 w-12 rounded-md object-cover border border-border" />
-                                      <span className="text-[9px] text-muted-foreground">{m.typeLabel}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {mediaLoadState.status === "loaded" && requiredMediaSlots.length > 0 && (
-                          <div className="space-y-1.5">
-                            <p className="text-xs font-semibold text-foreground">Required media slots</p>
-                            {requiredMediaSlots.map((slot) => (
-                              <div
-                                key={slot.type}
-                                className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-[11px]"
-                              >
-                                <span className="text-foreground">{slot.label}</span>
-                                {slot.status === "satisfied" ? (
-                                  <Badge variant="outline" className="text-[9px] uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-400/40">
-                                    Satisfied
-                                  </Badge>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => nav(catalogueMediaTabDeepLink(selected.id))}
-                                    className="flex items-center gap-1 text-amber-700 dark:text-amber-400 hover:underline"
-                                  >
-                                    <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 border-amber-400/40">
-                                      Missing
-                                    </Badge>
-                                  </button>
-                                )}
-                              </div>
-                            ))}
+                            <Button type="button" size="sm" variant="outline" onClick={retryMediaLoad}>
+                              <RefreshCw size={12} className="mr-1.5" /> Retry
+                            </Button>
                           </div>
                         )}
 
+                        {/* A4: the real, already-governed uploader (gallery/camera/URL, hero designation,
+                            approval workflow) replaces the former read-only summary + deep-link-out to the
+                            Full Editor. Same component Full Editor uses — same role-gated write mode
+                            (direct write vs. submit-for-approval vs. read-only), same required-slot rules
+                            (VITE_MEDIA_GOVERNANCE_MODE), same product_media/storage authority. No new
+                            authority code. onHeroChange/onMediaChange call the existing retryMediaLoad() so
+                            the anchor/Build Meter/readiness elsewhere on this page stay in sync. */}
+                        <ProductMediaUploader
+                          productId={selected.id}
+                          productSku={selected.sku}
+                          currentHero={mediaSummary.heroUrl}
+                          variant={isTestingMediaGovernance() ? "hero-only" : "full"}
+                          onHeroChange={() => retryMediaLoad()}
+                          onMediaChange={() => retryMediaLoad()}
+                        />
+
                         <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
-                          Image generation is not available in this studio — no generation service is wired up.
-                          The prompts below are text only, for use with an external tool or a future generation
-                          connector; nothing here uploads or approves media.
+                          AI image generation, enhancement, background removal, and vision-based product
+                          analysis are not available in this studio — no such service is configured or wired
+                          up (confirmed by inspection, not assumed). The prompts below are composed locally
+                          from this product's own facts plus your optional instruction — text only, for use
+                          with an external tool or a future governed generation connector; nothing here
+                          generates, enhances, or auto-approves an image.
                         </div>
 
                         {IMAGE_PROMPT_BLOCK_META.map((block) => {
@@ -1952,6 +1896,27 @@ export default function CatalogueProductStudio() {
                                 className={`text-xs ${blockIsMissing ? "border-amber-400/60 bg-amber-500/5 text-amber-800 dark:text-amber-300" : ""}`}
                                 disabled={textLocked || draftLoading}
                               />
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Input
+                                  value={promptInstructions[block.key] ?? ""}
+                                  onChange={(e) =>
+                                    setPromptInstructions((prev) => ({ ...prev, [block.key]: e.target.value }))
+                                  }
+                                  placeholder={'Optional instruction, e.g. "darker background"'}
+                                  className="h-7 text-[11px] flex-1 min-w-[160px]"
+                                  disabled={textLocked || draftLoading}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[11px]"
+                                  disabled={textLocked || draftLoading}
+                                  onClick={() => composePromptBlock(block.key)}
+                                >
+                                  <Wand2 size={11} className="mr-1" /> Compose from Product Truth
+                                </Button>
+                              </div>
                             </div>
                           );
                         })}

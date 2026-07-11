@@ -11,6 +11,7 @@ import type {
   CatalogueDraftPromptKey,
 } from "./catalogueDraftTypes";
 import { hasNumber, hasText } from "./catalogueFieldUtils";
+import { isMissingFieldOnlyMessage } from "./missingFieldMessage";
 
 export interface DraftBlockMeta {
   key: CatalogueDraftContentKey;
@@ -229,6 +230,33 @@ export function generateCatalogueImagePrompts(product: DraftProductInput): Catal
     packaging_image_prompt: packagingImagePrompt(product),
     lifestyle_image_prompt: lifestyleImagePrompt(product),
   };
+}
+
+const IMAGE_PROMPT_GENERATORS: Record<CatalogueDraftPromptKey, (p: DraftProductInput) => string> = {
+  hero_image_prompt: heroImagePrompt,
+  square_image_prompt: squareImagePrompt,
+  closeup_image_prompt: closeupImagePrompt,
+  packaging_image_prompt: packagingImagePrompt,
+  lifestyle_image_prompt: lifestyleImagePrompt,
+};
+
+/**
+ * A4: recomposes a single image prompt from the same governed per-slot template
+ * (product truth + a consistent style standard) as generateCatalogueImagePrompts, with an
+ * optional operator instruction appended as a clearly labeled addendum. Still 100% local text
+ * composition — no AI call, no image generation; this only changes what text ends up in the
+ * existing, already-persisted prompt field. A missing-field placeholder is returned as-is (an
+ * instruction has nothing real to attach to yet).
+ */
+export function composeCatalogueImagePrompt(
+  product: DraftProductInput,
+  key: CatalogueDraftPromptKey,
+  operatorInstruction?: string,
+): string {
+  const base = IMAGE_PROMPT_GENERATORS[key](product);
+  const instruction = operatorInstruction?.trim();
+  if (!instruction || isMissingFieldOnlyMessage(base)) return base;
+  return `${base} Additional instruction: ${instruction}`;
 }
 
 /** Plain-text preview of the full catalogue copy bundle — copy/paste only, no PDF generation here. */
