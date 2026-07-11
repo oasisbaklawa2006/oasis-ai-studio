@@ -1879,15 +1879,32 @@ export default function CatalogueProductStudio() {
                             mount-triggered fetch and refuses to forward anything at all once it's unmounted
                             (a stale in-flight load() can still resolve after that), forwarding only real
                             post-mount changes to retryMediaLoad() so the anchor/Build Meter/readiness
-                            elsewhere on this page stay in sync without a spurious loading/empty flicker. */}
-                        <ProductMediaUploader
-                          productId={selected.id}
-                          productSku={selected.sku}
-                          currentHero={mediaSummary.heroUrl}
-                          variant={isTestingMediaGovernance() ? "hero-only" : "full"}
-                          onHeroChange={() => handleMediaUploaderChanged()}
-                          onMediaChange={handleMediaUploaderChanged}
-                        />
+                            elsewhere on this page stay in sync without a spurious loading/empty flicker.
+
+                            Bugbot-caught: currentHero is deliberately null while mediaLoadState.status is
+                            "loading" (see mediaSummary above — hero is only ever resolved once this page's
+                            own fetch has genuinely completed, to avoid a different, earlier flicker). If the
+                            uploader mounted during that window, it could finish its own faster fetch first
+                            and still receive currentHero={null}, so its auto-hero-on-upload path (which
+                            treats a falsy currentHero as "no hero yet") could wrongly promote a fresh upload
+                            over an approved hero that genuinely exists but this page hasn't confirmed yet.
+                            Deferring the uploader's mount until loading is no longer in flight closes that
+                            window; the existing error-state behavior (uploader still usable, with the
+                            warning banner above) is intentionally left unchanged. */}
+                        {mediaLoadState.status === "loading" ? (
+                          <div className="rounded-lg border border-border bg-muted/20 p-4 text-[11px] text-muted-foreground flex items-center gap-2">
+                            <Loader2 size={12} className="animate-spin" /> Loading media…
+                          </div>
+                        ) : (
+                          <ProductMediaUploader
+                            productId={selected.id}
+                            productSku={selected.sku}
+                            currentHero={mediaSummary.heroUrl}
+                            variant={isTestingMediaGovernance() ? "hero-only" : "full"}
+                            onHeroChange={() => handleMediaUploaderChanged()}
+                            onMediaChange={handleMediaUploaderChanged}
+                          />
+                        )}
 
                         <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
                           AI image generation, enhancement, background removal, and vision-based product

@@ -464,8 +464,14 @@ export function ProductMediaUploader({
       .update(heroUrlWritePayload(null))
       .eq("id", productId);
     if (error) return toast.error(error.message);
-    if (!isStaleUploaderRequest(requestProductId)) onHeroChange?.(null);
-    toast.success("Hero cleared");
+    // Bugbot-caught: the mutation itself always targets the product this click was for, so it
+    // genuinely succeeded — but if the operator has since switched to a different product, a
+    // "Hero cleared" toast shown against the *new* product's UI would misleadingly read as if it
+    // applied to what's on screen right now. Suppress the toast (not just the callback) once stale.
+    if (!isStaleUploaderRequest(requestProductId)) {
+      onHeroChange?.(null);
+      toast.success("Hero cleared");
+    }
   };
 
   const remove = async (m: any) => {
@@ -507,7 +513,11 @@ export function ProductMediaUploader({
       await supabase.from("products").update(heroUrlWritePayload(null)).eq("id", productId);
       if (!isStaleUploaderRequest(requestProductId)) onHeroChange?.(null);
     }
-    toast.success("Photo deleted");
+    // Bugbot-caught: same reasoning as removeAsHero above — suppress the "Photo deleted" toast
+    // once the operator has moved on to a different product, so a success message never appears
+    // to describe whatever the UI happens to show right now. `load()` is left unconditional; it
+    // already self-guards (see isStaleUploaderRequest usage inside load itself).
+    if (!isStaleUploaderRequest(requestProductId)) toast.success("Photo deleted");
     await load();
   };
 
