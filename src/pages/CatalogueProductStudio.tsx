@@ -537,14 +537,19 @@ export default function CatalogueProductStudio() {
 
   // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
   // untouched — it just needs an accurate hero_image_url to check. mediaSummary.heroUrl (the same
-  // media-authority resolution the anchor/Media tab use) is fed in ahead of the raw column, so
+  // media-authority resolution the anchor/Media tab use) is fed in in place of the raw column, so
   // readiness/Build Meter can never disagree with what the operator sees elsewhere on this page.
+  // Bugbot-caught: a `?? selected.hero_image_url` fallback here used to re-leak the legacy column
+  // whenever mediaSummary.heroUrl was null — but that null is now a deliberate "no approved hero"
+  // result (see catalogueMediaSummary.ts) whenever product_media rows exist, not a signal to fall
+  // further back. mediaSummary.heroUrl already applies its own legacy fallback when there are zero
+  // rows, so passing it through directly is correct in every case.
   const readiness: ReadinessResult | null = useMemo(
     () =>
       selected
         ? computeCatalogueProductReadiness({
             ...selected,
-            hero_image_url: mediaSummary.heroUrl ?? selected.hero_image_url,
+            hero_image_url: mediaSummary.heroUrl,
           })
         : null,
     [selected, mediaSummary.heroUrl],

@@ -23,9 +23,22 @@ describe("computeCatalogueProductReadiness — hero image category", () => {
       const mediaResolvedHeroUrl = "https://cdn.example/approved-hero.jpg";
       const { categories } = computeCatalogueProductReadiness({
         ...rawColumnBlank,
-        hero_image_url: mediaResolvedHeroUrl ?? rawColumnBlank.hero_image_url,
+        hero_image_url: mediaResolvedHeroUrl,
       });
       expect(categories.find((c) => c.key === "hero_image")?.state).toBe("pass");
+    },
+  );
+
+  it(
+    "does NOT fall back to the raw hero_image_url column when mediaSummary.heroUrl is null " +
+      "(Bugbot regression: a `?? selected.hero_image_url` fallback on the page used to re-leak " +
+      "the legacy column here even when product_media rows exist with no approved hero — the page " +
+      "now passes mediaSummary.heroUrl straight through with no further fallback)",
+    () => {
+      const { categories } = computeCatalogueProductReadiness({
+        hero_image_url: null,
+      });
+      expect(categories.find((c) => c.key === "hero_image")?.state).toBe("missing");
     },
   );
 });
