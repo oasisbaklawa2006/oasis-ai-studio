@@ -50,6 +50,7 @@ import {
 import type {
   CatalogueDraftAuditRow,
   CatalogueDraftContent,
+  CatalogueDraftContentKey,
   CatalogueDraftPrompts,
   CatalogueDraftRow,
   CatalogueDraftStatus,
@@ -104,7 +105,11 @@ import {
   type CatalogueAiSourceFacts,
   type CatalogueAiTone,
 } from "@/features/catalogueAiStudio/catalogueAiGateway";
-import { CATALOGUE_DRAFT_CONTENT_KEYS } from "@/features/catalogueAiStudio/catalogueDraftTypes";
+import {
+  buildAiGenerationProvenance,
+  isAiGenerationBlockedByIdentity,
+  mergeAiGeneratedContent,
+} from "@/features/catalogueAiStudio/catalogueAiGenerationMerge";
 import { Sparkles } from "lucide-react";
 import {
   lastOpenedProduct,
@@ -206,28 +211,19 @@ function buildSourceSnapshot(
 }
 
 /**
- * A3 AI safety/provenance: records which content fields came from the governed AI gateway versus
- * a human edit made after generation, using only the existing `source_snapshot` jsonb column — no
- * schema change. Returns null when this draft version was never touched by AI generation, so old
- * drafts and products that never used AI keep an unchanged snapshot shape.
+ * A3 AI safety/provenance wrapper: resolves the AI baseline/applied-fields state into the pure
+ * `buildAiGenerationProvenance` (catalogueAiGenerationMerge.ts, unit-tested) and returns null when
+ * this draft version was never touched by AI generation, so old drafts and products that never
+ * used AI keep an unchanged `source_snapshot` shape.
  */
-function buildAiGenerationProvenance(
+function resolveAiGenerationProvenance(
   editor: EditorState,
   aiGeneratedBaseline: EditorState | null,
+  aiGeneratedFields: CatalogueDraftContentKey[] | null,
   tone: CatalogueAiTone | null,
 ): Record<string, unknown> | null {
-  if (!aiGeneratedBaseline || aiGeneratedBaseline.productId !== editor.productId) return null;
-  const fieldsEditedAfterGeneration = CATALOGUE_DRAFT_CONTENT_KEYS.filter((key) =>
-    isFieldEdited(editor.content[key], aiGeneratedBaseline.content[key]),
-  );
-  return {
-    service: "oasis-ai-chat",
-    tone,
-    fields_ai_generated: CATALOGUE_DRAFT_CONTENT_KEYS.filter(
-      (key) => !fieldsEditedAfterGeneration.includes(key),
-    ),
-    fields_human_edited_after_generation: fieldsEditedAfterGeneration,
-  };
+  if (!aiGeneratedBaseline || aiGeneratedBaseline.productId !== editor.productId || !aiGeneratedFields) return null;
+  return { ...buildAiGenerationProvenance(editor.content, aiGeneratedBaseline.content, aiGeneratedFields, tone) };
 }
 
 /** Reads a known string field out of an audit row's jsonb `metadata` — never throws on shape drift. */
@@ -579,6 +575,10 @@ export default function CatalogueProductStudio() {
   const resetFromProduct = () => {
     if (!canResetDraft || !selected) return;
     setEditorState(generateEditorState(selected));
+    // Bugbot-caught: this reload back to the local template used to leave the AI baseline/fields/
+    // tone from a prior generation in place, so `activeBaseline` kept comparing against stale AI
+    // content — clear it here too, exactly like the product-switch effect does.
+    clearAiGeneration();
     toast.success("Draft reset from current product data.");
   };
 
@@ -827,10 +827,15 @@ export default function CatalogueProductStudio() {
   // immediately show as "Edited" just for differing from the template it replaced. Reset on
   // product switch so a stale AI baseline from a previous product is never possible.
   const [aiGeneratedBaseline, setAiGeneratedBaseline] = useState<EditorState | null>(null);
+  const [aiGeneratedFields, setAiGeneratedFields] = useState<CatalogueDraftContentKey[] | null>(null);
   const [aiGeneratedTone, setAiGeneratedTone] = useState<CatalogueAiTone | null>(null);
-  useEffect(() => {
+  const clearAiGeneration = () => {
     setAiGeneratedBaseline(null);
+    setAiGeneratedFields(null);
     setAiGeneratedTone(null);
+  };
+  useEffect(() => {
+    clearAiGeneration();
   }, [selected?.id]);
   const activeBaseline: EditorState | null =
     aiGeneratedBaseline && selected && aiGeneratedBaseline.productId === selected.id
@@ -845,10 +850,7 @@ export default function CatalogueProductStudio() {
     setAiGenerationError(null);
   }, [selected?.id]);
 
-  // Only identity-level readiness blocks generation — marketing copy doesn't depend on price/
-  // packaging/media being complete, and the prompt itself (catalogueAiGateway.ts) already refuses
-  // to invent facts the product data doesn't supply.
-  const aiGenerationBlocked = !readiness || readiness.overallLabel === "Not ready";
+  const aiGenerationBlocked = isAiGenerationBlockedByIdentity(readiness);
 
   const handleGenerateAiDraft = async () => {
     if (!selected || !editor || aiGenerationBlocked) return;
@@ -871,20 +873,33 @@ export default function CatalogueProductStudio() {
       setAiGenerationError(result.reason);
       return;
     }
-    const nextContent = { ...editor.content };
+    // Bugbot-caught: this used to merge into `editor.content` captured by closure at click time.
+    // Fields stay editable while the request is in flight, so typing done during the await was
+    // silently discarded by that stale snapshot. A functional update reads the *current* state at
+    // merge time instead — including any edits made while waiting — and the `prev.productId`
+    // check ignores a stale response if the operator has since switched products (belt-and-braces
+    // alongside the `selectedIdRef` check above, which only catches the common case). The actual
+    // field-by-field merge is the pure, unit-tested `mergeAiGeneratedContent`.
+    let appliedFields: CatalogueDraftContentKey[] = [];
     let preservedCount = 0;
-    for (const key of CATALOGUE_DRAFT_CONTENT_KEYS) {
-      const alreadyEdited = activeBaseline
-        ? isFieldEdited(editor.content[key], activeBaseline.content[key])
-        : false;
-      if (alreadyEdited) {
-        preservedCount += 1;
-      } else {
-        nextContent[key] = result.content[key];
-      }
-    }
-    setEditorState({ productId, content: nextContent, prompts: editor.prompts });
-    setAiGeneratedBaseline({ productId, content: result.content, prompts: editor.prompts });
+    let mergedState: EditorState | null = null;
+    setEditorState((prev) => {
+      if (!prev || prev.productId !== productId) return prev;
+      const merge = mergeAiGeneratedContent(prev.content, result.content, activeBaseline?.content ?? null);
+      appliedFields = merge.appliedFields;
+      preservedCount = merge.preservedCount;
+      mergedState = { productId, content: merge.content, prompts: prev.prompts };
+      return mergedState;
+    });
+    if (!mergedState) return;
+    // Bugbot-caught: the baseline used to store the raw AI result for every key, including ones
+    // preserved above because the operator had already edited them — comparing the final editor
+    // against that raw baseline made preserved fields look "human-edited after generation" (as if
+    // AI had written them first). Storing the merged state instead means a preserved field's
+    // baseline exactly matches its current value, and `aiGeneratedFields` records which keys AI
+    // actually wrote so provenance can classify only those.
+    setAiGeneratedBaseline(mergedState);
+    setAiGeneratedFields(appliedFields);
     setAiGeneratedTone(aiTone);
     setAiGenerationState("success");
     if (preservedCount > 0) {
@@ -951,7 +966,7 @@ export default function CatalogueProductStudio() {
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
           source_snapshot: buildSourceSnapshot(
             selected,
-            buildAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedTone),
+            resolveAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedFields, aiGeneratedTone),
           ),
         },
         actorId: user?.id ?? null,
@@ -1012,7 +1027,7 @@ export default function CatalogueProductStudio() {
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
           source_snapshot: buildSourceSnapshot(
             selected,
-            buildAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedTone),
+            resolveAiGenerationProvenance(editor, aiGeneratedBaseline, aiGeneratedFields, aiGeneratedTone),
           ),
         },
         actorId: user?.id ?? null,
