@@ -98,6 +98,12 @@ import {
   type WorkQueueStatus,
 } from "@/features/catalogueAiStudio/catalogueWorkQueueStatus";
 import {
+  generateCatalogueContentDraft,
+  type CatalogueAiSourceFacts,
+} from "@/features/catalogueAiStudio/catalogueAiGateway";
+import { CATALOGUE_DRAFT_CONTENT_KEYS } from "@/features/catalogueAiStudio/catalogueDraftTypes";
+import { Sparkles } from "lucide-react";
+import {
   lastOpenedProduct,
   parseRecentProductEntries,
   recordRecentProduct,
@@ -784,6 +790,74 @@ export default function CatalogueProductStudio() {
     return "Product Truth complete — review content, media, and language, then submit for review.";
   }, [readiness]);
 
+  // A3: once AI generation succeeds for this product, the "Edited" badge compares against the
+  // AI-generated content instead of the local template — otherwise every AI-filled field would
+  // immediately show as "Edited" just for differing from the template it replaced. Reset on
+  // product switch so a stale AI baseline from a previous product is never possible.
+  const [aiGeneratedBaseline, setAiGeneratedBaseline] = useState<EditorState | null>(null);
+  useEffect(() => {
+    setAiGeneratedBaseline(null);
+  }, [selected?.id]);
+  const activeBaseline: EditorState | null =
+    aiGeneratedBaseline && selected && aiGeneratedBaseline.productId === selected.id
+      ? aiGeneratedBaseline
+      : generatedBaseline;
+
+  const [aiGenerationState, setAiGenerationState] = useState<"idle" | "generating" | "success" | "error">("idle");
+  const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
+  useEffect(() => {
+    setAiGenerationState("idle");
+    setAiGenerationError(null);
+  }, [selected?.id]);
+
+  // Only identity-level readiness blocks generation — marketing copy doesn't depend on price/
+  // packaging/media being complete, and the prompt itself (catalogueAiGateway.ts) already refuses
+  // to invent facts the product data doesn't supply.
+  const aiGenerationBlocked = !readiness || readiness.overallLabel === "Not ready";
+
+  const handleGenerateAiDraft = async () => {
+    if (!selected || !editor || aiGenerationBlocked) return;
+    const productId = selected.id;
+    setAiGenerationState("generating");
+    setAiGenerationError(null);
+    const facts: CatalogueAiSourceFacts = {
+      productName: selected.product_name || "Untitled product",
+      category: selected.category,
+      subcategory: selected.subcategory,
+      packSize: selected.pack_size,
+      saleTypeLabel,
+      storageInstructions: selected.storage_instructions,
+      shelfLifeDays: selected.shelf_life_days,
+    };
+    const result = await generateCatalogueContentDraft(facts);
+    if (selectedIdRef.current !== productId) return;
+    if (result.ok === false) {
+      setAiGenerationState("error");
+      setAiGenerationError(result.reason);
+      return;
+    }
+    const nextContent = { ...editor.content };
+    let preservedCount = 0;
+    for (const key of CATALOGUE_DRAFT_CONTENT_KEYS) {
+      const alreadyEdited = activeBaseline
+        ? isFieldEdited(editor.content[key], activeBaseline.content[key])
+        : false;
+      if (alreadyEdited) {
+        preservedCount += 1;
+      } else {
+        nextContent[key] = result.content[key];
+      }
+    }
+    setEditorState({ productId, content: nextContent, prompts: editor.prompts });
+    setAiGeneratedBaseline({ productId, content: result.content, prompts: editor.prompts });
+    setAiGenerationState("success");
+    if (preservedCount > 0) {
+      toast.info(`AI draft applied — ${preservedCount} field(s) you'd already edited were left unchanged.`);
+    } else {
+      toast.success("AI draft generated. Review before saving.");
+    }
+  };
+
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
   // overwrite the new product's audit history with the previous draft's events.
   const refreshAuditLog = async (draftId: string, expectedProductId: string) => {
@@ -1462,15 +1536,51 @@ export default function CatalogueProductStudio() {
                       </TabsList>
 
                       <TabsContent value="content" className="space-y-4 pt-4">
-                        <p className="text-[11px] text-muted-foreground">
-                          Generated locally from this product's current fields — no external AI call in this studio.
-                        </p>
+                        <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[11px] text-muted-foreground">
+                              Content below starts as a local template generated from this product's current
+                              fields. "Generate Complete Catalogue Draft" instead drafts every content and
+                              language field in one governed call to the AI service, based strictly on this
+                              product's saved facts — it never invents price, ingredients, allergens, nutrition,
+                              or compliance claims, and never overwrites fields you've already edited.
+                            </p>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={aiGenerationBlocked || aiGenerationState === "generating" || textLocked || draftLoading}
+                              onClick={handleGenerateAiDraft}
+                            >
+                              {aiGenerationState === "generating" ? (
+                                <Loader2 size={12} className="mr-1.5 animate-spin" />
+                              ) : (
+                                <Sparkles size={12} className="mr-1.5" />
+                              )}
+                              Generate Complete Catalogue Draft
+                            </Button>
+                          </div>
+                          {aiGenerationBlocked && (
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                              Complete Step 1 (Complete Truth) first — core product identity is missing.
+                            </p>
+                          )}
+                          {aiGenerationState === "error" && aiGenerationError && (
+                            <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+                              <AlertTriangle size={12} className="shrink-0" /> {aiGenerationError}
+                            </div>
+                          )}
+                          {aiGenerationState === "success" && (
+                            <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                              AI draft generated — review each field below before saving.
+                            </p>
+                          )}
+                        </div>
                         {DRAFT_BLOCK_META.filter((block) => !isLanguageMessagingField(block.key)).map((block) => {
                           const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
                           const blockIsEdited =
                             !blockIsMissing &&
-                            !!generatedBaseline &&
-                            isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
+                            !!activeBaseline &&
+                            isFieldEdited(editor.content[block.key], activeBaseline.content[block.key]);
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1515,9 +1625,11 @@ export default function CatalogueProductStudio() {
 
                       <TabsContent value="language" className="space-y-4 pt-4">
                         <p className="text-[11px] text-muted-foreground">
-                          Language content here (Hindi/Hinglish copy, WhatsApp draft message) is informational only —
+                          Language content here (Hindi description, WhatsApp draft message) is informational only —
                           it never blocks catalogue readiness or Central Sync. WhatsApp approval workflow is not
-                          active; this studio never sends WhatsApp messages.
+                          active; this studio never sends WhatsApp messages. "Generate Complete Catalogue Draft" on
+                          the Content step also fills these fields — the Hindi description is a genuine translation
+                          drafted by the AI service, not a machine transliteration; review it before saving.
                         </p>
                         {(() => {
                           const languageBlocks = DRAFT_BLOCK_META.filter((block) => isLanguageMessagingField(block.key));
@@ -1532,8 +1644,8 @@ export default function CatalogueProductStudio() {
                             const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
                             const blockIsEdited =
                               !blockIsMissing &&
-                              !!generatedBaseline &&
-                              isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
+                              !!activeBaseline &&
+                              isFieldEdited(editor.content[block.key], activeBaseline.content[block.key]);
                             return (
                               <div key={block.key} className="space-y-1.5">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
