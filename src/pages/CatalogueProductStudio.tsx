@@ -554,9 +554,15 @@ export default function CatalogueProductStudio() {
   const mediaRows = mediaLoadState.rows;
   const retryMediaLoad = () => setMediaRetryToken((n) => n + 1);
 
+  // Bugbot-caught: while media is loading or a fetch failed, mediaRows is deliberately [] — passing
+  // the raw `selected` product through unconditionally let summarizeCatalogueMedia's zero-rows
+  // legacy-hero fallback fire during that window, so the anchor/Build Meter could show a hero as
+  // "present" from the legacy column, then flip to "missing" once the real product_media rows load
+  // and reveal no approved hero — contradicting the Media tab's own loading/error state. Hero is
+  // only ever resolved (fallback included) once a load has genuinely completed.
   const mediaSummary = useMemo(
-    () => summarizeCatalogueMedia(selected, mediaRows),
-    [selected, mediaRows],
+    () => summarizeCatalogueMedia(mediaLoadState.status === "loaded" ? selected : null, mediaRows),
+    [selected, mediaRows, mediaLoadState.status],
   );
 
   const requiredMediaSlots = useMemo(

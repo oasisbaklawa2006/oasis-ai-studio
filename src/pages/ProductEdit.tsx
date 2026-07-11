@@ -90,6 +90,7 @@ import {
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
+import { resolveProductEditTab } from "@/features/productAuthority/productEditTabs";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   mapMoqRules,
@@ -652,7 +653,12 @@ const ProductEdit = () => {
   // this product directly on the section that owns a given field. Once mounted, navigation
   // within this page still goes through setTab/localStorage as before, so it never fights the
   // operator's own tab clicks.
-  const deepLinkTab = searchParams.get("tab");
+  // Bugbot-caught: an unvalidated ?tab= (mistyped or an obsolete deep link) previously assigned
+  // straight to controlled tab state, leaving the Tabs control on a non-existent panel with no
+  // fallback. resolveProductEditTab() validates against the real TabsTrigger values and falls back
+  // to "identity".
+  const rawDeepLinkTab = searchParams.get("tab");
+  const deepLinkTab = rawDeepLinkTab ? resolveProductEditTab(rawDeepLinkTab) : null;
   const [tab, setTab] = useState<string>(() => {
     if (deepLinkTab) return deepLinkTab;
     try {
