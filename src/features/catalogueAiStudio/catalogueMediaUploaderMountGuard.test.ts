@@ -207,6 +207,20 @@ describe("advanceMediaUploaderMountGuard (Bugbot: first-ever Media-tab open for 
     const result = consumeMediaUploaderChange(state);
     expect(result.shouldForward).toBe(true);
   });
+
+  it("absorbs a first-ever mount's own pending load() even if the Media tab closes before it resolves (Bugbot: 'Unmounted load still notifies parent')", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "content", "prod-1", true);
+    // First-ever mount is decided as redundant (skipNextChange=true) — but nothing has consumed
+    // it yet, simulating the uploader's own initial load() still being in flight.
+    state = step(state, "media", "prod-1", true);
+
+    // Operator closes the tab immediately, before that load() resolves. The prior implementation
+    // reset skipNextChange to false the instant nothing was mounted, so the pending echo would
+    // wrongly forward once it finally arrived — it must not.
+    state = step(state, "content", "prod-1", true);
+    const result = consumeMediaUploaderChange(state); // the mount's own pending load() finally resolves
+    expect(result.shouldForward).toBe(false);
+  });
 });
 
 describe("consumeMediaUploaderChange (Bugbot: off-tab hero sync must not be dropped)", () => {

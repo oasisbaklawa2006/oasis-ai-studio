@@ -35,19 +35,29 @@
  * them into one opaque "mount key" string, since the *reason* the uploader wasn't mounted a moment
  * ago (tab closed vs. still loading) determines whether this mount is safe to skip.
  *
- * Bugbot (this round): round 9's `cameFromLoadingCycle` check only recognized "the tail of our own
- * reload cycle" by requiring the tab to have already been open a moment ago. It missed the far more
- * common case: opening the Media tab for the *first time* for a product whose media the page
- * already fetched independently (e.g. the operator selected a product, stayed on Content, and only
- * later clicked into Media). There, `prior.tabOpen` was `false` the whole time — indistinguishable,
- * by the old logic, from a genuine bare reopen after an absorbed mutation — so it forwarded and
- * forced a wholly unnecessary `retryMediaLoad()`, even though nothing could possibly be stale (no
- * mutation can happen before the uploader has ever been mounted for this product at all, since
- * every media mutation runs *through* this same uploader). `everMountedForProduct` tracks whether
- * the uploader has been mounted at least once for the *current* productId — reset on every genuine
- * product switch — so a truly first-ever mount is always absorbed, and the existing reopen/
- * reload-cycle distinctions only apply once there's actually been a prior mount to have missed
- * something during.
+ * Bugbot (round 10, "Media tab redundant reload"): round 9's `cameFromLoadingCycle` check only
+ * recognized "the tail of our own reload cycle" by requiring the tab to have already been open a
+ * moment ago. It missed the far more common case: opening the Media tab for the *first time* for a
+ * product whose media the page already fetched independently (e.g. the operator selected a product,
+ * stayed on Content, and only later clicked into Media). There, `prior.tabOpen` was `false` the
+ * whole time — indistinguishable, by the old logic, from a genuine bare reopen after an absorbed
+ * mutation — so it forwarded and forced a wholly unnecessary `retryMediaLoad()`, even though nothing
+ * could possibly be stale (no mutation can happen before the uploader has ever been mounted for
+ * this product at all, since every media mutation runs *through* this same uploader).
+ * `everMountedForProduct` tracks whether the uploader has been mounted at least once for the
+ * *current* productId — reset on every genuine product switch — so a truly first-ever mount is
+ * always absorbed, and the existing reopen/reload-cycle distinctions only apply once there's
+ * actually been a prior mount to have missed something during.
+ *
+ * Bugbot (round 11, "Unmounted load still notifies parent"): the not-mounted branch used to
+ * unconditionally reset `skipNextChange` to `false`, on the assumption it no longer mattered once
+ * nothing was mounted. Once `consumeMediaUploaderChange` started allowing off-tab callbacks through
+ * (round 10's "off-tab hero sync dropped" fix — see its doc comment), that assumption broke: if the
+ * Media tab closed while a mount's own initial `load()` was still in flight, the reset destroyed
+ * that mount's "provably redundant" decision, so the pending echo forwarded and forced a spurious
+ * `retryMediaLoad()` once it resolved after close. The not-mounted branch now carries
+ * `prior.skipNextChange` forward instead of resetting it — it's only recomputed by a genuine new
+ * mount transition, and only consumed once a callback arrives.
  */
 
 export interface MediaUploaderMountGuardState {
@@ -105,8 +115,13 @@ export function advanceMediaUploaderMountGuard(
   if (!nowMounted) {
     // Nothing mounted right now — consumeMediaUploaderChange no longer treats "not mounted" as
     // automatic proof of staleness (see its own doc comment), so this flag is what actually decides
-    // whether the next callback forwards; reset it so a fresh mount transition decides it anew.
-    return { ...next, skipNextChange: false };
+    // whether the next callback forwards. Bugbot-caught (this round): resetting it to false here
+    // unconditionally discarded a mount's own "provably redundant" decision the instant the tab
+    // closed — including while that mount's own initial load() was still in flight — so a harmless
+    // pending echo that resolved after close would wrongly forward once it finally arrived. Carry
+    // the prior decision forward instead; it's only reset when a genuine new mount transition
+    // recomputes it below, and only consumed once a callback actually arrives.
+    return { ...next, skipNextChange: prior.skipNextChange };
   }
 
   if (wasMounted && !productChanged) {
