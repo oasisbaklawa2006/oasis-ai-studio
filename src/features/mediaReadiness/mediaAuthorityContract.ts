@@ -122,13 +122,14 @@ export async function syncProductMediaAuthority(
 }
 
 /**
- * Direct master-write: persist approved hero_image row + sync products columns.
- * Use after hero upload so readiness never loses the hero URL when rows drift.
+ * Direct master-write: finds the product_media row matching heroUrl and marks it
+ * hero_image/approved, or inserts a fresh one if none exists yet. This is only the row-identity
+ * half of designating a hero — it deliberately does NOT repair other rows or sync the `products`
+ * columns itself; callers reconcile authority (repair + sync + publish) separately afterward via
+ * `reconcileProductMediaAuthority` (productMediaMutationAuthority.ts), the one shared completion
+ * pipeline every product-media mutation now funnels through.
  */
-export async function persistDirectHeroUpload(
-  productId: string,
-  heroUrl: string,
-): Promise<{ media_status: DerivedMediaStatus; hero_image_url: string | null; rows: ProductMediaRow[] }> {
+export async function applyHeroDesignation(productId: string, heroUrl: string): Promise<void> {
   const url = heroUrl.trim();
   if (!url) {
     throw new Error("Hero URL is required");
@@ -142,7 +143,7 @@ export async function persistDirectHeroUpload(
 
   if (loadErr) throw new Error(loadErr.message);
 
-  let rows: ProductMediaRow[] = existing ?? [];
+  const rows: ProductMediaRow[] = existing ?? [];
   const match = rows.find((r) => String(r.file_url ?? "") === url);
 
   if (match?.id) {
@@ -152,9 +153,6 @@ export async function persistDirectHeroUpload(
         .update({ type: "hero_image", status: "approved" })
         .eq("id", match.id);
       if (upErr) throw new Error(upErr.message);
-      rows = rows.map((r) =>
-        r.id === match.id ? { ...r, type: "hero_image", status: "approved" } : r,
-      );
     }
   } else {
     const insertRes = await insertProductMediaRow({
@@ -165,12 +163,7 @@ export async function persistDirectHeroUpload(
       alt_text: "hero_upload",
     });
     if (!insertRes.ok) throw new Error(insertRes.message);
-    rows = [insertRes.data as ProductMediaRow, ...rows];
   }
-
-  const repaired = await repairDirectMasterMediaRows(productId, rows);
-  const synced = await syncProductMediaAuthority(productId, repaired, { fallbackHeroUrl: url });
-  return { ...synced, rows: repaired };
 }
 
 /**

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isCurrentAsyncRequest, shouldFetchById } from "./requestRace";
+import { isCurrentAsyncRequest, isSupersededById, shouldFetchById } from "./requestRace";
 
 describe("isCurrentAsyncRequest (Defect 2 regression)", () => {
   it("normal single-product load — the only request in flight is current", () => {
@@ -48,6 +48,20 @@ describe("isCurrentAsyncRequest (Defect 2 regression)", () => {
     expect(isCurrentAsyncRequest("x", true, "x")).toBe(false);
     expect(isCurrentAsyncRequest("x", false, "y")).toBe(false);
     expect(isCurrentAsyncRequest("x", true, "y")).toBe(false);
+  });
+});
+
+describe("isSupersededById (Bugbot regression on PR #84: unmount blocked hero parent sync)", () => {
+  it("is not superseded when the id is unchanged, regardless of unmount — unlike isCurrentAsyncRequest, it takes no cancelled flag at all", () => {
+    expect(isSupersededById("product-a", "product-a")).toBe(false);
+  });
+
+  it("is superseded once a different id has become latest (a genuine product switch)", () => {
+    expect(isSupersededById("product-a", "product-b")).toBe(true);
+  });
+
+  it("is superseded when nothing is latest at all", () => {
+    expect(isSupersededById("product-a", null)).toBe(true);
   });
 });
 

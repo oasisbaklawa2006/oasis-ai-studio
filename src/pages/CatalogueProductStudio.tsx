@@ -25,6 +25,8 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
+import { ProductMediaUploader } from "@/components/ProductMediaUploader";
+import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +45,7 @@ import {
   DRAFT_BLOCK_META,
   IMAGE_PROMPT_BLOCK_META,
   buildExportBundlePreview,
+  composeCatalogueImagePrompt,
   generateCatalogueDraftContent,
   generateCatalogueImagePrompts,
   type DraftProductInput,
@@ -51,6 +54,7 @@ import type {
   CatalogueDraftAuditRow,
   CatalogueDraftContent,
   CatalogueDraftContentKey,
+  CatalogueDraftPromptKey,
   CatalogueDraftPrompts,
   CatalogueDraftRow,
   CatalogueDraftStatus,
@@ -69,23 +73,26 @@ import {
   canApprove,
   canReject,
   canSubmitForReview,
+  isExportBundleDistributable,
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
 import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
 import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
 import { fullEditorDeepLink, fullEditorTabForCategory } from "@/features/catalogueAiStudio/catalogueStudioNavigation";
 import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
 import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
+import {
+  getCachedProductMediaAuthority,
+  subscribeToProductMediaAuthority,
+} from "@/features/productAuthority/productMediaMutationAuthority";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
 import {
   INITIAL_MEDIA_LOAD_STATE,
-  isMediaResultEmpty,
   mediaLoadFailed,
   mediaLoadStarted,
   mediaLoadSucceeded,
   type MediaLoadState,
 } from "@/features/catalogueAiStudio/catalogueMediaLoadState";
-import { catalogueMediaTabDeepLink, catalogueRequiredMediaSlots } from "@/features/catalogueAiStudio/catalogueMediaSlots";
 import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
 import {
   isInvalidCatalogueStudioTab,
@@ -609,6 +616,20 @@ export default function CatalogueProductStudio() {
     });
   };
 
+  // A4: ephemeral per-slot operator instruction for prompt composition — never persisted on its
+  // own (only the composed text it produces is saved, into the same existing prompt column), so no
+  // schema change. Reset on product switch so an instruction never leaks onto a different product.
+  const [promptInstructions, setPromptInstructions] = useState<Partial<Record<CatalogueDraftPromptKey, string>>>({});
+  useEffect(() => {
+    setPromptInstructions({});
+  }, [selected?.id]);
+
+  const composePromptBlock = (key: CatalogueDraftPromptKey) => {
+    if (!selected) return;
+    const composed = composeCatalogueImagePrompt(selected, key, promptInstructions[key]);
+    updatePromptBlock(key, composed);
+  };
+
   const copyText = async (text: string, label: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -632,10 +653,16 @@ export default function CatalogueProductStudio() {
 
   // Always holds the product id actually on screen right now, read synchronously by every in-flight
   // async handler/effect below — never the stale product id closed over when that async call started.
+  // Bugbot-caught: this used to be written from a useEffect, which only runs after commit/paint. A
+  // promise continuation (e.g. an authority publish) resolving via microtask between commit and that
+  // passive-effect flush could still observe the previous product's id — able to paint a late publish
+  // for the old product onto the just-reset new-product state, or drop a fresh publish for the new
+  // product because the ref hadn't caught up yet. Writing it directly during render (the same
+  // synchronous-ref pattern mediaLoadProductIdRef already uses below) keeps it always accurate the
+  // instant a render for the new selection happens — no gating needed, since a plain reassignment is
+  // safe and idempotent to repeat every render.
   const selectedIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    selectedIdRef.current = selected?.id ?? null;
-  }, [selected]);
+  selectedIdRef.current = selected?.id ?? null;
 
   // One product-switch effect owns the entire transition: clears the previous product's persisted
   // draft/audit/reject state and seeds a fresh generated draft immediately, then hydrates the real
@@ -726,6 +753,18 @@ export default function CatalogueProductStudio() {
   const [mediaLoadState, setMediaLoadState] = useState<MediaLoadState>(INITIAL_MEDIA_LOAD_STATE);
   // Bumped by the Retry button to re-run the fetch effect without duplicating its logic.
   const [mediaRetryToken, setMediaRetryToken] = useState(0);
+  // Bugbot-caught: "Remove as hero" publishes { heroUrl: null, rows: unchanged } — it deliberately
+  // leaves the still-approved hero_image row in product_media untouched (removeAsHero's own
+  // comment: "the image stays in the gallery"), so re-deriving heroUrl from rows alone (as
+  // mediaSummary below does) would immediately resurrect the cleared hero. Track the latest
+  // *published* heroUrl for the current product separately and let it take precedence over the
+  // rows-derived value, mirroring how ProductEdit.tsx applies result.heroUrl directly instead of
+  // re-deriving it. Reset is implicit: gated on productId match, so switching products (or a fresh
+  // page load that hasn't published anything yet) naturally falls back to the rows-derived value.
+  const [publishedHeroOverride, setPublishedHeroOverride] = useState<{
+    productId: string;
+    heroUrl: string | null;
+  } | null>(null);
   // Bugbot-caught: the useEffect below resets mediaLoadState on product switch, but effects run
   // after the render commits — for one painted frame, mediaSummary/anchor hero/readiness/required
   // slots would still read the PREVIOUS product's loaded rows against the newly selected product.
@@ -736,6 +775,19 @@ export default function CatalogueProductStudio() {
   if (mediaLoadProductIdRef.current !== (selected?.id ?? null)) {
     mediaLoadProductIdRef.current = selected?.id ?? null;
     setMediaLoadState(mediaLoadStarted());
+    // Bugbot-caught: publishedHeroOverride was previously only ever set by a LIVE
+    // subscribeToProductMediaAuthority event received while this page was already mounted — a hero
+    // change made earlier this session (e.g. via Full Editor's "Remove as hero", or an earlier visit
+    // to a different product) was never consulted, so selecting that product here could still derive
+    // a stale hero from rows alone. Seed synchronously (same render-time-reset pattern as
+    // mediaLoadState above) from the same authorityByProduct cache getCachedProductMediaAuthority
+    // already maintains and ProductMediaUploader's own passive-fetch effect already reads — no new
+    // read path invented. Explicitly resets to null when nothing is cached for the new product, so a
+    // previous product's override can never leak across a switch.
+    const cachedAuthority = selected ? getCachedProductMediaAuthority(selected.id) : null;
+    setPublishedHeroOverride(
+      cachedAuthority ? { productId: cachedAuthority.productId, heroUrl: cachedAuthority.heroUrl } : null,
+    );
   }
   useEffect(() => {
     const productId = selected?.id ?? null;
@@ -758,7 +810,13 @@ export default function CatalogueProductStudio() {
         if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", mediaError.message);
         setMediaLoadState(mediaLoadFailed());
       } else {
-        setMediaLoadState(mediaLoadSucceeded((data as CatalogueMediaRow[]) ?? []));
+        // Bugbot-caught: this fetch previously applied its own result unconditionally — if a
+        // mutation completed elsewhere (Full Editor in another tab, or this page's own uploader)
+        // while this fetch was still in flight, productMediaMutationAuthority would have already
+        // published a newer snapshot, and this stale read would silently overwrite it. Re-check the
+        // cache and prefer it, same pattern ProductMediaUploader's own passive fetch already uses.
+        const cached = getCachedProductMediaAuthority(productId);
+        setMediaLoadState(mediaLoadSucceeded(cached ? cached.rows : (data as CatalogueMediaRow[]) ?? []));
       }
     })
       // Bugbot-caught: the Supabase `{ error }` branch above only covers a resolved response —
@@ -774,9 +832,27 @@ export default function CatalogueProductStudio() {
     };
   }, [selected?.id, mediaRetryToken]);
 
-  const mediaLoading = mediaLoadState.status === "loading";
   const mediaRows = mediaLoadState.rows;
   const retryMediaLoad = () => setMediaRetryToken((n) => n + 1);
+
+  // Root-cause architectural fix (replacing the mount-guard/callback-suppression patches from
+  // earlier rounds): reconciliation of a committed product-media mutation must never depend on
+  // ProductMediaUploader's own mount state — a closed Media tab does not retroactively invalidate
+  // a write that already committed. This page subscribes to the ONE shared authority
+  // (productMediaMutationAuthority.ts) for its own lifetime (not the uploader's), and applies a
+  // published result directly to this page's own media state only when it matches whatever product
+  // is currently selected — no retryMediaLoad()/refetch round trip needed, since the authority
+  // module's reconciliation already re-read the fresh rows itself.
+  useEffect(() => {
+    return subscribeToProductMediaAuthority((result) => {
+      if (result.productId !== selectedIdRef.current) return;
+      setMediaLoadState(mediaLoadSucceeded(result.rows));
+      // Bugbot-caught: this subscriber previously only applied result.rows, silently discarding
+      // result.heroUrl — so a cleared hero (rows unchanged by design) never reached the sticky
+      // bar/readiness/embedded uploader here, unlike ProductEdit.tsx which already applies both.
+      setPublishedHeroOverride({ productId: result.productId, heroUrl: result.heroUrl });
+    });
+  }, []);
 
   // Bugbot-caught: while media is loading or a fetch failed, mediaRows is deliberately [] — passing
   // the raw `selected` product through unconditionally let summarizeCatalogueMedia's zero-rows
@@ -784,29 +860,18 @@ export default function CatalogueProductStudio() {
   // "present" from the legacy column, then flip to "missing" once the real product_media rows load
   // and reveal no approved hero — contradicting the Media tab's own loading/error state. Hero is
   // only ever resolved (fallback included) once a load has genuinely completed.
-  const mediaSummary = useMemo(
-    () => summarizeCatalogueMedia(mediaLoadState.status === "loaded" ? selected : null, mediaRows),
-    [selected, mediaRows, mediaLoadState.status],
-  );
+  const mediaSummary = useMemo(() => {
+    const base = summarizeCatalogueMedia(mediaLoadState.status === "loaded" ? selected : null, mediaRows);
+    // Bugbot-caught: apply the latest published heroUrl (e.g. an explicit "Remove as hero" clear)
+    // over the rows-derived value whenever it's for the currently selected product — see
+    // publishedHeroOverride's declaration above for why rows alone can't be trusted for this.
+    if (selected && publishedHeroOverride && publishedHeroOverride.productId === selected.id) {
+      const heroUrl = publishedHeroOverride.heroUrl;
+      return { ...base, heroUrl, approvedCount: base.approvedMedia.length + (heroUrl ? 1 : 0) };
+    }
+    return base;
+  }, [selected, mediaRows, mediaLoadState.status, publishedHeroOverride]);
 
-  const requiredMediaSlots = useMemo(
-    () =>
-      selected
-        ? catalogueRequiredMediaSlots(
-            {
-              productId: selected.id,
-              productName: selected.product_name,
-              category: selected.category,
-              subcategory: selected.subcategory,
-              productClass: selected.product_class,
-              isLegacy: !selected.sku,
-            },
-            mediaLoadState.status === "loaded" ? mediaRows : [],
-            { hero_image_url: selected.hero_image_url, media_status: selected.media_status },
-          )
-        : [],
-    [selected, mediaRows, mediaLoadState.status],
-  );
 
   // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
   // untouched — it just needs an accurate hero_image_url to check. mediaSummary.heroUrl (the same
@@ -971,6 +1036,21 @@ export default function CatalogueProductStudio() {
     editor.productId === selected.id
       ? persistedDraft
       : null;
+
+  // Owner-smoke-test finding: Export tab's "Copy bundle" must never hand out a rejected/incomplete
+  // draft's buyer-facing text unguarded — only an APPROVED draft with no remaining missing-field
+  // placeholder anywhere in its content is safe to copy externally. Read from `editor.content` (not
+  // the raw persisted row) so this reacts to in-progress edits too, not just the last save.
+  const exportBundleDistributable = useMemo(
+    () =>
+      editor
+        ? isExportBundleDistributable(
+            (currentPersistedDraft?.status as CatalogueDraftStatus | undefined) ?? null,
+            editor.content,
+          )
+        : false,
+    [editor, currentPersistedDraft?.status],
+  );
 
   // Locked only while UNDER_REVIEW: a reviewer must approve/reject before content can change again.
   const textLocked = currentPersistedDraft?.status === "UNDER_REVIEW";
@@ -1660,13 +1740,21 @@ export default function CatalogueProductStudio() {
                               product's saved facts — it never invents price, ingredients, allergens, nutrition,
                               or compliance claims, and never overwrites fields you've already edited.
                             </p>
-                            <div className="flex items-center gap-2">
+                            {/* Bugbot-caught (authenticated mobile smoke test): this row was a non-wrapping
+                                flex container holding a fixed-width Select plus a long-label Button (Button's
+                                own base styling is whitespace-nowrap, so the label itself never shrinks) —
+                                on a narrow phone viewport neither item could give way, so the Button overflowed
+                                past the right edge, its label clipped, and introduced horizontal page scroll.
+                                flex-wrap plus full-width-until-sm sizing lets the tone selector and Generate
+                                button stack cleanly on mobile while reverting to the original fixed-width,
+                                side-by-side desktop/tablet layout at the sm breakpoint (640px+) unchanged. */}
+                            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                               <Select
                                 value={aiTone}
                                 onValueChange={(v) => setAiTone(v as CatalogueAiTone)}
                                 disabled={aiGenerationState === "generating"}
                               >
-                                <SelectTrigger className="h-8 w-[140px] text-[11px]">
+                                <SelectTrigger className="h-8 w-full sm:w-[140px] text-[11px]">
                                   <SelectValue placeholder="Tone" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -1680,6 +1768,7 @@ export default function CatalogueProductStudio() {
                               <Button
                                 type="button"
                                 size="sm"
+                                className="w-full sm:w-auto"
                                 disabled={aiGenerationBlocked || aiGenerationState === "generating" || textLocked || draftLoading}
                                 onClick={handleGenerateAiDraft}
                               >
@@ -1823,94 +1912,57 @@ export default function CatalogueProductStudio() {
                       </TabsContent>
 
                       <TabsContent value="media" className="space-y-4 pt-4">
-                        <div className="space-y-2">
-                          <p className="text-xs font-semibold text-foreground">Current approved media</p>
-                          {mediaLoading ? (
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground py-2">
-                              <Loader2 size={12} className="animate-spin" /> Loading media…
-                            </div>
-                          ) : mediaLoadState.status === "error" ? (
-                            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
-                              <p className="text-[11px] text-destructive">{mediaLoadState.errorMessage}</p>
-                              <Button type="button" size="sm" variant="outline" onClick={retryMediaLoad}>
-                                <RefreshCw size={12} className="mr-1.5" /> Retry
-                              </Button>
-                            </div>
-                          ) : isMediaResultEmpty(mediaLoadState) ? (
-                            <p className="text-[11px] text-muted-foreground py-2">
-                              No media on file for this product yet.
+                        {mediaLoadState.status === "error" && (
+                          <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                            <p className="text-[11px] text-destructive">
+                              {mediaLoadState.errorMessage} Readiness/Build Meter may be showing stale media status
+                              until this is retried — the uploader below still reflects live data.
                             </p>
-                          ) : (
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-3">
-                                {mediaSummary.heroUrl ? (
-                                  <img
-                                    src={mediaSummary.heroUrl}
-                                    alt="Approved hero"
-                                    className="h-16 w-16 rounded-md object-cover border border-border"
-                                  />
-                                ) : (
-                                  <div className="h-16 w-16 rounded-md border border-dashed border-border flex items-center justify-center">
-                                    <ImageIcon size={16} className="text-muted-foreground/40" />
-                                  </div>
-                                )}
-                                <div className="text-[11px] text-muted-foreground">
-                                  <p className="text-foreground font-medium">
-                                    {mediaSummary.heroUrl ? "Hero image approved" : "No approved hero image yet"}
-                                  </p>
-                                  <p>
-                                    {mediaSummary.approvedMedia.length} additional approved media{" "}
-                                    {mediaSummary.approvedMedia.length === 1 ? "asset" : "assets"}.
-                                  </p>
-                                </div>
-                              </div>
-                              {mediaSummary.approvedMedia.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {mediaSummary.approvedMedia.map((m) => (
-                                    <div key={m.id} className="flex flex-col items-center gap-1">
-                                      <img src={m.url} alt={m.typeLabel} className="h-12 w-12 rounded-md object-cover border border-border" />
-                                      <span className="text-[9px] text-muted-foreground">{m.typeLabel}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {mediaLoadState.status === "loaded" && requiredMediaSlots.length > 0 && (
-                          <div className="space-y-1.5">
-                            <p className="text-xs font-semibold text-foreground">Required media slots</p>
-                            {requiredMediaSlots.map((slot) => (
-                              <div
-                                key={slot.type}
-                                className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-[11px]"
-                              >
-                                <span className="text-foreground">{slot.label}</span>
-                                {slot.status === "satisfied" ? (
-                                  <Badge variant="outline" className="text-[9px] uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-400/40">
-                                    Satisfied
-                                  </Badge>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => nav(catalogueMediaTabDeepLink(selected.id))}
-                                    className="flex items-center gap-1 text-amber-700 dark:text-amber-400 hover:underline"
-                                  >
-                                    <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 border-amber-400/40">
-                                      Missing
-                                    </Badge>
-                                  </button>
-                                )}
-                              </div>
-                            ))}
+                            <Button type="button" size="sm" variant="outline" onClick={retryMediaLoad}>
+                              <RefreshCw size={12} className="mr-1.5" /> Retry
+                            </Button>
                           </div>
                         )}
 
+                        {/* A4: the real, already-governed uploader (gallery/camera/URL, hero designation,
+                            approval workflow) replaces the former read-only summary + deep-link-out to the
+                            Full Editor. Same component Full Editor uses — same role-gated write mode
+                            (direct write vs. submit-for-approval vs. read-only), same required-slot rules
+                            (VITE_MEDIA_GOVERNANCE_MODE), same product_media/storage authority. Reconciliation
+                            after a mutation now flows through the shared productMediaMutationAuthority
+                            subscription set up above — not through callback props on this component — so it
+                            stays correct regardless of this component's own mount state.
+
+                            Bugbot-caught: currentHero is deliberately null while mediaLoadState.status is
+                            "loading" (see mediaSummary above — hero is only ever resolved once this page's
+                            own fetch has genuinely completed, to avoid a different, earlier flicker). If the
+                            uploader mounted during that window, it could finish its own faster fetch first
+                            and still receive currentHero={null}, so its auto-hero-on-upload path (which
+                            treats a falsy currentHero as "no hero yet") could wrongly promote a fresh upload
+                            over an approved hero that genuinely exists but this page hasn't confirmed yet.
+                            Deferring the uploader's mount until loading is no longer in flight closes that
+                            window; the existing error-state behavior (uploader still usable, with the
+                            warning banner above) is intentionally left unchanged. */}
+                        {mediaLoadState.status === "loading" ? (
+                          <div className="rounded-lg border border-border bg-muted/20 p-4 text-[11px] text-muted-foreground flex items-center gap-2">
+                            <Loader2 size={12} className="animate-spin" /> Loading media…
+                          </div>
+                        ) : (
+                          <ProductMediaUploader
+                            productId={selected.id}
+                            productSku={selected.sku}
+                            currentHero={mediaSummary.heroUrl}
+                            variant={isTestingMediaGovernance() ? "hero-only" : "full"}
+                          />
+                        )}
+
                         <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
-                          Image generation is not available in this studio — no generation service is wired up.
-                          The prompts below are text only, for use with an external tool or a future generation
-                          connector; nothing here uploads or approves media.
+                          AI image generation, enhancement, background removal, and vision-based product
+                          analysis are not available in this studio — no such service is configured or wired
+                          up (confirmed by inspection, not assumed). The prompts below are composed locally
+                          from this product's own facts plus your optional instruction — text only, for use
+                          with an external tool or a future governed generation connector; nothing here
+                          generates, enhances, or auto-approves an image.
                         </div>
 
                         {IMAGE_PROMPT_BLOCK_META.map((block) => {
@@ -1952,6 +2004,27 @@ export default function CatalogueProductStudio() {
                                 className={`text-xs ${blockIsMissing ? "border-amber-400/60 bg-amber-500/5 text-amber-800 dark:text-amber-300" : ""}`}
                                 disabled={textLocked || draftLoading}
                               />
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <Input
+                                  value={promptInstructions[block.key] ?? ""}
+                                  onChange={(e) =>
+                                    setPromptInstructions((prev) => ({ ...prev, [block.key]: e.target.value }))
+                                  }
+                                  placeholder={'Optional instruction, e.g. "darker background"'}
+                                  className="h-7 text-[11px] flex-1 min-w-[160px]"
+                                  disabled={textLocked || draftLoading}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-[11px]"
+                                  disabled={textLocked || draftLoading}
+                                  onClick={() => composePromptBlock(block.key)}
+                                >
+                                  <Wand2 size={11} className="mr-1" /> Compose from Product Truth
+                                </Button>
+                              </div>
                             </div>
                           );
                         })}
@@ -1976,18 +2049,63 @@ export default function CatalogueProductStudio() {
                       </TabsContent>
 
                       <TabsContent value="export" className="space-y-3 pt-4">
-                        <div className="flex items-center justify-between gap-2">
+                        {/* Bugbot-caught (same mobile-overflow audit as the Content tab's Generate row):
+                            this row had no flex-wrap, so the heading text plus button could not give way to
+                            each other on a narrow phone viewport. flex-wrap lets the button drop to its own
+                            line on mobile without affecting desktop/tablet, where both already fit on one row. */}
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                             <FileText size={14} /> Export / copy bundle preview
                           </div>
-                          <Button type="button" size="sm" variant="outline" onClick={() => copyText(exportPreview, "Export bundle")}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={!exportBundleDistributable}
+                            title={
+                              exportBundleDistributable
+                                ? undefined
+                                : "Only an Approved draft with no missing-field placeholders can be copied for external use."
+                            }
+                            onClick={() => copyText(exportPreview, "Export bundle")}
+                          >
                             <Copy size={12} className="mr-1.5" /> Copy bundle
                           </Button>
                         </div>
+                        {!exportBundleDistributable && (
+                          <div className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive">
+                            <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                            <span>
+                              <strong>Internal review only — do not use externally.</strong> This draft is{" "}
+                              {currentPersistedDraft
+                                ? STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]
+                                : "not yet saved"}
+                              , not Approved, and/or still has a missing-field placeholder in one of its blocks
+                              (e.g. "Add missing field first: ..."). Copy is disabled until the draft is Approved
+                              and every block is complete. If a field shown here as missing has since been set on
+                              the product, this saved draft won't reflect it automatically — reset or regenerate
+                              the draft to refresh it; historical rejected/approved content is never silently
+                              rewritten.
+                            </span>
+                          </div>
+                        )}
                         <p className="text-[11px] text-muted-foreground">
                           Text preview only — no PDF is generated in this studio.
                         </p>
-                        <Textarea value={exportPreview} readOnly rows={16} className="text-xs font-mono" />
+                        {/* Bugbot-caught: disabling the Copy button alone doesn't stop an operator from
+                            selecting and copying the same text directly out of the textarea, bypassing the
+                            gate entirely. Suppress the actual bundle content, not just the button, whenever
+                            it isn't distributable. */}
+                        <Textarea
+                          value={
+                            exportBundleDistributable
+                              ? exportPreview
+                              : "Bundle text hidden — only an Approved draft with no missing-field placeholders can be previewed or copied for external use. See the warning above for what's blocking this draft."
+                          }
+                          readOnly
+                          rows={16}
+                          className="text-xs font-mono"
+                        />
                       </TabsContent>
                     </Tabs>
                   </CardContent>

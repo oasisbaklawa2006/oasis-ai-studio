@@ -63,6 +63,7 @@ import {
   repairDirectMasterMediaRows,
   syncProductMediaAuthority,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
+import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
 import {
   isTestingMediaGovernance,
   labelStatusInfoLine,
@@ -943,6 +944,27 @@ const ProductEdit = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authorityLoaded, autoClearGate.allowed, form.is_catalogue_ready]);
+
+  // Root-cause architectural fix (replacing ProductMediaUploader's onHeroChange/onMediaChange
+  // callback props): reconciliation of a committed product-media mutation must never depend on
+  // that component's own mount state. ProductMediaUploader's direct-write mutation paths (only
+  // reachable once useCatalogueMediaWriteMode has already granted "direct" — the same authority
+  // level applyMediaAuthority's own canWriteProductsDirectly gate below requires) now publish
+  // their reconciled result to the shared productMediaMutationAuthority module themselves; this
+  // page applies it directly to form/productMediaRows without re-deriving or re-checking role,
+  // since the module already completed that as part of producing the result.
+  useEffect(() => {
+    return subscribeToProductMediaAuthority((result) => {
+      if (!id || result.productId !== id) return;
+      setForm((f: Record<string, unknown>) => ({
+        ...f,
+        media_status: result.mediaStatus,
+        hero_image_url: result.heroUrl,
+        image_url: result.heroUrl,
+      }));
+      setProductMediaRows(result.rows);
+    });
+  }, [id]);
 
   const applyMediaAuthority = async (
     productId: string,
@@ -2039,14 +2061,6 @@ const ProductEdit = () => {
                     hero_image_url: form.hero_image_url,
                     image_url: form.image_url,
                   })}
-                  onHeroChange={(url, mediaStatus) => {
-                    set("hero_image_url", url);
-                    set("image_url", url);
-                    if (mediaStatus) set("media_status", mediaStatus);
-                  }}
-                  onMediaChange={(opts) => {
-                    if (id) void loadProductMedia(id, opts);
-                  }}
                 />
               </TabsContent>
             )}
@@ -2475,14 +2489,6 @@ const ProductEdit = () => {
                 hero_image_url: form.hero_image_url,
                 image_url: form.image_url,
               })}
-              onHeroChange={(url, mediaStatus) => {
-                set("hero_image_url", url);
-                set("image_url", url);
-                if (mediaStatus) set("media_status", mediaStatus);
-              }}
-              onMediaChange={(opts) => {
-                if (id) void loadProductMedia(id, opts);
-              }}
             />
           )}
 

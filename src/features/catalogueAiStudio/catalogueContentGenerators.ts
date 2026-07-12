@@ -11,6 +11,7 @@ import type {
   CatalogueDraftPromptKey,
 } from "./catalogueDraftTypes";
 import { hasNumber, hasText } from "./catalogueFieldUtils";
+import { isMissingFieldOnlyMessage } from "./missingFieldMessage";
 
 export interface DraftBlockMeta {
   key: CatalogueDraftContentKey;
@@ -25,7 +26,7 @@ export const DRAFT_BLOCK_META: DraftBlockMeta[] = [
   { key: "b2b_sales_copy", label: "B2B sales copy", hint: "Wholesale-facing pitch with pricing/MOQ context." },
   { key: "export_catalogue_copy", label: "Export catalogue copy", hint: "HSN/GST/weight-oriented copy for export documentation." },
   { key: "whatsapp_product_message", label: "WhatsApp product message", hint: "Draft message text only — this studio never sends WhatsApp messages." },
-  { key: "hindi_description", label: "Hindi product description", hint: "Simple Hindi/Hinglish business copy — not a certified translation." },
+  { key: "hindi_description", label: "Hindi product description", hint: "Genuine Hindi-language copy (Devanagari script) — not Hinglish, not a certified translation; review before use." },
   { key: "storage_shelf_life_copy", label: "Storage / shelf-life copy", hint: "Handling and shelf-life note." },
 ];
 
@@ -229,6 +230,49 @@ export function generateCatalogueImagePrompts(product: DraftProductInput): Catal
     packaging_image_prompt: packagingImagePrompt(product),
     lifestyle_image_prompt: lifestyleImagePrompt(product),
   };
+}
+
+const IMAGE_PROMPT_GENERATORS: Record<CatalogueDraftPromptKey, (p: DraftProductInput) => string> = {
+  hero_image_prompt: heroImagePrompt,
+  square_image_prompt: squareImagePrompt,
+  closeup_image_prompt: closeupImagePrompt,
+  packaging_image_prompt: packagingImagePrompt,
+  lifestyle_image_prompt: lifestyleImagePrompt,
+};
+
+/**
+ * A4: recomposes a single image prompt from the same governed per-slot template
+ * (product truth + a consistent style standard) as generateCatalogueImagePrompts, with an
+ * optional operator instruction appended as a clearly labeled addendum. Still 100% local text
+ * composition — no AI call, no image generation; this only changes what text ends up in the
+ * existing, already-persisted prompt field. A missing-field placeholder is returned as-is (an
+ * instruction has nothing real to attach to yet).
+ */
+export function composeCatalogueImagePrompt(
+  product: DraftProductInput,
+  key: CatalogueDraftPromptKey,
+  operatorInstruction?: string,
+): string {
+  const base = IMAGE_PROMPT_GENERATORS[key](product);
+  const instruction = operatorInstruction?.trim();
+  if (!instruction || isMissingFieldOnlyMessage(base)) return base;
+  return `${base} Additional instruction: ${instruction}`;
+}
+
+/**
+ * Owner-smoke-test finding: a rejected/incomplete draft's Export tab let "Copy bundle" hand out
+ * buyer-facing text still containing a raw "Add missing field first: X." fragment (e.g. embedded
+ * inside b2bSalesCopy's "wholesale" sentence) with no adjacent warning. `isMissingFieldOnlyMessage`
+ * only catches a block that IS *nothing but* that fragment (used to gate prompt-instruction
+ * attachment); it deliberately doesn't flag the fragment embedded inline in otherwise-real copy, so
+ * a separate substring check is needed here to decide whether a bundle is safe to hand out.
+ */
+const MISSING_FIELD_FRAGMENT = "Add missing field first:";
+
+export function exportBundleHasMissingFieldPlaceholder(content: CatalogueDraftContent): boolean {
+  return Object.values(content).some(
+    (text) => typeof text === "string" && text.includes(MISSING_FIELD_FRAGMENT),
+  );
 }
 
 /** Plain-text preview of the full catalogue copy bundle — copy/paste only, no PDF generation here. */
