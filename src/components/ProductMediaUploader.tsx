@@ -673,11 +673,22 @@ export function ProductMediaUploader({
       // risk, and also correctly promotes an older approved hero row if one exists.
       await supabase.from("products").update(heroUrlWritePayload(null)).eq("id", productId);
     }
-    await reconcileProductMediaAuthority(requestProductId, operationId);
-    // Bugbot-caught: same reasoning as removeAsHero above — suppress the "Photo deleted" toast
-    // only once the operator has moved on to a different product, so a success message never
-    // appears to describe whatever the UI happens to show right now.
-    if (!isSupersededByProductSwitch(requestProductId)) toast.success("Photo deleted");
+    try {
+      await reconcileProductMediaAuthority(requestProductId, operationId);
+      // Bugbot-caught: same reasoning as removeAsHero above — suppress the "Photo deleted" toast
+      // only once the operator has moved on to a different product, so a success message never
+      // appears to describe whatever the UI happens to show right now.
+      if (!isSupersededByProductSwitch(requestProductId)) toast.success("Photo deleted");
+    } catch {
+      // Bugbot-caught: this delete path awaited reconcileProductMediaAuthority with no try/catch or
+      // fallback, unlike every other mutation path in this file — the row delete (and optional hero
+      // column clear) already committed, so a reconciliation failure here left subscribers with no
+      // update and the operator with no error feedback.
+      await fallbackAfterReconcileFailure(requestProductId, operationId);
+      if (!isSupersededByProductSwitch(requestProductId)) {
+        toast.error("Photo deleted, but syncing the gallery failed — refreshed with a best-effort read instead.");
+      }
+    }
   };
 
   const normalizeImageUrl = (raw: string): { url: string; warning?: string } => {

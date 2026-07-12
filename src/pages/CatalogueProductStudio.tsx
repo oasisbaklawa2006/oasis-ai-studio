@@ -80,7 +80,10 @@ import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingF
 import { fullEditorDeepLink, fullEditorTabForCategory } from "@/features/catalogueAiStudio/catalogueStudioNavigation";
 import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
 import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
-import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
+import {
+  getCachedProductMediaAuthority,
+  subscribeToProductMediaAuthority,
+} from "@/features/productAuthority/productMediaMutationAuthority";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
 import {
@@ -766,6 +769,19 @@ export default function CatalogueProductStudio() {
   if (mediaLoadProductIdRef.current !== (selected?.id ?? null)) {
     mediaLoadProductIdRef.current = selected?.id ?? null;
     setMediaLoadState(mediaLoadStarted());
+    // Bugbot-caught: publishedHeroOverride was previously only ever set by a LIVE
+    // subscribeToProductMediaAuthority event received while this page was already mounted — a hero
+    // change made earlier this session (e.g. via Full Editor's "Remove as hero", or an earlier visit
+    // to a different product) was never consulted, so selecting that product here could still derive
+    // a stale hero from rows alone. Seed synchronously (same render-time-reset pattern as
+    // mediaLoadState above) from the same authorityByProduct cache getCachedProductMediaAuthority
+    // already maintains and ProductMediaUploader's own passive-fetch effect already reads — no new
+    // read path invented. Explicitly resets to null when nothing is cached for the new product, so a
+    // previous product's override can never leak across a switch.
+    const cachedAuthority = selected ? getCachedProductMediaAuthority(selected.id) : null;
+    setPublishedHeroOverride(
+      cachedAuthority ? { productId: cachedAuthority.productId, heroUrl: cachedAuthority.heroUrl } : null,
+    );
   }
   useEffect(() => {
     const productId = selected?.id ?? null;
