@@ -53,15 +53,18 @@ describe("advanceMediaUploaderMountGuard + consumeMediaUploaderChange (uploader 
   });
 });
 
-describe("consumeMediaUploaderChange (Bugbot round 2: stale callback after unmount)", () => {
-  it("drops a stale onMediaChange call that resolves after the Media tab was already closed", () => {
+describe("consumeMediaUploaderChange (Bugbot round 2, corrected by a later round — see 'off-tab hero sync' below)", () => {
+  it("forwards a genuine completion for the same product that resolves after the Media tab was already closed", () => {
+    // Round 2 originally expected this to be dropped as "stale." A later round found that was
+    // itself the bug (Bugbot: "off-tab hero sync dropped") — the uploader's own product-switch
+    // guard already keeps this tied to the right product, so it must forward, not drop.
     let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1");
     state = consumeMediaUploaderChange(state).nextState; // absorb the mount call
 
-    // Operator leaves the Media tab entirely before the uploader's in-flight load() resolves.
+    // Operator leaves the Media tab entirely before a real mutation's callback resolves.
     state = step(state, "content", "prod-1");
-    const result = consumeMediaUploaderChange(state); // the stale callback finally fires
-    expect(result.shouldForward).toBe(false);
+    const result = consumeMediaUploaderChange(state); // the genuine completion finally fires
+    expect(result.shouldForward).toBe(true);
   });
 
   it("drops a stale onHeroChange call that resolves after the product was switched away from", () => {
@@ -79,7 +82,7 @@ describe("consumeMediaUploaderChange (Bugbot round 2: stale callback after unmou
     let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1");
     state = consumeMediaUploaderChange(state).nextState; // absorb the mount call
 
-    state = step(state, "content", "prod-1"); // leave the tab; a stale call would be dropped here
+    state = step(state, "content", "prod-1"); // leave the tab
     state = step(state, "media", "prod-2"); // operator reopens the tab for a different product
 
     const mountCall = consumeMediaUploaderChange(state);
@@ -177,5 +180,67 @@ describe("consumeMediaUploaderChange (Bugbot: bare tab close/reopen must not sil
     state = step(state, "media", "prod-1", true);
     const result = consumeMediaUploaderChange(state);
     expect(result.shouldForward).toBe(true);
+  });
+});
+
+describe("advanceMediaUploaderMountGuard (Bugbot: first-ever Media-tab open for an already-loaded product)", () => {
+  it("absorbs the very first Media-tab open for a product whose media the page already loaded on another tab", () => {
+    // Operator selects a product while on Content — the guard tracks productId/eligible on every
+    // render even though the Media tab is closed, exactly like the real page does.
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "content", "prod-1", false);
+    state = step(state, "content", "prod-1", true); // the page's own media fetch finishes loading
+
+    // First-ever click into Media for this product: the uploader has never been mounted for it
+    // before, so there is nothing a suppressed mutation could have left unsynced — must absorb.
+    state = step(state, "media", "prod-1", true);
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(false);
+  });
+
+  it("still forwards a bare reopen after that same first mount has already happened once", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "content", "prod-1", true);
+    state = step(state, "media", "prod-1", true); // first-ever mount, absorbed
+    state = consumeMediaUploaderChange(state).nextState;
+
+    state = step(state, "content", "prod-1", true); // close
+    state = step(state, "media", "prod-1", true); // bare reopen — now genuinely must forward
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(true);
+  });
+});
+
+describe("consumeMediaUploaderChange (Bugbot: off-tab hero sync must not be dropped)", () => {
+  it("forwards a genuine hero-clear/upload completion that resolves after the Media tab has already closed, for the same product", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState; // absorb the mount call
+
+    // Operator closes the Media tab (e.g. switches to Content) before a hero mutation's callback
+    // resolves. ProductMediaUploader itself still calls onHeroChange for the product it applied
+    // to (isSupersededByProductSwitch, not a bare-unmount check) — this must reach the page and
+    // trigger a resync, or the sticky bar/Build Meter/readiness stay wrong until reopened.
+    state = step(state, "content", "prod-1", true);
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(true);
+  });
+
+  it("still refuses while merely mid our own retryMediaLoad()-triggered reload (tab open, ineligible) — the round-6 loop guard is unaffected", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState;
+    const genuine = consumeMediaUploaderChange(state);
+    expect(genuine.shouldForward).toBe(true);
+    state = genuine.nextState;
+
+    state = step(state, "media", "prod-1", false); // our own reload makes the uploader ineligible
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(false);
+  });
+
+  it("never forwards with no product selected at all, even off-tab", () => {
+    let state = step(INITIAL_MEDIA_UPLOADER_MOUNT_GUARD_STATE, "media", "prod-1", true);
+    state = consumeMediaUploaderChange(state).nextState;
+
+    state = step(state, "content", null, true);
+    const result = consumeMediaUploaderChange(state);
+    expect(result.shouldForward).toBe(false);
   });
 });
