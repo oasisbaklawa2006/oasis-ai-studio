@@ -1,6 +1,6 @@
 import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/PageHeader";
 import { LabelReadinessPanel } from "@/components/LabelReadinessPanel";
@@ -90,6 +90,7 @@ import {
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
+import { resolveProductEditTab } from "@/features/productAuthority/productEditTabs";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   mapMoqRules,
@@ -628,6 +629,7 @@ const pickComplianceBaseline = (form: Record<string, unknown>) => {
 const ProductEdit = () => {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
+  const location = useLocation();
   const duplicateFrom = searchParams.get("duplicateFrom");
   const isNew = !id || id === "new";
   const nav = useNavigate();
@@ -647,13 +649,39 @@ const ProductEdit = () => {
   const [languageTermsRefreshKey, setLanguageTermsRefreshKey] = useState(0);
 
   const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
+  // ?tab= lets another page (e.g. Catalogue Product AI Studio's missing-field deep-link) open
+  // this product directly on the section that owns a given field. Once mounted, navigation
+  // within this page still goes through setTab/localStorage as before, so it never fights the
+  // operator's own tab clicks.
+  // Bugbot-caught: an unvalidated ?tab= (mistyped or an obsolete deep link) previously assigned
+  // straight to controlled tab state, leaving the Tabs control on a non-existent panel with no
+  // fallback. resolveProductEditTab() validates against the real TabsTrigger values and falls back
+  // to "identity".
+  const rawDeepLinkTab = searchParams.get("tab");
+  const deepLinkTab = rawDeepLinkTab ? resolveProductEditTab(rawDeepLinkTab) : null;
   const [tab, setTab] = useState<string>(() => {
+    if (deepLinkTab) return deepLinkTab;
     try {
       return localStorage.getItem(tabKey) || "identity";
     } catch {
       return "identity";
     }
   });
+
+  // Bugbot-caught (twice): the initializer above only seeds `tab` on first mount, so a later
+  // `?tab=` was silently ignored when React Router re-renders this same component instance (no
+  // remount) for a param-only navigation. An id/tab-value comparison isn't enough either — a
+  // repeat click of the exact same deep link (e.g. "Fix in Full Editor" for the same product+tab)
+  // leaves those values unchanged and would still be skipped. `location.key` changes on every
+  // navigation, even to an identical URL, so it reliably distinguishes "a fresh navigation
+  // happened" from "the operator clicked a tab locally" (which never touches the router).
+  const appliedLocationKeyRef = useRef<string>(location.key);
+  useEffect(() => {
+    if (deepLinkTab && appliedLocationKeyRef.current !== location.key) {
+      setTab(deepLinkTab);
+    }
+    appliedLocationKeyRef.current = location.key;
+  }, [location.key, deepLinkTab]);
 
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);

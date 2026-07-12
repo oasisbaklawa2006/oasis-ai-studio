@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -20,6 +20,8 @@ import {
   UserRound,
   Info,
   PencilLine,
+  RefreshCw,
+  Languages,
 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
@@ -67,19 +69,65 @@ import {
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
 import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
 import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
+import { fullEditorDeepLink, fullEditorTabForCategory } from "@/features/catalogueAiStudio/catalogueStudioNavigation";
+import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
+import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
+import { deriveShortSku } from "@/features/fastCreate/shortSku";
+import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
+import {
+  INITIAL_MEDIA_LOAD_STATE,
+  isMediaResultEmpty,
+  mediaLoadFailed,
+  mediaLoadStarted,
+  mediaLoadSucceeded,
+  type MediaLoadState,
+} from "@/features/catalogueAiStudio/catalogueMediaLoadState";
+import { catalogueMediaTabDeepLink, catalogueRequiredMediaSlots } from "@/features/catalogueAiStudio/catalogueMediaSlots";
+import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
+import {
+  isInvalidCatalogueStudioTab,
+  resolveCatalogueStudioTab,
+  withSelectedProduct,
+  withStudioTab,
+} from "@/features/catalogueAiStudio/catalogueStudioUrlState";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
   hero_image_url?: string | null;
+  media_status?: string | null;
   is_active: boolean | null;
   is_catalogue_ready: boolean | null;
+  product_class?: string | null;
+  main_department?: string | null;
+  packaging_code?: string | null;
 };
 
-// b2b_price and carton_dimensions_cm are not present on production's products table
-// (schema drift from the AI-Studio reference implementation). Both fields are optional
-// everywhere they're consumed downstream, so omitting them from the select is safe.
-const PRODUCT_SELECT =
-  "id, product_name, sku, category, subcategory, description, short_description, hero_image_url, mrp, b2b_uom, pack_size, net_weight_g, carton_qty, master_carton_qty, pcs_per_carton, moq_text, moq_value, moq_uom, shelf_life_days, storage_instructions, temperature_requirement, hsn_code, gst_rate, is_active, is_catalogue_ready";
+// carton_dimensions_cm is not present on production's products table (schema drift from the
+// AI-Studio reference implementation) and is optional everywhere it's consumed, so it's safely
+// omitted from the select. b2b_price is NOT a real column either (see PR #77-79's pricing-authority
+// findings) — the real column is price_b2b, selected below and mapped onto the b2b_price field
+// name at the query boundary only (mapRowsFromSupabase), so every downstream consumer of
+// DraftProductInput/ReadinessProductInput keeps using the one field name they already expect.
+// image_url is likewise not a real column in the generated products Row type (same class of gap,
+// already documented in the audit SQL) — hero_image_url alone is selected.
+// price_b2b (and, like image_url above, the whole point of this array) is missing from the
+// generated types too, even though it's the real production column. Kept as an array joined at
+// the call site — same established pattern as DataCorrection.tsx — because a literal select
+// string lets Supabase's generated types statically reject any column absent from types.ts, and
+// that check has no way to know types.ts itself is stale.
+const PRODUCT_SELECT = [
+  "id", "product_name", "sku", "category", "subcategory", "description", "short_description",
+  "hero_image_url", "media_status", "mrp", "price_b2b", "b2b_uom", "pack_size", "net_weight_g",
+  "carton_qty", "master_carton_qty", "pcs_per_carton", "moq_text", "moq_value", "moq_uom",
+  "shelf_life_days", "storage_instructions", "temperature_requirement", "hsn_code", "gst_rate",
+  "is_active", "is_catalogue_ready", "product_class", "main_department", "packaging_code",
+].join(", ");
+
+/** Maps the raw price_b2b column onto the shared b2b_price field name every readiness/draft-generator consumer expects. */
+function mapRowFromSupabase(row: Record<string, unknown>): CatalogueProductStudioProduct {
+  const { price_b2b, ...rest } = row;
+  return { ...rest, b2b_price: (price_b2b as number | null) ?? null } as CatalogueProductStudioProduct;
+}
 
 interface EditorState {
   productId: string;
@@ -175,7 +223,11 @@ const OVERALL_BADGE_CLASS: Record<ReadinessResult["overallLabel"], string> = {
   "Not ready": STATE_BADGE_CLASS.missing,
 };
 
-function ReadinessRow({ category }: { category: ReadinessCategory }) {
+function ReadinessRow({ category, productId, onGoToFullEditor }: {
+  category: ReadinessCategory;
+  productId?: string;
+  onGoToFullEditor?: (categoryKey: string) => void;
+}) {
   const Icon = STATE_ICON[category.state];
   return (
     <div className="flex items-start gap-3 rounded-lg border border-border p-3">
@@ -194,6 +246,17 @@ function ReadinessRow({ category }: { category: ReadinessCategory }) {
             {category.nextAction}
           </p>
         )}
+        {productId && category.state !== "pass" && onGoToFullEditor && (
+          <Button
+            type="button"
+            size="sm"
+            variant="link"
+            className="h-auto p-0 mt-1 text-[11px]"
+            onClick={() => onGoToFullEditor(category.key)}
+          >
+            Fix in Full Editor ({fullEditorTabForCategory(category.key)}) →
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -206,7 +269,33 @@ export default function CatalogueProductStudio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  // URL-authoritative: the selected product and active studio tab live only in the URL (?product=,
+  // ?tab=), never in a separate useState — so there is exactly one source of truth. This makes
+  // browser Back/Forward, page reload, and a second/repeat navigation to the same deep link all
+  // restore correctly, instead of silently doing nothing because a local useState never noticed the
+  // URL changed underneath it (the owner-reported smoke-test failures this closes). The decision
+  // logic itself lives in catalogueStudioUrlState.ts (pure, unit-tested); this only wires it to
+  // useSearchParams().
+  const [searchParams, setSearchParams] = useSearchParams();
+  const selectedId = searchParams.get("product");
+  const selectProduct = (productId: string) => {
+    setSearchParams((prev) => withSelectedProduct(prev, productId), { replace: false });
+  };
+
+  const rawStudioTab = searchParams.get("tab");
+  const studioTab = resolveCatalogueStudioTab(rawStudioTab);
+  const selectStudioTab = (tab: string) => {
+    setSearchParams((prev) => withStudioTab(prev, tab), { replace: false });
+  };
+  // A stale/invalid ?tab= (e.g. an old bookmark) must fall back safely rather than ever crash the
+  // Tabs component — correct the URL itself via replace so it doesn't linger, without adding an
+  // extra Back/Forward history entry for a correction the operator didn't ask for.
+  useEffect(() => {
+    if (isInvalidCatalogueStudioTab(rawStudioTab)) {
+      setSearchParams((prev) => withStudioTab(prev, "content"), { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rawStudioTab]);
 
   useEffect(() => {
     let cancelled = false;
@@ -224,7 +313,7 @@ export default function CatalogueProductStudio() {
         setLoading(false);
         return;
       }
-      setProducts((data as CatalogueProductStudioProduct[]) || []);
+      setProducts(((data as unknown as Record<string, unknown>[]) || []).map(mapRowFromSupabase));
       setLoading(false);
     }
     fetchProducts();
@@ -245,14 +334,11 @@ export default function CatalogueProductStudio() {
   }, [products, search]);
 
   const selected = useMemo(() => products.find((p) => p.id === selectedId) || null, [products, selectedId]);
-  const readiness: ReadinessResult | null = useMemo(
-    () => (selected ? computeCatalogueProductReadiness(selected) : null),
-    [selected],
-  );
-  const packagingCategories = useMemo(
-    () => readiness?.categories.filter((c) => c.group === "packaging") ?? [],
-    [readiness],
-  );
+  // readiness/packagingCategories are computed further down, once mediaSummary (below) is
+  // available — the hero-image readiness check must agree with the same media authority the
+  // anchor and Media tab use (Bugbot-caught: computeCatalogueProductReadiness() previously only
+  // ever saw the raw hero_image_url column, so a product could show "Hero image Present" in the
+  // anchor while readiness/Build Meter still flagged hero as missing).
 
   // Editor state lives only in local component state until explicitly saved. Keyed by productId so a
   // product switch can never render or copy the previous product's drafts.
@@ -263,6 +349,23 @@ export default function CatalogueProductStudio() {
     if (editorState && editorState.productId === selected.id) return editorState;
     return generateEditorState(selected);
   }, [selected, editorState]);
+
+  // Fresh-generated baseline for the "Edited" badge — always the pure output of the content
+  // generator for the current product, independent of editorState, so a field is marked edited
+  // the moment the operator's text diverges from what was originally generated (never from what
+  // was last saved).
+  const generatedBaseline: EditorState | null = useMemo(
+    () => (selected ? generateEditorState(selected) : null),
+    [selected],
+  );
+
+  const shortSku = useMemo(() => (selected?.sku ? deriveShortSku(selected.sku) : null), [selected?.sku]);
+  // Bugbot-caught: this used to render saleTypeFromForm()'s raw internal slug (e.g. "b2b_horeca")
+  // directly — always resolve it to a human label instead (see catalogueSaleTypeLabel.ts).
+  const saleTypeLabel = useMemo(
+    () => (selected ? saleTypeLabelFromForm(selected as unknown as Record<string, unknown>) : null),
+    [selected],
+  );
 
   const exportPreview = useMemo(() => {
     if (!selected || !editor) return "";
@@ -388,6 +491,122 @@ export default function CatalogueProductStudio() {
       cancelled = true;
     };
   }, [selected?.id, persistedDraft, auditLog]);
+
+  // Read-only product_media lookup for the Media tab's hero/approved-media preview. A separate,
+  // independent data source from the draft workflow above — same selectedIdRef guard so a slow
+  // fetch started before a product switch can never paint media for the wrong product.
+  //
+  // mediaLoadState distinguishes loading / error / loaded (with isMediaResultEmpty() further
+  // splitting "loaded" into has-media vs. a genuine empty result) — a Supabase failure can never
+  // be silently presented as "no media" (Bugbot-adjacent correction requested by the owner).
+  const [mediaLoadState, setMediaLoadState] = useState<MediaLoadState>(INITIAL_MEDIA_LOAD_STATE);
+  // Bumped by the Retry button to re-run the fetch effect without duplicating its logic.
+  const [mediaRetryToken, setMediaRetryToken] = useState(0);
+  // Bugbot-caught: the useEffect below resets mediaLoadState on product switch, but effects run
+  // after the render commits — for one painted frame, mediaSummary/anchor hero/readiness/required
+  // slots would still read the PREVIOUS product's loaded rows against the newly selected product.
+  // Resetting synchronously during render (React's documented pattern for keying derived state to
+  // a changing value) means no stale frame is ever painted; the effect below still owns the actual
+  // async fetch.
+  const mediaLoadProductIdRef = useRef<string | null>(null);
+  if (mediaLoadProductIdRef.current !== (selected?.id ?? null)) {
+    mediaLoadProductIdRef.current = selected?.id ?? null;
+    setMediaLoadState(mediaLoadStarted());
+  }
+  useEffect(() => {
+    const productId = selected?.id ?? null;
+    // Reset immediately on every switch/retry (not just when no product is selected) — otherwise
+    // the anchor/media-tab hero summary would briefly reflect the previous product's media (or a
+    // stale error) while this fetch is in flight.
+    setMediaLoadState(mediaLoadStarted());
+    if (!productId) {
+      return;
+    }
+    let cancelled = false;
+    // Supabase's query builder returns a PromiseLike, not a full Promise (no .finally) — wrap it
+    // so the state resolves on both the success and error paths without duplicating the guard.
+    Promise.resolve(
+      supabase.from("product_media").select("id, type, file_url, status, created_at").eq("product_id", productId),
+    ).then(({ data, error: mediaError }) => {
+      if (cancelled || selectedIdRef.current !== productId) return;
+      if (mediaError) {
+        // Never expose the raw backend error to the operator — log it for diagnosis only.
+        if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", mediaError.message);
+        setMediaLoadState(mediaLoadFailed());
+      } else {
+        setMediaLoadState(mediaLoadSucceeded((data as CatalogueMediaRow[]) ?? []));
+      }
+    })
+      // Bugbot-caught: the Supabase `{ error }` branch above only covers a resolved response —
+      // an actual promise rejection (network abort, unexpected runtime failure) left mediaLoadState
+      // stuck on "loading" forever with no error panel or retry path.
+      .catch((err: unknown) => {
+        if (cancelled || selectedIdRef.current !== productId) return;
+        if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", err);
+        setMediaLoadState(mediaLoadFailed());
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.id, mediaRetryToken]);
+
+  const mediaLoading = mediaLoadState.status === "loading";
+  const mediaRows = mediaLoadState.rows;
+  const retryMediaLoad = () => setMediaRetryToken((n) => n + 1);
+
+  // Bugbot-caught: while media is loading or a fetch failed, mediaRows is deliberately [] — passing
+  // the raw `selected` product through unconditionally let summarizeCatalogueMedia's zero-rows
+  // legacy-hero fallback fire during that window, so the anchor/Build Meter could show a hero as
+  // "present" from the legacy column, then flip to "missing" once the real product_media rows load
+  // and reveal no approved hero — contradicting the Media tab's own loading/error state. Hero is
+  // only ever resolved (fallback included) once a load has genuinely completed.
+  const mediaSummary = useMemo(
+    () => summarizeCatalogueMedia(mediaLoadState.status === "loaded" ? selected : null, mediaRows),
+    [selected, mediaRows, mediaLoadState.status],
+  );
+
+  const requiredMediaSlots = useMemo(
+    () =>
+      selected
+        ? catalogueRequiredMediaSlots(
+            {
+              productId: selected.id,
+              productName: selected.product_name,
+              category: selected.category,
+              subcategory: selected.subcategory,
+              productClass: selected.product_class,
+              isLegacy: !selected.sku,
+            },
+            mediaLoadState.status === "loaded" ? mediaRows : [],
+            { hero_image_url: selected.hero_image_url, media_status: selected.media_status },
+          )
+        : [],
+    [selected, mediaRows, mediaLoadState.status],
+  );
+
+  // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
+  // untouched — it just needs an accurate hero_image_url to check. mediaSummary.heroUrl (the same
+  // media-authority resolution the anchor/Media tab use) is fed in in place of the raw column, so
+  // readiness/Build Meter can never disagree with what the operator sees elsewhere on this page.
+  // Bugbot-caught: a `?? selected.hero_image_url` fallback here used to re-leak the legacy column
+  // whenever mediaSummary.heroUrl was null — but that null is now a deliberate "no approved hero"
+  // result (see catalogueMediaSummary.ts) whenever product_media rows exist, not a signal to fall
+  // further back. mediaSummary.heroUrl already applies its own legacy fallback when there are zero
+  // rows, so passing it through directly is correct in every case.
+  const readiness: ReadinessResult | null = useMemo(
+    () =>
+      selected
+        ? computeCatalogueProductReadiness({
+            ...selected,
+            hero_image_url: mediaSummary.heroUrl,
+          })
+        : null,
+    [selected, mediaSummary.heroUrl],
+  );
+  const packagingCategories = useMemo(
+    () => readiness?.categories.filter((c) => c.group === "packaging") ?? [],
+    [readiness],
+  );
 
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
   // overwrite the new product's audit history with the previous draft's events.
@@ -625,7 +844,7 @@ export default function CatalogueProductStudio() {
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setSelectedId(p.id)}
+                    onClick={() => selectProduct(p.id)}
                     className={`w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
                       selectedId === p.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
                     }`}
@@ -650,9 +869,26 @@ export default function CatalogueProductStudio() {
             </Card>
           ) : (
             <>
+              {/* Always-visible product anchor. Product switching clears/reloads everything below it
+                  (see the product-switch effect) — this card itself never mixes fields from two
+                  products because it only ever reads from `selected`. */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">{selected.product_name || "Untitled product"}</CardTitle>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="text-sm">{selected.product_name || "Untitled product"}</CardTitle>
+                    <div className="flex items-center gap-1.5">
+                      {hasUnsavedChanges && (
+                        <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40">
+                          <PencilLine size={10} className="mr-1" /> Unsaved
+                        </Badge>
+                      )}
+                      {currentPersistedDraft && (
+                        <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
+                          {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
                   <CardDescription className="text-[11px]">
                     Product summary is read-only here. Make master data changes in Products.
                   </CardDescription>
@@ -664,8 +900,20 @@ export default function CatalogueProductStudio() {
                       <p className="font-medium text-foreground">{selected.sku || "—"}</p>
                     </div>
                     <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Short SKU</p>
+                      <p className="font-medium text-foreground">{shortSku || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Sale Type</p>
+                      <p className="font-medium text-foreground">{saleTypeLabel ?? "—"}</p>
+                    </div>
+                    <div>
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase">Category</p>
                       <p className="font-medium text-foreground">{selected.category || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Packaging</p>
+                      <p className="font-medium text-foreground">{selected.packaging_code || "—"}</p>
                     </div>
                     <div>
                       <p className="text-[9px] font-semibold text-muted-foreground uppercase">Pack Size</p>
@@ -676,9 +924,9 @@ export default function CatalogueProductStudio() {
                       <p className="font-medium text-foreground flex items-center gap-1">
                         <ImageIcon
                           size={12}
-                          className={selected.hero_image_url ? "text-emerald-600" : "text-muted-foreground/40"}
+                          className={mediaSummary.heroUrl ? "text-emerald-600" : "text-muted-foreground/40"}
                         />
-                        {selected.hero_image_url ? "Present" : "Not set"}
+                        {mediaSummary.heroUrl ? "Present" : "Not set"}
                       </p>
                     </div>
                     <div>
@@ -698,6 +946,11 @@ export default function CatalogueProductStudio() {
                       <p className="font-medium text-foreground">{selected.is_catalogue_ready ? "Yes" : "No"}</p>
                     </div>
                   </div>
+                  <div className="mt-3">
+                    <Button type="button" size="sm" variant="outline" onClick={() => nav(`/products/${selected.id}`)}>
+                      Edit master data in Full Editor
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
 
@@ -705,7 +958,7 @@ export default function CatalogueProductStudio() {
                 <BuildMeterBar
                   score={readiness.score}
                   categories={readiness.categories}
-                  onChipClick={() => nav(`/products/${selected.id}`)}
+                  onChipClick={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
                 />
               )}
 
@@ -724,7 +977,12 @@ export default function CatalogueProductStudio() {
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {readiness.categories.map((c) => (
-                      <ReadinessRow key={c.key} category={c} />
+                      <ReadinessRow
+                        key={c.key}
+                        category={c}
+                        productId={selected.id}
+                        onGoToFullEditor={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
+                      />
                     ))}
                   </CardContent>
                 </Card>
@@ -876,9 +1134,12 @@ export default function CatalogueProductStudio() {
               {editor && (
                 <Card>
                   <CardContent className="pt-6">
-                    <Tabs defaultValue="content">
+                    <Tabs value={studioTab} onValueChange={selectStudioTab}>
                       <TabsList className="flex-wrap h-auto">
                         <TabsTrigger value="content">Content Draft Studio</TabsTrigger>
+                        <TabsTrigger value="language">
+                          <Languages size={12} className="mr-1.5" /> Language / Messaging
+                        </TabsTrigger>
                         <TabsTrigger value="media">Media / Hero Image Prompts</TabsTrigger>
                         <TabsTrigger value="packaging">Packaging + Variant Readiness</TabsTrigger>
                         <TabsTrigger value="export">Export / Copy Bundle Preview</TabsTrigger>
@@ -888,14 +1149,29 @@ export default function CatalogueProductStudio() {
                         <p className="text-[11px] text-muted-foreground">
                           Generated locally from this product's current fields — no external AI call in this studio.
                         </p>
-                        {DRAFT_BLOCK_META.map((block) => {
+                        {DRAFT_BLOCK_META.filter((block) => !isLanguageMessagingField(block.key)).map((block) => {
                           const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
+                          const blockIsEdited =
+                            !blockIsMissing &&
+                            !!generatedBaseline &&
+                            isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <label className="text-xs font-semibold text-foreground">{block.label}</label>
-                                  <p className="text-[10px] text-muted-foreground">{block.hint}</p>
+                                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    {block.label}
+                                    {blockIsEdited && (
+                                      <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                        Edited
+                                      </Badge>
+                                    )}
+                                  </label>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {block.key === "whatsapp_product_message"
+                                      ? "Draft message text only — approval workflow not active, this studio never sends WhatsApp messages."
+                                      : block.hint}
+                                  </p>
                                 </div>
                                 {!blockIsMissing && (
                                   <Button
@@ -921,17 +1197,179 @@ export default function CatalogueProductStudio() {
                         })}
                       </TabsContent>
 
-                      <TabsContent value="media" className="space-y-4 pt-4">
+                      <TabsContent value="language" className="space-y-4 pt-4">
                         <p className="text-[11px] text-muted-foreground">
-                          Prompt text only — this studio does not generate images.
+                          Language content here (Hindi/Hinglish copy, WhatsApp draft message) is informational only —
+                          it never blocks catalogue readiness or Central Sync. WhatsApp approval workflow is not
+                          active; this studio never sends WhatsApp messages.
                         </p>
+                        {(() => {
+                          const languageBlocks = DRAFT_BLOCK_META.filter((block) => isLanguageMessagingField(block.key));
+                          if (languageBlocks.length === 0) {
+                            return (
+                              <p className="text-xs text-muted-foreground py-2">
+                                No language/messaging fields available for this product.
+                              </p>
+                            );
+                          }
+                          return languageBlocks.map((block) => {
+                            const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
+                            const blockIsEdited =
+                              !blockIsMissing &&
+                              !!generatedBaseline &&
+                              isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
+                            return (
+                              <div key={block.key} className="space-y-1.5">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div>
+                                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                      {block.label}
+                                      {blockIsEdited && (
+                                        <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                          Edited
+                                        </Badge>
+                                      )}
+                                    </label>
+                                    <p className="text-[10px] text-muted-foreground">
+                                      {block.key === "whatsapp_product_message"
+                                        ? "Draft message text only — approval workflow not active, this studio never sends WhatsApp messages."
+                                        : block.hint}
+                                    </p>
+                                  </div>
+                                  {!blockIsMissing && (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="ghost"
+                                      disabled={draftLoading}
+                                      onClick={() => copyText(editor.content[block.key], block.label)}
+                                    >
+                                      <Copy size={12} className="mr-1.5" /> Copy
+                                    </Button>
+                                  )}
+                                </div>
+                                <Textarea
+                                  value={editor.content[block.key]}
+                                  onChange={(e) => updateContentBlock(block.key, e.target.value)}
+                                  rows={2}
+                                  className={`text-xs ${blockIsMissing ? "border-amber-400/60 bg-amber-500/5 text-amber-800 dark:text-amber-300" : ""}`}
+                                  disabled={textLocked || draftLoading}
+                                />
+                              </div>
+                            );
+                          });
+                        })()}
+                      </TabsContent>
+
+                      <TabsContent value="media" className="space-y-4 pt-4">
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold text-foreground">Current approved media</p>
+                          {mediaLoading ? (
+                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground py-2">
+                              <Loader2 size={12} className="animate-spin" /> Loading media…
+                            </div>
+                          ) : mediaLoadState.status === "error" ? (
+                            <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
+                              <p className="text-[11px] text-destructive">{mediaLoadState.errorMessage}</p>
+                              <Button type="button" size="sm" variant="outline" onClick={retryMediaLoad}>
+                                <RefreshCw size={12} className="mr-1.5" /> Retry
+                              </Button>
+                            </div>
+                          ) : isMediaResultEmpty(mediaLoadState) ? (
+                            <p className="text-[11px] text-muted-foreground py-2">
+                              No media on file for this product yet.
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-3">
+                                {mediaSummary.heroUrl ? (
+                                  <img
+                                    src={mediaSummary.heroUrl}
+                                    alt="Approved hero"
+                                    className="h-16 w-16 rounded-md object-cover border border-border"
+                                  />
+                                ) : (
+                                  <div className="h-16 w-16 rounded-md border border-dashed border-border flex items-center justify-center">
+                                    <ImageIcon size={16} className="text-muted-foreground/40" />
+                                  </div>
+                                )}
+                                <div className="text-[11px] text-muted-foreground">
+                                  <p className="text-foreground font-medium">
+                                    {mediaSummary.heroUrl ? "Hero image approved" : "No approved hero image yet"}
+                                  </p>
+                                  <p>
+                                    {mediaSummary.approvedMedia.length} additional approved media{" "}
+                                    {mediaSummary.approvedMedia.length === 1 ? "asset" : "assets"}.
+                                  </p>
+                                </div>
+                              </div>
+                              {mediaSummary.approvedMedia.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {mediaSummary.approvedMedia.map((m) => (
+                                    <div key={m.id} className="flex flex-col items-center gap-1">
+                                      <img src={m.url} alt={m.typeLabel} className="h-12 w-12 rounded-md object-cover border border-border" />
+                                      <span className="text-[9px] text-muted-foreground">{m.typeLabel}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+
+                        {mediaLoadState.status === "loaded" && requiredMediaSlots.length > 0 && (
+                          <div className="space-y-1.5">
+                            <p className="text-xs font-semibold text-foreground">Required media slots</p>
+                            {requiredMediaSlots.map((slot) => (
+                              <div
+                                key={slot.type}
+                                className="flex items-center justify-between gap-2 rounded-md border border-border px-2.5 py-1.5 text-[11px]"
+                              >
+                                <span className="text-foreground">{slot.label}</span>
+                                {slot.status === "satisfied" ? (
+                                  <Badge variant="outline" className="text-[9px] uppercase bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-400/40">
+                                    Satisfied
+                                  </Badge>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => nav(catalogueMediaTabDeepLink(selected.id))}
+                                    className="flex items-center gap-1 text-amber-700 dark:text-amber-400 hover:underline"
+                                  >
+                                    <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 border-amber-400/40">
+                                      Missing
+                                    </Badge>
+                                  </button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
+                          Image generation is not available in this studio — no generation service is wired up.
+                          The prompts below are text only, for use with an external tool or a future generation
+                          connector; nothing here uploads or approves media.
+                        </div>
+
                         {IMAGE_PROMPT_BLOCK_META.map((block) => {
                           const blockIsMissing = isMissingFieldOnlyMessage(editor.prompts[block.key]);
+                          const blockIsEdited =
+                            !blockIsMissing &&
+                            !!generatedBaseline &&
+                            isFieldEdited(editor.prompts[block.key], generatedBaseline.prompts[block.key]);
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <label className="text-xs font-semibold text-foreground">{block.label}</label>
+                                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    {block.label}
+                                    {blockIsEdited && (
+                                      <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                        Edited
+                                      </Badge>
+                                    )}
+                                  </label>
                                   <p className="text-[10px] text-muted-foreground">{block.hint}</p>
                                 </div>
                                 {!blockIsMissing && (
@@ -965,7 +1403,14 @@ export default function CatalogueProductStudio() {
                         {packagingCategories.length === 0 ? (
                           <p className="text-xs text-muted-foreground py-2">No packaging data available.</p>
                         ) : (
-                          packagingCategories.map((c) => <ReadinessRow key={c.key} category={c} />)
+                          packagingCategories.map((c) => (
+                            <ReadinessRow
+                              key={c.key}
+                              category={c}
+                              productId={selected.id}
+                              onGoToFullEditor={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
+                            />
+                          ))
                         )}
                       </TabsContent>
 
