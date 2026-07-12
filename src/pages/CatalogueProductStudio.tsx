@@ -804,7 +804,13 @@ export default function CatalogueProductStudio() {
         if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", mediaError.message);
         setMediaLoadState(mediaLoadFailed());
       } else {
-        setMediaLoadState(mediaLoadSucceeded((data as CatalogueMediaRow[]) ?? []));
+        // Bugbot-caught: this fetch previously applied its own result unconditionally — if a
+        // mutation completed elsewhere (Full Editor in another tab, or this page's own uploader)
+        // while this fetch was still in flight, productMediaMutationAuthority would have already
+        // published a newer snapshot, and this stale read would silently overwrite it. Re-check the
+        // cache and prefer it, same pattern ProductMediaUploader's own passive fetch already uses.
+        const cached = getCachedProductMediaAuthority(productId);
+        setMediaLoadState(mediaLoadSucceeded(cached ? cached.rows : (data as CatalogueMediaRow[]) ?? []));
       }
     })
       // Bugbot-caught: the Supabase `{ error }` branch above only covers a resolved response —
