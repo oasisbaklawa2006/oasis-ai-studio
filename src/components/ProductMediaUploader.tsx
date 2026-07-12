@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isCurrentAsyncRequest, isSupersededById } from "@/features/productAuthority/requestRace";
+import { isSupersededById } from "@/features/productAuthority/requestRace";
+import {
+  beginProductMediaOperation,
+  fetchProductMediaRows,
+  getCachedProductMediaAuthority,
+  publishProductMediaAuthority,
+  reconcileProductMediaAuthority,
+  subscribeToProductMediaAuthority,
+} from "@/features/productAuthority/productMediaMutationAuthority";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,8 +42,10 @@ import {
   mediaTypeLabel,
 } from "@/features/productAuthority/productMediaPersistence";
 import { heroUrlWritePayload } from "@/lib/productImage";
-import type { DerivedMediaStatus } from "@/features/mediaReadiness/mediaAuthorityContract";
-import { persistDirectHeroUpload } from "@/features/mediaReadiness/mediaAuthorityContract";
+import {
+  applyHeroDesignation,
+  deriveMediaStatusFromRows,
+} from "@/features/mediaReadiness/mediaAuthorityContract";
 import type { Role } from "@/lib/permissions";
 import {
   getMediaGovernanceMode,
@@ -88,8 +98,6 @@ interface Props {
   productId: string;
   productSku?: string | null;
   currentHero?: string | null;
-  onHeroChange?: (url: string | null, mediaStatus?: DerivedMediaStatus) => void;
-  onMediaChange?: (opts?: { fallbackHeroUrl?: string | null }) => void;
   /** hero-only: compact hero upload for Status sidebar / testing governance */
   variant?: "full" | "hero-only";
 }
@@ -103,14 +111,17 @@ export function ProductMediaUploader({
   productId,
   productSku,
   currentHero,
-  onHeroChange,
-  onMediaChange,
   variant = "full",
 }: Props) {
   const heroOnly = variant === "hero-only";
   const testingMode = isTestingMediaGovernance();
   const { roles } = useAuth();
   const { writeMode, canMutate } = useCatalogueMediaWriteMode(roles as Role[]);
+  // `media` is a thin, passive mirror of the ONE shared product-media authority
+  // (productMediaMutationAuthority.ts) — never a second, independently-drifting model. It is
+  // populated by (a) an initial display fetch/cache-read below and (b) the subscription below,
+  // which applies every reconciled result for this exact product regardless of this component's
+  // own mount state at the time the underlying mutation committed.
   const [media, setMedia] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
   const [type, setType] = useState<MediaType>("hero_image");
@@ -124,65 +135,72 @@ export function ProductMediaUploader({
 
   const storageFolder = productSku || productId;
 
-  // Bugbot-caught (PR #84 round 3): none of this component's async operations were cancelled on
-  // unmount or on a `productId` prop change, so a slow request kicked off for one product (or
-  // before the component unmounted) could still land after the operator had already unmounted it
-  // or switched to a different product on the same page (e.g. Catalogue Studio's Media tab, which
-  // keeps this component mounted while the operator switches between products). Firing setMedia /
-  // onHeroChange / onMediaChange at that point would silently show a stale product's media as the
-  // current one, or force a caller's independent media state back into "loading" for no reason.
-  // productIdRef always holds the latest prop (updated render-phase, so it's current before any
-  // async continuation can check it); mountedRef flips false in the unmount cleanup below.
-  //
-  // Bugbot-caught (PR #84, later round): the above reasoning conflated two different questions.
-  // `setMedia` is this component's own local state — pointless to touch once unmounted, so it
-  // should stay guarded by the full isStaleUploaderRequest check (unmount OR product switch).
-  // `onHeroChange`/`onMediaChange`, though, notify the *parent* (Catalogue Studio's page state, or
-  // Full Editor's form), which outlives this component's mount — a bare Media-tab close does not
-  // retroactively invalidate a mutation that genuinely completed for the product it was started
-  // for. Gating those callbacks on mere unmount left the parent's hero/readiness state silently
-  // stale until some other refresh path happened to run. Only a genuine product switch
-  // (isSupersededByProductSwitch) should suppress the callbacks and their toasts; setMedia keeps
-  // using isStaleUploaderRequest.
+  // Used only to decide (a) whether a passive display read that resolves late is still worth
+  // applying to this component's own local state, and (b) whether a product-specific success toast
+  // would misleadingly describe whatever the UI now shows after the operator has moved on to a
+  // different product. Neither of these gates reconciliation itself — see
+  // productMediaMutationAuthority.ts's module doc for why a committed write must never be
+  // suppressed merely because this component unmounted or moved on.
   const productIdRef = useRef(productId);
   productIdRef.current = productId;
-  const mountedRef = useRef(true);
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-  const isStaleUploaderRequest = (requestProductId: string) =>
-    !isCurrentAsyncRequest(requestProductId, !mountedRef.current, productIdRef.current);
   const isSupersededByProductSwitch = (requestProductId: string) =>
     isSupersededById(requestProductId, productIdRef.current);
 
-  const load = async (opts?: { fallbackHeroUrl?: string | null }) => {
+  // Passive initial display fetch — a READ, so (per the lifecycle rules this module documents) it
+  // may be safely ignored once superseded by a product switch. Prefers any already-reconciled
+  // authority for this product over its own raw read, so a fetch that happens to resolve after a
+  // mutation's own reconciliation never regresses the display back to pre-mutation data.
+  useEffect(() => {
+    let cancelled = false;
+    const cached = getCachedProductMediaAuthority(productId);
+    if (cached) setMedia(cached.rows);
+    fetchProductMediaRows(productId)
+      .then((rows) => {
+        if (cancelled || isSupersededByProductSwitch(productId)) return;
+        const stillCached = getCachedProductMediaAuthority(productId);
+        setMedia(stillCached ? stillCached.rows : rows);
+      })
+      .catch(() => {
+        // Passive display fetch only — a failure here just means the list may lag until the next
+        // reconciled result publishes; no user-facing error surface existed for this before either.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
+
+  // Mirrors the shared authority for the rest of this component's lifetime, independent of the
+  // effect above — a committed mutation (this instance's own, or another instance's, e.g. Full
+  // Editor's) always reaches every subscriber, never suppressed by any component's mount state.
+  useEffect(() => {
+    return subscribeToProductMediaAuthority((result) => {
+      if (result.productId !== productIdRef.current) return;
+      setMedia(result.rows);
+    });
+  }, []);
+
+  /** Refreshes this component's own display only — used by draft-mode paths, which must never
+   * write direct authority (that would bypass the approval workflow); no sequencing/publish. */
+  const refreshLocalMediaView = async () => {
     const requestProductId = productId;
-    const { data } = await supabase
-      .from("product_media")
-      .select("*")
-      .eq("product_id", productId)
-      .order("created_at", { ascending: false });
-    if (isSupersededByProductSwitch(requestProductId)) return;
-    if (!isStaleUploaderRequest(requestProductId)) setMedia(data ?? []);
-    onMediaChange?.(opts);
+    try {
+      const rows = await fetchProductMediaRows(requestProductId);
+      if (isSupersededByProductSwitch(requestProductId)) return;
+      setMedia(rows);
+    } catch {
+      // Best-effort passive refresh only, matching the pre-existing behavior this replaces.
+    }
   };
 
   const applyDirectHeroAuthority = async (url: string) => {
     const requestProductId = productId;
-    const result = await persistDirectHeroUpload(productId, url);
-    if (isSupersededByProductSwitch(requestProductId)) return result;
-    if (!isStaleUploaderRequest(requestProductId)) setMedia(result.rows);
-    onHeroChange?.(result.hero_image_url, result.media_status);
-    onMediaChange?.({ fallbackHeroUrl: result.hero_image_url });
-    return result;
+    const operationId = beginProductMediaOperation(requestProductId);
+    await applyHeroDesignation(requestProductId, url);
+    await reconcileProductMediaAuthority(requestProductId, operationId, {
+      fallbackHeroUrl: url,
+      repair: true,
+    });
   };
-
-  useEffect(() => {
-    if (productId) load();
-  }, [productId]);
 
   useEffect(() => {
     const required = requiredReadinessSlots();
@@ -317,14 +335,14 @@ export function ProductMediaUploader({
     );
     if (!res.ok) {
       toast.error(res.message);
-      await load();
+      await refreshLocalMediaView();
       return false;
     }
     setPendingNotices((prev) => [
       ...prev,
       `${file.name} — submitted for approval (visible below until review)`,
     ]);
-    await load();
+    await refreshLocalMediaView();
     return true;
   };
 
@@ -341,6 +359,8 @@ export function ProductMediaUploader({
         if (ok) toast.success(MEDIA_DRAFT_SUCCESS);
         return;
       }
+      const requestProductId = productId;
+      const operationId = beginProductMediaOperation(requestProductId);
       if (asHero && currentHero && isPdfPage(currentHero)) {
         await supabase
           .from("product_media")
@@ -350,7 +370,6 @@ export function ProductMediaUploader({
       }
       const url = await uploadFileDirect(files[0], asHero, false);
       if (url && asHero) {
-        const requestProductId = productId;
         await applyDirectHeroAuthority(url);
         // Bugbot-caught: applyDirectHeroAuthority already silently no-ops once the operator has
         // switched products mid-request, but this toast still fired unconditionally — misleadingly
@@ -359,8 +378,10 @@ export function ProductMediaUploader({
         // does not make this toast untrue, so only the product-switch check gates it.
         if (!isSupersededByProductSwitch(requestProductId)) toast.success("Hero image uploaded");
       } else if (url) {
-        toast.success(`${mediaTypeLabel(slot)} uploaded`);
-        await load();
+        await reconcileProductMediaAuthority(requestProductId, operationId);
+        if (!isSupersededByProductSwitch(requestProductId)) {
+          toast.success(`${mediaTypeLabel(slot)} uploaded`);
+        }
       }
     } finally {
       setUploading(false);
@@ -384,20 +405,24 @@ export function ProductMediaUploader({
           toast.success(
             `${submitted} media submission${submitted === 1 ? "" : "s"} uploaded and submitted for approval.`
           );
-          await load();
+          await refreshLocalMediaView();
         }
         return;
       }
 
+      const requestProductId = productId;
+      const operationId = beginProductMediaOperation(requestProductId);
       for (const file of Array.from(files)) {
         const url = await uploadFileDirect(file, false, isVideo);
         if (url) lastUrl = url;
       }
-      toast.success(`${files.length} file(s) uploaded`);
       if (!isVideo && (!currentHero || isPdfPage(currentHero)) && lastUrl) {
         await applyDirectHeroAuthority(lastUrl);
       } else {
-        await load();
+        await reconcileProductMediaAuthority(requestProductId, operationId);
+      }
+      if (!isSupersededByProductSwitch(requestProductId)) {
+        toast.success(`${files.length} file(s) uploaded`);
       }
     } finally {
       setUploading(false);
@@ -478,21 +503,28 @@ export function ProductMediaUploader({
     }
 
     const requestProductId = productId;
+    const operationId = beginProductMediaOperation(requestProductId);
     const { error } = await supabase
       .from("products")
       .update(heroUrlWritePayload(null))
       .eq("id", productId);
     if (error) return toast.error(error.message);
+    // This mutation only overrides the `products.hero_image_url` column — it deliberately leaves
+    // the underlying product_media row untouched ("the image stays in the gallery"), so a fresh
+    // re-derive-from-rows (reconcileProductMediaAuthority) would immediately resurrect the old
+    // hero from that still-approved row. publishProductMediaAuthority instead propagates exactly
+    // what this write actually did (heroUrl: null, rows unchanged), while still going through the
+    // same per-product sequencing guarantee against out-of-order completions.
+    publishProductMediaAuthority(requestProductId, operationId, {
+      heroUrl: null,
+      mediaStatus: deriveMediaStatusFromRows(media, { fallbackHeroUrl: null }),
+      rows: media,
+    });
     // Bugbot-caught: the mutation itself always targets the product this click was for, so it
     // genuinely succeeded — but if the operator has since switched to a different product, a
     // "Hero cleared" toast shown against the *new* product's UI would misleadingly read as if it
-    // applied to what's on screen right now. Suppress the callback and toast only on a genuine
-    // product switch — not on a bare Media-tab close, which would otherwise leave the parent's
-    // hero/readiness state silently stale until some other refresh path ran (Bugbot-caught).
-    if (!isSupersededByProductSwitch(requestProductId)) {
-      onHeroChange?.(null);
-      toast.success("Hero cleared");
-    }
+    // applied to what's on screen right now.
+    if (!isSupersededByProductSwitch(requestProductId)) toast.success("Hero cleared");
   };
 
   const remove = async (m: any) => {
@@ -528,19 +560,20 @@ export function ProductMediaUploader({
     }
 
     const requestProductId = productId;
+    const operationId = beginProductMediaOperation(requestProductId);
     const { error } = await supabase.from("product_media").delete().eq("id", m.id);
     if (error) return toast.error(error.message);
     if (m.file_url === currentHero) {
+      // Unlike removeAsHero, the row is genuinely gone now — re-deriving hero from what's actually
+      // left in product_media (reconcileProductMediaAuthority) is correct here, not a resurrection
+      // risk, and also correctly promotes an older approved hero row if one exists.
       await supabase.from("products").update(heroUrlWritePayload(null)).eq("id", productId);
-      if (!isSupersededByProductSwitch(requestProductId)) onHeroChange?.(null);
     }
+    await reconcileProductMediaAuthority(requestProductId, operationId);
     // Bugbot-caught: same reasoning as removeAsHero above — suppress the "Photo deleted" toast
     // only once the operator has moved on to a different product, so a success message never
-    // appears to describe whatever the UI happens to show right now. `load()` is left
-    // unconditional; it already self-guards (see isStaleUploaderRequest/isSupersededByProductSwitch
-    // usage inside load itself).
+    // appears to describe whatever the UI happens to show right now.
     if (!isSupersededByProductSwitch(requestProductId)) toast.success("Photo deleted");
-    await load();
   };
 
   const normalizeImageUrl = (raw: string): { url: string; warning?: string } => {
@@ -603,7 +636,7 @@ export function ProductMediaUploader({
         });
         if (!res.ok) {
           toast.error(res.message);
-          await load();
+          await refreshLocalMediaView();
           return;
         }
         setUrlInput("");
@@ -612,13 +645,15 @@ export function ProductMediaUploader({
           `URL import — submitted for approval (visible below until review)`,
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
-        await load();
+        await refreshLocalMediaView();
       } finally {
         setUploading(false);
       }
       return;
     }
 
+    const requestProductId = productId;
+    const operationId = beginProductMediaOperation(requestProductId);
     const insertRes = await insertProductMediaRow({
       product_id: productId,
       file_url: url,
@@ -635,9 +670,9 @@ export function ProductMediaUploader({
     if (!currentHero || isPdfPage(currentHero)) {
       await applyDirectHeroAuthority(url);
     } else {
-      await load();
+      await reconcileProductMediaAuthority(requestProductId, operationId);
     }
-    toast.success("Image added from URL");
+    if (!isSupersededByProductSwitch(requestProductId)) toast.success("Image added from URL");
   };
 
   const heroIsPdf = isPdfPage(currentHero);
