@@ -20,6 +20,24 @@ export function isCurrentAsyncRequest(
 }
 
 /**
+ * Narrower than isCurrentAsyncRequest: true only when a newer request for a different id has
+ * started, ignoring whether the effect instance that started this request was itself cleaned up
+ * (e.g. by an unmount). Bugbot-caught (PR #84): ProductMediaUploader used the full
+ * isCurrentAsyncRequest check (unmount OR id change) to decide whether to forward a completed
+ * hero/media mutation to its onHeroChange/onMediaChange callbacks — but those callbacks update the
+ * *parent's* state, which outlives this component's mount. Treating a bare unmount (Media tab
+ * closed, product unchanged) the same as a genuine product switch meant a mutation that had
+ * already succeeded in the database was silently never reported to the parent, leaving hero/
+ * readiness state stale until some other refresh path happened to run. Use this for anything that
+ * notifies a caller rather than this component's own local state (which should keep using
+ * isCurrentAsyncRequest — there's no benefit to updating state nobody can see once the component
+ * that owns it is gone).
+ */
+export function isSupersededById(requestId: string, latestId: string | null): boolean {
+  return latestId !== requestId;
+}
+
+/**
  * Whether an id-keyed fetch effect should start a new fetch this render. When it
  * shouldn't (no id yet, a "new" placeholder route, or the id is already loaded), any
  * fetch-in-flight UI state (e.g. a "pending" flag) must be explicitly reset by the caller

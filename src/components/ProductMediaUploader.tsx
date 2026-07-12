@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isCurrentAsyncRequest } from "@/features/productAuthority/requestRace";
+import { isCurrentAsyncRequest, isSupersededById } from "@/features/productAuthority/requestRace";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -132,11 +132,18 @@ export function ProductMediaUploader({
   // onHeroChange / onMediaChange at that point would silently show a stale product's media as the
   // current one, or force a caller's independent media state back into "loading" for no reason.
   // productIdRef always holds the latest prop (updated render-phase, so it's current before any
-  // async continuation can check it); mountedRef flips false in the unmount cleanup below. Every
-  // function that ends in setMedia/onHeroChange/onMediaChange captures the productId it started
-  // for and bails out if either has moved on by the time its request resolves — reusing the same
-  // isCurrentAsyncRequest latest-request-wins guard ProductEdit.tsx already uses for its own
-  // product fetch, rather than re-deriving the same cancelled/latestId logic here.
+  // async continuation can check it); mountedRef flips false in the unmount cleanup below.
+  //
+  // Bugbot-caught (PR #84, later round): the above reasoning conflated two different questions.
+  // `setMedia` is this component's own local state — pointless to touch once unmounted, so it
+  // should stay guarded by the full isStaleUploaderRequest check (unmount OR product switch).
+  // `onHeroChange`/`onMediaChange`, though, notify the *parent* (Catalogue Studio's page state, or
+  // Full Editor's form), which outlives this component's mount — a bare Media-tab close does not
+  // retroactively invalidate a mutation that genuinely completed for the product it was started
+  // for. Gating those callbacks on mere unmount left the parent's hero/readiness state silently
+  // stale until some other refresh path happened to run. Only a genuine product switch
+  // (isSupersededByProductSwitch) should suppress the callbacks and their toasts; setMedia keeps
+  // using isStaleUploaderRequest.
   const productIdRef = useRef(productId);
   productIdRef.current = productId;
   const mountedRef = useRef(true);
@@ -148,6 +155,8 @@ export function ProductMediaUploader({
   }, []);
   const isStaleUploaderRequest = (requestProductId: string) =>
     !isCurrentAsyncRequest(requestProductId, !mountedRef.current, productIdRef.current);
+  const isSupersededByProductSwitch = (requestProductId: string) =>
+    isSupersededById(requestProductId, productIdRef.current);
 
   const load = async (opts?: { fallbackHeroUrl?: string | null }) => {
     const requestProductId = productId;
@@ -156,16 +165,16 @@ export function ProductMediaUploader({
       .select("*")
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
-    if (isStaleUploaderRequest(requestProductId)) return;
-    setMedia(data ?? []);
+    if (isSupersededByProductSwitch(requestProductId)) return;
+    if (!isStaleUploaderRequest(requestProductId)) setMedia(data ?? []);
     onMediaChange?.(opts);
   };
 
   const applyDirectHeroAuthority = async (url: string) => {
     const requestProductId = productId;
     const result = await persistDirectHeroUpload(productId, url);
-    if (isStaleUploaderRequest(requestProductId)) return result;
-    setMedia(result.rows);
+    if (isSupersededByProductSwitch(requestProductId)) return result;
+    if (!isStaleUploaderRequest(requestProductId)) setMedia(result.rows);
     onHeroChange?.(result.hero_image_url, result.media_status);
     onMediaChange?.({ fallbackHeroUrl: result.hero_image_url });
     return result;
@@ -344,10 +353,11 @@ export function ProductMediaUploader({
         const requestProductId = productId;
         await applyDirectHeroAuthority(url);
         // Bugbot-caught: applyDirectHeroAuthority already silently no-ops once the operator has
-        // switched products mid-request (see isStaleUploaderRequest inside it), but this toast
-        // still fired unconditionally — misleadingly implying the hero designation applied to
-        // whatever product is on screen now, when it may have applied to the previous one instead.
-        if (!isStaleUploaderRequest(requestProductId)) toast.success("Hero image uploaded");
+        // switched products mid-request, but this toast still fired unconditionally — misleadingly
+        // implying the hero designation applied to whatever product is on screen now, when it may
+        // have applied to the previous one instead. A bare Media-tab close (no product switch)
+        // does not make this toast untrue, so only the product-switch check gates it.
+        if (!isSupersededByProductSwitch(requestProductId)) toast.success("Hero image uploaded");
       } else if (url) {
         toast.success(`${mediaTypeLabel(slot)} uploaded`);
         await load();
@@ -433,9 +443,10 @@ export function ProductMediaUploader({
 
     const requestProductId = productId;
     await setAsHeroDirect(m.file_url);
-    // Bugbot-caught: same reasoning as uploadToSlot's hero-upload toast above — suppress once the
-    // operator has moved on to a different product since this click started.
-    if (!isStaleUploaderRequest(requestProductId)) toast.success("Set as hero photo");
+    // Bugbot-caught: same reasoning as uploadToSlot's hero-upload toast above — suppress only once
+    // the operator has moved on to a different product since this click started, not merely for
+    // closing the Media tab.
+    if (!isSupersededByProductSwitch(requestProductId)) toast.success("Set as hero photo");
   };
 
   const removeAsHero = async () => {
@@ -475,8 +486,10 @@ export function ProductMediaUploader({
     // Bugbot-caught: the mutation itself always targets the product this click was for, so it
     // genuinely succeeded — but if the operator has since switched to a different product, a
     // "Hero cleared" toast shown against the *new* product's UI would misleadingly read as if it
-    // applied to what's on screen right now. Suppress the toast (not just the callback) once stale.
-    if (!isStaleUploaderRequest(requestProductId)) {
+    // applied to what's on screen right now. Suppress the callback and toast only on a genuine
+    // product switch — not on a bare Media-tab close, which would otherwise leave the parent's
+    // hero/readiness state silently stale until some other refresh path ran (Bugbot-caught).
+    if (!isSupersededByProductSwitch(requestProductId)) {
       onHeroChange?.(null);
       toast.success("Hero cleared");
     }
@@ -519,13 +532,14 @@ export function ProductMediaUploader({
     if (error) return toast.error(error.message);
     if (m.file_url === currentHero) {
       await supabase.from("products").update(heroUrlWritePayload(null)).eq("id", productId);
-      if (!isStaleUploaderRequest(requestProductId)) onHeroChange?.(null);
+      if (!isSupersededByProductSwitch(requestProductId)) onHeroChange?.(null);
     }
     // Bugbot-caught: same reasoning as removeAsHero above — suppress the "Photo deleted" toast
-    // once the operator has moved on to a different product, so a success message never appears
-    // to describe whatever the UI happens to show right now. `load()` is left unconditional; it
-    // already self-guards (see isStaleUploaderRequest usage inside load itself).
-    if (!isStaleUploaderRequest(requestProductId)) toast.success("Photo deleted");
+    // only once the operator has moved on to a different product, so a success message never
+    // appears to describe whatever the UI happens to show right now. `load()` is left
+    // unconditional; it already self-guards (see isStaleUploaderRequest/isSupersededByProductSwitch
+    // usage inside load itself).
+    if (!isSupersededByProductSwitch(requestProductId)) toast.success("Photo deleted");
     await load();
   };
 
