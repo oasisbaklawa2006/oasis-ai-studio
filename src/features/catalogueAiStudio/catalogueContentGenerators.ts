@@ -26,7 +26,7 @@ export const DRAFT_BLOCK_META: DraftBlockMeta[] = [
   { key: "b2b_sales_copy", label: "B2B sales copy", hint: "Wholesale-facing pitch with pricing/MOQ context." },
   { key: "export_catalogue_copy", label: "Export catalogue copy", hint: "HSN/GST/weight-oriented copy for export documentation." },
   { key: "whatsapp_product_message", label: "WhatsApp product message", hint: "Draft message text only — this studio never sends WhatsApp messages." },
-  { key: "hindi_description", label: "Hindi product description", hint: "Simple Hindi/Hinglish business copy — not a certified translation." },
+  { key: "hindi_description", label: "Hindi product description", hint: "Genuine Hindi-language copy (Devanagari script) — not Hinglish, not a certified translation; review before use." },
   { key: "storage_shelf_life_copy", label: "Storage / shelf-life copy", hint: "Handling and shelf-life note." },
 ];
 
@@ -257,6 +257,22 @@ export function composeCatalogueImagePrompt(
   const instruction = operatorInstruction?.trim();
   if (!instruction || isMissingFieldOnlyMessage(base)) return base;
   return `${base} Additional instruction: ${instruction}`;
+}
+
+/**
+ * Owner-smoke-test finding: a rejected/incomplete draft's Export tab let "Copy bundle" hand out
+ * buyer-facing text still containing a raw "Add missing field first: X." fragment (e.g. embedded
+ * inside b2bSalesCopy's "wholesale" sentence) with no adjacent warning. `isMissingFieldOnlyMessage`
+ * only catches a block that IS *nothing but* that fragment (used to gate prompt-instruction
+ * attachment); it deliberately doesn't flag the fragment embedded inline in otherwise-real copy, so
+ * a separate substring check is needed here to decide whether a bundle is safe to hand out.
+ */
+const MISSING_FIELD_FRAGMENT = "Add missing field first:";
+
+export function exportBundleHasMissingFieldPlaceholder(content: CatalogueDraftContent): boolean {
+  return Object.values(content).some(
+    (text) => typeof text === "string" && text.includes(MISSING_FIELD_FRAGMENT),
+  );
 }
 
 /** Plain-text preview of the full catalogue copy bundle — copy/paste only, no PDF generation here. */

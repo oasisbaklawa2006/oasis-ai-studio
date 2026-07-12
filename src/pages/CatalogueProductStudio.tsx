@@ -73,6 +73,7 @@ import {
   canApprove,
   canReject,
   canSubmitForReview,
+  isExportBundleDistributable,
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
 import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
 import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
@@ -1036,6 +1037,21 @@ export default function CatalogueProductStudio() {
     editor.productId === selected.id
       ? persistedDraft
       : null;
+
+  // Owner-smoke-test finding: Export tab's "Copy bundle" must never hand out a rejected/incomplete
+  // draft's buyer-facing text unguarded — only an APPROVED draft with no remaining missing-field
+  // placeholder anywhere in its content is safe to copy externally. Read from `editor.content` (not
+  // the raw persisted row) so this reacts to in-progress edits too, not just the last save.
+  const exportBundleDistributable = useMemo(
+    () =>
+      editor
+        ? isExportBundleDistributable(
+            (currentPersistedDraft?.status as CatalogueDraftStatus | undefined) ?? null,
+            editor.content,
+          )
+        : false,
+    [editor, currentPersistedDraft?.status],
+  );
 
   // Locked only while UNDER_REVIEW: a reviewer must approve/reject before content can change again.
   const textLocked = currentPersistedDraft?.status === "UNDER_REVIEW";
@@ -2047,10 +2063,38 @@ export default function CatalogueProductStudio() {
                           <div className="flex items-center gap-2 text-xs font-semibold text-foreground">
                             <FileText size={14} /> Export / copy bundle preview
                           </div>
-                          <Button type="button" size="sm" variant="outline" onClick={() => copyText(exportPreview, "Export bundle")}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={!exportBundleDistributable}
+                            title={
+                              exportBundleDistributable
+                                ? undefined
+                                : "Only an Approved draft with no missing-field placeholders can be copied for external use."
+                            }
+                            onClick={() => copyText(exportPreview, "Export bundle")}
+                          >
                             <Copy size={12} className="mr-1.5" /> Copy bundle
                           </Button>
                         </div>
+                        {!exportBundleDistributable && (
+                          <div className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive">
+                            <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                            <span>
+                              <strong>Internal review only — do not use externally.</strong> This draft is{" "}
+                              {currentPersistedDraft
+                                ? STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]
+                                : "not yet saved"}
+                              , not Approved, and/or still has a missing-field placeholder in one of its blocks
+                              (e.g. "Add missing field first: ..."). Copy is disabled until the draft is Approved
+                              and every block is complete. If a field shown here as missing has since been set on
+                              the product, this saved draft won't reflect it automatically — reset or regenerate
+                              the draft to refresh it; historical rejected/approved content is never silently
+                              rewritten.
+                            </span>
+                          </div>
+                        )}
                         <p className="text-[11px] text-muted-foreground">
                           Text preview only — no PDF is generated in this studio.
                         </p>
