@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { isSupersededById } from "@/features/productAuthority/requestRace";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   beginProductMediaOperation,
   fetchProductMediaRows,
@@ -44,6 +45,7 @@ import {
 import { heroUrlWritePayload } from "@/lib/productImage";
 import {
   applyHeroDesignation,
+  deriveHeroUrlFromMediaRows,
   deriveMediaStatusFromRows,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
 import type { Role } from "@/lib/permissions";
@@ -180,16 +182,42 @@ export function ProductMediaUploader({
   }, []);
 
   /** Refreshes this component's own display only — used by draft-mode paths, which must never
-   * write direct authority (that would bypass the approval workflow); no sequencing/publish. */
-  const refreshLocalMediaView = async () => {
+   * write direct authority (that would bypass the approval workflow); no sequencing/publish.
+   * Returns the fetched rows (or null on failure/supersede) so a caller can separately publish
+   * them without a write — see publishDraftMediaAuthority below. */
+  const refreshLocalMediaView = async (): Promise<ProductMediaRow[] | null> => {
     const requestProductId = productId;
     try {
       const rows = await fetchProductMediaRows(requestProductId);
-      if (isSupersededByProductSwitch(requestProductId)) return;
+      if (isSupersededByProductSwitch(requestProductId)) return null;
       setMedia(rows);
+      return rows;
     } catch {
       // Best-effort passive refresh only, matching the pre-existing behavior this replaces.
+      return null;
     }
+  };
+
+  // Bugbot-caught: draft-mode uploads only ever called refreshLocalMediaView (this component's own
+  // local state), never reconcileProductMediaAuthority/publishProductMediaAuthority — so Catalogue
+  // Studio's readiness/sticky media and Full Editor's productMediaRows/form (which now sync
+  // exclusively via subscribeToProductMediaAuthority, per the architecture this PR introduced) never
+  // learned about a submitted draft until an unrelated resync happened. Fixing this must NOT call
+  // reconcileProductMediaAuthority — its repair step assumes direct-write authority, and even
+  // without `repair: true` it still writes products.hero_image_url/media_status, which draft mode
+  // must never do. Instead, derive heroUrl/mediaStatus the exact same *pure* way
+  // syncProductMediaAuthority does (deriveHeroUrlFromMediaRows only ever considers approved rows, so
+  // a new pending/raw row can never be surfaced as an approved hero) and publish that — no write.
+  const publishDraftMediaAuthority = (
+    requestProductId: string,
+    operationId: number,
+    rows: ProductMediaRow[],
+  ) => {
+    publishProductMediaAuthority(requestProductId, operationId, {
+      heroUrl: deriveHeroUrlFromMediaRows(rows),
+      mediaStatus: deriveMediaStatusFromRows(rows, { fallbackHeroUrl: null }),
+      rows,
+    });
   };
 
   const applyDirectHeroAuthority = async (url: string) => {
@@ -300,6 +328,8 @@ export function ProductMediaUploader({
       targetRecordId?: string | null;
     } = {}
   ) => {
+    const requestProductId = productId;
+    const operationId = beginProductMediaOperation(requestProductId);
     const path = buildStagingMediaPath(storageFolder, file.name);
     const { error: upErr } = await uploadMediaFileToStorage(path, file);
     if (upErr) {
@@ -335,14 +365,16 @@ export function ProductMediaUploader({
     );
     if (!res.ok) {
       toast.error(res.message);
-      await refreshLocalMediaView();
+      const rows = await refreshLocalMediaView();
+      if (rows) publishDraftMediaAuthority(requestProductId, operationId, rows);
       return false;
     }
     setPendingNotices((prev) => [
       ...prev,
       `${file.name} — submitted for approval (visible below until review)`,
     ]);
-    await refreshLocalMediaView();
+    const rows = await refreshLocalMediaView();
+    if (rows) publishDraftMediaAuthority(requestProductId, operationId, rows);
     return true;
   };
 
