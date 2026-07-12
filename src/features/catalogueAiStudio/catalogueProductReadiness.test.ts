@@ -42,3 +42,21 @@ describe("computeCatalogueProductReadiness — hero image category", () => {
     },
   );
 });
+
+describe("computeCatalogueProductReadiness — identity vs. overall label", () => {
+  it(
+    "overallLabel is 'Not ready' the moment ANY category is missing, even when identity itself " +
+      "passes (CatalogueProductStudio.tsx's AI-generation gate must check the identity category " +
+      "directly, not overallLabel, or it wrongly blocks generation for products only missing an " +
+      "unrelated field like hero image or pricing — Bugbot regression)",
+    () => {
+      const { categories, overallLabel } = computeCatalogueProductReadiness({
+        product_name: "Pineapple Dragees",
+        short_description: "A short summary.",
+        // Every other category is intentionally left blank/missing.
+      });
+      expect(categories.find((c) => c.key === "identity")?.state).toBe("pass");
+      expect(overallLabel).toBe("Not ready");
+    },
+  );
+});

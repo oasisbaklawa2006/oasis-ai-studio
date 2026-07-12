@@ -31,6 +31,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   computeCatalogueProductReadiness,
@@ -49,6 +50,7 @@ import {
 import type {
   CatalogueDraftAuditRow,
   CatalogueDraftContent,
+  CatalogueDraftContentKey,
   CatalogueDraftPrompts,
   CatalogueDraftRow,
   CatalogueDraftStatus,
@@ -97,6 +99,22 @@ import {
   WORK_QUEUE_STATUSES,
   type WorkQueueStatus,
 } from "@/features/catalogueAiStudio/catalogueWorkQueueStatus";
+import {
+  CATALOGUE_AI_TONES,
+  generateCatalogueContentDraft,
+  type CatalogueAiSourceFacts,
+  type CatalogueAiTone,
+} from "@/features/catalogueAiStudio/catalogueAiGateway";
+import {
+  advanceAiFieldTracking,
+  buildAiGenerationProvenance,
+  isAiGenerationBlockedByIdentity,
+  mergeAiGeneratedContent,
+  readPersistedAiGenerationProvenance,
+  restoreAiGenerationState,
+  type AiFieldTracking,
+} from "@/features/catalogueAiStudio/catalogueAiGenerationMerge";
+import { Sparkles } from "lucide-react";
 import {
   lastOpenedProduct,
   parseRecentProductEntries,
@@ -179,7 +197,10 @@ function mapRowToEditor(row: CatalogueDraftRow): { content: CatalogueDraftConten
   };
 }
 
-function buildSourceSnapshot(product: CatalogueProductStudioProduct): Record<string, unknown> {
+function buildSourceSnapshot(
+  product: CatalogueProductStudioProduct,
+  aiGeneration: Record<string, unknown> | null = null,
+): Record<string, unknown> {
   return {
     product_name: product.product_name ?? null,
     sku: product.sku ?? null,
@@ -189,7 +210,31 @@ function buildSourceSnapshot(product: CatalogueProductStudioProduct): Record<str
     is_active: product.is_active ?? null,
     is_catalogue_ready: product.is_catalogue_ready ?? null,
     snapshotted_at: new Date().toISOString(),
+    ai_generation: aiGeneration,
   };
+}
+
+/**
+ * A3 AI safety/provenance wrapper: resolves the AI baseline/applied-fields state into the pure
+ * `buildAiGenerationProvenance` (catalogueAiGenerationMerge.ts, unit-tested). When no fresh AI
+ * generation happened this session (no in-memory baseline — e.g. the studio was just reopened),
+ * falls back to re-reading whatever provenance the previous save already recorded rather than
+ * overwriting it with null, which would silently erase that history (Bugbot regression).
+ */
+function resolveAiGenerationProvenance(
+  editor: EditorState,
+  aiGeneratedBaseline: EditorState | null,
+  aiFieldTracking: AiFieldTracking | null,
+  tone: CatalogueAiTone | null,
+  previouslyPersistedSourceSnapshot: unknown,
+): Record<string, unknown> | null {
+  if (aiGeneratedBaseline && aiGeneratedBaseline.productId === editor.productId && aiFieldTracking) {
+    return {
+      ...buildAiGenerationProvenance(editor.content, aiGeneratedBaseline.content, aiFieldTracking, tone),
+    };
+  }
+  const persisted = readPersistedAiGenerationProvenance(previouslyPersistedSourceSnapshot);
+  return persisted ? { ...persisted } : null;
 }
 
 /** Reads a known string field out of an audit row's jsonb `metadata` — never throws on shape drift. */
@@ -541,6 +586,10 @@ export default function CatalogueProductStudio() {
   const resetFromProduct = () => {
     if (!canResetDraft || !selected) return;
     setEditorState(generateEditorState(selected));
+    // Bugbot-caught: this reload back to the local template used to leave the AI baseline/fields/
+    // tone from a prior generation in place, so `activeBaseline` kept comparing against stale AI
+    // content — clear it here too, exactly like the product-switch effect does.
+    clearAiGeneration();
     toast.success("Draft reset from current product data.");
   };
 
@@ -618,7 +667,15 @@ export default function CatalogueProductStudio() {
         setPersistedDraft(row);
         patchDraftStatus(productId, (row?.status as CatalogueDraftStatus | undefined) ?? null);
         if (row) {
-          setEditorState({ productId, ...mapRowToEditor(row) });
+          const mapped = mapRowToEditor(row);
+          setEditorState({ productId, ...mapped });
+          // Bugbot-caught: without this, reopening a previously AI-generated draft showed every
+          // AI-filled field as falsely "Edited" (compared against the raw template instead of what
+          // was actually loaded) and the next save would silently erase the saved provenance.
+          const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
+          setAiGeneratedBaseline(restored?.baseline ?? null);
+          setAiFieldTracking(restored?.tracking ?? null);
+          setAiGeneratedTone(restored?.tone ?? null);
           const log = await fetchDraftAuditLog(row.id);
           if (!cancelled && selectedIdRef.current === productId) setAuditLog(log);
         }
@@ -784,6 +841,115 @@ export default function CatalogueProductStudio() {
     return "Product Truth complete — review content, media, and language, then submit for review.";
   }, [readiness]);
 
+  // A3: once AI generation succeeds for this product, the "Edited" badge compares against the
+  // AI-generated content instead of the local template — otherwise every AI-filled field would
+  // immediately show as "Edited" just for differing from the template it replaced. Reset on
+  // product switch so a stale AI baseline from a previous product is never possible.
+  const [aiGeneratedBaseline, setAiGeneratedBaseline] = useState<EditorState | null>(null);
+  const [aiFieldTracking, setAiFieldTracking] = useState<AiFieldTracking | null>(null);
+  const [aiGeneratedTone, setAiGeneratedTone] = useState<CatalogueAiTone | null>(null);
+  const [aiGenerationState, setAiGenerationState] = useState<"idle" | "generating" | "success" | "error">("idle");
+  const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
+  const [aiTone, setAiTone] = useState<CatalogueAiTone>("Informational");
+  // Bugbot-caught: resetFromProduct cleared the AI baseline state, but an in-flight
+  // generateCatalogueContentDraft() call from BEFORE the reset would still resolve and merge its
+  // result afterward, undoing the reset. Every clearAiGeneration() call bumps this so
+  // handleGenerateAiDraft can recognize its own request is no longer current and bail out instead
+  // of applying a stale response.
+  const aiGenerationRequestIdRef = useRef(0);
+  const clearAiGeneration = () => {
+    aiGenerationRequestIdRef.current += 1;
+    setAiGeneratedBaseline(null);
+    setAiFieldTracking(null);
+    setAiGeneratedTone(null);
+    setAiGenerationState("idle");
+    setAiGenerationError(null);
+  };
+  useEffect(() => {
+    clearAiGeneration();
+  }, [selected?.id]);
+  const activeBaseline: EditorState | null =
+    aiGeneratedBaseline && selected && aiGeneratedBaseline.productId === selected.id
+      ? aiGeneratedBaseline
+      : generatedBaseline;
+
+  const aiGenerationBlocked = isAiGenerationBlockedByIdentity(readiness);
+
+  const handleGenerateAiDraft = async () => {
+    if (!selected || !editor || aiGenerationBlocked) return;
+    const productId = selected.id;
+    const requestId = ++aiGenerationRequestIdRef.current;
+    setAiGenerationState("generating");
+    setAiGenerationError(null);
+    const facts: CatalogueAiSourceFacts = {
+      productName: selected.product_name || "Untitled product",
+      category: selected.category,
+      subcategory: selected.subcategory,
+      packSize: selected.pack_size,
+      saleTypeLabel,
+      storageInstructions: selected.storage_instructions,
+      shelfLifeDays: selected.shelf_life_days,
+    };
+    const result = await generateCatalogueContentDraft(facts, aiTone);
+    if (selectedIdRef.current !== productId || aiGenerationRequestIdRef.current !== requestId) return;
+    if (result.ok === false) {
+      setAiGenerationState("error");
+      setAiGenerationError(result.reason);
+      return;
+    }
+    // Bugbot-caught: this used to merge into `editor.content` captured by closure at click time.
+    // Fields stay editable while the request is in flight, so typing done during the await was
+    // silently discarded by that stale snapshot. A functional update reads the *current* state at
+    // merge time instead — including any edits made while waiting — and the `prev.productId`
+    // check ignores a stale response if the operator has since switched products (belt-and-braces
+    // alongside the `selectedIdRef` check above, which only catches the common case). The actual
+    // field-by-field merge is the pure, unit-tested `mergeAiGeneratedContent`.
+    //
+    // Bugbot-caught: fields already known human-edited/preserved from a prior session (restored via
+    // restoreAiGenerationState) must never be silently overwritten by a fresh regeneration just
+    // because their loaded value happens to match the restored baseline — `lockedFields` excludes
+    // them from `mergeAiGeneratedContent` unconditionally, regardless of that diff.
+    const lockedFields = new Set([
+      ...(aiFieldTracking?.lockedHumanEditedFields ?? []),
+      ...(aiFieldTracking?.lockedPreservedFields ?? []),
+    ]);
+    let appliedFields: CatalogueDraftContentKey[] = [];
+    let preservedCount = 0;
+    let mergedState: EditorState | null = null;
+    setEditorState((prev) => {
+      if (!prev || prev.productId !== productId) return prev;
+      const merge = mergeAiGeneratedContent(prev.content, result.content, activeBaseline?.content ?? null, lockedFields);
+      appliedFields = merge.appliedFields;
+      preservedCount = merge.preservedCount;
+      mergedState = { productId, content: merge.content, prompts: prev.prompts };
+      return mergedState;
+    });
+    if (!mergedState) {
+      // Bugbot-caught: this branch is only reachable if the editor state moved out from under this
+      // request between the guard above and this functional update — leaving aiGenerationState
+      // stuck at "generating" forever would disable the button with no way to recover short of a
+      // reset or product switch.
+      setAiGenerationState("idle");
+      return;
+    }
+    // Bugbot-caught: the baseline used to store the raw AI result for every key, including ones
+    // preserved above because the operator had already edited them — comparing the final editor
+    // against that raw baseline made preserved fields look "human-edited after generation" (as if
+    // AI had written them first). Storing the merged state instead means a preserved field's
+    // baseline exactly matches its current value. `advanceAiFieldTracking` folds this round's newly
+    // applied fields into the watched set and graduates any newly-diverged watched field into the
+    // locked human-edited set, so a field's history survives across generations, not just one round.
+    setAiGeneratedBaseline(mergedState);
+    setAiFieldTracking(advanceAiFieldTracking(aiFieldTracking, appliedFields));
+    setAiGeneratedTone(aiTone);
+    setAiGenerationState("success");
+    if (preservedCount > 0) {
+      toast.info(`AI draft applied — ${preservedCount} field(s) you'd already edited were left unchanged.`);
+    } else {
+      toast.success("AI draft generated. Review before saving.");
+    }
+  };
+
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
   // overwrite the new product's audit history with the previous draft's events.
   const refreshAuditLog = async (draftId: string, expectedProductId: string) => {
@@ -839,7 +1005,16 @@ export default function CatalogueProductStudio() {
           ...editor.content,
           ...editor.prompts,
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
-          source_snapshot: buildSourceSnapshot(selected),
+          source_snapshot: buildSourceSnapshot(
+            selected,
+            resolveAiGenerationProvenance(
+              editor,
+              aiGeneratedBaseline,
+              aiFieldTracking,
+              aiGeneratedTone,
+              currentPersistedDraft?.source_snapshot ?? null,
+            ),
+          ),
         },
         actorId: user?.id ?? null,
       });
@@ -869,7 +1044,12 @@ export default function CatalogueProductStudio() {
       }
       setPersistedDraft(row);
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
-      setEditorState({ productId, ...mapRowToEditor(row) });
+      const mapped = mapRowToEditor(row);
+      setEditorState({ productId, ...mapped });
+      const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
+      setAiGeneratedBaseline(restored?.baseline ?? null);
+      setAiFieldTracking(restored?.tracking ?? null);
+      setAiGeneratedTone(restored?.tone ?? null);
       await refreshAuditLog(row.id, productId);
       toast.success(`Loaded v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`);
     } catch (err) {
@@ -897,7 +1077,16 @@ export default function CatalogueProductStudio() {
           ...editor.content,
           ...editor.prompts,
           export_bundle_preview: buildExportBundlePreview(selected, editor.content),
-          source_snapshot: buildSourceSnapshot(selected),
+          source_snapshot: buildSourceSnapshot(
+            selected,
+            resolveAiGenerationProvenance(
+              editor,
+              aiGeneratedBaseline,
+              aiFieldTracking,
+              aiGeneratedTone,
+              currentPersistedDraft?.source_snapshot ?? null,
+            ),
+          ),
         },
         actorId: user?.id ?? null,
       });
@@ -1462,15 +1651,69 @@ export default function CatalogueProductStudio() {
                       </TabsList>
 
                       <TabsContent value="content" className="space-y-4 pt-4">
-                        <p className="text-[11px] text-muted-foreground">
-                          Generated locally from this product's current fields — no external AI call in this studio.
-                        </p>
+                        <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-[11px] text-muted-foreground">
+                              Content below starts as a local template generated from this product's current
+                              fields. "Generate Complete Catalogue Draft" instead drafts every content and
+                              language field in one governed call to the AI service, based strictly on this
+                              product's saved facts — it never invents price, ingredients, allergens, nutrition,
+                              or compliance claims, and never overwrites fields you've already edited.
+                            </p>
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={aiTone}
+                                onValueChange={(v) => setAiTone(v as CatalogueAiTone)}
+                                disabled={aiGenerationState === "generating"}
+                              >
+                                <SelectTrigger className="h-8 w-[140px] text-[11px]">
+                                  <SelectValue placeholder="Tone" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {CATALOGUE_AI_TONES.map((tone) => (
+                                    <SelectItem key={tone} value={tone} className="text-[11px]">
+                                      {tone}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={aiGenerationBlocked || aiGenerationState === "generating" || textLocked || draftLoading}
+                                onClick={handleGenerateAiDraft}
+                              >
+                                {aiGenerationState === "generating" ? (
+                                  <Loader2 size={12} className="mr-1.5 animate-spin" />
+                                ) : (
+                                  <Sparkles size={12} className="mr-1.5" />
+                                )}
+                                Generate Complete Catalogue Draft
+                              </Button>
+                            </div>
+                          </div>
+                          {aiGenerationBlocked && (
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                              Complete Step 1 (Complete Truth) first — core product identity is missing.
+                            </p>
+                          )}
+                          {aiGenerationState === "error" && aiGenerationError && (
+                            <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+                              <AlertTriangle size={12} className="shrink-0" /> {aiGenerationError}
+                            </div>
+                          )}
+                          {aiGenerationState === "success" && (
+                            <p className="text-[10px] text-emerald-700 dark:text-emerald-400">
+                              AI draft generated — review each field below before saving.
+                            </p>
+                          )}
+                        </div>
                         {DRAFT_BLOCK_META.filter((block) => !isLanguageMessagingField(block.key)).map((block) => {
                           const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
                           const blockIsEdited =
                             !blockIsMissing &&
-                            !!generatedBaseline &&
-                            isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
+                            !!activeBaseline &&
+                            isFieldEdited(editor.content[block.key], activeBaseline.content[block.key]);
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1515,9 +1758,11 @@ export default function CatalogueProductStudio() {
 
                       <TabsContent value="language" className="space-y-4 pt-4">
                         <p className="text-[11px] text-muted-foreground">
-                          Language content here (Hindi/Hinglish copy, WhatsApp draft message) is informational only —
+                          Language content here (Hindi description, WhatsApp draft message) is informational only —
                           it never blocks catalogue readiness or Central Sync. WhatsApp approval workflow is not
-                          active; this studio never sends WhatsApp messages.
+                          active; this studio never sends WhatsApp messages. "Generate Complete Catalogue Draft" on
+                          the Content step also fills these fields — the Hindi description is a genuine translation
+                          drafted by the AI service, not a machine transliteration; review it before saving.
                         </p>
                         {(() => {
                           const languageBlocks = DRAFT_BLOCK_META.filter((block) => isLanguageMessagingField(block.key));
@@ -1532,8 +1777,8 @@ export default function CatalogueProductStudio() {
                             const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
                             const blockIsEdited =
                               !blockIsMissing &&
-                              !!generatedBaseline &&
-                              isFieldEdited(editor.content[block.key], generatedBaseline.content[block.key]);
+                              !!activeBaseline &&
+                              isFieldEdited(editor.content[block.key], activeBaseline.content[block.key]);
                             return (
                               <div key={block.key} className="space-y-1.5">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
