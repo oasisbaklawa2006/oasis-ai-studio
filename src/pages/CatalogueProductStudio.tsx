@@ -2041,7 +2041,20 @@ export default function CatalogueProductStudio() {
                         <p className="text-[11px] text-muted-foreground">
                           Text preview only — no PDF is generated in this studio.
                         </p>
-                        <Textarea value={exportPreview} readOnly rows={16} className="text-xs font-mono" />
+                        {/* Bugbot-caught: disabling the Copy button alone doesn't stop an operator from
+                            selecting and copying the same text directly out of the textarea, bypassing the
+                            gate entirely. Suppress the actual bundle content, not just the button, whenever
+                            it isn't distributable. */}
+                        <Textarea
+                          value={
+                            exportBundleDistributable
+                              ? exportPreview
+                              : "Bundle text hidden — only an Approved draft with no missing-field placeholders can be previewed or copied for external use. See the warning above for what's blocking this draft."
+                          }
+                          readOnly
+                          rows={16}
+                          className="text-xs font-mono"
+                        />
                       </TabsContent>
                     </Tabs>
                   </CardContent>

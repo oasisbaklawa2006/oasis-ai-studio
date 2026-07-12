@@ -370,17 +370,37 @@ export function ProductMediaUploader({
       }
       const url = await uploadFileDirect(files[0], asHero, false);
       if (url && asHero) {
-        await applyDirectHeroAuthority(url);
-        // Bugbot-caught: applyDirectHeroAuthority already silently no-ops once the operator has
-        // switched products mid-request, but this toast still fired unconditionally — misleadingly
-        // implying the hero designation applied to whatever product is on screen now, when it may
-        // have applied to the previous one instead. A bare Media-tab close (no product switch)
-        // does not make this toast untrue, so only the product-switch check gates it.
-        if (!isSupersededByProductSwitch(requestProductId)) toast.success("Hero image uploaded");
+        // Bugbot-caught: the file/row already committed via uploadFileDirect above. If
+        // applyDirectHeroAuthority's reconciliation throws (network/DB error), the old per-instance
+        // load() refresh this replaced is gone, and reconcileProductMediaAuthority never publishes to
+        // subscribers — so the gallery could show stale data indefinitely with no user-facing signal
+        // that the already-saved file isn't reflected yet. Fall back to the same passive
+        // refreshLocalMediaView() the draft-mode path already uses, and say so.
+        try {
+          await applyDirectHeroAuthority(url);
+          // Bugbot-caught: applyDirectHeroAuthority already silently no-ops once the operator has
+          // switched products mid-request, but this toast still fired unconditionally — misleadingly
+          // implying the hero designation applied to whatever product is on screen now, when it may
+          // have applied to the previous one instead. A bare Media-tab close (no product switch)
+          // does not make this toast untrue, so only the product-switch check gates it.
+          if (!isSupersededByProductSwitch(requestProductId)) toast.success("Hero image uploaded");
+        } catch {
+          await refreshLocalMediaView();
+          if (!isSupersededByProductSwitch(requestProductId)) {
+            toast.error("Hero image saved, but syncing the gallery failed — refreshed with a best-effort read instead.");
+          }
+        }
       } else if (url) {
-        await reconcileProductMediaAuthority(requestProductId, operationId);
-        if (!isSupersededByProductSwitch(requestProductId)) {
-          toast.success(`${mediaTypeLabel(slot)} uploaded`);
+        try {
+          await reconcileProductMediaAuthority(requestProductId, operationId);
+          if (!isSupersededByProductSwitch(requestProductId)) {
+            toast.success(`${mediaTypeLabel(slot)} uploaded`);
+          }
+        } catch {
+          await refreshLocalMediaView();
+          if (!isSupersededByProductSwitch(requestProductId)) {
+            toast.error(`${mediaTypeLabel(slot)} saved, but syncing the gallery failed — refreshed with a best-effort read instead.`);
+          }
         }
       }
     } finally {
@@ -416,13 +436,24 @@ export function ProductMediaUploader({
         const url = await uploadFileDirect(file, false, isVideo);
         if (url) lastUrl = url;
       }
-      if (!isVideo && (!currentHero || isPdfPage(currentHero)) && lastUrl) {
-        await applyDirectHeroAuthority(lastUrl);
-      } else {
-        await reconcileProductMediaAuthority(requestProductId, operationId);
-      }
-      if (!isSupersededByProductSwitch(requestProductId)) {
-        toast.success(`${files.length} file(s) uploaded`);
+      // Bugbot-caught: same gap as uploadToSlot above — the file(s) already committed via
+      // uploadFileDirect. If the reconciliation call below throws, fall back to the same
+      // best-effort refreshLocalMediaView() the draft-mode path already uses, instead of leaving
+      // the gallery stale with no signal.
+      try {
+        if (!isVideo && (!currentHero || isPdfPage(currentHero)) && lastUrl) {
+          await applyDirectHeroAuthority(lastUrl);
+        } else {
+          await reconcileProductMediaAuthority(requestProductId, operationId);
+        }
+        if (!isSupersededByProductSwitch(requestProductId)) {
+          toast.success(`${files.length} file(s) uploaded`);
+        }
+      } catch {
+        await refreshLocalMediaView();
+        if (!isSupersededByProductSwitch(requestProductId)) {
+          toast.error(`${files.length} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`);
+        }
       }
     } finally {
       setUploading(false);
