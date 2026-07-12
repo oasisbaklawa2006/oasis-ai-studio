@@ -22,6 +22,39 @@ reused from earlier cached session state) immediately before this document was o
 > why a rejected draft's B2B sales copy read "Add missing field first: B2B price" while readiness
 > showed a live B2B price — confirmed as expected historical snapshot behavior, not a defect. See
 > §4 and §5 for the full account.
+>
+> **Update 3 (2026-07-12):** Since Update 2 (head `2e782a8`), the owner's authenticated smoke test
+> found a further finding — a REJECTED/incomplete draft's Export tab "Copy bundle" affordance
+> exposed unsupported buyer-facing claims from frozen historical content with no warning, and Stage
+> 3's Hindi field hint claimed Hinglish support the schema doesn't have. Fixed at head `0230c33`:
+> `isExportBundleDistributable()` now gates the Copy-bundle button to APPROVED drafts with no
+> `Add missing field first:` placeholder remaining in any content block, with an adjacent "Internal
+> review only — do not use externally" banner explaining why when disabled; the Stage 3 Hindi hint
+> now reads "Genuine Hindi-language copy (Devanagari script) — not Hinglish...". No historical draft
+> content was rewritten; only the affordance's exposure changed. Confirmed present and unmodified in
+> current source at head `ab8d1b9` (`catalogueDraftWorkflow.ts:36`, `catalogueContentGenerators.ts:29`,
+> `CatalogueProductStudio.tsx:1044-1053,2064-2103`); no application-code change was needed to close
+> this out.
+>
+> Three further Bugbot rounds (`d0091bb`, `7154768`, `6f8c901`) closed remaining gaps in the
+> mount-guard/callback-suppression media-reconciliation approach, after which that whole approach was
+> replaced by a root-cause architectural fix at head `6123e2c`: `productMediaMutationAuthority.ts`, a
+> framework-neutral pub/sub authority independent of any component's mount state — six consecutive
+> prior Bugbot rounds had each patched a new variation of the same underlying defect (a closed Media
+> tab wrongly allowed to suppress reconciliation of an already-committed database write). Six more
+> Bugbot rounds followed against the new authority module (`03f2f3b`, `963569d`, `59a3cf2`, `ad92b04`,
+> `113d25c`, `ab8d1b9`), each investigated against source and fixed narrowly; see branch git history
+> for full commit messages, not individually itemized here to keep this update concise.
+>
+> **Current terminal state, head `ab8d1b9ee58a5031bceaa2bd1ef9dc5622e5bc40`:** Cursor Bugbot check
+> run `completed`/`success` for this exact head, zero new findings; all 24 formal review threads on
+> PR #84 confirmed `is_resolved: true` (zero unresolved); Vercel Preview `Ready`. Full local
+> validation clean: `typecheck` clean, `lint` 0 findings in touched files, `build` succeeds, `test`
+> 662/662 passing, `check:boundaries` 0 new violations, `git diff --check` clean. PR #84 remains
+> `draft: true`, `merged: false`, `mergeable_state: clean`.
+>
+> This is automated-evidence closure only — the stack remains draft/unmerged pending Dinesh's final
+> authenticated acceptance smoke test (§9/§10 below still apply unchanged).
 
 ---
 
