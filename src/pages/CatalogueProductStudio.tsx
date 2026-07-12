@@ -653,10 +653,16 @@ export default function CatalogueProductStudio() {
 
   // Always holds the product id actually on screen right now, read synchronously by every in-flight
   // async handler/effect below — never the stale product id closed over when that async call started.
+  // Bugbot-caught: this used to be written from a useEffect, which only runs after commit/paint. A
+  // promise continuation (e.g. an authority publish) resolving via microtask between commit and that
+  // passive-effect flush could still observe the previous product's id — able to paint a late publish
+  // for the old product onto the just-reset new-product state, or drop a fresh publish for the new
+  // product because the ref hadn't caught up yet. Writing it directly during render (the same
+  // synchronous-ref pattern mediaLoadProductIdRef already uses below) keeps it always accurate the
+  // instant a render for the new selection happens — no gating needed, since a plain reassignment is
+  // safe and idempotent to repeat every render.
   const selectedIdRef = useRef<string | null>(null);
-  useEffect(() => {
-    selectedIdRef.current = selected?.id ?? null;
-  }, [selected]);
+  selectedIdRef.current = selected?.id ?? null;
 
   // One product-switch effect owns the entire transition: clears the previous product's persisted
   // draft/audit/reject state and seeds a fresh generated draft immediately, then hydrates the real
