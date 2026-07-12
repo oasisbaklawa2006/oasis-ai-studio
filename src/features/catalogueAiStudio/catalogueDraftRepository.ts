@@ -10,6 +10,7 @@ import type {
   CatalogueDraftContentKey,
   CatalogueDraftPromptKey,
   CatalogueDraftRow,
+  CatalogueDraftStatus,
 } from "./catalogueDraftTypes";
 
 const UNIQUE_VIOLATION = "23505";
@@ -37,6 +38,36 @@ export async function fetchLatestDraft(productId: string): Promise<CatalogueDraf
     .maybeSingle();
   if (error) throw new Error(error.message);
   return data;
+}
+
+/**
+ * Latest draft status per product, for the operator cockpit's work queue (Catalogue Studio's
+ * product list needs every product's status, not just the currently-selected one).
+ * Client-side reduces to the highest version_number per product_id, since a single
+ * `.select()` can't express "latest row per group" without a Postgres view/RPC this repo doesn't
+ * have — reusing the existing table is preferred over adding one for this.
+ */
+export async function fetchLatestDraftStatuses(
+  productIds: string[],
+): Promise<Map<string, CatalogueDraftStatus>> {
+  const result = new Map<string, CatalogueDraftStatus>();
+  if (productIds.length === 0) return result;
+
+  const { data, error } = await supabase
+    .from("catalogue_ai_studio_drafts")
+    .select("product_id, status, version_number")
+    .in("product_id", productIds);
+  if (error) throw new Error(error.message);
+
+  const latestVersion = new Map<string, number>();
+  for (const row of data ?? []) {
+    const seenVersion = latestVersion.get(row.product_id);
+    if (seenVersion === undefined || row.version_number > seenVersion) {
+      latestVersion.set(row.product_id, row.version_number);
+      result.set(row.product_id, row.status as CatalogueDraftStatus);
+    }
+  }
+  return result;
 }
 
 export async function fetchDraftAuditLog(draftId: string): Promise<CatalogueDraftAuditRow[]> {
