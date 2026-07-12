@@ -744,6 +744,18 @@ export default function CatalogueProductStudio() {
   const [mediaLoadState, setMediaLoadState] = useState<MediaLoadState>(INITIAL_MEDIA_LOAD_STATE);
   // Bumped by the Retry button to re-run the fetch effect without duplicating its logic.
   const [mediaRetryToken, setMediaRetryToken] = useState(0);
+  // Bugbot-caught: "Remove as hero" publishes { heroUrl: null, rows: unchanged } — it deliberately
+  // leaves the still-approved hero_image row in product_media untouched (removeAsHero's own
+  // comment: "the image stays in the gallery"), so re-deriving heroUrl from rows alone (as
+  // mediaSummary below does) would immediately resurrect the cleared hero. Track the latest
+  // *published* heroUrl for the current product separately and let it take precedence over the
+  // rows-derived value, mirroring how ProductEdit.tsx applies result.heroUrl directly instead of
+  // re-deriving it. Reset is implicit: gated on productId match, so switching products (or a fresh
+  // page load that hasn't published anything yet) naturally falls back to the rows-derived value.
+  const [publishedHeroOverride, setPublishedHeroOverride] = useState<{
+    productId: string;
+    heroUrl: string | null;
+  } | null>(null);
   // Bugbot-caught: the useEffect below resets mediaLoadState on product switch, but effects run
   // after the render commits — for one painted frame, mediaSummary/anchor hero/readiness/required
   // slots would still read the PREVIOUS product's loaded rows against the newly selected product.
@@ -807,6 +819,10 @@ export default function CatalogueProductStudio() {
     return subscribeToProductMediaAuthority((result) => {
       if (result.productId !== selectedIdRef.current) return;
       setMediaLoadState(mediaLoadSucceeded(result.rows));
+      // Bugbot-caught: this subscriber previously only applied result.rows, silently discarding
+      // result.heroUrl — so a cleared hero (rows unchanged by design) never reached the sticky
+      // bar/readiness/embedded uploader here, unlike ProductEdit.tsx which already applies both.
+      setPublishedHeroOverride({ productId: result.productId, heroUrl: result.heroUrl });
     });
   }, []);
 
@@ -816,10 +832,17 @@ export default function CatalogueProductStudio() {
   // "present" from the legacy column, then flip to "missing" once the real product_media rows load
   // and reveal no approved hero — contradicting the Media tab's own loading/error state. Hero is
   // only ever resolved (fallback included) once a load has genuinely completed.
-  const mediaSummary = useMemo(
-    () => summarizeCatalogueMedia(mediaLoadState.status === "loaded" ? selected : null, mediaRows),
-    [selected, mediaRows, mediaLoadState.status],
-  );
+  const mediaSummary = useMemo(() => {
+    const base = summarizeCatalogueMedia(mediaLoadState.status === "loaded" ? selected : null, mediaRows);
+    // Bugbot-caught: apply the latest published heroUrl (e.g. an explicit "Remove as hero" clear)
+    // over the rows-derived value whenever it's for the currently selected product — see
+    // publishedHeroOverride's declaration above for why rows alone can't be trusted for this.
+    if (selected && publishedHeroOverride && publishedHeroOverride.productId === selected.id) {
+      const heroUrl = publishedHeroOverride.heroUrl;
+      return { ...base, heroUrl, approvedCount: base.approvedMedia.length + (heroUrl ? 1 : 0) };
+    }
+    return base;
+  }, [selected, mediaRows, mediaLoadState.status, publishedHeroOverride]);
 
 
   // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
