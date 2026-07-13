@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       AUTONOMA_ENDPOINT: https://autonoma.app/v1/onboarding/deployment-signal
-      AUTONOMA_APPLICATION_ID: cmrj2lm9l030t01e8yv3eryb0
+      AUTONOMA_APPLICATION_ID: cmrj3s1wt031f01e8yjxawsnc
       AUTONOMA_SHARED_SECRET: ${{ secrets.AUTONOMA_SHARED_SECRET }}
       PREVIEW_URL: ${{ inputs.preview_url || github.event.deployment_status.target_url || 'https://oasis-ai-studio-fb1fp1cgw-oasisbaklawa2006-6222s-projects.vercel.app' }}
       PREVIEW_SHA: ${{ inputs.sha || github.event.deployment.sha || github.sha }}
