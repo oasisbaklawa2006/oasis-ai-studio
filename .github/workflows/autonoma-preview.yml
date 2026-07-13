@@ -17,7 +17,6 @@ jobs:
       AUTONOMA_SHARED_SECRET: ${{ secrets.AUTONOMA_SHARED_SECRET }}
       PREVIEW_URL: ${{ github.event.deployment_status.target_url }}
       PREVIEW_SHA: ${{ github.event.deployment.sha || github.sha }}
-      PREVIEW_BRANCH: ${{ github.ref_name }}
       PREVIEW_PROVIDER: vercel
     steps:
       - name: Validate deployment signal inputs
@@ -35,17 +34,15 @@ jobs:
           BODY=$(jq -nc \
             --arg applicationId "$AUTONOMA_APPLICATION_ID" \
             --arg previewUrl "$PREVIEW_URL" \
-            --arg branch "$PREVIEW_BRANCH" \
             --arg sha "$PREVIEW_SHA" \
             --arg provider "$PREVIEW_PROVIDER" \
             '{applicationId:$applicationId,previewUrl:$previewUrl,provider:$provider}
-              + (if $branch == "" then {} else {branch:$branch} end)
               + (if $sha == "" then {} else {sha:$sha} end)')
 
           SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$AUTONOMA_SHARED_SECRET" -hex | sed 's/^.* //')
 
           echo "Sending Autonoma payload:"
-          echo "$BODY" | jq '{applicationId, previewUrl, branch, sha, provider}'
+          echo "$BODY" | jq '{applicationId, previewUrl, sha, provider}'
 
           HTTP_CODE=$(curl -sS -w "%{http_code}" -o /tmp/autonoma-response.txt \
             -X POST "$AUTONOMA_ENDPOINT" \
