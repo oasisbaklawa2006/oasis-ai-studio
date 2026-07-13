@@ -52,6 +52,7 @@ import { getBuildMeterStatus } from "@/features/productAuthority/buildMeter";
 import { fetchActiveSkuCodeRules, type SkuCodeRule } from "@/lib/skuCodeRules";
 import { probeProductMediaBucket, MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
 import { CATEGORY_PREFEED_DISCLAIMER } from "@/features/productDefaults/categoryPrefeed";
+import { formatOptimizationSummary } from "@/features/mediaOptimization/browserImageOptimizer";
 
 /** Sentinel for "the correct packaging is not in the taxonomy yet" — never a real code. */
 const PACKAGING_MISSING_SENTINEL = "__missing__";
@@ -62,6 +63,7 @@ const FastCreateProduct = () => {
   const [draft, setDraft] = useState<FastCreateDraftSnapshot>(emptyFastCreateDraft());
   const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [imageOptimizationStatus, setImageOptimizationStatus] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
   const [skuError, setSkuError] = useState<string | null>(null);
@@ -156,13 +158,16 @@ const FastCreateProduct = () => {
   const onPickImage = async (file: File | null) => {
     if (!file) return;
     setUploading(true);
+    setImageOptimizationStatus(null);
     try {
       if (heroPreview?.startsWith("blob:")) URL.revokeObjectURL(heroPreview);
       setHeroPreview(URL.createObjectURL(file));
-      const url = await uploadFastCreateHero(file);
-      patchDraft({ heroUrl: url });
+      const result = await uploadFastCreateHero(file);
+      patchDraft({ heroUrl: result.url });
+      setImageOptimizationStatus(formatOptimizationSummary(result.report));
       toast.success("Image uploaded");
     } catch (e) {
+      setHeroPreview(draft.heroUrl || null);
       toast.error(e instanceof Error ? e.message : "Image upload failed");
     } finally {
       setUploading(false);
@@ -531,6 +536,11 @@ const FastCreateProduct = () => {
                   <img src={heroPreview} alt="" className="h-16 w-16 rounded object-cover border" />
                 )}
               </div>
+              {imageOptimizationStatus && (
+                <p className="text-[11px] text-muted-foreground" aria-live="polite">
+                  {imageOptimizationStatus}
+                </p>
+              )}
             </div>
           )}
 

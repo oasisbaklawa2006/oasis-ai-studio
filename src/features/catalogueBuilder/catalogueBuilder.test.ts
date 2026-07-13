@@ -95,7 +95,7 @@ describe("catalogueBuilder", () => {
         sku: null,
         category: null,
         description: "Test",
-        imageUrl: "https://invalid.local/not-a-real-image",
+        imageUrl: null,
         mrp: null,
         sellingPrice: null,
         moqLabel: null,

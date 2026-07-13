@@ -55,6 +55,13 @@ import {
   RECOMMENDED_UPLOADER_TYPES,
 } from "@/features/mediaReadiness/mediaGovernanceMode";
 import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
+import {
+  assertRenditionUploadable,
+  formatOptimizationSummary,
+  optimizeImageForProfile,
+  selectCatalogueUploadProfile,
+} from "@/features/mediaOptimization/browserImageOptimizer";
+import { evaluateWebMReadiness } from "@/features/mediaOptimization/webmProcessingContract";
 
 const MEDIA_TYPES = [
   "raw_photo",
@@ -73,6 +80,7 @@ const MEDIA_TYPES = [
 ] as const;
 
 type MediaType = (typeof MEDIA_TYPES)[number];
+type MediaGalleryRow = ProductMediaRow & { source?: string | null };
 
 function requiredReadinessSlots(): MediaType[] {
   const mode = getMediaGovernanceMode();
@@ -93,7 +101,7 @@ function recommendedReadinessSlots(): MediaType[] {
 
 const isRequiredSlot = (t: MediaType) => requiredReadinessSlots().includes(t);
 
-const slotFilled = (media: any[], slot: MediaType) =>
+const slotFilled = (media: MediaGalleryRow[], slot: MediaType) =>
   media.some((m) => m.type === slot && m.status === "approved");
 
 interface Props {
@@ -124,11 +132,12 @@ export function ProductMediaUploader({
   // populated by (a) an initial display fetch/cache-read below and (b) the subscription below,
   // which applies every reconciled result for this exact product regardless of this component's
   // own mount state at the time the underlying mutation committed.
-  const [media, setMedia] = useState<any[]>([]);
+  const [media, setMedia] = useState<MediaGalleryRow[]>([]);
   const [uploading, setUploading] = useState(false);
   const [type, setType] = useState<MediaType>("hero_image");
   const [urlInput, setUrlInput] = useState("");
   const [pendingNotices, setPendingNotices] = useState<string[]>([]);
+  const [optimizationNotices, setOptimizationNotices] = useState<string[]>([]);
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
@@ -315,13 +324,43 @@ export function ProductMediaUploader({
     return true;
   };
 
+  const prepareMediaFile = async (file: File, isVideo: boolean): Promise<File | null> => {
+    if (isVideo) {
+      const readiness = evaluateWebMReadiness(file);
+      if (!readiness.canUploadNow) {
+        toast.error(readiness.message);
+        return null;
+      }
+      setOptimizationNotices((previous) => [...previous.slice(-3), readiness.message]);
+      return file;
+    }
+
+    try {
+      const result = await optimizeImageForProfile(
+        file,
+        selectCatalogueUploadProfile({ destination: "catalogue" }),
+      );
+      assertRenditionUploadable(result.report);
+      setOptimizationNotices((previous) => [
+        ...previous.slice(-3),
+        formatOptimizationSummary(result.report),
+      ]);
+      return result.file;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Image optimization failed.");
+      return null;
+    }
+  };
+
   const uploadFileDirect = async (
     file: File,
     asHero = false,
     isVideo = false
   ): Promise<string | null> => {
-    const path = buildDirectMediaPath(storageFolder, file.name);
-    const { error: upErr } = await uploadMediaFileToStorage(path, file);
+    const preparedFile = await prepareMediaFile(file, isVideo);
+    if (!preparedFile) return null;
+    const path = buildDirectMediaPath(storageFolder, preparedFile.name);
+    const { error: upErr } = await uploadMediaFileToStorage(path, preparedFile);
     if (upErr) {
       toast.error(formatMediaStorageError(upErr));
       return null;
@@ -329,7 +368,7 @@ export function ProductMediaUploader({
     const url = getMediaPublicUrl(path);
     const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
     const saved = await persistMediaRow(
-      file,
+      preparedFile,
       url,
       mediaType,
       isRequiredSlot(mediaType) || asHero ? "approved" : "raw",
@@ -350,8 +389,10 @@ export function ProductMediaUploader({
   ) => {
     const requestProductId = productId;
     const operationId = beginProductMediaOperation(requestProductId);
-    const path = buildStagingMediaPath(storageFolder, file.name);
-    const { error: upErr } = await uploadMediaFileToStorage(path, file);
+    const preparedFile = await prepareMediaFile(file, !!opts.isVideo);
+    if (!preparedFile) return false;
+    const path = buildStagingMediaPath(storageFolder, preparedFile.name);
+    const { error: upErr } = await uploadMediaFileToStorage(path, preparedFile);
     if (upErr) {
       toast.error(formatMediaStorageError(upErr));
       return false;
@@ -359,7 +400,7 @@ export function ProductMediaUploader({
     const url = getMediaPublicUrl(path);
     const mediaType = opts.isVideo ? "video" : opts.asHeroType ? "hero_image" : type;
     const saved = await persistMediaRow(
-      file,
+      preparedFile,
       url,
       mediaType as MediaType,
       "raw",
@@ -373,7 +414,7 @@ export function ProductMediaUploader({
         storagePath: path,
         type: mediaType,
         angle: type.includes("angle") || type === "closeup" ? type : null,
-        altText: file.name,
+        altText: preparedFile.name,
         status: "raw",
         source: "upload",
         requestedHero:
@@ -391,7 +432,7 @@ export function ProductMediaUploader({
     }
     setPendingNotices((prev) => [
       ...prev,
-      `${file.name} — submitted for approval (visible below until review)`,
+      `${preparedFile.name} — submitted for approval (visible below until review)`,
     ]);
     const rows = await refreshLocalMediaView();
     if (rows) publishBestEffortMediaAuthority(requestProductId, operationId, rows);
@@ -465,6 +506,7 @@ export function ProductMediaUploader({
     if (!files || files.length === 0 || !canMutate) return;
     setUploading(true);
     let lastUrl = "";
+    let uploadedCount = 0;
     try {
       if (writeMode === "draft") {
         let submitted = 0;
@@ -485,8 +527,12 @@ export function ProductMediaUploader({
       const operationId = beginProductMediaOperation(requestProductId);
       for (const file of Array.from(files)) {
         const url = await uploadFileDirect(file, false, isVideo);
-        if (url) lastUrl = url;
+        if (url) {
+          lastUrl = url;
+          uploadedCount += 1;
+        }
       }
+      if (uploadedCount === 0) return;
       // Bugbot-caught: same gap as uploadToSlot above — the file(s) already committed via
       // uploadFileDirect. Split into two branches (rather than one shared try/catch) so the
       // fallback for a plain reconcile failure uses this call's own operationId, instead of
@@ -498,23 +544,23 @@ export function ProductMediaUploader({
           // subscriber publish before rethrowing on failure — this catch only surfaces the error.
           await applyDirectHeroAuthority(lastUrl);
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.success(`${files.length} file(s) uploaded`);
+            toast.success(`${uploadedCount} file(s) uploaded`);
           }
         } catch {
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.error(`${files.length} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`);
+            toast.error(`${uploadedCount} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`);
           }
         }
       } else {
         try {
           await reconcileProductMediaAuthority(requestProductId, operationId);
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.success(`${files.length} file(s) uploaded`);
+            toast.success(`${uploadedCount} file(s) uploaded`);
           }
         } catch {
           await fallbackAfterReconcileFailure(requestProductId, operationId);
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.error(`${files.length} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`);
+            toast.error(`${uploadedCount} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`);
           }
         }
       }
@@ -530,7 +576,7 @@ export function ProductMediaUploader({
     await applyDirectHeroAuthority(url);
   };
 
-  const setAsHero = async (m: any) => {
+  const setAsHero = async (m: MediaGalleryRow) => {
     if (!canMutate || uploading) return;
 
     if (writeMode === "draft") {
@@ -631,7 +677,7 @@ export function ProductMediaUploader({
     if (!isSupersededByProductSwitch(requestProductId)) toast.success("Hero cleared");
   };
 
-  const remove = async (m: any) => {
+  const remove = async (m: MediaGalleryRow) => {
     if (!canMutate || uploading) return;
     if (!confirm("Delete this photo permanently?")) return;
 
@@ -839,6 +885,17 @@ export function ProductMediaUploader({
         <div className="rounded-md border border-dashed bg-muted/20 p-3 space-y-1">
           <div className="text-xs font-medium">Pending approval (not live)</div>
           {pendingNotices.map((notice, index) => (
+            <div key={`${notice}-${index}`} className="text-[11px] text-muted-foreground">
+              {notice}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {optimizationNotices.length > 0 && (
+        <div className="rounded-md border border-dashed bg-muted/20 p-3 space-y-1" aria-live="polite">
+          <div className="text-xs font-medium">Delivery optimization</div>
+          {optimizationNotices.map((notice, index) => (
             <div key={`${notice}-${index}`} className="text-[11px] text-muted-foreground">
               {notice}
             </div>

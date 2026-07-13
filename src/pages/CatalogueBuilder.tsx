@@ -31,7 +31,12 @@ import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { evaluateCataloguePublishability } from "@/features/catalogueBuilder/cataloguePublishability";
 import { generateWhatsAppMiniCatalogueText } from "@/features/catalogueBuilder/whatsappPreview";
-import { downloadCataloguePdf, exportCataloguePdf } from "@/features/catalogueBuilder/pdfExport";
+import { prepareCatalogueExport } from "@/features/catalogueBuilder/catalogueExport";
+import {
+  CATALOGUE_AUDIENCES,
+  CATALOGUE_EXPORT_PROFILES,
+  type CatalogueAudience,
+} from "@/features/catalogueBuilder/exportProfiles";
 import { mediaAssetsFromForm } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { selectApprovedImageUrlsForCentral } from "@/features/mediaReadiness/mediaReadinessEngine";
 import { getChannelPrice } from "@/features/productTruth/channelPricingMoqEngine";
@@ -78,7 +83,15 @@ function rowToCard(row: ProductRow, featured: boolean): CatalogueProductCard {
     isFeatured: featured,
     publishable: pub.publishable,
     blockers: pub.blockers,
+    imageStatus: urls[0] || row.hero_image_url || row.image_url ? "ready" : "missing",
   };
+}
+
+function audienceForCollectionType(type: CatalogueCollectionType): CatalogueAudience {
+  if (type === "retail_catalogue") return "b2c";
+  if (type === "export_catalogue") return "export";
+  if (type === "whatsapp_mini_catalogue") return "whatsapp";
+  return "b2b";
 }
 
 export default function CatalogueBuilder() {
@@ -91,6 +104,7 @@ export default function CatalogueBuilder() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [whatsappText, setWhatsappText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [exportAudience, setExportAudience] = useState<CatalogueAudience>("b2b");
   const [persistenceSource, setPersistenceSource] = useState(
     getCollectionsPersistenceSource(),
   );
@@ -99,6 +113,10 @@ export default function CatalogueBuilder() {
   );
 
   const selected = collections.find((c) => c.id === selectedId) ?? null;
+
+  useEffect(() => {
+    if (selected) setExportAudience(audienceForCollectionType(selected.catalogue_type));
+  }, [selected]);
 
   const refreshCollections = useCallback(async () => {
     const rows = await listCollections();
@@ -137,6 +155,24 @@ export default function CatalogueBuilder() {
       })
       .filter(Boolean) as CatalogueProductCard[];
   }, [items, products]);
+
+  const exportInput = useMemo(() => selected ? {
+    title: selected.title,
+    subtitle: selected.catalogue_type.replace(/_/g, " "),
+    products: cards,
+    audience: exportAudience,
+    metadata: {
+      version: items.find((item) => item.catalogue_version_id)?.catalogue_version_id ?? "draft",
+      generatedAt: selected.updated_at,
+      sourceCollectionId: selected.id,
+      sourceRevision: selected.updated_at,
+    },
+  } : null, [cards, exportAudience, items, selected]);
+
+  const exportPreparation = useMemo(
+    () => exportInput ? prepareCatalogueExport(exportInput) : null,
+    [exportInput],
+  );
 
   const createNew = async () => {
     if (!newTitle.trim()) return toast.error("Title required");
@@ -200,16 +236,18 @@ export default function CatalogueBuilder() {
   };
 
   const runPdfExport = async () => {
-    if (!selected) return;
+    if (!selected || !exportInput || !exportPreparation) return;
+    if (!exportPreparation.preflight.ready) {
+      toast.error("Export blocked by preflight errors");
+      return;
+    }
     setLoading(true);
     try {
-      const blob = await exportCataloguePdf({
-        title: selected.title,
-        subtitle: selected.catalogue_type.replace(/_/g, " "),
-        products: cards,
-      });
-      downloadCataloguePdf(blob, `${selected.slug}.pdf`);
-      toast.success("PDF exported");
+      const { downloadCataloguePdf, exportCataloguePdf } = await import("@/features/catalogueBuilder/pdfExport");
+      const blob = await exportCataloguePdf(exportInput);
+      downloadCataloguePdf(blob, exportPreparation.filename);
+      const warningCount = exportPreparation.preflight.issues.filter((issue) => issue.severity === "warning").length;
+      toast.success(warningCount ? `PDF exported with ${warningCount} preflight warning(s)` : "PDF exported");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "PDF export failed");
     } finally {
@@ -310,6 +348,17 @@ export default function CatalogueBuilder() {
                   <p className="text-xs text-muted-foreground">{selected.catalogue_type} · {selected.status}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <label className="sr-only" htmlFor="catalogue-export-audience">Export audience</label>
+                  <select
+                    id="catalogue-export-audience"
+                    className="h-9 px-3 rounded-md border border-input bg-background text-xs"
+                    value={exportAudience}
+                    onChange={(event) => setExportAudience(event.target.value as CatalogueAudience)}
+                  >
+                    {CATALOGUE_AUDIENCES.map((audience) => (
+                      <option key={audience} value={audience}>{CATALOGUE_EXPORT_PROFILES[audience].label}</option>
+                    ))}
+                  </select>
                   <Button size="sm" variant="outline" onClick={runWhatsappPreview}>
                     <MessageCircle className="h-3 w-3 mr-1" /> WhatsApp preview
                   </Button>
@@ -321,6 +370,33 @@ export default function CatalogueBuilder() {
                   </Button>
                 </div>
               </div>
+
+              {exportPreparation && (
+                <div className="card-elevated p-4 space-y-2" aria-live="polite">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <Label className="text-xs">Export preflight</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        {exportPreparation.profile.label} · {exportPreparation.plan.pages.length} pages · {exportPreparation.plan.productCount} products
+                      </p>
+                    </div>
+                    <Badge variant="outline" className={exportPreparation.preflight.issues.length ? "text-warning border-warning/30" : "text-success border-success/30"}>
+                      {exportPreparation.preflight.issues.length ? `${exportPreparation.preflight.issues.length} review item(s)` : "Print checks passed"}
+                    </Badge>
+                  </div>
+                  {exportPreparation.preflight.issues.slice(0, 5).map((issue, index) => (
+                    <p key={`${issue.productId ?? "catalogue"}-${issue.code}-${index}`} className="text-[10px] text-muted-foreground">
+                      {issue.message}
+                    </p>
+                  ))}
+                  {exportPreparation.preflight.issues.length > 5 && (
+                    <p className="text-[10px] text-muted-foreground">+{exportPreparation.preflight.issues.length - 5} more preflight items</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Print quality is certified only when source dimensions meet the selected profile. Unknown or undersized media is never labelled UHD.
+                  </p>
+                </div>
+              )}
 
               <div className="card-elevated p-4">
                 <Label className="text-xs">Add approved product</Label>

@@ -64,4 +64,16 @@ export type CatalogueProductCard = {
   isFeatured: boolean;
   publishable: boolean;
   blockers: string[];
+  /** Optional rendition metadata. The export preflight never invents image quality. */
+  imageRenditions?: CatalogueMediaRendition[];
+  imageStatus?: "ready" | "missing" | "corrupt" | "processing";
+};
+
+export type CatalogueMediaRendition = {
+  url: string;
+  width: number | null;
+  height: number | null;
+  bytes?: number | null;
+  mimeType?: "image/webp" | "image/jpeg" | "image/png" | string;
+  role?: "print" | "web" | "thumbnail" | "source";
 };
