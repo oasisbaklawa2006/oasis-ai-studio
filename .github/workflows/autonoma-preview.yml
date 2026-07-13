@@ -13,6 +13,11 @@ name: Autonoma preview signal
         description: Optional commit SHA for the preview
         required: false
         type: string
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/autonoma-preview.yml
 
 permissions:
   contents: read
@@ -20,14 +25,14 @@ permissions:
 jobs:
   notify:
     name: Notify Autonoma
-    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     env:
       AUTONOMA_ENDPOINT: https://autonoma.app/v1/onboarding/deployment-signal
       AUTONOMA_APPLICATION_ID: cmrj2lm9l030t01e8yv3eryb0
       AUTONOMA_SHARED_SECRET: ${{ secrets.AUTONOMA_SHARED_SECRET }}
-      PREVIEW_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_url || github.event.deployment_status.target_url }}
-      PREVIEW_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.event.deployment.sha || github.sha }}
+      PREVIEW_URL: ${{ inputs.preview_url || github.event.deployment_status.target_url || 'https://oasis-ai-studio-fb1fp1cgw-oasisbaklawa2006-6222s-projects.vercel.app' }}
+      PREVIEW_SHA: ${{ inputs.sha || github.event.deployment.sha || github.sha }}
       PREVIEW_PROVIDER: vercel
     steps:
       - name: Validate deployment signal inputs
