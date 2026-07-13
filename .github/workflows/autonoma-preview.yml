@@ -1,0 +1,48 @@
+name: Autonoma preview signal
+
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Notify Autonoma
+    if: github.event.deployment_status.state == 'success'
+    runs-on: ubuntu-latest
+    env:
+      AUTONOMA_ENDPOINT: https://autonoma.app/v1/onboarding/deployment-signal
+      AUTONOMA_APPLICATION_ID: cmrj2lm9l030t01e8yv3eryb0
+      AUTONOMA_SHARED_SECRET: ${{ secrets.AUTONOMA_SHARED_SECRET }}
+      PREVIEW_URL: ${{ github.event.deployment_status.target_url }}
+      PREVIEW_SHA: ${{ github.event.deployment.sha || github.sha }}
+      PREVIEW_BRANCH: ${{ github.event.deployment.ref || github.ref_name }}
+      PREVIEW_PROVIDER: vercel
+    steps:
+      - name: Validate deployment signal inputs
+        run: |
+          test -n "$AUTONOMA_SHARED_SECRET"
+          test -n "$AUTONOMA_APPLICATION_ID"
+          test -n "$PREVIEW_URL"
+          case "$PREVIEW_URL" in
+            http://*|https://*) ;;
+            *) echo "PREVIEW_URL is not an HTTP(S) URL: $PREVIEW_URL" >&2; exit 1 ;;
+          esac
+
+      - name: Notify Autonoma
+        run: |
+          BODY=$(jq -nc \
+            --arg applicationId "$AUTONOMA_APPLICATION_ID" \
+            --arg previewUrl "$PREVIEW_URL" \
+            --arg branch "$PREVIEW_BRANCH" \
+            --arg sha "$PREVIEW_SHA" \
+            --arg provider "$PREVIEW_PROVIDER" \
+            '{applicationId:$applicationId,previewUrl:$previewUrl,branch:$branch,sha:$sha,provider:$provider}')
+
+          SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$AUTONOMA_SHARED_SECRET" -hex | sed 's/^.* //')
+
+          curl -fsS -X POST "$AUTONOMA_ENDPOINT" \
+            -H "content-type: application/json" \
+            -H "x-signature: $SIG" \
+            --data "$BODY"
