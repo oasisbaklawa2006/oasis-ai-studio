@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { lazy, Suspense } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,35 +8,35 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
 import { RoleGate } from "@/components/RoleGate";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import Products from "./pages/Products";
-import FastCreateProduct from "./pages/FastCreateProduct";
-import ProductEdit from "./pages/ProductEdit";
-import Media from "./pages/Media";
-import Tags from "./pages/Tags";
-import Catalogues from "./pages/Catalogues";
-import CatalogueBuilder from "./pages/CatalogueBuilder";
-import CatalogueProductStudio from "./pages/CatalogueProductStudio";
-import CatalogueDetail from "./pages/CatalogueDetail";
-import CatalogueProposal from "./pages/CatalogueProposal";
-import PublicCatalogue from "./pages/PublicCatalogue";
-import Hampers from "./pages/Hampers";
-import Ingredients from "./pages/Ingredients";
-import Labels from "./pages/Labels";
-import LabelQueue from "./pages/LabelQueue";
-import AIStudio from "./pages/AIStudio";
-import Settings from "./pages/Settings";
-import Testing from "./pages/Testing";
-import AuditLog from "./pages/AuditLog";
-import DataCorrection from "./pages/DataCorrection";
-import Category1ImportStaging from "./pages/Category1ImportStaging";
-import NotFound from "./pages/NotFound";
-import ApprovalInbox from "./pages/ApprovalInbox";
-import PilotReadinessDashboard from "./pages/PilotReadinessDashboard";
-import PilotAliasReview from "./pages/PilotAliasReview";
-import ResolverPreview from "./pages/ResolverPreview";
-import OperatorInbox from "./pages/OperatorInbox";
+const Auth = lazy(() => import("./pages/Auth"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Products = lazy(() => import("./pages/Products"));
+const FastCreateProduct = lazy(() => import("./pages/FastCreateProduct"));
+const ProductEdit = lazy(() => import("./pages/ProductEdit"));
+const Media = lazy(() => import("./pages/Media"));
+const Tags = lazy(() => import("./pages/Tags"));
+const Catalogues = lazy(() => import("./pages/Catalogues"));
+const CatalogueBuilder = lazy(() => import("./pages/CatalogueBuilder"));
+const CatalogueProductStudio = lazy(() => import("./pages/CatalogueProductStudio"));
+const CatalogueDetail = lazy(() => import("./pages/CatalogueDetail"));
+const CatalogueProposal = lazy(() => import("./pages/CatalogueProposal"));
+const PublicCatalogue = lazy(() => import("./pages/PublicCatalogue"));
+const Hampers = lazy(() => import("./pages/Hampers"));
+const Ingredients = lazy(() => import("./pages/Ingredients"));
+const Labels = lazy(() => import("./pages/Labels"));
+const LabelQueue = lazy(() => import("./pages/LabelQueue"));
+const AIStudio = lazy(() => import("./pages/AIStudio"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Testing = lazy(() => import("./pages/Testing"));
+const AuditLog = lazy(() => import("./pages/AuditLog"));
+const DataCorrection = lazy(() => import("./pages/DataCorrection"));
+const Category1ImportStaging = lazy(() => import("./pages/Category1ImportStaging"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const ApprovalInbox = lazy(() => import("./pages/ApprovalInbox"));
+const PilotReadinessDashboard = lazy(() => import("./pages/PilotReadinessDashboard"));
+const PilotAliasReview = lazy(() => import("./pages/PilotAliasReview"));
+const ResolverPreview = lazy(() => import("./pages/ResolverPreview"));
+const OperatorInbox = lazy(() => import("./pages/OperatorInbox"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +55,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <Suspense fallback={<main className="min-h-screen grid place-items-center" aria-busy="true">Loading workspace…</main>}>
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/c/:slug" element={<PublicCatalogue />} />
@@ -89,6 +91,7 @@ const App = () => (
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

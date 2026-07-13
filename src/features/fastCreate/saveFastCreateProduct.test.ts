@@ -1,10 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastCreateSuggestions } from "./fastCreateSuggestions";
 
-const rpcMock = vi.fn(async (_fn: string, args: Record<string, unknown>) => ({
-  data: `OAS-${args._division_code}-${args._category_code}-${args._subcategory_code}-${args._packaging_code}-0001`,
-  error: null,
-}));
+const rpcMock = vi.fn(async (fn: string, args: Record<string, unknown>) => {
+  if (fn === "save_product_aggregate_v1") {
+    const product = args._product as Record<string, unknown>;
+    return {
+      data: {
+        schema_version: "oasis.product-aggregate-save.v1",
+        status: "saved",
+        operation: "create",
+        product_id: "prod-1",
+        product: { ...product, id: "prod-1", is_active: false, is_catalogue_ready: false },
+        pricing_rules_written: 0,
+        moq_rules_written: 0,
+        updated_at: "2026-07-14T03:00:00.000Z",
+        aggregate_revision: 0,
+      },
+      error: null,
+    };
+  }
+  return {
+    data: `OAS-${args._division_code}-${args._category_code}-${args._subcategory_code}-${args._packaging_code}-0001`,
+    error: null,
+  };
+});
 
 vi.mock("@/integrations/supabase/client", () => {
   const insertChain: Record<string, unknown> = {};

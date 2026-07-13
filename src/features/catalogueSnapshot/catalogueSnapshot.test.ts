@@ -10,6 +10,7 @@ vi.mock("@/integrations/supabase/client", () => {
   chain.insert = () => chain;
   chain.update = () => chain;
   chain.single = () => Promise.resolve(reject);
+  chain.maybeSingle = () => Promise.resolve(reject);
   return { supabase: { from: () => chain } };
 });
 
@@ -19,11 +20,16 @@ import {
   buildCentralSyncPreviewBundle,
   isStaleCatalogueVersion,
   LIVE_CENTRAL_WRITE_ENABLED,
-  validateApprovedCatalogueProductSnapshot,
+  validateCataloguePublicationEnvelope,
 } from "./centralSyncPayload";
 import { evaluateProductReadiness } from "@/features/productTruth/productReadiness";
 import { productTruthInputFromForm } from "@/features/productTruth/productReadiness";
-import { isImmutableVersion, updateCatalogueVersionSnapshot } from "./catalogueVersionStore";
+import {
+  approveCatalogueVersion,
+  isImmutableVersion,
+  publishCatalogueVersion,
+  updateCatalogueVersionSnapshot,
+} from "./catalogueVersionStore";
 import type { ChannelMoqRule, ChannelPriceRecord, ProductTruthInput } from "@/features/productTruth/types";
 
 const baseForm: Record<string, unknown> = {
@@ -43,6 +49,7 @@ const baseForm: Record<string, unknown> = {
   b2b_uom: "kg",
   pieces_per_kg: 40,
   approximate_piece_weight_g: 25,
+  shelf_life_days: 180,
   master_carton_qty: 8,
   primary_pack_type: "Box",
   primary_pack_uom: "box",
@@ -56,6 +63,7 @@ const approvedPrices: ChannelPriceRecord[] = [
     mrp: 1200,
     sellingPrice: 1000,
     currency: "INR",
+    approvedAt: "2026-01-01T00:00:00.000Z",
   },
 ];
 
@@ -111,6 +119,7 @@ describe("catalogueSnapshot", () => {
     expect(snap.channel_rules).toHaveLength(1);
     expect(snap.pricing_rules).toHaveLength(1);
     expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);
+    expect(snap.fulfillment_transform.shelf_life_days).toBe(180);
     expect(snap.language_intelligence).toBeTruthy();
     expect(snap.language_intelligence.schema_available).toBe(false);
     expect(snap.language_intelligence.official_name).toBe("Cashew Pyramid");
@@ -178,7 +187,7 @@ describe("catalogueSnapshot", () => {
     expect(isImmutableVersion("draft")).toBe(false);
   });
 
-  it("validates Central connector payload shape", () => {
+  it("validates the canonical Central publication payload shape", async () => {
     const snap = generateCatalogueSnapshot({
       form: baseForm,
       productId: String(baseForm.id),
@@ -193,20 +202,23 @@ describe("catalogueSnapshot", () => {
     });
     const readiness = evaluateProductReadiness(truth);
     const gate = validateSnapshotGate(readiness, { complianceManuallyApproved: true });
-    const bundle = buildCentralSyncPreviewBundle({
+    const bundle = await buildCentralSyncPreviewBundle({
       snapshot: snap,
       catalogueVersionId: "ver-1",
       versionCode: "PT-prod-v1",
       versionNumber: 1,
       validation: gate,
     });
-    const check = validateApprovedCatalogueProductSnapshot(
-      bundle.approved_catalogue_product_snapshot,
+    const check = validateCataloguePublicationEnvelope(
+      bundle.publication_envelope,
     );
     expect(check.valid).toBe(true);
     expect(bundle.preview_only).toBe(true);
     expect(bundle.no_live_central_write).toBe(true);
-    expect(bundle.connector).toBe("25B/25C");
+    expect(bundle.connector).toBe("catalogue-publication-v1");
+    expect(bundle.publication_envelope.source.version_number).toBe(1);
+    expect(bundle.publication_envelope.source.content_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(bundle.publication_envelope.catalogue).toEqual(snap);
   });
 
   it("stale version is not treated as newer than head", () => {
@@ -255,6 +267,42 @@ describe("catalogueSnapshot", () => {
     expect(result.ok).toBe(false);
     expect(result.message).toMatch(/mutate/i);
   });
+
+  it("keeps approval and publication as separate transitions", async () => {
+    const productId = "prod-state-transition";
+    const now = new Date().toISOString();
+    const row = {
+      id: "v-state",
+      product_id: productId,
+      sku_id: null,
+      version_code: "PT-state-v1",
+      version_number: 1,
+      snapshot_json: generateCatalogueSnapshot({
+        form: baseForm,
+        productId,
+        complianceApproved: true,
+        prices: approvedPrices,
+      }),
+      status: "draft" as const,
+      approved_by: null,
+      approved_at: null,
+      published_at: null,
+      synced_to_central_at: null,
+      created_at: now,
+      updated_at: now,
+    };
+    localStorage.setItem(`oasis_catalogue_versions_${productId}`, JSON.stringify([row]));
+
+    const approved = await approveCatalogueVersion({ productId, versionId: row.id, approvedBy: "reviewer" });
+    expect(approved.ok).toBe(true);
+    expect(approved.row?.status).toBe("approved");
+    expect(approved.row?.published_at).toBeNull();
+
+    const published = await publishCatalogueVersion({ productId, versionId: row.id });
+    expect(published.ok).toBe(true);
+    expect(published.row?.status).toBe("published");
+    expect(published.row?.published_at).toBeTruthy();
+  });
 });
 
 describe("centralSyncPreviewService", () => {
@@ -264,8 +312,8 @@ describe("centralSyncPreviewService", () => {
   });
 });
 
-describe("centralSyncPayload MRP channel consumption (pricing-authority fix)", () => {
-  function buildBundle(prices: ChannelPriceRecord[]) {
+describe("canonical publication pricing authority", () => {
+  async function buildBundle(prices: ChannelPriceRecord[]) {
     const snap = generateCatalogueSnapshot({
       form: baseForm,
       productId: String(baseForm.id),
@@ -289,114 +337,45 @@ describe("centralSyncPayload MRP channel consumption (pricing-authority fix)", (
     });
   }
 
-  it("consumes the approved mrp-channel rule as MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" }]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
-  });
+  const approvedAt = "2026-01-01T00:00:00.000Z";
+  const amountFor = (bundle: Awaited<ReturnType<typeof buildBundle>>, channel: string) => {
+    const now = Date.now();
+    const rule = bundle.publication_envelope.catalogue.pricing_rules.find((price) =>
+      price.channel === channel &&
+      price.priceStatus === "approved" &&
+      !!price.approvedAt &&
+      (!price.effectiveFrom || Date.parse(price.effectiveFrom) <= now) &&
+      (!price.effectiveTo || Date.parse(price.effectiveTo) >= now),
+    );
+    if (!rule) return null;
+    return channel === "mrp" ? rule.mrp ?? rule.sellingPrice ?? null : rule.sellingPrice ?? rule.mrp ?? null;
+  };
 
-  it("does not silently redefine a retail-channel selling price as MRP — retail only feeds base_price", () => {
-    const bundle = buildBundle([{ channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" }]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
-    expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(1000);
-  });
-});
-
-describe("centralSyncPayload restricts the approved snapshot to approved-only pricing rules", () => {
-  // getChannelPrice() deliberately falls back to the best non-archived (pending/draft) row
-  // when no approved row exists — correct for its other callers (previews), but
-  // buildApprovedCatalogueProductSnapshot() must never populate mrp/base_price from an
-  // unapproved rule, since the payload is declared "approved" (ApprovedCatalogueProductSnapshot).
-  function buildBundle(prices: ChannelPriceRecord[]) {
-    const snap = generateCatalogueSnapshot({
-      form: baseForm,
-      productId: String(baseForm.id),
-      complianceApproved: true,
-      prices,
-      moqRules,
-    });
-    const truth = productTruthInputFromForm(baseForm, {
-      complianceApproved: true,
-      prices,
-      moqRules,
-    });
-    const readiness = evaluateProductReadiness(truth);
-    const gate = validateSnapshotGate(readiness, { complianceManuallyApproved: true });
-    return buildCentralSyncPreviewBundle({
-      snapshot: snap,
-      catalogueVersionId: "ver-1",
-      versionCode: "PT-prod-v1",
-      versionNumber: 1,
-      validation: gate,
-    });
-  }
-
-  // Far future/past absolute dates, not the real current clock — deterministic regardless
-  // of when the test suite runs.
-  const FAR_FUTURE = "2099-01-01T00:00:00Z";
-  const FAR_PAST = "2000-01-01T00:00:00Z";
-
-  it("an approved mrp-channel rule populates MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" }]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
-  });
-
-  it("a pending mrp-channel rule does not populate MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "pending_approval", mrp: 750, currency: "INR" }]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
-  });
-
-  it("a draft mrp-channel rule does not populate MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "draft", mrp: 750, currency: "INR" }]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
-  });
-
-  it("an archived mrp-channel rule does not populate MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "archived", mrp: 750, currency: "INR" }]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
-  });
-
-  it("a future approved MRP rule does not populate MRP before its effectiveFrom", () => {
-    const bundle = buildBundle([
-      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", effectiveFrom: FAR_FUTURE },
+  it("preserves approved MRP and retail as separate channel records", async () => {
+    const bundle = await buildBundle([
+      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", approvedAt },
+      { channel: "retail", priceStatus: "approved", sellingPrice: 620, currency: "INR", approvedAt },
     ]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
+    expect(amountFor(bundle, "mrp")).toBe(750);
+    expect(amountFor(bundle, "retail")).toBe(620);
   });
 
-  it("an expired approved MRP rule does not populate MRP after its effectiveTo", () => {
-    const bundle = buildBundle([
-      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", effectiveTo: FAR_PAST },
-    ]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
-  });
-
-  it("when approved and pending MRP rows coexist, the approved effective row wins", () => {
-    const bundle = buildBundle([
+  it("publishes only effective approved rules with explicit approval evidence", async () => {
+    const bundle = await buildBundle([
       { id: "pending", channel: "mrp", priceStatus: "pending_approval", mrp: 999, currency: "INR" },
-      { id: "approved", channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" },
-    ]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
-  });
-
-  it("an approved retail rule populates base_price but never MRP", () => {
-    const bundle = buildBundle([{ channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" }]);
-    expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(1000);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
-  });
-
-  it("a pending/draft retail rule does not populate base_price", () => {
-    const pending = buildBundle([{ channel: "retail", priceStatus: "pending_approval", sellingPrice: 1000, currency: "INR" }]);
-    expect(pending.approved_catalogue_product_snapshot.base_price).toBeNull();
-
-    const draft = buildBundle([{ channel: "retail", priceStatus: "draft", sellingPrice: 1000, currency: "INR" }]);
-    expect(draft.approved_catalogue_product_snapshot.base_price).toBeNull();
-  });
-
-  it("retail remains distinct from MRP even when both are approved simultaneously", () => {
-    const bundle = buildBundle([
-      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" },
+      { id: "approved", channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", approvedAt },
       { channel: "retail", priceStatus: "approved", sellingPrice: 620, currency: "INR" },
     ]);
-    expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
-    expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(620);
+    expect(amountFor(bundle, "mrp")).toBe(750);
+    expect(amountFor(bundle, "retail")).toBeNull();
+  });
+
+  it("excludes future and expired rules", async () => {
+    const bundle = await buildBundle([
+      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", approvedAt, effectiveFrom: "2099-01-01T00:00:00Z" },
+      { channel: "retail", priceStatus: "approved", sellingPrice: 620, currency: "INR", approvedAt, effectiveTo: "2000-01-01T00:00:00Z" },
+    ]);
+    expect(amountFor(bundle, "mrp")).toBeNull();
+    expect(amountFor(bundle, "retail")).toBeNull();
   });
 });

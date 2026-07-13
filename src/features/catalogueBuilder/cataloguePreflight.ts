@@ -14,6 +14,11 @@ export type CataloguePreflightResult = {
   selectedImages: Record<string, CatalogueMediaRendition | null>;
 };
 
+// Client-side jsPDF retains encoded image data while constructing the document.
+// Larger catalogues must be exported as separate curated volumes or by a future
+// server-side render job; attempting one unbounded mobile-tab export is unsafe.
+export const MAX_CLIENT_PDF_PRODUCTS = 48;
+
 export function requiredImagePixels(profile: CatalogueExportProfile) {
   return Math.ceil((profile.imageWidthMm / 25.4) * profile.dpi);
 }
@@ -50,10 +55,34 @@ export function preflightCatalogueExport(
   profile: CatalogueExportProfile,
 ): CataloguePreflightResult {
   const issues: CataloguePreflightIssue[] = [];
-  const selectedImages: Record<string, CatalogueMediaRendition | null> = {};
+  // Product ids are data, not object property names. A null-prototype map prevents hostile or
+  // legacy ids such as "__proto__" / "constructor" from mutating lookup behaviour.
+  const selectedImages: Record<string, CatalogueMediaRendition | null> = Object.create(null);
   const required = requiredImagePixels(profile);
+  const seenProductIds = new Set<string>();
+
+  if (products.length > MAX_CLIENT_PDF_PRODUCTS) {
+    issues.push({
+      severity: "error",
+      code: "client_export_product_limit",
+      message: `This PDF contains ${products.length} products. Split it into volumes of ${MAX_CLIENT_PDF_PRODUCTS} or fewer for a reliable mobile export.`,
+    });
+  }
 
   for (const product of products) {
+    if (!product.productId.trim()) {
+      issues.push({
+        severity: "error", code: "missing_product_id",
+        message: `${product.name}: catalogue item has no stable product identity.`,
+      });
+    } else if (seenProductIds.has(product.productId)) {
+      issues.push({
+        severity: "error", code: "duplicate_product_id", productId: product.productId,
+        message: `${product.name}: product ${product.productId} appears more than once in this export.`,
+      });
+    }
+    seenProductIds.add(product.productId);
+
     const image = product.imageStatus === "corrupt" ? null : selectCatalogueRendition(product, profile);
     selectedImages[product.productId] = image;
     if (!image) {

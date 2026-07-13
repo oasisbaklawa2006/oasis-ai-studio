@@ -15,14 +15,15 @@ import {
 } from "@/features/catalogueBuilder/types";
 import {
   addProductToCollection,
-  buildShareUrlPlaceholder,
+  buildPublicCatalogueUrl,
   createCollection,
-  createShareLinkPlaceholder,
+  createCatalogueShareLink,
   getCollectionsPersistenceSource,
   listCollectionItems,
   listCollections,
   removeProductFromCollection,
   reorderCollectionItems,
+  transitionCollection,
 } from "@/features/catalogueBuilder/collectionStore";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { getCollectionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
@@ -37,9 +38,16 @@ import {
   CATALOGUE_EXPORT_PROFILES,
   type CatalogueAudience,
 } from "@/features/catalogueBuilder/exportProfiles";
-import { mediaAssetsFromForm } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { selectApprovedImageUrlsForCentral } from "@/features/mediaReadiness/mediaReadinessEngine";
 import { getChannelPrice } from "@/features/productTruth/channelPricingMoqEngine";
+import { mapPricingRules, type PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
+import type { ChannelPriceRecord } from "@/features/productTruth/types";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
+import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+
+const catalogueDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
 
 type ProductRow = {
   id: string;
@@ -49,6 +57,16 @@ type ProductRow = {
   short_description: string | null;
   hero_image_url?: string | null;
   image_url?: string | null;
+  product_class?: string | null;
+  product_type?: string | null;
+  media_status?: string | null;
+  hsn_code?: string | null;
+  gst_rate?: number | null;
+  mrp?: number | null;
+  b2b_price?: number | null;
+  export_price?: number | null;
+  primary_uom?: string | null;
+  is_catalogue_ready?: boolean | null;
 };
 
 function productToForm(row: ProductRow): Record<string, unknown> {
@@ -59,16 +77,37 @@ function productToForm(row: ProductRow): Record<string, unknown> {
     category: row.category,
     short_description: row.short_description,
     hero_image_url: resolveProductHeroUrl(row),
-    media_status: "approved",
+    product_class: row.product_class,
+    product_type: row.product_type,
+    media_status: row.media_status,
+    hsn_code: row.hsn_code,
+    gst_rate: row.gst_rate,
+    mrp: row.mrp,
+    b2b_price: row.b2b_price,
+    export_price: row.export_price,
+    primary_uom: row.primary_uom,
   };
 }
 
-function rowToCard(row: ProductRow, featured: boolean): CatalogueProductCard {
+function rowToCard(
+  row: ProductRow,
+  featured: boolean,
+  prices: ChannelPriceRecord[],
+  mediaRows: ProductMediaRow[],
+  catalogueVersionStatus: string | null,
+): CatalogueProductCard {
   const form = productToForm(row);
-  const pub = evaluateCataloguePublishability({ form, complianceApproved: true });
-  const assets = mediaAssetsFromForm(form);
+  const complianceApproved = deriveComplianceApprovedForReadiness(form);
+  const pub = evaluateCataloguePublishability({
+    form,
+    complianceApproved,
+    prices,
+    productMediaRows: mediaRows,
+    catalogueVersionStatus,
+  });
+  const assets = mediaAssetsFromSources({ form, productMediaRows: mediaRows });
   const urls = selectApprovedImageUrlsForCentral(assets);
-  const price = getChannelPrice([], "retail");
+  const price = getChannelPrice(prices.filter((rule) => rule.priceStatus === "approved"), "retail");
 
   return {
     productId: row.id,
@@ -99,11 +138,15 @@ export default function CatalogueBuilder() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [items, setItems] = useState<Awaited<ReturnType<typeof listCollectionItems>>>([]);
   const [products, setProducts] = useState<ProductRow[]>([]);
+  const [pricingByProduct, setPricingByProduct] = useState<Record<string, ChannelPriceRecord[]>>({});
+  const [mediaByProduct, setMediaByProduct] = useState<Record<string, ProductMediaRow[]>>({});
+  const [versionStatusById, setVersionStatusById] = useState<Record<string, string | null>>({});
   const [newTitle, setNewTitle] = useState("");
   const [newType, setNewType] = useState<CatalogueCollectionType>("b2b_catalogue");
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [whatsappText, setWhatsappText] = useState("");
   const [loading, setLoading] = useState(false);
+  const [transitionPending, setTransitionPending] = useState(false);
   const [exportAudience, setExportAudience] = useState<CatalogueAudience>("b2b");
   const [persistenceSource, setPersistenceSource] = useState(
     getCollectionsPersistenceSource(),
@@ -135,7 +178,7 @@ export default function CatalogueBuilder() {
     void refreshCollections();
     supabase
       .from("products")
-      .select("id, product_name, sku, category, short_description, hero_image_url, image_url")
+      .select("id, product_name, sku, category, short_description, hero_image_url, image_url, product_class, product_type, media_status, hsn_code, gst_rate, mrp, b2b_price, export_price, primary_uom, is_catalogue_ready")
       .eq("is_active", true)
       .order("product_name")
       .then(({ data }) => setProducts((data as ProductRow[]) ?? []));
@@ -145,16 +188,65 @@ export default function CatalogueBuilder() {
     void refreshItems();
   }, [refreshItems]);
 
+  useEffect(() => {
+    const productIds = items.map((item) => item.product_id);
+    if (!productIds.length) {
+      setPricingByProduct({});
+      setMediaByProduct({});
+      setVersionStatusById({});
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      supabase.from("product_pricing_rules").select("*").in("product_id", productIds),
+      supabase.from("product_media").select("*").in("product_id", productIds),
+      items.some((item) => item.catalogue_version_id)
+        ? catalogueDb
+            .from("catalogue_versions")
+            .select("id, status")
+            .in("id", items.flatMap((item) => item.catalogue_version_id ? [item.catalogue_version_id] : []))
+        : Promise.resolve({ data: [], error: null }),
+    ]).then(([pricingResult, mediaResult, versionResult]) => {
+      if (cancelled) return;
+      const pricingMap: Record<string, PricingRuleRow[]> = {};
+      for (const row of (pricingResult.data ?? []) as PricingRuleRow[]) {
+        const productId = String(row.product_id ?? "");
+        if (!productId) continue;
+        (pricingMap[productId] ??= []).push(row);
+      }
+      setPricingByProduct(Object.fromEntries(
+        Object.entries(pricingMap).map(([productId, rows]) => [productId, mapPricingRules(rows)]),
+      ));
+      const mediaMap: Record<string, ProductMediaRow[]> = {};
+      for (const row of (mediaResult.data ?? []) as ProductMediaRow[]) {
+        const productId = String(row.product_id ?? "");
+        if (!productId) continue;
+        (mediaMap[productId] ??= []).push(row);
+      }
+      setMediaByProduct(mediaMap);
+      setVersionStatusById(Object.fromEntries(
+        ((versionResult.data ?? []) as Array<{ id: string; status: string }>).map((row) => [row.id, row.status]),
+      ));
+    });
+    return () => { cancelled = true; };
+  }, [items]);
+
   const cards = useMemo(() => {
     const productMap = new Map(products.map((p) => [p.id, p]));
     return items
       .map((item) => {
         const row = productMap.get(item.product_id);
         if (!row) return null;
-        return rowToCard(row, item.is_featured);
+        return rowToCard(
+          row,
+          item.is_featured,
+          pricingByProduct[row.id] ?? [],
+          mediaByProduct[row.id] ?? [],
+          item.catalogue_version_id ? versionStatusById[item.catalogue_version_id] ?? null : null,
+        );
       })
       .filter(Boolean) as CatalogueProductCard[];
-  }, [items, products]);
+  }, [items, mediaByProduct, pricingByProduct, products, versionStatusById]);
 
   const exportInput = useMemo(() => selected ? {
     title: selected.title,
@@ -173,6 +265,7 @@ export default function CatalogueBuilder() {
     () => exportInput ? prepareCatalogueExport(exportInput) : null,
     [exportInput],
   );
+  const collectionReady = cards.length > 0 && cards.every((card) => card.publishable);
 
   const createNew = async () => {
     if (!newTitle.trim()) return toast.error("Title required");
@@ -198,22 +291,43 @@ export default function CatalogueBuilder() {
   };
 
   const addProduct = async (productId: string) => {
-    if (!selectedId) return;
+    if (!selectedId || selected?.status !== "draft") return;
     try {
-      await addProductToCollection({ collectionId: selectedId, productId });
-      await refreshItems();
+      const result = await addProductToCollection({
+        collectionId: selectedId,
+        expectedRevision: selected.revision,
+        productId,
+      });
+      setCollections((current) => current.map((collection) =>
+        collection.id === result.collection_id
+          ? { ...collection, revision: result.revision }
+          : collection,
+      ));
+      await Promise.all([refreshItems(), refreshCollections()]);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not add product");
     }
   };
 
   const removeItem = async (productId: string) => {
-    if (!selectedId) return;
-    await removeProductFromCollection(selectedId, productId);
-    await refreshItems();
+    if (!selectedId || selected?.status !== "draft") return;
+    try {
+      const item = items.find((candidate) => candidate.product_id === productId);
+      if (!item) throw new Error("Collection item not found; refresh and try again");
+      const result = await removeProductFromCollection(selectedId, selected.revision, item.id);
+      setCollections((current) => current.map((collection) =>
+        collection.id === result.collection_id
+          ? { ...collection, revision: result.revision }
+          : collection,
+      ));
+      await Promise.all([refreshItems(), refreshCollections()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove product");
+    }
   };
 
   const moveItem = async (productId: string, dir: -1 | 1) => {
+    if (selected?.status !== "draft") return;
     const ids = items.map((i) => i.product_id);
     const idx = ids.indexOf(productId);
     if (idx < 0) return;
@@ -221,8 +335,17 @@ export default function CatalogueBuilder() {
     if (next < 0 || next >= ids.length) return;
     const swapped = [...ids];
     [swapped[idx], swapped[next]] = [swapped[next], swapped[idx]];
-    await reorderCollectionItems(selectedId!, swapped);
-    await refreshItems();
+    try {
+      const result = await reorderCollectionItems(selectedId!, selected.revision, swapped);
+      setCollections((current) => current.map((collection) =>
+        collection.id === result.collection_id
+          ? { ...collection, revision: result.revision }
+          : collection,
+      ));
+      await Promise.all([refreshItems(), refreshCollections()]);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not reorder products");
+    }
   };
 
   const runWhatsappPreview = () => {
@@ -257,10 +380,46 @@ export default function CatalogueBuilder() {
 
   const createSharePlaceholder = async () => {
     if (!selectedId) return;
-    const link = await createShareLinkPlaceholder(selectedId, "qr");
-    const url = buildShareUrlPlaceholder(link.share_token);
-    setShareUrl(url);
-    toast.success("Share URL placeholder created");
+    try {
+      const link = await createCatalogueShareLink(selectedId, "qr");
+      const url = buildPublicCatalogueUrl(link.share_token);
+      setShareUrl(url);
+      toast.success("Active share URL created");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create share link");
+    }
+  };
+
+  const transitionSelected = async (next: "draft" | "internal_review" | "published") => {
+    if (!selected || transitionPending) return;
+    if ((next === "internal_review" && selected.status === "draft") || next === "published") {
+      if (!collectionReady) return;
+    }
+    setTransitionPending(true);
+    try {
+      const updated = await transitionCollection(selected.id, selected.revision, next);
+      setCollections((current) => current.map((collection) =>
+        collection.id === updated.id ? updated : collection,
+      ));
+      if (selected.status === "published" && next === "internal_review") {
+        setShareUrl(null);
+      }
+      await refreshCollections();
+      toast.success(
+        next === "published"
+          ? "Collection published"
+          : next === "draft"
+            ? "Collection returned to draft"
+            : selected.status === "published"
+              ? "Published collection reopened for review"
+              : "Collection submitted for internal review",
+      );
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Collection transition failed");
+      await refreshCollections();
+    } finally {
+      setTransitionPending(false);
+    }
   };
 
   return (
@@ -345,7 +504,9 @@ export default function CatalogueBuilder() {
               <div className="card-elevated p-4 flex flex-wrap gap-2 justify-between items-start">
                 <div>
                   <h2 className="font-display text-2xl">{selected.title}</h2>
-                  <p className="text-xs text-muted-foreground">{selected.catalogue_type} · {selected.status}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selected.catalogue_type} · {selected.status} · revision {selected.revision}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <label className="sr-only" htmlFor="catalogue-export-audience">Export audience</label>
@@ -362,7 +523,50 @@ export default function CatalogueBuilder() {
                   <Button size="sm" variant="outline" onClick={runWhatsappPreview}>
                     <MessageCircle className="h-3 w-3 mr-1" /> WhatsApp preview
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => void createSharePlaceholder()}>
+                  {selected.status === "draft" && (
+                    <Button
+                      size="sm"
+                      onClick={() => void transitionSelected("internal_review")}
+                      disabled={!collectionReady || transitionPending}
+                    >
+                      Submit review
+                    </Button>
+                  )}
+                  {selected.status === "internal_review" && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void transitionSelected("draft")}
+                        disabled={transitionPending}
+                      >
+                        Return to draft
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => void transitionSelected("published")}
+                        disabled={!collectionReady || transitionPending}
+                      >
+                        Publish reviewed
+                      </Button>
+                    </>
+                  )}
+                  {selected.status === "published" && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => void transitionSelected("internal_review")}
+                      disabled={transitionPending}
+                    >
+                      Reopen review
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void createSharePlaceholder()}
+                    disabled={selected.status !== "published"}
+                  >
                     <QrCode className="h-3 w-3 mr-1" /> Share URL
                   </Button>
                   <Button size="sm" variant="secondary" disabled={loading} onClick={() => void runPdfExport()}>
@@ -399,16 +603,19 @@ export default function CatalogueBuilder() {
               )}
 
               <div className="card-elevated p-4">
-                <Label className="text-xs">Add approved product</Label>
+                <Label className="text-xs">Add product to collection review</Label>
                 <select
                   className="w-full h-10 mt-1 px-3 rounded-md border border-input bg-background text-sm"
                   defaultValue=""
+                  disabled={selected.status !== "draft"}
                   onChange={(e) => {
                     if (e.target.value) void addProduct(e.target.value);
                     e.target.value = "";
                   }}
                 >
-                  <option value="">Select product…</option>
+                  <option value="">
+                    {selected.status === "draft" ? "Select product…" : "Return collection to draft to change products"}
+                  </option>
                   {products
                     .filter((p) => !items.some((i) => i.product_id === p.id))
                     .map((p) => (
@@ -438,6 +645,9 @@ export default function CatalogueBuilder() {
                         {card.isFeatured && <Star className="h-3 w-3 text-accent shrink-0" />}
                       </div>
                       {card.sku && <p className="text-[10px] font-mono text-muted-foreground">{card.sku}</p>}
+                      <p className="text-[10px] font-mono text-muted-foreground break-all">
+                        Pinned version: {items.find((item) => item.product_id === card.productId)?.catalogue_version_id ?? "missing"}
+                      </p>
                       {!card.publishable && (
                         <Badge variant="outline" className="text-[10px] text-warning border-warning/30">
                           Not publishable
@@ -449,10 +659,24 @@ export default function CatalogueBuilder() {
                         </p>
                       ))}
                       <div className="flex gap-1 pt-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void moveItem(card.productId, -1)}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => void moveItem(card.productId, -1)}
+                          disabled={selected.status !== "draft"}
+                          aria-label={`Move ${card.name}`}
+                        >
                           <GripVertical className="h-3 w-3" />
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void removeItem(card.productId)}>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7"
+                          onClick={() => void removeItem(card.productId)}
+                          disabled={selected.status !== "draft"}
+                          aria-label={`Remove ${card.name}`}
+                        >
                           <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
@@ -470,7 +694,7 @@ export default function CatalogueBuilder() {
 
               {shareUrl && (
                 <p className="text-xs text-muted-foreground font-mono break-all">
-                  QR / share placeholder: {shareUrl}
+                  Active public catalogue URL: {shareUrl}
                 </p>
               )}
             </>

@@ -43,14 +43,18 @@ GST/HSN in snapshot:
 - If compliance is **not** manually approved: `gst_classification_status = "manual_review_required"`, `gst_hsn = null`, `gst_rate = null`
 - No auto-approval of GST/HSN
 
-## Central payload shape (25B/25C preview)
+## Canonical Central publication envelope
 
 `CentralSyncPreviewBundle`:
 
-- `preview_only: true`, `no_live_central_write: true`, `connector: "25B/25C"`
-- `approved_catalogue_product_snapshot` — `ApprovedCatalogueProductSnapshot` (external id, sku, name, images, MRP/base price, pack/weight, category, GST/UOM, barcode, active, version, updated_at)
-- `full_snapshot` — richer JSON for future Central transformation (conversion rules, channel/pricing rules, readiness, media requirements)
+- `preview_only: true`, `no_live_central_write: true`, `connector: "catalogue-publication-v1"`
+- `publication_envelope` — the exact `oasis.catalogue.publication.v1` wire shape owned by the canonical backend: publication identity/time/target, immutable source version and content hash, shared-product mapping, and the exact approved snapshot
+- `full_snapshot` — a convenience mirror for the Studio preview only; the server publication event uses `publication_envelope.catalogue` as its immutable authority
 - `validation.allowed` + `validation.blockers`
+
+The browser preview uses a provisional UUID/time/hash and never claims target application. The
+authoritative publication ID, PostgreSQL canonical-jsonb hash, approval actor, publish time and
+idempotency outcome are created by `publish_catalogue_version_v1` in `oasis-supabase-core`.
 
 ## Validation blockers
 

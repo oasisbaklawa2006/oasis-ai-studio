@@ -21,9 +21,15 @@ export type CatalogueCollectionRow = {
   catalogue_type: CatalogueCollectionType;
   channel: string | null;
   status: CatalogueCollectionStatus;
+  /** Monotonic optimistic-lock token owned by the collection transition RPC. */
+  revision: number;
   description: string | null;
   theme: string | null;
   created_by: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  published_by: string | null;
+  published_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -44,10 +50,14 @@ export type CatalogueCollectionItemRow = {
 export type CatalogueShareLinkRow = {
   id: string;
   collection_id: string;
+  collection_revision: number | null;
   share_token: string;
   share_type: "view" | "whatsapp" | "qr" | "pdf";
   status: "active" | "revoked" | "expired";
   expires_at: string | null;
+  created_by: string | null;
+  revoked_by: string | null;
+  revoked_at: string | null;
   created_at: string;
 };
 

@@ -76,9 +76,14 @@ export type CatalogueAuthorityTableDefinitions = {
       catalogue_type: string;
       channel: string | null;
       status: string;
+      revision: number;
       description: string | null;
       theme: string | null;
       created_by: string | null;
+      reviewed_by: string | null;
+      reviewed_at: string | null;
+      published_by: string | null;
+      published_at: string | null;
       created_at: string;
       updated_at: string;
     };
@@ -114,10 +119,14 @@ export type CatalogueAuthorityTableDefinitions = {
     Row: {
       id: string;
       collection_id: string;
+      collection_revision: number | null;
       share_token: string;
       share_type: string;
       status: string;
       expires_at: string | null;
+      created_by: string | null;
+      revoked_by: string | null;
+      revoked_at: string | null;
       created_at: string;
     };
     Insert: Partial<CatalogueAuthorityTableDefinitions["catalogue_share_links"]["Row"]> & {
@@ -215,6 +224,88 @@ export type CatalogueAuthorityTableDefinitions = {
 };
 
 export type ProductGovernanceRpc = {
+  create_catalogue_collection_v1: {
+    Args: {
+      _title: string;
+      _slug: string;
+      _catalogue_type: string;
+      _channel: string | null;
+      _description: string | null;
+      _theme: string | null;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["catalogue_collections"]["Row"];
+  };
+  update_catalogue_collection_draft_v1: {
+    Args: {
+      _collection_id: string;
+      _expected_revision: number;
+      _title: string;
+      _slug: string;
+      _catalogue_type: string;
+      _channel: string | null;
+      _description: string | null;
+      _theme: string | null;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["catalogue_collections"]["Row"];
+  };
+  save_catalogue_collection_item_v1: {
+    Args: {
+      _collection_id: string;
+      _expected_revision: number;
+      _product_id: string;
+      _catalogue_version_id: string;
+      _sort_order: number | null;
+      _display_name_override: string | null;
+      _description_override: string | null;
+      _price_visibility: string;
+      _is_featured: boolean;
+    };
+    Returns: {
+      collection_id: string;
+      revision: number;
+      item: CatalogueAuthorityTableDefinitions["catalogue_collection_items"]["Row"];
+    };
+  };
+  remove_catalogue_collection_item_v1: {
+    Args: {
+      _collection_id: string;
+      _expected_revision: number;
+      _item_id: string;
+    };
+    Returns: { collection_id: string; revision: number; removed_item_id: string };
+  };
+  transition_catalogue_collection_v1: {
+    Args: {
+      _collection_id: string;
+      _expected_revision: number;
+      _to_status: string;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["catalogue_collections"]["Row"];
+  };
+  create_catalogue_share_link_v1: {
+    Args: {
+      _collection_id: string;
+      _share_type?: string;
+      _expires_at?: string | null;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["catalogue_share_links"]["Row"];
+  };
+  revoke_catalogue_share_link_v1: {
+    Args: { _share_link_id: string };
+    Returns: CatalogueAuthorityTableDefinitions["catalogue_share_links"]["Row"];
+  };
+  reorder_catalogue_collection_items_v1: {
+    Args: {
+      _collection_id: string;
+      _expected_revision: number;
+      _ordered_product_ids: string[];
+    };
+    Returns: {
+      collection_id: string;
+      revision: number;
+      items: Array<{ id: string; product_id: string; sort_order: number }>;
+    };
+  };
   assess_product_delete_eligibility: {
     Args: { _product_id: string };
     Returns: Record<string, unknown>;

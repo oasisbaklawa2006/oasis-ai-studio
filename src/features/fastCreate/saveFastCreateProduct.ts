@@ -13,11 +13,12 @@ import { resolveFastCreateSkuCodes, type FastCreateSkuCodeSet } from "./fastCrea
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import {
   formToDbProductPayload,
-  formatProductSaveError,
   productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertStructuredSkuForSave, skuPackagingSegment } from "@/features/productAuthority/skuGuard";
+import { saveProductAggregateAtomic } from "@/features/productAuthority/atomicProductAggregateSave";
+import { createProductDraftIdempotencyKey } from "@/features/productAuthority/productDraftPersistence";
 
 export const FAST_CREATE_SKU_BLOCK_MESSAGE =
   "Structured SKU could not be generated. Ensure sku_code_rules are configured and generate_oasis_sku RPC is deployed. Placeholder SKUs (DRAFT-*, OAS-FC-*) are blocked.";
@@ -141,19 +142,30 @@ export async function saveFastCreateProduct(
       throw new Error(skuGuard.reason);
     }
 
-    const res = await (supabase as any).from("products").insert(productRow).select("id, sku").single();
-    if (res.error) {
-      throw new Error(formatProductSaveError(res.error));
+    const res = await saveProductAggregateAtomic({
+      idempotencyKey: createProductDraftIdempotencyKey(),
+      operation: "create",
+      productId: null,
+      expectedUpdatedAt: null,
+      expectedAggregateRevision: null,
+      product: productRow,
+      sourceForm: safePayload,
+    });
+    if (res.ok === false) {
+      throw new Error(res.message);
     }
 
     await persistFastCreateAliases(
-      res.data.id,
+      res.value.product_id,
       input.suggestions.aliases,
       input.suggestions.whatsappKeywords,
       input.suggestions.searchKeywords,
     );
 
-    return { id: res.data.id, sku: String(res.data.sku ?? form.sku) };
+    return {
+      id: res.value.product_id,
+      sku: String(res.value.product.sku ?? form.sku),
+    };
   }
 
   if (contributor) {

@@ -24,38 +24,42 @@ const NUMERIC_FIELD_RULES: Array<{
   label: string;
   tab: ProductValidationTab;
   integer?: boolean;
+  positive?: boolean;
 }> = [
-  { field: "net_weight_g", label: "Net weight", tab: "compliance" },
-  { field: "gross_weight_g", label: "Gross weight", tab: "compliance" },
-  { field: "shelf_life_days", label: "Shelf life", tab: "compliance", integer: true },
+  { field: "net_weight_g", label: "Net weight", tab: "compliance", positive: true },
+  { field: "gross_weight_g", label: "Gross weight", tab: "compliance", positive: true },
+  { field: "shelf_life_days", label: "Shelf life", tab: "compliance", integer: true, positive: true },
   { field: "gst_rate", label: "GST rate", tab: "compliance" },
-  { field: "mrp", label: "MRP", tab: "channels" },
-  { field: "b2b_price", label: "B2B price", tab: "channels" },
-  { field: "export_price", label: "Export price", tab: "channels" },
-  { field: "pieces_per_kg", label: "Pieces per kg", tab: "uom" },
-  { field: "approximate_piece_weight_g", label: "Approximate piece weight", tab: "uom" },
-  { field: "qty_per_pack", label: "Quantity per pack", tab: "uom" },
-  { field: "moq_value", label: "MOQ", tab: "uom" },
-  { field: "increment_value", label: "Order increment", tab: "uom" },
-  { field: "carton_qty", label: "Carton quantity", tab: "uom", integer: true },
-  { field: "master_carton_qty", label: "Master carton quantity", tab: "uom", integer: true },
-  { field: "dimension_l_cm", label: "Length", tab: "dimensions" },
-  { field: "dimension_w_cm", label: "Width", tab: "dimensions" },
-  { field: "dimension_h_cm", label: "Height", tab: "dimensions" },
-  { field: "private_label_moq", label: "Private-label MOQ", tab: "private_label" },
+  { field: "mrp", label: "MRP", tab: "channels", positive: true },
+  { field: "b2b_price", label: "B2B price", tab: "channels", positive: true },
+  { field: "export_price", label: "Export price", tab: "channels", positive: true },
+  { field: "pieces_per_kg", label: "Pieces per kg", tab: "uom", positive: true },
+  { field: "approximate_piece_weight_g", label: "Approximate piece weight", tab: "uom", positive: true },
+  { field: "qty_per_pack", label: "Quantity per pack", tab: "uom", positive: true },
+  { field: "moq_value", label: "MOQ", tab: "uom", positive: true },
+  { field: "increment_value", label: "Order increment", tab: "uom", positive: true },
+  { field: "carton_qty", label: "Carton quantity", tab: "uom", integer: true, positive: true },
+  { field: "master_carton_qty", label: "Master carton quantity", tab: "uom", integer: true, positive: true },
+  { field: "dimension_l_cm", label: "Length", tab: "dimensions", positive: true },
+  { field: "dimension_w_cm", label: "Width", tab: "dimensions", positive: true },
+  { field: "dimension_h_cm", label: "Height", tab: "dimensions", positive: true },
+  { field: "private_label_moq", label: "Private-label MOQ", tab: "private_label", positive: true },
   { field: "private_label_cost_per_unit", label: "Private-label unit cost", tab: "private_label" },
   { field: "private_label_upfront_cost", label: "Private-label setup cost", tab: "private_label" },
-  { field: "frozen_shelf_life_days", label: "Frozen shelf life", tab: "frozen", integer: true },
-  { field: "post_processing_shelf_life_days", label: "Post-processing shelf life", tab: "frozen", integer: true },
+  { field: "frozen_shelf_life_days", label: "Frozen shelf life", tab: "frozen", integer: true, positive: true },
+  { field: "post_processing_shelf_life_days", label: "Post-processing shelf life", tab: "frozen", integer: true, positive: true },
 ];
 
 function present(value: unknown): boolean {
-  return value !== null && value !== undefined && String(value).trim() !== "";
+  if (typeof value === "string") return value.trim() !== "";
+  if (typeof value === "number") return Number.isFinite(value);
+  return false;
 }
 
 function numberValue(value: unknown): number | null {
-  if (!present(value)) return null;
-  const parsed = typeof value === "number" ? value : Number(String(value).trim());
+  if (value === null || value === undefined || (typeof value === "string" && value.trim() === "")) return null;
+  if (typeof value !== "number" && typeof value !== "string") return Number.NaN;
+  const parsed = typeof value === "number" ? value : Number(value.trim());
   return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
@@ -115,6 +119,14 @@ export function validateProductAggregate(
         tab: rule.tab,
         severity: "error",
         message: `${rule.label} cannot be negative.`,
+      });
+    } else if (rule.positive && value === 0) {
+      issues.push({
+        code: `positive.${rule.field}`,
+        field: rule.field,
+        tab: rule.tab,
+        severity: "error",
+        message: `${rule.label} must be greater than zero.`,
       });
     } else if (rule.integer && !Number.isInteger(value)) {
       issues.push({
@@ -220,4 +232,3 @@ export function validateProductAggregate(
 
   return issues;
 }
-

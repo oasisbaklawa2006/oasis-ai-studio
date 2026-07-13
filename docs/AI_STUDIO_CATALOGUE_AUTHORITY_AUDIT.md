@@ -121,7 +121,9 @@
 **Oasis Central consumption (visible in repo):**
 - Reads product master, aliases, pricing/MOQ, media, catalogues via shared Supabase project
 - Public channel data via `get_public_catalogue_channel_data`
-- Planned outbound sync via `approved_catalogue_product_snapshot` shape — **never executed live**
+- Governed outbound sync uses the canonical `oasis.catalogue.publication.v1` server envelope. The
+  browser does not write to Central; the canonical backend creates an immutable pending event for
+  the Central intake connector.
 - `test-integration` edge fn checks `oasis_central_sync` integration config (secrets `OASIS_CENTRAL_URL`, `OASIS_CENTRAL_TOKEN`) but does not push catalogue data
 
 ---

@@ -5,6 +5,7 @@ import { exportCataloguePdf } from "./pdfExport";
 import { selectApprovedImageUrlsForCentral } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
 import type { CatalogueProductCard } from "./types";
+import { createCatalogueShareLink, transitionCollection } from "./collectionStore";
 
 vi.mock("@/integrations/supabase/client", () => {
   const reject = { data: null, error: { message: "mock" } };
@@ -13,8 +14,13 @@ vi.mock("@/integrations/supabase/client", () => {
   chain.eq = () => chain;
   chain.order = () => Promise.resolve(reject);
   chain.insert = () => chain;
+  chain.update = () => chain;
+  chain.delete = () => chain;
+  chain.in = () => chain;
+  chain.limit = () => chain;
   chain.single = () => Promise.resolve(reject);
-  return { supabase: { from: () => chain } };
+  chain.maybeSingle = () => Promise.resolve(reject);
+  return { supabase: { from: () => chain, rpc: () => Promise.resolve(reject) } };
 });
 
 const completeForm: Record<string, unknown> = {
@@ -115,5 +121,47 @@ describe("catalogueBuilder", () => {
     ];
     const urls = selectApprovedImageUrlsForCentral(assets);
     expect(urls).toEqual(["https://a/1.jpg"]);
+  });
+
+  it("separates review, publication and external sharing", async () => {
+    const now = new Date().toISOString();
+    localStorage.setItem("oasis_catalogue_collections", JSON.stringify([{
+      id: "collection-1",
+      title: "Reviewed catalogue",
+      slug: "reviewed",
+      catalogue_type: "b2b_catalogue",
+      channel: "b2b",
+      status: "draft",
+      revision: 1,
+      description: null,
+      theme: "classic_white",
+      created_by: null,
+      reviewed_by: null,
+      reviewed_at: null,
+      published_by: null,
+      published_at: null,
+      created_at: now,
+      updated_at: now,
+    }]));
+
+    await expect(createCatalogueShareLink("collection-1")).rejects.toThrow(/publish/i);
+    const review = await transitionCollection("collection-1", 1, "internal_review");
+    expect(review.status).toBe("internal_review");
+    expect(review.revision).toBe(2);
+    await expect(transitionCollection("collection-1", 1, "published")).rejects.toThrow(/revision conflict/i);
+    const published = await transitionCollection("collection-1", 2, "published");
+    expect(published.status).toBe("published");
+    expect(published.revision).toBe(3);
+    const share = await createCatalogueShareLink("collection-1", "view");
+    expect(share.share_token).toMatch(/^[a-f0-9]{64}$/);
+    expect(share.collection_revision).toBe(3);
+    const reopened = await transitionCollection("collection-1", 3, "internal_review");
+    expect(reopened.revision).toBe(4);
+    const storedShares = JSON.parse(localStorage.getItem("oasis_catalogue_share_links") ?? "[]") as Array<{
+      status: string;
+      revoked_at: string | null;
+    }>;
+    expect(storedShares[0]?.status).toBe("revoked");
+    expect(storedShares[0]?.revoked_at).toBeTruthy();
   });
 });

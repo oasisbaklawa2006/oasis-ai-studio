@@ -57,10 +57,10 @@ export function evaluateCataloguePublishability(args: {
 
   const syncedOk =
     args.catalogueVersionStatus === "synced" || args.catalogueVersionStatus === "published";
-  if (!syncedOk) blockers.push("Not synced to Central (preview only)");
+  if (!syncedOk) blockers.push("No published or Central-synced catalogue version");
 
   const publishable =
-    contentOk && mediaOk && pricingOk && approvedOk && readiness.readyForCentralSync;
+    contentOk && mediaOk && pricingOk && approvedOk && syncedOk && readiness.readyForCentralSync;
 
   if (!readiness.readyForCentralSync && publishable === false) {
     for (const b of readiness.blockers) {

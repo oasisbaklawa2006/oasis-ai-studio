@@ -4,24 +4,160 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { MessageCircle, Mail, Printer } from "lucide-react";
 
+type CatalogueView = {
+  id?: string;
+  title: string;
+  subtitle?: string | null;
+  client_name?: string | null;
+  intro_text?: string | null;
+  target_customer_channel?: string | null;
+  show_price?: boolean | null;
+  show_mrp?: boolean | null;
+  show_discount?: boolean | null;
+  show_price_label?: string | null;
+};
+
+type ProductCard = {
+  id: string;
+  product_name: string;
+  short_description?: string | null;
+  category?: string | null;
+  product_type?: string | null;
+  sku?: string | null;
+  pack_size?: string | null;
+  shelf_life_days?: number | null;
+  hero_image_url?: string | null;
+  mrp?: number | null;
+};
+
+type ProductEntry = { products: ProductCard };
+type ChannelInfo = {
+  product_id?: string;
+  public_price?: number | null;
+  currency?: string | null;
+  price_label?: string | null;
+  price_display_text?: string | null;
+  moq_display_text?: string | null;
+  mrp?: number | null;
+  discount_percent?: number | null;
+};
+
+type PublicCollectionEnvelope = {
+  schema_version: "oasis.public-catalogue.v1";
+  collection: {
+    id: string;
+    title: string;
+    description: string | null;
+    channel: string | null;
+  };
+  items: Array<{
+    product_id: string;
+    display_name: string;
+    description: string | null;
+    category: string | null;
+    sku: string | null;
+    pack_size: string | null;
+    shelf_life_days: number | null;
+    hero_image_url: string | null;
+    price_visibility: "visible" | "hidden" | "inquiry";
+    price: { amount: number; currency: string; label: string } | null;
+    moq_display_text: string | null;
+  }>;
+};
+
+type LegacyPublicCatalogueEnvelope = {
+  schema_version: "oasis.legacy-public-catalogue.v1";
+  catalogue: CatalogueView;
+  items: ProductCard[];
+};
+
+const publicCatalogueRpc = supabase as unknown as {
+  rpc: {
+    (
+      name: "get_public_collection_catalogue",
+      args: { _token: string },
+    ): Promise<{ data: PublicCollectionEnvelope | null; error: unknown }>;
+    (
+      name: "get_public_legacy_catalogue_v1",
+      args: { _slug: string },
+    ): Promise<{ data: LegacyPublicCatalogueEnvelope | null; error: unknown }>;
+  };
+};
+
 const PublicCatalogue = () => {
   const { slug } = useParams();
-  const [cat, setCat] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
-  const [channelByProduct, setChannelByProduct] = useState<Record<string, any>>({});
+  const [cat, setCat] = useState<CatalogueView | null>(null);
+  const [products, setProducts] = useState<ProductEntry[]>([]);
+  const [channelByProduct, setChannelByProduct] = useState<Record<string, ChannelInfo>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from("catalogues").select("*").eq("public_slug", slug).eq("status", "published").maybeSingle();
-      if (!data) { setLoading(false); return; }
-      setCat(data);
-      const { data: cp } = await supabase.from("catalogue_products").select("*, products(*)").eq("catalogue_id", data.id).order("sort_order");
-      setProducts(cp ?? []);
+      const { data: collectionPayload } = await publicCatalogueRpc.rpc(
+        "get_public_collection_catalogue",
+        { _token: slug as string },
+      );
+      if (
+        collectionPayload?.schema_version === "oasis.public-catalogue.v1" &&
+        collectionPayload.collection &&
+        Array.isArray(collectionPayload.items)
+      ) {
+        const collection = collectionPayload.collection;
+        setCat({
+          ...collection,
+          subtitle: collection.description,
+          target_customer_channel: collection.channel ?? "price_hidden",
+          show_price: true,
+          show_mrp: false,
+          show_discount: false,
+          show_price_label: null,
+        });
+        const mapped: Record<string, ChannelInfo> = {};
+        const rows: ProductEntry[] = collectionPayload.items.map((item) => {
+          mapped[item.product_id] = {
+            public_price: item.price_visibility === "visible" ? item.price?.amount ?? null : null,
+            currency: item.price?.currency ?? "₹",
+            price_label: item.price?.label ?? null,
+            price_display_text: item.price_visibility === "hidden" ? "Price hidden" : "Price on request",
+            moq_display_text: item.moq_display_text,
+          };
+          return {
+            products: {
+              id: item.product_id,
+              product_name: item.display_name,
+              short_description: item.description,
+              category: item.category,
+              sku: item.sku,
+              pack_size: item.pack_size,
+              shelf_life_days: item.shelf_life_days,
+              hero_image_url: item.hero_image_url,
+            },
+          };
+        });
+        setProducts(rows);
+        setChannelByProduct(mapped);
+        setLoading(false);
+        return;
+      }
+
+      // Legacy slugs use a narrow server projection. Anonymous callers never join
+      // catalogue_products to products(*) or receive the product-master row.
+      const { data: legacyPayload } = await publicCatalogueRpc.rpc(
+        "get_public_legacy_catalogue_v1",
+        { _slug: slug as string },
+      );
+      if (legacyPayload?.schema_version !== "oasis.legacy-public-catalogue.v1") {
+        setLoading(false);
+        return;
+      }
+      setCat(legacyPayload.catalogue);
+      setProducts(legacyPayload.items.map((product) => ({ products: product })));
 
       const { data: rpc } = await supabase.rpc("get_public_catalogue_channel_data", { _slug: slug as string });
-      const map: Record<string, any> = {};
-      (rpc ?? []).forEach((r: any) => { map[r.product_id] = r; });
+      const map: Record<string, ChannelInfo> = {};
+      ((rpc ?? []) as unknown as Array<ChannelInfo & { product_id: string }>).forEach((row) => {
+        map[row.product_id] = row;
+      });
       setChannelByProduct(map);
       setLoading(false);
     })();
@@ -56,12 +192,13 @@ const PublicCatalogue = () => {
   const showPrice = cat.show_price && channel !== "price_hidden";
   const showMrp = !!cat.show_mrp;
   const showDiscount = !!cat.show_discount;
+  const showSku = ["b2b", "b2b_horeca", "horeca", "export", "wholesale"].includes(channel);
   const priceLabel = cat.show_price_label || (channel !== "price_hidden" ? channel.replace(/_/g, " ") + " price" : "Price");
 
   const url = window.location.href;
   const waText = encodeURIComponent(`Hello! I'd like to inquire about the ${cat.title} catalogue: ${url}`);
 
-  const renderPrice = (p: any) => {
+  const renderPrice = (p: ProductCard) => {
     const r = channelByProduct[p.id];
     if (showPrice && r?.public_price != null) {
       return <div className="luxe-price font-display text-accent">{r.currency || "₹"} {r.public_price} <span className="text-[10px] text-muted-foreground uppercase tracking-wider ml-1 normal-case font-sans">{r.price_label || priceLabel}</span>{showDiscount && r.discount_percent ? <span className="text-[10px] text-success ml-1 font-sans">-{r.discount_percent}%</span> : null}</div>;
@@ -72,7 +209,7 @@ const PublicCatalogue = () => {
     return <div className="text-sm text-muted-foreground italic">{r?.price_display_text || "Price on request"}</div>;
   };
 
-  const renderMoq = (p: any) => {
+  const renderMoq = (p: ProductCard) => {
     const r = channelByProduct[p.id];
     return r?.moq_display_text || "MOQ depends on order type. Contact sales for details.";
   };
@@ -128,6 +265,7 @@ const PublicCatalogue = () => {
                     <h2 className="luxe-title mb-3 break-words">{p.product_name}</h2>
                     {p.short_description && <p className="text-sm text-muted-foreground mb-4 line-clamp-3 leading-relaxed">{p.short_description}</p>}
                     <div className="text-xs text-muted-foreground space-y-1.5 mt-auto">
+                      {showSku && p.sku && <div className="font-mono">SKU · {p.sku}</div>}
                       {p.pack_size && <div>Pack · {p.pack_size}</div>}
                       {p.shelf_life_days && <div>Shelf life · {p.shelf_life_days} days</div>}
                       <div className="px-2 pt-1">{renderMoq(p)}</div>

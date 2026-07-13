@@ -2,20 +2,14 @@
  * Governed AI content-generation gateway for the Catalogue Product AI Studio.
  *
  * Preflight finding (A3): no dedicated catalogue-content model endpoint exists, but a real,
- * already-wired chat-completion proxy does — the `oasis-ai-chat` Supabase Edge Function, used
- * today by Fast Create (`fastCreateSuggestions.ts`) for short alias suggestions. This module reuses
- * that same endpoint rather than inventing a new provider integration or a generic unverified one.
- * The UI never calls a model directly — every call goes through this module.
- *
- * `oasis-ai-chat` streams OpenAI-style chat-completion chunks
- * (`{"object":"chat.completion.chunk","choices":[{"delta":{"content":"..."}}]}` per line, see
- * aiOutputSanitizer.ts's docblock) but this caller reads the whole response as text rather than a
- * live stream, since a one-shot structured-content generation has no need for token-by-token
- * rendering. The pure parsing/validation functions below are unit-tested; the actual `fetch` call
- * is a thin, untested wrapper (matching this repo's convention for Supabase-calling functions).
+ * existing governed `oasis-ai-chat` Supabase Edge Function does. The browser sends a bounded task
+ * and source facts, never an arbitrary model prompt; the Edge Function owns the provider prompt,
+ * authentication, rate limit, durable deduplication, and cache. The UI never calls a model directly.
+ * Legacy stream parsers remain below only to safely read historical response fixtures.
  */
 import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
+import { invokeGovernedAi } from "@/shared/ai/governedAiClient";
 
 export interface CatalogueAiSourceFacts {
   productName: string;
@@ -161,45 +155,25 @@ export type CatalogueAiGenerationResult =
   | { ok: false; reason: string };
 
 /**
- * Calls the existing oasis-ai-chat edge function and returns validated catalogue content, or a
- * truthful failure reason. Never throws — every failure path (missing config, network error,
- * non-2xx response, unparsable/invalid content) returns `{ ok: false, reason }`.
+ * Calls the governed oasis-ai-chat task endpoint and returns validated suggestion-only catalogue
+ * content, or a truthful failure reason. Never exposes provider output until schema validation.
  */
 export async function generateCatalogueContentDraft(
   facts: CatalogueAiSourceFacts,
   tone: CatalogueAiTone = DEFAULT_TONE,
 ): Promise<CatalogueAiGenerationResult> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!supabaseUrl || !anonKey) {
-    return { ok: false, reason: "AI generation is not configured in this environment." };
+  const result = await invokeGovernedAi<{
+    suggestion_only?: unknown;
+    approved?: unknown;
+    content?: unknown;
+  }>("oasis-ai-chat", {
+    task: "catalogue_copy",
+    facts,
+    tone,
+  });
+  if (!result.ok) return { ok: false, reason: result.reason };
+  if (result.data?.suggestion_only !== true || result.data?.approved !== false) {
+    return { ok: false, reason: "AI service did not mark its output as an unapproved suggestion." };
   }
-
-  let resp: Response;
-  try {
-    resp = await fetch(`${supabaseUrl}/functions/v1/oasis-ai-chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${anonKey}`,
-      },
-      body: JSON.stringify({
-        messages: [{ role: "user", content: buildCatalogueContentPrompt(facts, tone) }],
-      }),
-    });
-  } catch {
-    return { ok: false, reason: "Could not reach the AI generation service. Check connectivity and retry." };
-  }
-
-  if (!resp.ok) {
-    return { ok: false, reason: `AI generation service returned an error (status ${resp.status}).` };
-  }
-
-  const rawText = await resp.text();
-  const assembled = parseChatCompletionStreamText(rawText);
-  const parsedJson = extractJsonObject(assembled);
-  if (parsedJson === null) {
-    return { ok: false, reason: "AI response could not be parsed as structured content." };
-  }
-  return validateAiCatalogueContent(parsedJson);
+  return validateAiCatalogueContent(result.data.content);
 }

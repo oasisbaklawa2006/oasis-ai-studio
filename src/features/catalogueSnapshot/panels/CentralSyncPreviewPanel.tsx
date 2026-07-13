@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getAliasText } from "@/lib/aliasDisplay";
 import { queryProductAliasesForProduct } from "@/lib/aliasSchemaAdapter";
 import { CentralSyncReadOnlyBanner } from "@/components/catalogueAuthority/AuthorityStatusBadges";
-import { getVersionsLoadFailure, getVersionsPersistenceSource } from "../catalogueVersionStore";
+import { getVersionsLoadFailure, getVersionsPersistenceSource, publishCatalogueVersion } from "../catalogueVersionStore";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 import {
   evaluateProductReadiness,
@@ -204,6 +204,19 @@ export function CentralSyncPreviewPanel({
     });
   };
 
+  const runPublishApproved = async () => {
+    if (!headVersion || headVersion.status !== "approved") return;
+    setLoading(true);
+    try {
+      const result = await publishCatalogueVersion({ productId, versionId: headVersion.id });
+      if (result.ok) toast.success(result.message);
+      else toast.error(result.message);
+      await refresh();
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const copyJson = async () => {
     if (!bundle) return;
     await navigator.clipboard.writeText(JSON.stringify(bundle, null, 2));
@@ -226,8 +239,9 @@ export function CentralSyncPreviewPanel({
       <CentralSyncReadOnlyBanner />
       {!LIVE_CENTRAL_WRITE_ENABLED && (
         <p className="text-xs text-muted-foreground rounded border border-dashed p-2">
-          Outbound live write to Oasis Central is <strong>disabled by design</strong> in this build.
-          Preview/export JSON only — no webhook or production sync is attempted.
+          Direct browser write to Oasis Central is <strong>disabled by design</strong>. Publishing
+          creates an immutable, idempotent server-side event for the governed Central connector;
+          preview/export never calls Central directly.
         </p>
       )}
       {persistenceSource === "local_only" && (
@@ -287,7 +301,15 @@ export function CentralSyncPreviewPanel({
           disabled={loading || previewBlocked || !validation.allowed}
           title={previewBlocked ? previewBlockMessage ?? undefined : undefined}
         >
-          {loading ? "Working…" : "Approve snapshot (preview)"}
+          {loading ? "Working…" : "Approve snapshot"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => void runPublishApproved()}
+          disabled={loading || headVersion?.status !== "approved"}
+        >
+          Publish approved version
         </Button>
         <Button size="sm" variant="outline" onClick={() => void copyJson()} disabled={!bundle}>
           <Copy className="h-3 w-3 mr-1" /> Copy JSON

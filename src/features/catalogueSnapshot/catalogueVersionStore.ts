@@ -28,6 +28,12 @@ const STORAGE_PREFIX = "oasis_catalogue_versions_";
 const EVENTS_PREFIX = "oasis_catalogue_sync_events_";
 
 const authorityDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
+const publicationRpc = supabase as unknown as {
+  rpc: (
+    name: string,
+    args: Record<string, unknown>,
+  ) => Promise<{ data: Record<string, unknown> | null; error: unknown }>;
+};
 
 function storageKey(productId: string) {
   return `${STORAGE_PREFIX}${productId}`;
@@ -197,6 +203,9 @@ export async function approveCatalogueVersion(args: {
   if (isImmutableVersion(current.status)) {
     return { ok: false, message: "Approved snapshots are immutable" };
   }
+  if (current.status !== "draft" && current.status !== "pending_approval") {
+    return { ok: false, message: "Only a draft or submitted version can be approved" };
+  }
 
   const now = new Date().toISOString();
   const updated: CatalogueVersionRow = {
@@ -204,34 +213,31 @@ export async function approveCatalogueVersion(args: {
     status: "approved",
     approved_by: args.approvedBy ?? null,
     approved_at: now,
-    published_at: now,
+    published_at: null,
     updated_at: now,
   };
 
   try {
-    const { data, error } = await authorityDb
-      .from("catalogue_versions")
-      .update({
-        status: updated.status,
-        approved_by: updated.approved_by,
-        approved_at: updated.approved_at,
-        published_at: updated.published_at,
-        updated_at: updated.updated_at,
-      })
-      .eq("id", args.versionId)
-      .select("*")
-      .single();
-
-    if (!error && data) {
-      setVersionsPersistenceSource(args.productId, "supabase");
-      return { ok: true, row: data as CatalogueVersionRow, message: "Version approved" };
+    if (current.status === "draft") {
+      const submitted = await publicationRpc.rpc("submit_catalogue_version_for_approval", {
+        _catalogue_version_id: args.versionId,
+      });
+      if (submitted.error) throw submitted.error;
     }
-    if (error && !isLocalCatalogueFallbackWriteEnabled()) {
+    const approved = await publicationRpc.rpc("approve_catalogue_version_v1", {
+      _catalogue_version_id: args.versionId,
+      _expected_content_sha256: null,
+    });
+    if (!approved.error && approved.data) {
+      setVersionsPersistenceSource(args.productId, "supabase");
+      const serverApprovedAt = typeof approved.data.approved_at === "string" ? approved.data.approved_at : now;
       return {
-        ok: false,
-        message: supabaseAuthorityErrorMessage("approveCatalogueVersion", error),
+        ok: true,
+        row: { ...updated, approved_by: null, approved_at: serverApprovedAt },
+        message: "Version approved with server-recorded reviewer evidence",
       };
     }
+    if (approved.error) throw approved.error;
   } catch (err) {
     if (!isLocalCatalogueFallbackWriteEnabled()) {
       return {
@@ -258,6 +264,66 @@ export async function approveCatalogueVersion(args: {
   writeLocalVersions(args.productId, local);
   setVersionsPersistenceSource(args.productId, "local_only");
   return { ok: true, row: updated, message: "Version approved (local only — not authoritative)" };
+}
+
+export async function publishCatalogueVersion(args: {
+  productId: string;
+  versionId: string;
+}): Promise<{ ok: boolean; row?: CatalogueVersionRow; message: string }> {
+  const versions = await listCatalogueVersions(args.productId);
+  const current = versions.find((version) => version.id === args.versionId);
+  if (!current) return { ok: false, message: "Version not found" };
+  if (current.status !== "approved") {
+    return { ok: false, message: "Only an approved, unpublished version can be published" };
+  }
+
+  const now = new Date().toISOString();
+  const updated: CatalogueVersionRow = {
+    ...current,
+    status: "published",
+    published_at: now,
+    updated_at: now,
+  };
+
+  try {
+    const result = await publicationRpc.rpc("publish_catalogue_version_v1", {
+      _catalogue_version_id: args.versionId,
+      _target_system: "oasis_central",
+      _idempotency_key: `catalogue:${args.versionId}:oasis_central:v1`,
+      _external_target_product_ref: null,
+    });
+    if (!result.error && result.data) {
+      setVersionsPersistenceSource(args.productId, "supabase");
+      return {
+        ok: true,
+        row: updated,
+        message: result.data.replayed === true
+          ? "Existing publication safely replayed"
+          : "Immutable publication queued for Oasis Central",
+      };
+    }
+    if (result.error) throw result.error;
+  } catch (error) {
+    if (!isLocalCatalogueFallbackWriteEnabled()) {
+      return { ok: false, message: supabaseAuthorityErrorMessage("publishCatalogueVersion", error) };
+    }
+  }
+
+  try {
+    assertLocalCatalogueFallbackWrite("publishCatalogueVersion");
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Local catalogue fallback is disabled" };
+  }
+  const local = readLocalVersions(args.productId);
+  const index = local.findIndex((version) => version.id === args.versionId);
+  if (index < 0) return { ok: false, message: "Version not found locally" };
+  if (local[index].status !== "approved" || local[index].updated_at !== current.updated_at) {
+    return { ok: false, message: "Version changed before publication; refresh and review again" };
+  }
+  local[index] = updated;
+  writeLocalVersions(args.productId, local);
+  setVersionsPersistenceSource(args.productId, "local_only");
+  return { ok: true, row: updated, message: "Version published locally — not authoritative" };
 }
 
 /**

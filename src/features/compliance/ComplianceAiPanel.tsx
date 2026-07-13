@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ShieldAlert, Sparkles, CheckCircle2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import {
   AI_COMPLIANCE_UI_DISCLAIMER,
   type ComplianceSensitiveField,
@@ -20,6 +19,7 @@ import {
 import type { AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
 import { resolveAiComplianceResponse } from "@/shared/ai/complianceSuggestions";
 import { toast } from "sonner";
+import { invokeGovernedAi } from "@/shared/ai/governedAiClient";
 
 type Props = {
   form: Record<string, unknown>;
@@ -82,21 +82,20 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
   const generateSuggestions = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
-        body: {
-          product_name: form.product_name,
-          category: form.category,
-        },
+      const result = await invokeGovernedAi<unknown>("generate-product-attributes", {
+        product_name: form.product_name,
+        category: form.category,
+        description: form.description,
       });
 
-      const { response, usedHeuristic } = resolveAiComplianceResponse(data, {
+      const { response, usedHeuristic } = resolveAiComplianceResponse(result.ok ? result.data : null, {
         product_name: String(form.product_name ?? ""),
         category: String(form.category ?? ""),
       });
 
-      if (error && usedHeuristic) {
+      if (!result.ok && usedHeuristic) {
         if (import.meta.env.DEV) {
-          console.warn("[ComplianceAiPanel] edge function unavailable, using heuristic:", error.message);
+          console.warn("[ComplianceAiPanel] governed AI unavailable, using heuristic:", result.reason);
         }
       }
 

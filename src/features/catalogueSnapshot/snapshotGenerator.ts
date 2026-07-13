@@ -112,6 +112,11 @@ export function generateCatalogueSnapshot(
     master_carton: masterCarton,
     pieces_per_kg: input.form.pieces_per_kg,
     approximate_piece_weight_g: input.form.approximate_piece_weight_g,
+    net_weight_g: input.form.net_weight_g,
+    gross_weight_g: input.form.gross_weight_g,
+    avg_weight_per_pack: input.form.avg_weight_per_tray_g,
+    shelf_life_days: input.form.shelf_life_days,
+    is_active: input.form.is_active !== false,
     conversion_rules: conversionRules,
   };
 
@@ -134,6 +139,10 @@ export function generateCatalogueSnapshot(
     catalogue_sku_id: str(input.form.sku_id) ?? null,
     identity: {
       sku: str(input.form.sku),
+      legacy_skus: Array.from(new Set(
+        [str(input.form.legacy_sku), str(input.form.source_pdf_sku)]
+          .filter((value): value is string => !!value && value !== str(input.form.sku)),
+      )),
       code: str(input.form.product_code ?? input.form.code),
       name: String(input.form.product_name ?? ""),
       display_name: str(input.form.short_name ?? input.form.display_name),

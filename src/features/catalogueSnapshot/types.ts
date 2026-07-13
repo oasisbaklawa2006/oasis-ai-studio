@@ -43,6 +43,7 @@ export type CatalogueSnapshotJson = {
   catalogue_sku_id: string | null;
   identity: {
     sku: string | null;
+    legacy_skus: string[];
     code: string | null;
     name: string;
     display_name: string | null;
@@ -89,34 +90,37 @@ export type CatalogueSnapshotJson = {
   ready_for_central_sync: boolean;
 };
 
-/** Central connector 25B/25C — ApprovedCatalogueProductSnapshot (preview/export). */
-export type ApprovedCatalogueProductSnapshot = {
-  external_catalogue_product_id: string;
-  central_product_id: string | null;
-  sku: string | null;
-  name: string;
-  description: string | null;
-  approved_image_urls: string[];
-  mrp: number | null;
-  base_price: number | null;
-  pack_size: string | null;
-  net_weight_g: number | null;
-  category: string | null;
-  gst_classification_status: GstClassificationStatus;
-  gst_hsn: string | null;
-  gst_rate: string | number | null;
-  uom: string | null;
-  barcode_sku: string | null;
-  is_active: boolean;
-  version: string;
-  updated_at: string;
+/**
+ * Canonical wire envelope emitted by the server-side publication RPC.
+ * Central-owned IDs are deliberately absent from the approved catalogue snapshot;
+ * the optional target reference only records an already-known target mapping.
+ */
+export type CataloguePublicationEnvelopeV1 = {
+  schema_version: "oasis.catalogue.publication.v1";
+  publication_id: string;
+  published_at: string;
+  target_system: string;
+  source: {
+    catalogue_version_id: string;
+    product_id: string;
+    version_number: number;
+    version_code: string;
+    content_sha256: string;
+    approved_at: string;
+  };
+  mapping: {
+    shared_product_id: string;
+    sku: string;
+    external_target_product_ref: string | null;
+  };
+  catalogue: CatalogueSnapshotJson;
 };
 
 export type CentralSyncPreviewBundle = {
   preview_only: true;
   no_live_central_write: true;
-  connector: "25B/25C";
-  approved_catalogue_product_snapshot: ApprovedCatalogueProductSnapshot;
+  connector: "catalogue-publication-v1";
+  publication_envelope: CataloguePublicationEnvelopeV1;
   full_snapshot: CatalogueSnapshotJson;
   catalogue_version_id: string;
   catalogue_version_code: string;

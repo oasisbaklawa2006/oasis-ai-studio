@@ -58,7 +58,7 @@ export async function previewCentralSync(
     };
   }
 
-  const bundle = buildCentralSyncPreviewBundle({
+  const bundle = await buildCentralSyncPreviewBundle({
     snapshot,
     catalogueVersionId: versionRow.id,
     versionCode: versionRow.version_code,
@@ -99,7 +99,7 @@ export async function approveAndPreviewCentralSync(
         snapshot,
       }));
 
-    const bundle = buildCentralSyncPreviewBundle({
+    const bundle = await buildCentralSyncPreviewBundle({
       snapshot,
       catalogueVersionId: versionRow.id,
       versionCode: versionRow.version_code,

@@ -11,6 +11,26 @@ import { prepareCatalogueExport, type CatalogueExportInput } from "./catalogueEx
 export type PdfExportInput = CatalogueExportInput;
 export { prepareCatalogueExport } from "./catalogueExport";
 
+const MAX_PDF_IMAGE_BYTES = 2_000_000;
+const PDF_IMAGE_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function approvedMediaOrigins(): Set<string> {
+  const candidates = [
+    import.meta.env.VITE_SUPABASE_URL,
+    ...(import.meta.env.VITE_APPROVED_MEDIA_ORIGINS ?? "").split(","),
+    typeof window !== "undefined" ? window.location.origin : "",
+  ];
+  const origins = new Set<string>();
+  for (const candidate of candidates) {
+    try {
+      if (candidate?.trim()) origins.add(new URL(candidate.trim()).origin);
+    } catch {
+      // Misconfigured origins fail closed.
+    }
+  }
+  return origins;
+}
+
 function setColour(doc: jsPDF, colour: readonly [number, number, number], fill = false) {
   if (fill) doc.setFillColor(...colour);
   else doc.setTextColor(...colour);
@@ -22,16 +42,57 @@ function imageFormat(dataUrl: string) {
   return "JPEG";
 }
 
-async function imageAsDataUrl(url: string): Promise<string | null> {
-  if (url.startsWith("data:image/")) return url;
+export async function imageAsDataUrl(url: string): Promise<string | null> {
+  if (/^data:image\/(?:jpeg|png|webp);base64,/i.test(url)) {
+    // Base64 expands bytes by roughly 4/3. Reject before decoding so a poisoned snapshot cannot
+    // force jsPDF/FileReader to allocate an unbounded in-memory image.
+    return url.length <= Math.ceil(MAX_PDF_IMAGE_BYTES * 4 / 3) + 128 ? url : null;
+  }
   if (typeof fetch !== "function") return null;
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(url);
+  } catch {
+    return null;
+  }
+  const localDevelopmentUrl = parsedUrl.protocol === "http:" &&
+    (parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1");
+  if (parsedUrl.protocol !== "https:" && !localDevelopmentUrl) return null;
+  if (!approvedMediaOrigins().has(parsedUrl.origin)) return null;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 4_000);
   try {
-    const response = await fetch(url, { signal: controller.signal, credentials: "omit" });
+    const response = await fetch(url, {
+      signal: controller.signal,
+      credentials: "omit",
+      redirect: "error",
+    });
     if (!response.ok) return null;
-    const blob = await response.blob();
-    if (!blob.type.startsWith("image/")) return null;
+    const mimeType = (response.headers.get("content-type") ?? "").split(";", 1)[0].trim().toLowerCase();
+    if (!PDF_IMAGE_MIME_TYPES.has(mimeType)) return null;
+    const declaredBytes = Number(response.headers.get("content-length") ?? "0");
+    if (Number.isFinite(declaredBytes) && declaredBytes > MAX_PDF_IMAGE_BYTES) return null;
+    if (!response.body) return null;
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let receivedBytes = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      receivedBytes += value.byteLength;
+      if (receivedBytes > MAX_PDF_IMAGE_BYTES) {
+        await reader.cancel("image_too_large");
+        return null;
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(receivedBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    const blob = new Blob([bytes], { type: mimeType });
     return await new Promise<string | null>((resolve) => {
       const reader = new FileReader();
       reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
@@ -115,7 +176,13 @@ async function renderProductPage(
     const imageHeight = profile.document === "compact_a4" ? 39 : 50;
     const selectedImage = selectedImages[product.productId];
     const url = selectedImage?.url;
-    const data = url ? await imageCache.get(url) : null;
+    let imagePromise = url ? imageCache.get(url) : undefined;
+    if (url && !imagePromise) {
+      // Lazy, sequential population avoids launching one fetch per product at export start.
+      imagePromise = imageAsDataUrl(url);
+      imageCache.set(url, imagePromise);
+    }
+    const data = imagePromise ? await imagePromise : null;
     if (data) {
       try {
         const properties = doc.getImageProperties(data);
@@ -202,18 +269,24 @@ function renderBack(doc: jsPDF, input: PdfExportInput) {
  */
 export async function exportCataloguePdf(input: PdfExportInput): Promise<Blob> {
   const prepared = prepareCatalogueExport(input);
+  if (!prepared.preflight.ready) {
+    const blockers = prepared.preflight.issues
+      .filter((issue) => issue.severity === "error")
+      .map((issue) => issue.message)
+      .join(" ");
+    throw new Error(blockers || "Catalogue export is blocked by preflight errors.");
+  }
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true });
   const imageCache = new Map<string, Promise<string | null>>();
-  for (const image of Object.values(prepared.preflight.selectedImages)) {
-    const url = image?.url;
-    if (url && !imageCache.has(url)) imageCache.set(url, imageAsDataUrl(url));
-  }
 
   for (let index = 0; index < prepared.plan.pages.length; index += 1) {
     const page = prepared.plan.pages[index];
     if (index > 0) doc.addPage();
     if (page.kind === "cover") renderCover(doc, input, prepared.profile.label, prepared.plan.productCount);
     if (page.kind === "products") await renderProductPage(doc, page, input, prepared.preflight.selectedImages, imageCache);
+    // Keep the explicit browser cache bounded to one rendered page. jsPDF owns any
+    // encoded image it still needs; the renderer does not retain every data URL too.
+    if (page.kind === "products") imageCache.clear();
     if (page.kind === "terms") renderTerms(doc, input);
     if (page.kind === "back") renderBack(doc, input);
   }
