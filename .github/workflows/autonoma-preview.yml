@@ -21,16 +21,27 @@ jobs:
     steps:
       - name: Validate deployment signal inputs
         run: |
-          test -n "$AUTONOMA_SHARED_SECRET"
+          SECRET=$(printf '%s' "$AUTONOMA_SHARED_SECRET" | tr -d '\r\n ' | sed 's/^AUTONOMA_SHARED_SECRET=//')
+
+          test -n "$SECRET"
           test -n "$AUTONOMA_APPLICATION_ID"
           test -n "$PREVIEW_URL"
+
           case "$PREVIEW_URL" in
             http://*|https://*) ;;
             *) echo "PREVIEW_URL is not an HTTP(S) URL: $PREVIEW_URL" >&2; exit 1 ;;
           esac
 
+          if ! printf '%s' "$SECRET" | grep -Eq '^[0-9a-fA-F]{64}$'; then
+            echo "AUTONOMA_SHARED_SECRET must be the 64-character raw secret value only." >&2
+            echo "Do not include AUTONOMA_SHARED_SECRET=, quotes, spaces, or line breaks." >&2
+            exit 1
+          fi
+
       - name: Notify Autonoma
         run: |
+          SECRET=$(printf '%s' "$AUTONOMA_SHARED_SECRET" | tr -d '\r\n ' | sed 's/^AUTONOMA_SHARED_SECRET=//')
+
           BODY=$(jq -nc \
             --arg applicationId "$AUTONOMA_APPLICATION_ID" \
             --arg previewUrl "$PREVIEW_URL" \
@@ -39,11 +50,10 @@ jobs:
             '{applicationId:$applicationId,previewUrl:$previewUrl,provider:$provider}
               + (if $sha == "" then {} else {sha:$sha} end)')
 
-          SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$AUTONOMA_SHARED_SECRET" -hex | sed 's/^.* //')
-
           echo "Sending Autonoma payload:"
           echo "$BODY" | jq '{applicationId, previewUrl, sha, provider}'
 
+          SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$SECRET" -hex | sed 's/^.* //')
           HTTP_CODE=$(curl -sS -w "%{http_code}" -o /tmp/autonoma-response.txt \
             -X POST "$AUTONOMA_ENDPOINT" \
             -H "content-type: application/json" \
@@ -54,4 +64,24 @@ jobs:
           echo "Autonoma response:"
           cat /tmp/autonoma-response.txt
 
-          test "$HTTP_CODE" -ge 200 -a "$HTTP_CODE" -lt 300
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            exit 0
+          fi
+
+          if grep -q 'Invalid signature' /tmp/autonoma-response.txt; then
+            echo "Retrying with hex-key HMAC signature mode."
+            SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -mac HMAC -macopt hexkey:"$SECRET" -hex | sed 's/^.* //')
+            HTTP_CODE=$(curl -sS -w "%{http_code}" -o /tmp/autonoma-response-hexkey.txt \
+              -X POST "$AUTONOMA_ENDPOINT" \
+              -H "content-type: application/json" \
+              -H "x-signature: $SIG" \
+              --data "$BODY")
+
+            echo "Autonoma hex-key HTTP status: $HTTP_CODE"
+            echo "Autonoma hex-key response:"
+            cat /tmp/autonoma-response-hexkey.txt
+
+            test "$HTTP_CODE" -ge 200 -a "$HTTP_CODE" -lt 300
+          else
+            exit 1
+          fi
