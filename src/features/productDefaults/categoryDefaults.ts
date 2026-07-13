@@ -290,7 +290,9 @@ export function getCategoryDefaults(key: FastCreateCategoryKey): CategoryDefault
 /** Baseline defaults applied to every new product (Central parity). */
 export const CREATION_BASELINE_DEFAULTS: Record<string, unknown> = {
   currency: "INR",
-  is_active: true,
+  // Draft-first lifecycle: a newly authored catalogue record must not become operationally
+  // active before review/readiness. Existing rows retain their persisted value on edit.
+  is_active: false,
   is_catalogue_ready: false,
   sku_locked: true,
   hsn_code: "19059090",

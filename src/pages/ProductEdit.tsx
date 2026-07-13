@@ -104,6 +104,18 @@ import { resolveProductHeroUrl } from "@/lib/productImage";
 import { Link } from "react-router-dom";
 import { Zap } from "lucide-react";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
+import {
+  canAutosaveProductDraft,
+  createProductDraftEnvelope,
+  createProductDraftIdempotencyKey,
+  parseProductDraft,
+  writeProductDraft,
+} from "@/features/productAuthority/productDraftPersistence";
+import { createSaveAttemptGate } from "@/features/productAuthority/saveAttemptGate";
+import {
+  PRODUCT_TYPE_PROFILES,
+  productTypeOptionsForValue,
+} from "@/features/productAuthority/productTypeProfiles";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -183,45 +195,6 @@ const MOQ_RULE_TYPES = [
 const DEFAULT_CAUTION =
   "Customisation must be confirmed in writing before production. Changes after approval may affect cost, timeline, and dispatch date.";
 
-const PRODUCT_TYPE_PROFILES: Record<string, any> = {
-  loose_bulk_material: {
-    label: "Loose / Bulk Material",
-    showPrivateLabel: false,
-    showCustomization: false,
-    showHamperBom: false,
-  },
-  prepacked_ready_packs: {
-    label: "Prepacked Products / Ready Packs",
-    showPrivateLabel: true,
-    showCustomization: false,
-    showHamperBom: false,
-  },
-  premium_gift_packs: {
-    label: "Premium Gift Packs",
-    showPrivateLabel: false,
-    showCustomization: true,
-    showHamperBom: true,
-  },
-  hamper_assorted_gift_pack: {
-    label: "Hamper / Assorted Gift Pack",
-    showPrivateLabel: false,
-    showCustomization: true,
-    showHamperBom: true,
-  },
-  semi_prepared_frozen_bake_and_serve: {
-    label: "Semi-prepared / Frozen / Bake-and-Serve Products",
-    showPrivateLabel: false,
-    showCustomization: false,
-    showHamperBom: false,
-  },
-  packaging_decoration_material: {
-    label: "Packaging / Decoration Material",
-    showPrivateLabel: false,
-    showCustomization: false,
-    showHamperBom: false,
-  },
-};
-
 const CUSTOMIZATION_TYPES = [
   "logo printing",
   "name personalization",
@@ -258,7 +231,7 @@ const empty: any = {
   moq_text: "",
   carton_logic: "",
   hero_image_url: "",
-  is_active: true,
+  is_active: false,
   is_catalogue_ready: false,
   sku: null,
   sku_locked: true,
@@ -641,6 +614,7 @@ const ProductEdit = () => {
 
   const [form, setForm] = useState<any>(empty);
   const [loading, setLoading] = useState(false);
+  const saveAttemptGateRef = useRef(createSaveAttemptGate());
   // Distinct from `loading` (which drives the "Saving…" save-button label) — this only
   // tracks the initial product-row fetch, so Save stays disabled during that window
   // without the button claiming a save is in progress (Defect 2).
@@ -700,12 +674,38 @@ const ProductEdit = () => {
   // present" just because a form field is non-empty (Defect 1).
   const [packagingAuthority, setPackagingAuthority] = useState<PackagingTaxonomyAuthority | null>(null);
   const [dirty, setDirty] = useState(false);
-  const restored = useRef(false);
+  const [restoredDraftKey, setRestoredDraftKey] = useState<string | null>(null);
+  const [draftPersistenceError, setDraftPersistenceError] = useState<string | null>(null);
+  const draftIdempotencyKeyRef = useRef(createProductDraftIdempotencyKey());
+  const previousDraftKeyRef = useRef<string | null>(null);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
   const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
   const draftKey = isNew
     ? "catalogue_product_form_draft_new"
     : `catalogue_product_form_draft_${id}`;
+
+  // React Router keeps this component mounted across /products/A -> /products/B -> /products/new.
+  // Reset route-scoped form/draft state before the next product is fetched or restored. The
+  // autosave below remains disabled until that exact route key finishes restoration, preventing
+  // the previous route's form from ever being written beneath the new key.
+  useEffect(() => {
+    const previousKey = previousDraftKeyRef.current;
+    previousDraftKeyRef.current = draftKey;
+    if (!previousKey || previousKey === draftKey) return;
+
+    setRestoredDraftKey(null);
+    setDraftPersistenceError(null);
+    draftIdempotencyKeyRef.current = createProductDraftIdempotencyKey();
+    setDirty(false);
+    setLoadedId(null);
+    setForm({ ...empty });
+    setProductMediaRows([]);
+    setPricingRuleRows([]);
+    setMoqRuleRows([]);
+    setChannelPrices([]);
+    setChannelMoqRules([]);
+    setAuthorityLoaded(isNew);
+  }, [draftKey, isNew]);
 
   const isContributorMode = authContextContributor || rpcContributorRole;
 
@@ -777,6 +777,7 @@ const ProductEdit = () => {
         sku: null,
         sku_locked: false,
         product_name: `${loaded.product_name || loaded.name || "Product"} (copy)`.trim(),
+        is_active: false,
         is_catalogue_ready: false,
         label_status: "draft",
         archived_at: null,
@@ -1127,26 +1128,58 @@ const ProductEdit = () => {
   };
 
   useEffect(() => {
-    if (restored.current) return;
+    // Existing products restore only after their authority row has loaded, otherwise the later
+    // fetch would overwrite the restored draft. New products can restore over baseline defaults.
+    if (!isNew && loadedId !== id) return;
+    if (restoredDraftKey === draftKey) return;
 
+    const fallbackIdempotencyKey = draftIdempotencyKeyRef.current;
     try {
       const raw = localStorage.getItem(draftKey);
       if (raw) {
-        const draft = JSON.parse(raw) as Record<string, unknown>;
-        setForm((f: Record<string, unknown>) => mergeDraftOverAuthorityForm(f, draft));
+        const result = parseProductDraft(raw, draftKey, fallbackIdempotencyKey);
+        if (result.ok) {
+          draftIdempotencyKeyRef.current = result.envelope.idempotencyKey;
+          setForm((current: Record<string, unknown>) =>
+            mergeDraftOverAuthorityForm(current, result.envelope.data),
+          );
+          // A restored browser draft represents work that is not yet committed to authority.
+          // Keep unload protection active and allow the legacy draft to be upgraded in-place.
+          setDirty(true);
+        } else {
+          setDraftPersistenceError(result.message);
+        }
       }
-    } catch {}
+    } catch (error) {
+      setDraftPersistenceError(
+        error instanceof Error
+          ? `Browser recovery draft could not be read: ${error.message}`
+          : "Browser recovery draft could not be read.",
+      );
+    }
 
-    restored.current = true;
-  }, [draftKey]);
+    setRestoredDraftKey(draftKey);
+  }, [draftKey, id, isNew, loadedId, restoredDraftKey]);
 
   useEffect(() => {
-    if (!restored.current) return;
+    if (!canAutosaveProductDraft(restoredDraftKey, draftKey, dirty)) return;
 
-    try {
-      localStorage.setItem(draftKey, JSON.stringify(stripAuthorityFieldsFromDraft(form)));
-    } catch {}
-  }, [draftKey, form]);
+    const timeout = window.setTimeout(() => {
+      const envelope = createProductDraftEnvelope(
+        draftKey,
+        stripAuthorityFieldsFromDraft(form),
+        draftIdempotencyKeyRef.current,
+      );
+      const result = writeProductDraft(localStorage, draftKey, envelope);
+      if (result.ok) {
+        setDraftPersistenceError(null);
+      } else {
+        setDraftPersistenceError(result.message);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [dirty, draftKey, form, restoredDraftKey]);
 
   useEffect(() => {
     const onUnload = (e: BeforeUnloadEvent) => {
@@ -1317,6 +1350,9 @@ const ProductEdit = () => {
   }, [form, isContributorMode]);
 
   const save = async () => {
+    // This ref gate closes the same-render double-click window before React can paint the
+    // disabled button. It is released only in finally after every direct/contributor task.
+    if (!saveAttemptGateRef.current.tryEnter()) return;
     setSubmitError(null);
 
     if (missing.length > 0) {
@@ -1329,6 +1365,7 @@ const ProductEdit = () => {
 
       setSubmitError(message);
       toast.error(message);
+      saveAttemptGateRef.current.release();
       return;
     }
 
@@ -1342,10 +1379,12 @@ const ProductEdit = () => {
       const message = catalogueReadyBlockedMessage(catalogueReadyGate);
       setSubmitError(message);
       toast.error(`Cannot save as catalogue-ready — ${message}`);
+      saveAttemptGateRef.current.release();
       return;
     }
 
     setLoading(true);
+    try {
 
     const payload: any = {
       ...form,
@@ -1391,7 +1430,6 @@ const ProductEdit = () => {
       // Explicit `=== false` (not `!skuGuard.ok`) — with strictNullChecks off in this
       // project's tsconfig, boolean-negation doesn't narrow discriminated unions reliably.
       if (skuGuard.ok === false) {
-        setLoading(false);
         setSubmitError(skuGuard.reason);
         toast.error(skuGuard.reason);
         return;
@@ -1401,7 +1439,6 @@ const ProductEdit = () => {
       const validation = validateProductSavePayload(productRow, isNew ? "create" : "update");
       if (!validation.ok) {
         const message = productSaveValidationMessage(validation);
-        setLoading(false);
         setSubmitError(message);
         toast.error(message);
         return;
@@ -1410,8 +1447,6 @@ const ProductEdit = () => {
       const res = isNew
         ? await (supabase as any).from("products").insert(productRow).select().single()
         : await (supabase as any).from("products").update(productRow).eq("id", id).select().single();
-
-      setLoading(false);
 
       if (res.error) {
         const message = formatProductSaveError(res.error);
@@ -1590,11 +1625,14 @@ const ProductEdit = () => {
       const draftRes = await submitCatalogueDraft({
         draftType: "product",
         operation: isNew ? "create" : "update",
-        payload: groupedPayload,
+        payload: {
+          ...groupedPayload,
+          submission: {
+            idempotency_key: draftIdempotencyKeyRef.current,
+          },
+        },
         targetRecordId: isNew ? null : (id as string),
       });
-
-      setLoading(false);
 
       if (!draftRes.ok) {
         const message = `Draft submit failed: ${draftRes.message}`;
@@ -1613,8 +1651,15 @@ const ProductEdit = () => {
       return;
     }
 
-    setLoading(false);
     toast.error("Read-only mode: you do not have permission to save products.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Save failed unexpectedly.";
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+      saveAttemptGateRef.current.release();
+    }
   };
 
   return (
@@ -1658,6 +1703,13 @@ const ProductEdit = () => {
         <div className="mb-4 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 mt-0.5" />
           <div>{submitError}</div>
+        </div>
+      )}
+
+      {draftPersistenceError && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+          <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
+          <div>{draftPersistenceError}</div>
         </div>
       )}
 
@@ -1765,7 +1817,12 @@ const ProductEdit = () => {
                 </Field>
 
                 <Field label="Product Type">
-                  <Input value={form.product_type ?? ""} onChange={(e) => set("product_type", e.target.value)} placeholder="Example: Baklawa, Hamper, Jar pack" />
+                  <Select
+                    value={form.product_type ?? ""}
+                    onChange={(v: string) => set("product_type", v)}
+                    options={productTypeOptionsForValue(form.product_type)}
+                    placeholder="— Select product type —"
+                  />
                 </Field>
 
                 <Field label="Display Category">
