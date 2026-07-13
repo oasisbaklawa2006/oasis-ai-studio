@@ -1,12 +1,13 @@
 name: Autonoma preview signal
 
-on:
+'on':
   deployment_status:
   workflow_dispatch:
     inputs:
-      preview_url: https://oasis-ai-studio-fb1fp1cgw-oasisbaklawa2006-6222s-projects.vercel.app
+      preview_url:
         description: Vercel preview URL to report to Autonoma
         required: true
+        default: https://oasis-ai-studio-fb1fp1cgw-oasisbaklawa2006-6222s-projects.vercel.app
         type: string
       sha:
         description: Optional commit SHA for the preview
