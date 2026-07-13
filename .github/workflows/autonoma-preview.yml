@@ -2,6 +2,16 @@ name: Autonoma preview signal
 
 on:
   deployment_status:
+  workflow_dispatch:
+    inputs:
+      preview_url:
+        description: Vercel preview URL to report to Autonoma
+        required: true
+        type: string
+      sha:
+        description: Optional commit SHA for the preview
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -9,14 +19,14 @@ permissions:
 jobs:
   notify:
     name: Notify Autonoma
-    if: github.event.deployment_status.state == 'success'
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     env:
       AUTONOMA_ENDPOINT: https://autonoma.app/v1/onboarding/deployment-signal
       AUTONOMA_APPLICATION_ID: cmrj2lm9l030t01e8yv3eryb0
       AUTONOMA_SHARED_SECRET: ${{ secrets.AUTONOMA_SHARED_SECRET }}
-      PREVIEW_URL: ${{ github.event.deployment_status.target_url }}
-      PREVIEW_SHA: ${{ github.event.deployment.sha || github.sha }}
+      PREVIEW_URL: ${{ github.event_name == 'workflow_dispatch' && inputs.preview_url || github.event.deployment_status.target_url }}
+      PREVIEW_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || github.event.deployment.sha || github.sha }}
       PREVIEW_PROVIDER: vercel
     steps:
       - name: Validate deployment signal inputs
