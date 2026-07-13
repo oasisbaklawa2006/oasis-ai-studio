@@ -17,7 +17,7 @@ jobs:
       AUTONOMA_SHARED_SECRET: ${{ secrets.AUTONOMA_SHARED_SECRET }}
       PREVIEW_URL: ${{ github.event.deployment_status.target_url }}
       PREVIEW_SHA: ${{ github.event.deployment.sha || github.sha }}
-      PREVIEW_BRANCH: ${{ github.event.deployment.ref || github.ref_name }}
+      PREVIEW_BRANCH: ${{ github.ref_name }}
       PREVIEW_PROVIDER: vercel
     steps:
       - name: Validate deployment signal inputs
