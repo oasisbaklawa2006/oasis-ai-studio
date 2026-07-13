@@ -4,7 +4,7 @@ on:
   deployment_status:
   workflow_dispatch:
     inputs:
-      preview_url:
+      preview_url: https://oasis-ai-studio-fb1fp1cgw-oasisbaklawa2006-6222s-projects.vercel.app
         description: Vercel preview URL to report to Autonoma
         required: true
         type: string
