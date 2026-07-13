@@ -38,11 +38,23 @@ jobs:
             --arg branch "$PREVIEW_BRANCH" \
             --arg sha "$PREVIEW_SHA" \
             --arg provider "$PREVIEW_PROVIDER" \
-            '{applicationId:$applicationId,previewUrl:$previewUrl,branch:$branch,sha:$sha,provider:$provider}')
+            '{applicationId:$applicationId,previewUrl:$previewUrl,provider:$provider}
+              + (if $branch == "" then {} else {branch:$branch} end)
+              + (if $sha == "" then {} else {sha:$sha} end)')
 
           SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "$AUTONOMA_SHARED_SECRET" -hex | sed 's/^.* //')
 
-          curl -fsS -X POST "$AUTONOMA_ENDPOINT" \
+          echo "Sending Autonoma payload:"
+          echo "$BODY" | jq '{applicationId, previewUrl, branch, sha, provider}'
+
+          HTTP_CODE=$(curl -sS -w "%{http_code}" -o /tmp/autonoma-response.txt \
+            -X POST "$AUTONOMA_ENDPOINT" \
             -H "content-type: application/json" \
             -H "x-signature: $SIG" \
-            --data "$BODY"
+            --data "$BODY")
+
+          echo "Autonoma HTTP status: $HTTP_CODE"
+          echo "Autonoma response:"
+          cat /tmp/autonoma-response.txt
+
+          test "$HTTP_CODE" -ge 200 -a "$HTTP_CODE" -lt 300
