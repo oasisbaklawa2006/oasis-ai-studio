@@ -488,6 +488,9 @@ async function searchProductMaster(page: Page, query: string, productName: strin
   const search = page.getByPlaceholder(/Search by name, SKU, alias/i);
   await search.fill(query);
   await page.waitForTimeout(800);
+  // Semgrep detect-non-literal-regexp: productName is always a hardcoded literal
+  // from ACCEPTANCE_PRODUCTS (top of this file) passed through cfg.name at every
+  // call site — never user or network input, so there is no ReDoS surface here.
   await expect(page.getByRole('link', { name: new RegExp(productName, 'i') }).first()).toBeVisible({
     timeout: 45_000,
   });
@@ -618,6 +621,9 @@ async function runProductFlow(page: Page, cfg: ProductConfig, testInfo: TestInfo
       steps.push({ step: 'Unhandled failure', pass: false, detail: msg });
     }
 
+    // Semgrep path-join-resolve-traversal: slug() (above) strips every character
+    // outside [a-z0-9-], so its output can never contain '/', '\', or '..' —
+    // path traversal is not reachable here regardless of cfg.name's value.
     const shotFile = path.join(SHOTS_DIR, `${slug(cfg.name)}-failure.png`);
     await page.screenshot({ path: shotFile, fullPage: true }).catch(() => {});
     screenshot = path.relative(process.cwd(), shotFile);

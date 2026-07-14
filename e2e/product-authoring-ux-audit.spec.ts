@@ -97,6 +97,9 @@ function ensureDirs() {
 }
 
 function shotPath(system: string, name: string) {
+  // Semgrep path-join-resolve-traversal: every call site in this file passes
+  // hardcoded string literals for system/name (see the snap() call sites
+  // below) — never user or network input.
   return path.join(SHOTS, `${system}-${name}.png`);
 }
 
