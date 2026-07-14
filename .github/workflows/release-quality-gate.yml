@@ -34,8 +34,15 @@ jobs:
           elif [ -n "${{ github.event.before }}" ] && git cat-file -e "${{ github.event.before }}" 2>/dev/null; then
             BASE="${{ github.event.before }}"
           else
-            echo "No comparable base ref (initial push or workflow_dispatch) — checking the full tracked tree."
-            BASE="$(git hash-object -t tree /dev/null)"
+            # No comparable base ref exists for this trigger (workflow_dispatch
+            # has no "before" commit; an initial push creating a branch has
+            # none either). There is no meaningful "this change's diff" to
+            # check in that case — diffing against the empty tree would
+            # instead flag the whole repository's pre-existing whitespace
+            # debt (verified: it does, e.g. public/templates/*.csv), which is
+            # not what this check exists to catch. Skip rather than false-flag.
+            echo "No comparable base ref for event '${{ github.event_name }}' — nothing to diff, skipping."
+            exit 0
           fi
           # docs/recovery/** holds deliberate byte-exact captures of live
           # database object definitions (see
