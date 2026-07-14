@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { probeProductMediaBucket } from "./mediaReadiness";
+import { getLegacyApprovalContract } from "@/features/approvals/legacyApprovalContract";
+
+const PRODUCT_APPROVAL_CONTRACT = getLegacyApprovalContract("product");
 
 export type InfraCheckStatus = "pass" | "fail" | "partial" | "unknown";
 
@@ -87,22 +90,22 @@ export async function probePilotInfra(): Promise<PilotInfraReport> {
   );
 
   const probeDraftId = "00000000-0000-0000-0000-000000000001";
-  const approveRes = await (supabase as any).rpc("approve_catalogue_product_draft", {
+  const approveRes = await (supabase as any).rpc(PRODUCT_APPROVAL_CONTRACT.approveRpc, {
     draft_id: probeDraftId,
   });
   const approveProductDraftRpc = classifyRpcResult(
-    "approve_catalogue_product_draft",
+    PRODUCT_APPROVAL_CONTRACT.approveRpc,
     approveRes.data,
     approveRes.error,
     { existsOnNotFound: true },
   );
 
-  const rejectRes = await (supabase as any).rpc("reject_catalogue_product_draft", {
+  const rejectRes = await (supabase as any).rpc(PRODUCT_APPROVAL_CONTRACT.rejectRpc, {
     draft_id: probeDraftId,
     reason: "pilot_infra_probe",
   });
   const rejectProductDraftRpc = classifyRpcResult(
-    "reject_catalogue_product_draft",
+    PRODUCT_APPROVAL_CONTRACT.rejectRpc,
     rejectRes.data,
     rejectRes.error,
     { existsOnNotFound: true },

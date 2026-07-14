@@ -10,6 +10,12 @@ import {
   isDraftSku,
   isStructuredOasisSku,
 } from "@/features/productAuthority/skuGuard";
+import {
+  LEGACY_APPROVAL_CONTRACT,
+  interpretApprovalRpcResult,
+  isApprovalSoftBlocked,
+  type LegacyDraftType,
+} from "./legacyApprovalContract";
 
 type ApprovalStatus = "pending_approval" | "approved" | "rejected";
 
@@ -26,20 +32,18 @@ type ApprovalItem = {
   rejection_reason?: string | null;
   reviewed_at?: string | null;
   target_record_id?: string | null;
-  draftType: string;
+  draftType: LegacyDraftType;
   approveFn: string;
   rejectFn: string;
 };
 
-const SOURCES = [
-  { type: "product", table: "catalogue_product_drafts", approve: "approve_catalogue_product_draft", reject: "reject_catalogue_product_draft" },
-  { type: "media", table: "catalogue_media_submissions", approve: "approve_catalogue_media_submission", reject: "reject_catalogue_media_submission" },
-  { type: "alias", table: "catalogue_alias_drafts", approve: "approve_catalogue_alias_draft", reject: "reject_catalogue_alias_draft" },
-  { type: "bom", table: "catalogue_bom_drafts", approve: "approve_catalogue_bom_draft", reject: "reject_catalogue_bom_draft" },
-  { type: "moq", table: "catalogue_moq_drafts", approve: "approve_catalogue_moq_draft", reject: "reject_catalogue_moq_draft" },
-  { type: "pricing", table: "catalogue_pricing_drafts", approve: "approve_catalogue_pricing_draft", reject: "reject_catalogue_pricing_draft" },
-  { type: "tag", table: "catalogue_tag_drafts", approve: "approve_catalogue_tag_draft", reject: "reject_catalogue_tag_draft" },
-] as const;
+/** Derived from the verified legacy approval contract — never hand-maintain RPC names here. */
+const SOURCES = LEGACY_APPROVAL_CONTRACT.map((entry) => ({
+  type: entry.draftType,
+  table: entry.table,
+  approve: entry.approveRpc,
+  reject: entry.rejectRpc,
+}));
 
 const TABS = [
   { key: "pending_approval", label: "Awaiting Approval" },
@@ -193,10 +197,15 @@ export default function ApprovalInbox() {
       }
     }
 
-    const { error } = await (supabase as any).rpc(r.approveFn, { draft_id: r.id });
-    if (error) {
-      if (/not finalized/i.test(error.message)) toast.warning(error.message);
-      else toast.error(error.message);
+    const { data, error } = await (supabase as any).rpc(r.approveFn, { draft_id: r.id });
+    const outcome = interpretApprovalRpcResult(data, error);
+    if (outcome.kind === "error") {
+      if (/not finalized/i.test(outcome.message)) toast.warning(outcome.message);
+      else toast.error(outcome.message);
+      return;
+    }
+    if (outcome.kind === "soft_blocked") {
+      toast.warning(outcome.message);
       return;
     }
     toast.success("Approved");
@@ -311,6 +320,11 @@ export default function ApprovalInbox() {
                 ) : (
                   <div className="text-sm text-muted-foreground">
                     Draft type: <span className="font-medium capitalize text-foreground">{r.draftType}</span>
+                    {isPending && isApprovalSoftBlocked(r.draftType) && (
+                      <span className="ml-2 badge-soft bg-destructive/10 text-destructive border border-destructive/20">
+                        Approval not yet available for this draft type
+                      </span>
+                    )}
                   </div>
                 )}
 
