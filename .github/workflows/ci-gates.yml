@@ -10,7 +10,12 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # TEMPORARY, for first-real-execution verification only: workflow_dispatch
+    # cannot target a workflow file that doesn't exist on the default branch
+    # yet, so this is the only way to get a genuine run before this file
+    # reaches main. Explicit branch name, not a wildcard — remove this branch
+    # once verification is complete and only `main` remains.
+    branches: [main, recovery/catalogue-approval-rpc-provenance-2026-07-14]
   workflow_dispatch:
 
 permissions:
