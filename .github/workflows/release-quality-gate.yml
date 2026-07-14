@@ -5,12 +5,19 @@ on:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the git-diff-check step below can always resolve a
+          # comparable base ref (PR base sha, or the pre-push sha on a push
+          # event), matching the same base-resolution pattern used by
+          # repo-boundaries.yml.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -19,3 +26,24 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm run test
+      - name: git diff --check (whitespace errors / unresolved conflict markers)
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif [ -n "${{ github.event.before }}" ] && git cat-file -e "${{ github.event.before }}" 2>/dev/null; then
+            BASE="${{ github.event.before }}"
+          else
+            echo "No comparable base ref (initial push or workflow_dispatch) — checking the full tracked tree."
+            BASE="$(git hash-object -t tree /dev/null)"
+          fi
+          # docs/recovery/** holds deliberate byte-exact captures of live
+          # database object definitions (see
+          # docs/recovery/LIVE_CATALOGUE_APPROVAL_RPC_PROVENANCE_2026-07-14.md)
+          # whose SHA-256 hashes are verified against production and recorded
+          # in that file. Some captured PL/pgSQL bodies use CRLF line endings
+          # exactly as pg_get_functiondef returned them; git's whitespace
+          # checker flags that CR as trailing whitespace. Excluding this path
+          # here is not a lint suppression of real source debt — rewriting
+          # those bytes would silently invalidate the recorded hashes.
+          git diff --check "$BASE" HEAD -- . ':(exclude)docs/recovery/**'

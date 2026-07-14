@@ -1,0 +1,200 @@
+name: CI Gates
+
+# Lean merge-gate stack: deterministic blocking checks (secrets, changed-file
+# lint) plus advisory-only scanners (Semgrep CE, Trivy, OpenSSF Scorecard).
+# Repository integrity (install/typecheck/test/build/git-diff-check) lives in
+# release-quality-gate.yml and repo-boundaries.yml — intentionally not
+# duplicated here. See docs/ci/CI_GATES.md for the full rationale.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # BLOCKING: secret protection
+  # ---------------------------------------------------------------------------
+  secret-scan:
+    name: Secret protection (Gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # No PR-comment write permission requested for this job (contents:
+          # read only, above) — findings surface in the job log/summary and
+          # the SARIF artifact gitleaks-action produces automatically instead.
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          # No GITLEAKS_LICENSE: only required for GitHub Organization-owned
+          # repos, not personal-account repos (this repo is
+          # oasisbaklawa2006/oasis-ai-studio, a personal-account repo).
+
+  # ---------------------------------------------------------------------------
+  # BLOCKING: changed-file lint only — never the legacy whole-repo baseline
+  # ---------------------------------------------------------------------------
+  changed-files-lint:
+    name: Changed-file lint (ESLint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "24"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint only newly-added lines in changed files
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          elif [ -n "${{ github.event.before }}" ] && git cat-file -e "${{ github.event.before }}" 2>/dev/null; then
+            BASE="${{ github.event.before }}"
+          else
+            echo "No comparable base ref (initial push or workflow_dispatch) — nothing to diff, skipping."
+            exit 0
+          fi
+          # Deliberately does NOT run the whole-repo `npm run lint` baseline,
+          # and deliberately does not fail on every ESLint error in a changed
+          # file either — this repo has pre-existing lint debt in files that
+          # legitimately get touched for unrelated reasons. Only lines this
+          # change actually added are allowed to fail the check; every
+          # finding (new and pre-existing) is still printed for visibility.
+          # See scripts/lint-changed-lines.mjs for the exact logic.
+          node scripts/lint-changed-lines.mjs "$BASE"
+
+  # ---------------------------------------------------------------------------
+  # ADVISORY (non-blocking): Semgrep Community Edition
+  # semgrep/semgrep-action is upstream-deprecated in favor of running the CLI
+  # directly (https://github.com/semgrep/semgrep-action, README warning as of
+  # this writing) — this job follows that guidance instead of pinning the
+  # deprecated wrapper action. No SEMGREP_APP_TOKEN is set, which keeps this
+  # strictly Community Edition (no AppSec Platform login).
+  # ---------------------------------------------------------------------------
+  semgrep:
+    name: Advisory - Semgrep (Community Edition)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    permissions:
+      contents: read
+    container:
+      image: semgrep/semgrep@sha256:2b33f46ba66cf8cc2ad59ccfa7d22951fd00c632c38f1339e84ec8e6e641a942 # 1.169.0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Run Semgrep (advisory, never fails the job)
+        run: |
+          semgrep scan --config auto --json --output semgrep-results.json || true
+
+      - name: Upload Semgrep report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: semgrep-report
+          path: semgrep-results.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # ADVISORY (non-blocking): Trivy filesystem/dependency/config scan
+  # ---------------------------------------------------------------------------
+  trivy:
+    name: Advisory - Trivy (filesystem/dependency/config)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Trivy filesystem scan (advisory, never fails the job)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        continue-on-error: true
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "json"
+          output: "trivy-fs-report.json"
+          exit-code: "0"
+
+      - name: Upload Trivy report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: trivy-fs-report
+          path: trivy-fs-report.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  # ---------------------------------------------------------------------------
+  # ADVISORY (non-blocking): OpenSSF Scorecard
+  # publish_results is deliberately false — this is a private repo and this
+  # job's results are for internal advisory review only, not the public
+  # api.scorecard.dev index or a README badge. id-token: write is therefore
+  # not requested.
+  # ---------------------------------------------------------------------------
+  scorecard:
+    name: Advisory - OpenSSF Scorecard
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    permissions:
+      contents: read
+      # Recommended read-only grants for private repos so Scorecard can query
+      # commits/PRs/checks without "Resource not accessible by integration"
+      # gaps (see ossf/scorecard-action README, "Additional permissions for
+      # private repositories"). No write permissions requested anywhere.
+      issues: read
+      pull-requests: read
+      checks: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: OpenSSF Scorecard (advisory, never fails the job)
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        continue-on-error: true
+        with:
+          results_file: scorecard-results.json
+          results_format: json
+          publish_results: false
+
+      - name: Upload Scorecard report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: scorecard-report
+          path: scorecard-results.json
+          if-no-files-found: warn
+          retention-days: 30
