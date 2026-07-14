@@ -10,7 +10,9 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    # TEMPORARY, for Phase 2b post-remediation verification only. Explicit
+    # branch name, not a wildcard — remove once this run is captured.
+    branches: [main, recovery/catalogue-approval-rpc-provenance-2026-07-14]
   workflow_dispatch:
 
 permissions:
