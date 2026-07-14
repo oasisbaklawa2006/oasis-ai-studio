@@ -113,6 +113,29 @@ jobs:
         run: |
           semgrep scan --config auto --json --output semgrep-results.json || true
 
+      - name: Print Semgrep findings (log visibility)
+        if: always()
+        run: |
+          # JSON artifact download requires following a signed blob-storage
+          # redirect that some network environments block outright; printing
+          # the summary to the job log guarantees findings are readable
+          # without ever needing the artifact.
+          python3 -c "
+          import json
+          try:
+              with open('semgrep-results.json') as f:
+                  data = json.load(f)
+          except Exception as e:
+              print('Could not read semgrep-results.json:', e)
+              raise SystemExit(0)
+          results = data.get('results', [])
+          print(f'Semgrep findings: {len(results)}')
+          for r in results:
+              print(f\"  [{r.get('extra', {}).get('severity')}] {r.get('check_id')}\")
+              print(f\"    {r.get('path')}:{r.get('start', {}).get('line')}\")
+              print(f\"    {r.get('extra', {}).get('message', '').strip()[:300]}\")
+          "
+
       - name: Upload Semgrep report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -145,6 +168,38 @@ jobs:
           format: "json"
           output: "trivy-fs-report.json"
           exit-code: "0"
+
+      - name: Print Trivy findings (log visibility)
+        if: always()
+        run: |
+          # Same rationale as the Semgrep visibility step above — avoids
+          # depending on the artifact-download path for a human to see
+          # what was found.
+          python3 -c "
+          import json
+          try:
+              with open('trivy-fs-report.json') as f:
+                  data = json.load(f)
+          except Exception as e:
+              print('Could not read trivy-fs-report.json:', e)
+              raise SystemExit(0)
+          total = 0
+          for result in data.get('Results', []) or []:
+              vulns = result.get('Vulnerabilities') or []
+              secrets = result.get('Secrets') or []
+              misconfigs = result.get('Misconfigurations') or []
+              if not (vulns or secrets or misconfigs):
+                  continue
+              print(f\"Target: {result.get('Target')} (class={result.get('Class')}, type={result.get('Type')})\")
+              for v in vulns:
+                  total += 1
+                  print(f\"  [{v.get('Severity')}] {v.get('VulnerabilityID')} {v.get('PkgName')}@{v.get('InstalledVersion')} -> fixed: {v.get('FixedVersion')}\")
+                  print(f\"    {(v.get('Title') or '').strip()[:300]}\")
+              for m in misconfigs:
+                  total += 1
+                  print(f\"  [{m.get('Severity')}] {m.get('ID')} {m.get('Title')}\")
+          print(f'Trivy total findings printed: {total}')
+          "
 
       - name: Upload Trivy report
         if: always()
