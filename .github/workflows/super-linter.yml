@@ -1,0 +1,51 @@
+name: Super-Linter
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read
+  statuses: write
+
+concurrency:
+  group: super-linter-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint changed source and workflow files
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Super-Linter
+        uses: super-linter/super-linter@v8.7.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BRANCH: main
+          VALIDATE_ALL_CODEBASE: false
+
+          # Use the repository's ESLint configuration for application code.
+          VALIDATE_JAVASCRIPT_ES: true
+          VALIDATE_TYPESCRIPT_ES: true
+
+          # Validate configuration and automation files without enabling
+          # high-noise linters for generated assets, Markdown, or SQL migrations.
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_JSON: true
+          VALIDATE_YAML: true
+          VALIDATE_BASH: true
+
+          FILTER_REGEX_EXCLUDE: >-
+            (^|/)(node_modules|dist|coverage|playwright-report|test-results|\.autonoma)(/|$)|
+            (^|/)supabase/\.temp(/|$)
