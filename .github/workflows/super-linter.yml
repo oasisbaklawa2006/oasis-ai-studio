@@ -29,10 +29,10 @@ jobs:
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_JSON: true
           VALIDATE_MARKDOWN: true
-          # TypeScript/TSX use the repository's installed dependencies through
-          # Reviewdog and Biome. Super-Linter remains the format/config gate.
-          VALIDATE_TYPESCRIPT_ES: false
-          VALIDATE_TSX: false
+          # TypeScript/TSX are intentionally absent from this inclusion list.
+          # They use installed dependencies through Reviewdog and Biome.
           VALIDATE_YAML: true
           SAVE_SUPER_LINTER_SUMMARY: false
+          ENABLE_GITHUB_ACTIONS_STEP_SUMMARY: false
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
           FILTER_REGEX_EXCLUDE: "(^|/)src/integrations/supabase/types\\.ts$"
