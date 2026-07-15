@@ -43,6 +43,9 @@ const STATUS_TONE: Record<string, string> = {
   error: "bg-destructive/15 text-destructive",
 };
 
+const errorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback;
+
 const PdfHeroCleanup = () => {
   const { roles } = useAuth();
   const allowed = roles.includes("owner") || roles.includes("admin");
@@ -78,8 +81,8 @@ const PdfHeroCleanup = () => {
         await supabase.from("products").update({ hero_image_url: null }).in("id", ids);
       toast.success(`Cleared hero on ${ids.length} products`);
       await refresh();
-    } catch (e: any) {
-      toast.error(e.message);
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "PDF hero cleanup failed"));
     } finally {
       setBusy(false);
     }
@@ -163,14 +166,18 @@ const FeatureCard = ({
         body: { integration_key: f.feature_key },
       });
       if (error) throw error;
-      const ok = (data as any)?.ok;
+      const result =
+        data && typeof data === "object"
+          ? (data as { ok?: unknown; message?: unknown })
+          : undefined;
+      const ok = result?.ok === true;
       toast[ok ? "success" : "warning"](
-        (data as any)?.message ?? (ok ? "Connected" : "Not configured"),
+        typeof result?.message === "string" ? result.message : ok ? "Connected" : "Not configured",
       );
       await refreshFeatureFlags();
       onChange();
-    } catch (e: any) {
-      toast.error(e.message ?? "Test failed");
+    } catch (error: unknown) {
+      toast.error(errorMessage(error, "Test failed"));
     } finally {
       setBusy(null);
     }
