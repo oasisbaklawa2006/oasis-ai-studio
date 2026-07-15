@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCatalogueContentPrompt,
   extractJsonObject,
+  mapCatalogueAiTone,
   parseChatCompletionStreamText,
   validateAiCatalogueContent,
 } from "./catalogueAiGateway";
@@ -37,6 +38,16 @@ describe("buildCatalogueContentPrompt", () => {
     expect(defaultPrompt).toContain("Informational tone");
     const premiumPrompt = buildCatalogueContentPrompt({ productName: "Test Product" }, "Premium");
     expect(premiumPrompt).toContain("Premium tone");
+  });
+});
+
+describe("mapCatalogueAiTone", () => {
+  it("maps UI labels to the bounded backend tone contract", () => {
+    expect(mapCatalogueAiTone("Premium")).toBe("premium");
+    expect(mapCatalogueAiTone("Sales-focused")).toBe("premium");
+    expect(mapCatalogueAiTone("Informational")).toBe("warm");
+    expect(mapCatalogueAiTone("Concise")).toBe("concise");
+    expect(mapCatalogueAiTone("Technical")).toBe("concise");
   });
 });
 
