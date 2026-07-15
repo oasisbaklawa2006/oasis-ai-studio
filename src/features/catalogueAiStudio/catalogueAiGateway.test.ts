@@ -71,7 +71,9 @@ describe("parseChatCompletionStreamText", () => {
   });
 
   it("falls back to the raw text when there are no data: lines at all", () => {
-    expect(parseChatCompletionStreamText('{"catalogue_title":"X"}')).toBe('{"catalogue_title":"X"}');
+    expect(parseChatCompletionStreamText('{"catalogue_title":"X"}')).toBe(
+      '{"catalogue_title":"X"}',
+    );
   });
 });
 
@@ -95,7 +97,9 @@ describe("extractJsonObject", () => {
 });
 
 describe("validateAiCatalogueContent", () => {
-  const validPayload = Object.fromEntries(CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, `value for ${k}`]));
+  const validPayload = Object.fromEntries(
+    CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, `value for ${k}`]),
+  );
 
   it("accepts a payload with every required key as a non-empty string", () => {
     const result = validateAiCatalogueContent(validPayload);
