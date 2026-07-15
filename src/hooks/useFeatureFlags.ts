@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 export type FeatureFlag = {
   feature_key: string;
@@ -15,26 +14,13 @@ export type FeatureFlag = {
 };
 
 let cache: FeatureFlag[] | null = null;
-let capabilityUnavailable = false;
 const subs = new Set<(f: FeatureFlag[]) => void>();
 
 async function loadAll(): Promise<FeatureFlag[]> {
-  if (capabilityUnavailable) return cache ?? [];
-  const { data, error } = await supabase.from("feature_flags").select("*");
-  if (error) {
-    // Production does not currently expose this optional capability. Cache that
-    // state for the lifetime of the SPA so every page does not repeat the same
-    // failing request. Settings continues to show the capability as unavailable.
-    capabilityUnavailable = true;
-    const unavailableFlags: FeatureFlag[] = [];
-    cache = unavailableFlags;
-    console.warn("[feature_flags] load failed", error.message);
-    subs.forEach((cb) => {
-      cb(unavailableFlags);
-    });
-    return unavailableFlags;
-  }
-  const loadedFlags = (data ?? []) as FeatureFlag[];
+  // The canonical production project has no feature_flags table. Do not issue
+  // a knowingly invalid request on every full page load. All optional features
+  // remain safely disabled until a governed backend capability is approved.
+  const loadedFlags: FeatureFlag[] = [];
   cache = loadedFlags;
   subs.forEach((cb) => {
     cb(loadedFlags);
