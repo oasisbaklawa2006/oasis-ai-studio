@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCatalogueContentPrompt,
   extractJsonObject,
+  mapCatalogueAiTone,
   parseChatCompletionStreamText,
   validateAiCatalogueContent,
 } from "./catalogueAiGateway";
@@ -40,6 +41,16 @@ describe("buildCatalogueContentPrompt", () => {
   });
 });
 
+describe("mapCatalogueAiTone", () => {
+  it("maps UI labels to the bounded backend tone contract", () => {
+    expect(mapCatalogueAiTone("Premium")).toBe("premium");
+    expect(mapCatalogueAiTone("Sales-focused")).toBe("premium");
+    expect(mapCatalogueAiTone("Informational")).toBe("warm");
+    expect(mapCatalogueAiTone("Concise")).toBe("concise");
+    expect(mapCatalogueAiTone("Technical")).toBe("concise");
+  });
+});
+
 describe("parseChatCompletionStreamText", () => {
   it("assembles content from real streamed chat-completion chunks", () => {
     const raw = [
@@ -60,7 +71,9 @@ describe("parseChatCompletionStreamText", () => {
   });
 
   it("falls back to the raw text when there are no data: lines at all", () => {
-    expect(parseChatCompletionStreamText('{"catalogue_title":"X"}')).toBe('{"catalogue_title":"X"}');
+    expect(parseChatCompletionStreamText('{"catalogue_title":"X"}')).toBe(
+      '{"catalogue_title":"X"}',
+    );
   });
 });
 
@@ -84,7 +97,9 @@ describe("extractJsonObject", () => {
 });
 
 describe("validateAiCatalogueContent", () => {
-  const validPayload = Object.fromEntries(CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, `value for ${k}`]));
+  const validPayload = Object.fromEntries(
+    CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, `value for ${k}`]),
+  );
 
   it("accepts a payload with every required key as a non-empty string", () => {
     const result = validateAiCatalogueContent(validPayload);

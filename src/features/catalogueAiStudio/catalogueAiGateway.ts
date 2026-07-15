@@ -1,19 +1,12 @@
 /**
  * Governed AI content-generation gateway for the Catalogue Product AI Studio.
  *
- * Preflight finding (A3): no dedicated catalogue-content model endpoint exists, but a real,
- * already-wired chat-completion proxy does — the `oasis-ai-chat` Supabase Edge Function, used
- * today by Fast Create (`fastCreateSuggestions.ts`) for short alias suggestions. This module reuses
- * that same endpoint rather than inventing a new provider integration or a generic unverified one.
- * The UI never calls a model directly — every call goes through this module.
- *
- * `oasis-ai-chat` streams OpenAI-style chat-completion chunks
- * (`{"object":"chat.completion.chunk","choices":[{"delta":{"content":"..."}}]}` per line, see
- * aiOutputSanitizer.ts's docblock) but this caller reads the whole response as text rather than a
- * live stream, since a one-shot structured-content generation has no need for token-by-token
- * rendering. The pure parsing/validation functions below are unit-tested; the actual `fetch` call
- * is a thin, untested wrapper (matching this repo's convention for Supabase-calling functions).
+ * Calls only the dedicated `catalogue-ai-copy` Edge Function. The legacy `oasis-ai-chat` endpoint
+ * has a general B2B prompt and is not an approved catalogue-copy contract, so this gateway must
+ * never fall back to it. The feature is disabled unless VITE_CATALOGUE_AI_ENABLED is exactly true.
  */
+
+import { supabase } from "@/integrations/supabase/client";
 import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
 
@@ -43,6 +36,12 @@ export const CATALOGUE_AI_TONES = [
 export type CatalogueAiTone = (typeof CATALOGUE_AI_TONES)[number];
 
 const DEFAULT_TONE: CatalogueAiTone = "Informational";
+
+export function mapCatalogueAiTone(tone: CatalogueAiTone): "premium" | "warm" | "concise" {
+  if (tone === "Premium" || tone === "Sales-focused") return "premium";
+  if (tone === "Concise" || tone === "Technical") return "concise";
+  return "warm";
+}
 
 /**
  * Structured-only prompt: the model is told exactly which facts it may use and instructed never to
@@ -84,8 +83,8 @@ export function buildCatalogueContentPrompt(
     "- whatsapp_product_message: a short WhatsApp-style draft message (this tool never sends it).",
     "- hindi_description: a genuine Hindi-language description (Devanagari script, not Hinglish or transliteration).",
     "- storage_shelf_life_copy: presentation of storage/shelf-life guidance using ONLY the storage_instructions",
-    "  and shelf_life_days facts above; if either is \"(not set)\", write only",
-    "  \"Refer to product label for storage and shelf-life details.\" and nothing more specific.",
+    '  and shelf_life_days facts above; if either is "(not set)", write only',
+    '  "Refer to product label for storage and shelf-life details." and nothing more specific.',
   ].join("\n");
 }
 
@@ -95,7 +94,10 @@ export function buildCatalogueContentPrompt(
  * the raw text as already-assembled content if no such lines are found — never throws.
  */
 export function parseChatCompletionStreamText(raw: string): string {
-  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
   const dataLines = lines.filter((l) => l.startsWith("data:"));
   if (dataLines.length === 0) return raw.trim();
 
@@ -151,7 +153,10 @@ export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidati
     content[key as CatalogueDraftContentKey] = value.trim();
   }
   if (missingOrInvalid.length > 0) {
-    return { ok: false, reason: `AI response was missing or had an invalid value for: ${missingOrInvalid.join(", ")}.` };
+    return {
+      ok: false,
+      reason: `AI response was missing or had an invalid value for: ${missingOrInvalid.join(", ")}.`,
+    };
   }
   return { ok: true, content };
 }
@@ -161,7 +166,7 @@ export type CatalogueAiGenerationResult =
   | { ok: false; reason: string };
 
 /**
- * Calls the existing oasis-ai-chat edge function and returns validated catalogue content, or a
+ * Calls the dedicated catalogue-ai-copy edge function and returns validated catalogue content, or a
  * truthful failure reason. Never throws — every failure path (missing config, network error,
  * non-2xx response, unparsable/invalid content) returns `{ ok: false, reason }`.
  */
@@ -171,35 +176,60 @@ export async function generateCatalogueContentDraft(
 ): Promise<CatalogueAiGenerationResult> {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  const enabled = import.meta.env.VITE_CATALOGUE_AI_ENABLED === "true";
+  if (!enabled) {
+    return { ok: false, reason: "Governed AI generation is not enabled in this environment." };
+  }
   if (!supabaseUrl || !anonKey) {
     return { ok: false, reason: "AI generation is not configured in this environment." };
   }
 
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  const accessToken = sessionData.session?.access_token;
+  if (sessionError || !accessToken) {
+    return {
+      ok: false,
+      reason: "Sign in with an authorized internal account to use AI generation.",
+    };
+  }
+
   let resp: Response;
   try {
-    resp = await fetch(`${supabaseUrl}/functions/v1/oasis-ai-chat`, {
+    resp = await fetch(`${supabaseUrl}/functions/v1/catalogue-ai-copy`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${anonKey}`,
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
       },
       body: JSON.stringify({
-        messages: [{ role: "user", content: buildCatalogueContentPrompt(facts, tone) }],
+        productName: facts.productName,
+        category: facts.category ?? undefined,
+        subcategory: facts.subcategory ?? undefined,
+        packSize: facts.packSize ?? undefined,
+        saleTypeLabel: facts.saleTypeLabel ?? undefined,
+        storageInstructions: facts.storageInstructions ?? undefined,
+        shelfLifeDays: facts.shelfLifeDays ?? undefined,
+        tone: mapCatalogueAiTone(tone),
       }),
     });
   } catch {
-    return { ok: false, reason: "Could not reach the AI generation service. Check connectivity and retry." };
+    return {
+      ok: false,
+      reason: "Could not reach the AI generation service. Check connectivity and retry.",
+    };
   }
 
   if (!resp.ok) {
-    return { ok: false, reason: `AI generation service returned an error (status ${resp.status}).` };
+    return {
+      ok: false,
+      reason: `AI generation service returned an error (status ${resp.status}).`,
+    };
   }
 
-  const rawText = await resp.text();
-  const assembled = parseChatCompletionStreamText(rawText);
-  const parsedJson = extractJsonObject(assembled);
-  if (parsedJson === null) {
+  const payload = await resp.json().catch(() => null);
+  if (payload?.ok !== true || payload.human_review_required !== true) {
     return { ok: false, reason: "AI response could not be parsed as structured content." };
   }
-  return validateAiCatalogueContent(parsedJson);
+  return validateAiCatalogueContent(payload.content);
 }
