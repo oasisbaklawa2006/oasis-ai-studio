@@ -65,14 +65,14 @@ absent, and `search_products_with_aliases` is absent. `get_current_user_roles()`
 - [x] Add security, quality, build, and ownership gates.
 - [x] Add a non-aborting complete read-only E2E route audit.
 - [x] Capture screenshots, console failures, network failures, JSON, and Markdown evidence.
-- [ ] Keep unsafe schema-replay branches marked NO-GO and unmerged.
+- [x] Keep unsafe schema-replay branches marked NO-GO and unmerged.
 
 ### Phase R1 — Shared frontend contract repair
 
 - [x] Cache the confirmed absence of `feature_flags` so it does not fail on every route.
 - [x] Remove the invalid `products.archived_at` request from Product Master.
 - [x] Use `is_active` as the current production-compatible active-product rule.
-- [ ] Make missing optional capabilities visibly unavailable rather than silently successful.
+- [x] Make missing optional capabilities visibly unavailable rather than silently successful.
 - [ ] Regenerate Supabase TypeScript types from production and reconcile stale generated types.
 - [ ] Rerun the full application audit; record the exact reduction in API failures.
 
@@ -102,6 +102,19 @@ Each decision requires:
 - [ ] forward-only migration in `oasis-supabase-core` when a backend object is genuinely required;
 - [ ] disposable-branch replay and exact runtime assertions;
 - [ ] separate production authorization.
+
+### Renovation execution ledger
+
+- [x] PR #101 merged: scope, first invalid-query repairs, and E2E trigger correction.
+- [x] PR #102 merged: immutable deployed-commit identity and exact-SHA audit waiting.
+- [x] PR #103 merged: canonical frontend capability contract, safe alias fallback, and
+      mutation-free readiness probes.
+- [x] Eight stale or unsafe open PRs closed with preservation notes; no unreviewed branch content
+      was merged.
+- [x] Local R2 commit `55d1a61`: honest on-hold states for absent modules, no invalid catalogue,
+      tag, label, ingredient, hamper, audit, integration, or import-log probes.
+- [ ] Publish R2 and rerun exact-SHA production E2E. Blocked only by the current GitHub connector
+      write-usage limit; local validation is green.
 
 ### Phase R3 — Product authoring completion
 
