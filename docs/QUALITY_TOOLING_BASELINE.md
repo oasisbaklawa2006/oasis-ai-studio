@@ -9,7 +9,9 @@ This branch adds quality controls without changing the immutable recovery checkp
 - **Semgrep Community:** OWASP, TypeScript and secrets rules. Advisory until findings are triaged.
 - **Trivy:** filesystem/dependency SARIF; unresolved critical findings block.
 - **Dependabot:** weekly grouped npm and GitHub Actions updates.
-- **Super-Linter:** changed-file validation for Actions, JSON, Markdown, TypeScript/TSX and YAML.
+- **Super-Linter:** changed-file validation for Actions, JSON, Markdown and YAML. TypeScript/TSX
+  use the repository dependency graph through Reviewdog and Biome instead of Super-Linter's
+  isolated runtime.
 - **Reviewdog:** ESLint comments on newly added PR lines; existing lint debt does not block unrelated work.
 - **Biome:** fast local formatter/linter migration path. It does not replace ESLint yet.
 - **Knip:** dead files, exports and dependencies inventory. Existing findings are a debt report, not auto-deletion authority.
