@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { PRODUCTION_CAPABILITIES } from "@/lib/productionCapabilities";
 import { probeProductMediaBucket } from "./mediaReadiness";
 
 export type InfraCheckStatus = "pass" | "fail" | "partial" | "unknown";
@@ -79,34 +80,23 @@ export async function probePilotInfra(): Promise<PilotInfraReport> {
   });
   const generateOasisSku = classifyRpcResult("generate_oasis_sku", skuRes.data, skuRes.error);
 
-  const searchRes = await supabase.rpc("search_products_with_aliases", { _q: "cashew" });
-  const searchProductsWithAliases = classifyRpcResult(
-    "search_products_with_aliases",
-    searchRes.data,
-    searchRes.error,
-  );
+  const searchProductsWithAliases: RpcProbeResult =
+    PRODUCTION_CAPABILITIES.searchProductsWithAliasesRpc
+      ? { status: "unknown", message: "Alias search RPC requires a live probe." }
+      : {
+          status: "fail",
+          message:
+            "search_products_with_aliases is not deployed; the governed client fallback is active.",
+        };
 
-  const probeDraftId = "00000000-0000-0000-0000-000000000001";
-  const approveRes = await (supabase as any).rpc("approve_catalogue_product_draft", {
-    draft_id: probeDraftId,
-  });
-  const approveProductDraftRpc = classifyRpcResult(
-    "approve_catalogue_product_draft",
-    approveRes.data,
-    approveRes.error,
-    { existsOnNotFound: true },
-  );
-
-  const rejectRes = await (supabase as any).rpc("reject_catalogue_product_draft", {
-    draft_id: probeDraftId,
-    reason: "pilot_infra_probe",
-  });
-  const rejectProductDraftRpc = classifyRpcResult(
-    "reject_catalogue_product_draft",
-    rejectRes.data,
-    rejectRes.error,
-    { existsOnNotFound: true },
-  );
+  const approveProductDraftRpc: RpcProbeResult = {
+    status: "unknown",
+    message: "Write-capable approval RPC is intentionally not invoked by this read-only probe.",
+  };
+  const rejectProductDraftRpc: RpcProbeResult = {
+    status: "unknown",
+    message: "Write-capable rejection RPC is intentionally not invoked by this read-only probe.",
+  };
 
   const rpcChecks = [
     generateOasisSku,
