@@ -69,7 +69,7 @@ const REFERENCE_PATH = {
   },
   aiStudio: {
     route: '/products/new',
-    createControl: 'New Product',
+    createControl: 'Full editor',
     layout: 'full-page editor, up to 12 tabs (class-dependent)',
     emptyFormFieldCount: 72,
     prefilledDefaults: ['currency INR', 'is_active true', 'is_catalogue_ready false', 'sku_locked true'],
@@ -282,7 +282,11 @@ test.describe('Product authoring UX audit', () => {
     await page.goto(`${STUDIO_URL}/products`, { waitUntil: 'networkidle' });
     await snap(page, 'ai-studio', '03-products-list-auth', screenshots);
 
-    await page.getByRole('link', { name: /new product/i }).click();
+    // Use the route as the durable UI contract. The visible label has changed from
+    // "New Product" to "Full editor", but the canonical authoring URL is stable.
+    const fullEditorLink = page.locator('a[href="/products/new"]');
+    await expect(fullEditorLink, 'Products must expose the canonical Full editor link').toBeVisible();
+    await fullEditorLink.click();
     await page.waitForURL(/\/products\/new/, { timeout: 30_000 });
     const timeToFormReadyMs = Date.now() - t0;
     await snap(page, 'ai-studio', '04-new-product-form', screenshots);
