@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const studioUrl = process.env.AI_STUDIO_URL || 'https://oasis-ai-studio.vercel.app';
 const centralUrl = process.env.CENTRAL_URL || 'https://cursor-central-vercel.vercel.app';
+const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 /**
  * Product authoring UX audit — Central vs AI Studio.
@@ -32,6 +33,9 @@ export default defineConfig({
     actionTimeout: 25_000,
     navigationTimeout: 60_000,
     ignoreHTTPSErrors: true,
+    extraHTTPHeaders: vercelBypassSecret
+      ? { 'x-vercel-protection-bypass': vercelBypassSecret }
+      : undefined,
   },
   projects: [
     {

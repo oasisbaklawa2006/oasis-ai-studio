@@ -26,5 +26,8 @@ jobs:
       - name: Run dry-run UX audit
         run: npm run test:product-authoring-audit
         env:
-          AI_STUDIO_URL: ${{ inputs.studio_url }}
+          AI_STUDIO_URL: ${{ vars.AI_STUDIO_TEST_URL || inputs.studio_url }}
+          TEST_STUDIO_EMAIL: ${{ secrets.TEST_STUDIO_EMAIL }}
+          TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           PRODUCT_AUTHORING_SAVE: "0"

@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const studioUrl = process.env.AI_STUDIO_URL || 'https://oasis-ai-studio.vercel.app';
+const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 export default defineConfig({
   testDir: './e2e',
@@ -24,6 +25,9 @@ export default defineConfig({
     navigationTimeout: 90_000,
     ignoreHTTPSErrors: true,
     baseURL: studioUrl,
+    extraHTTPHeaders: vercelBypassSecret
+      ? { 'x-vercel-protection-bypass': vercelBypassSecret }
+      : undefined,
   },
   projects: [
     {
