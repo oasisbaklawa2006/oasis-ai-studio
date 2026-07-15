@@ -39,25 +39,20 @@ export async function fetchProductsForMasterList(opts: {
   return { products, error: null };
 }
 
-/** Active product ids for search filtering; null when archived_at filter is unavailable. */
+/** Active product ids for search filtering using the canonical is_active contract. */
 export async function fetchActiveProductIdsForSearch(): Promise<Set<string> | null> {
-  const res = await supabase.from("products").select("id").is("archived_at", null);
-  if (!res.error && res.data) {
-    return new Set(res.data.map((r) => r.id));
-  }
-
-  const fallback = await supabase.from("products").select("id, archived_at, is_active");
-  if (fallback.error) return null;
+  const res = await supabase.from("products").select("id, is_active");
+  if (res.error) return null;
 
   const ids = new Set<string>();
-  for (const row of (fallback.data ?? []) as ProductListRow[]) {
+  for (const row of (res.data ?? []) as ProductListRow[]) {
     if (productVisibleInActiveView(row)) ids.add(row.id);
   }
   return ids;
 }
 
 export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBundleResult> {
-  const [rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes] = await Promise.all([
+  const [rulesRes, moqRes, pricingRes, mediaRes, versionsRes] = await Promise.all([
     supabase.from("sku_code_rules").select("*").eq("is_active", true).order("sort_order"),
     supabase.from("product_moq_rules").select("*"),
     supabase.from("product_pricing_rules").select("*"),
@@ -69,14 +64,11 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
       .from("catalogue_versions")
       .select("product_id, status, version_number")
       .order("version_number", { ascending: false }),
-    supabase.from("labels").select("product_id, barcode, status"),
   ]);
 
-  const hadErrors = [rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes].some(
-    (r) => r.error,
-  );
+  const hadErrors = [rulesRes, moqRes, pricingRes, mediaRes, versionsRes].some((r) => r.error);
   if (hadErrors) {
-    for (const r of [rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes]) {
+    for (const r of [rulesRes, moqRes, pricingRes, mediaRes, versionsRes]) {
       if (r.error) console.error("[Products] authority bundle:", r.error);
     }
   }
@@ -116,7 +108,7 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     pricingByProduct: groupRowsByProductId(pricingRows),
     moqByProduct: groupRowsByProductId(moqRows),
     catalogueApprovedByProduct: approvedByProduct,
-    labelRows: (labelsRes.data ?? []) as ProductLabelBarcodeRow[],
+    labelRows: [],
     hadErrors,
   };
 }
