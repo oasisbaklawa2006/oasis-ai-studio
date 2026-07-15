@@ -5,9 +5,10 @@
  * has a general B2B prompt and is not an approved catalogue-copy contract, so this gateway must
  * never fall back to it. The feature is disabled unless VITE_CATALOGUE_AI_ENABLED is exactly true.
  */
+
+import { supabase } from "@/integrations/supabase/client";
 import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
-import { supabase } from "@/integrations/supabase/client";
 
 export interface CatalogueAiSourceFacts {
   productName: string;
@@ -82,8 +83,8 @@ export function buildCatalogueContentPrompt(
     "- whatsapp_product_message: a short WhatsApp-style draft message (this tool never sends it).",
     "- hindi_description: a genuine Hindi-language description (Devanagari script, not Hinglish or transliteration).",
     "- storage_shelf_life_copy: presentation of storage/shelf-life guidance using ONLY the storage_instructions",
-    "  and shelf_life_days facts above; if either is \"(not set)\", write only",
-    "  \"Refer to product label for storage and shelf-life details.\" and nothing more specific.",
+    '  and shelf_life_days facts above; if either is "(not set)", write only',
+    '  "Refer to product label for storage and shelf-life details." and nothing more specific.',
   ].join("\n");
 }
 
@@ -93,7 +94,10 @@ export function buildCatalogueContentPrompt(
  * the raw text as already-assembled content if no such lines are found — never throws.
  */
 export function parseChatCompletionStreamText(raw: string): string {
-  const lines = raw.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
   const dataLines = lines.filter((l) => l.startsWith("data:"));
   if (dataLines.length === 0) return raw.trim();
 
@@ -149,7 +153,10 @@ export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidati
     content[key as CatalogueDraftContentKey] = value.trim();
   }
   if (missingOrInvalid.length > 0) {
-    return { ok: false, reason: `AI response was missing or had an invalid value for: ${missingOrInvalid.join(", ")}.` };
+    return {
+      ok: false,
+      reason: `AI response was missing or had an invalid value for: ${missingOrInvalid.join(", ")}.`,
+    };
   }
   return { ok: true, content };
 }
@@ -180,7 +187,10 @@ export async function generateCatalogueContentDraft(
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
   if (sessionError || !accessToken) {
-    return { ok: false, reason: "Sign in with an authorized internal account to use AI generation." };
+    return {
+      ok: false,
+      reason: "Sign in with an authorized internal account to use AI generation.",
+    };
   }
 
   let resp: Response;
@@ -204,15 +214,21 @@ export async function generateCatalogueContentDraft(
       }),
     });
   } catch {
-    return { ok: false, reason: "Could not reach the AI generation service. Check connectivity and retry." };
+    return {
+      ok: false,
+      reason: "Could not reach the AI generation service. Check connectivity and retry.",
+    };
   }
 
   if (!resp.ok) {
-    return { ok: false, reason: `AI generation service returned an error (status ${resp.status}).` };
+    return {
+      ok: false,
+      reason: `AI generation service returned an error (status ${resp.status}).`,
+    };
   }
 
   const payload = await resp.json().catch(() => null);
-  if (!payload || payload.ok !== true || payload.human_review_required !== true) {
+  if (payload?.ok !== true || payload.human_review_required !== true) {
     return { ok: false, reason: "AI response could not be parsed as structured content." };
   }
   return validateAiCatalogueContent(payload.content);
