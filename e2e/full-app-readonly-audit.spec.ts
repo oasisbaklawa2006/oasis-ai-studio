@@ -5,6 +5,7 @@ import { expect, type Page, test } from "@playwright/test";
 const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
 const EMAIL = process.env.TEST_STUDIO_EMAIL || "";
 const PASSWORD = process.env.TEST_STUDIO_PASSWORD || "";
+const EXPECTED_DEPLOYMENT_SHA = process.env.EXPECTED_DEPLOYMENT_SHA || "";
 const ROOT = path.join(process.cwd(), "audit-artifacts", "full-app");
 const SHOTS = path.join(ROOT, "screenshots");
 
@@ -101,7 +102,22 @@ async function login(page: Page) {
       });
     });
   }
-  await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
+  const deploymentDeadline = Date.now() + 8 * 60_000;
+  for (;;) {
+    await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
+    if (!EXPECTED_DEPLOYMENT_SHA) break;
+    const deployedCommit = await page
+      .locator('meta[name="oasis-build-commit"]')
+      .getAttribute("content")
+      .catch(() => null);
+    if (deployedCommit === EXPECTED_DEPLOYMENT_SHA) break;
+    if (Date.now() >= deploymentDeadline) {
+      throw new Error(
+        `Expected deployment ${EXPECTED_DEPLOYMENT_SHA}, found ${deployedCommit ?? "no build identity"}`,
+      );
+    }
+    await page.waitForTimeout(10_000);
+  }
   await page.getByLabel("Email").fill(EMAIL);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign In" }).click();
