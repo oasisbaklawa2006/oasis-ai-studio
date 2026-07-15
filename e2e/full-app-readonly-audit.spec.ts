@@ -66,15 +66,22 @@ function safeName(value: string) {
 
 function isKnownRoute(href: string) {
   const pathname = new URL(href, STUDIO_URL).pathname;
+  if (/\.[a-z0-9]+$/i.test(pathname)) return true;
   if (pathname.startsWith("/c/")) return true;
   if (/^\/products\/[0-9a-f-]{36}$/i.test(pathname)) return true;
   if (/^\/catalogues\/[^/]+(?:\/proposal)?$/i.test(pathname)) return true;
   return routes.some(([, route]) => route === pathname);
 }
 
-function classify(body: string, fatal: boolean, inaccessible: boolean): Status {
+function classify(
+  body: string,
+  fatal: boolean,
+  inaccessible: boolean,
+  networkErrors: string[],
+): Status {
   if (inaccessible) return "not-accessible";
   if (fatal) return "wrongly-built";
+  if (networkErrors.some((error) => /supabase\.co\/rest\/v1\//i.test(error))) return "partial";
   if (/roadmap|future feature|setup required|not enabled/i.test(body)) return "on-hold";
   if (/coming soon|not implemented|placeholder|mapping not finalized|unavailable/i.test(body))
     return "partial";
@@ -82,6 +89,18 @@ function classify(body: string, fatal: boolean, inaccessible: boolean): Status {
 }
 
 async function login(page: Page) {
+  const studioOrigin = new URL(STUDIO_URL).origin;
+  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  if (bypassSecret) {
+    await page.context().route(`${studioOrigin}/**`, async (route) => {
+      await route.continue({
+        headers: {
+          ...route.request().headers(),
+          "x-vercel-protection-bypass": bypassSecret,
+        },
+      });
+    });
+  }
   await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
   await page.getByLabel("Email").fill(EMAIL);
   await page.getByLabel("Password").fill(PASSWORD);
@@ -152,7 +171,7 @@ async function auditRoute(page: Page, name: string, route: string) {
     name,
     route,
     finalUrl,
-    status: classify(body, fatal, inaccessible),
+    status: classify(body, fatal, inaccessible, networkErrors),
     title: await page.title().catch(() => ""),
     heading,
     bodyLength: body.trim().length,
@@ -266,16 +285,21 @@ test.describe("Complete application read-only E2E audit", () => {
 
     await recordProcess("Fast Create dry-run", async () => {
       await page.goto(`${STUDIO_URL}/products/new/fast`, { waitUntil: "domcontentloaded" });
+      await expect(page.getByText(/Fast Create/i).first()).toBeVisible();
+      await page.waitForTimeout(1_500);
       const controls = await page.locator("input, textarea, select, [role=combobox]").count();
+      expect(controls, "Fast Create must render authoring controls").toBeGreaterThan(0);
       const name = page.getByLabel(/product name/i).first();
       if (await name.isVisible().catch(() => false)) await name.fill("E2E READ ONLY — DO NOT SAVE");
-      await expect(page.getByText(/Fast Create/i).first()).toBeVisible();
       return `${controls} authoring controls rendered; no Create Product Draft action executed.`;
     });
 
     await recordProcess("Full Editor dry-run", async () => {
       await page.goto(`${STUDIO_URL}/products/new`, { waitUntil: "domcontentloaded" });
+      await expect(page.getByText(/New Product/i).first()).toBeVisible();
+      await page.waitForTimeout(2_000);
       const controls = await page.locator("input, textarea, select, [role=combobox]").count();
+      expect(controls, "Full Editor must render authoring controls").toBeGreaterThan(0);
       const name = page.getByLabel(/product name/i).first();
       if (await name.isVisible().catch(() => false)) await name.fill("E2E READ ONLY — DO NOT SAVE");
       const tabs = await page.getByRole("tab").count();
