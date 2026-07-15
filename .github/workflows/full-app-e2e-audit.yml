@@ -1,0 +1,61 @@
+name: Full application read-only E2E audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/full-app-e2e-audit.yml"
+      - "e2e/full-app-readonly-audit.spec.ts"
+      - "playwright.full-app-audit.config.ts"
+  workflow_dispatch:
+    inputs:
+      studio_url:
+        description: Protected or public AI Studio URL
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: full-app-e2e-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Verify protected audit configuration
+        env:
+          AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
+          TEST_STUDIO_EMAIL: ${{ secrets.TEST_STUDIO_EMAIL }}
+          TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          test -n "$AI_STUDIO_URL" || { echo "AI_STUDIO_URL is not configured"; exit 1; }
+          test -n "$TEST_STUDIO_EMAIL" || { echo "TEST_STUDIO_EMAIL is not configured"; exit 1; }
+          test -n "$TEST_STUDIO_PASSWORD" || { echo "TEST_STUDIO_PASSWORD is not configured"; exit 1; }
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET" || { echo "Vercel bypass is not configured"; exit 1; }
+      - name: Run complete read-only E2E audit
+        run: npm run test:full-app-audit
+        env:
+          AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
+          TEST_STUDIO_EMAIL: ${{ secrets.TEST_STUDIO_EMAIL }}
+          TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+      - name: Upload full application audit evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: full-application-e2e-audit
+          path: audit-artifacts/full-app
+          if-no-files-found: error
+          retention-days: 14
