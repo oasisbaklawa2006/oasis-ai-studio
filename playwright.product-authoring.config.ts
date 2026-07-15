@@ -27,7 +27,9 @@ export default defineConfig({
   ],
   use: {
     browserName: "chromium",
-    trace: "retain-on-failure",
+    // Playwright traces persist request headers. Never record a live Vercel
+    // automation-bypass secret in an uploaded CI artifact.
+    trace: vercelBypassSecret ? "off" : "retain-on-failure",
     screenshot: "off",
     video: "off",
     actionTimeout: 25_000,
