@@ -62,6 +62,7 @@ const App = () => (
                 <Route path="/" element={<RoleGate page="dashboard"><Dashboard /></RoleGate>} />
                 <Route path="/products" element={<RoleGate page="products"><Products /></RoleGate>} />
                 <Route path="/products/new/fast" element={<RoleGate page="products"><FastCreateProduct /></RoleGate>} />
+                <Route path="/products/new" element={<RoleGate page="products"><ProductEdit /></RoleGate>} />
                 <Route path="/products/:id" element={<RoleGate page="products"><ProductEdit /></RoleGate>} />
                 <Route path="/media" element={<RoleGate page="media"><Media /></RoleGate>} />
                 <Route path="/tags" element={<RoleGate page="tags"><Tags /></RoleGate>} />
