@@ -113,6 +113,11 @@ Each decision requires:
       was merged.
 - [x] Local R2 commit `55d1a61`: honest on-hold states for absent modules, no invalid catalogue,
       tag, label, ingredient, hamper, audit, integration, or import-log probes.
+- [x] Local performance commit `92412d9`: route-level lazy loading and vendor separation; largest
+      minified chunk reduced from approximately 552 kB to approximately 207 kB with no warning
+      suppression.
+- [x] R2 quality remeasurement: 663 tests, application typecheck, production build, repository
+      boundaries, and production dependency audit (0 vulnerabilities) pass.
 - [ ] Publish R2 and rerun exact-SHA production E2E. Blocked only by the current GitHub connector
       write-usage limit; local validation is green.
 

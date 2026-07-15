@@ -62,3 +62,24 @@ npm run quality:local
 npm run lint:biome
 npm run quality:dead-code
 ```
+
+## R2 recovery remeasurement — 2026-07-15
+
+- Production dependency audit (`npm audit --omit=dev`): **0 vulnerabilities**.
+- Unit/contract suite: **87 files and 663 tests passed**.
+- Application typecheck (`tsc --noEmit`): passed.
+- Production build: passed. Route-level lazy loading and explicit vendor groups reduced the largest
+  minified JavaScript chunk from approximately 552 kB to approximately 207 kB, eliminating Vite's
+  500 kB chunk warning without raising the warning threshold.
+- Repository boundary check: passed with zero new violations.
+- Full-repository ESLint inventory: 177 errors and 23 warnings. The errors are overwhelmingly
+  pre-existing explicit-`any`, hook-dependency, and legacy UI-template findings. They remain debt;
+  changed-line linting continues to prevent new violations.
+- Knip inventory: 27 unused-file candidates, 66 unused exports, 29 unused exported types, two
+  unresolved imports, and three duplicate exports. Several page candidates are intentionally
+  dormant because their production tables do not exist; they must not be deleted until their
+  capability-retention decisions are reviewed.
+
+These inventories are not authorization for bulk rewrites or deletion. Reachable production paths,
+security-critical findings, and newly changed lines are repaired first; dormant capability code is
+retained until its forward-only backend decision is approved.
