@@ -40,6 +40,7 @@ jobs:
           TEST_STUDIO_EMAIL: ${{ secrets.TEST_STUDIO_EMAIL }}
           TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          EXPECTED_DEPLOYMENT_SHA: ${{ github.sha }}
         run: |
           test -n "$AI_STUDIO_URL" || { echo "AI_STUDIO_URL is not configured"; exit 1; }
           test -n "$TEST_STUDIO_EMAIL" || { echo "TEST_STUDIO_EMAIL is not configured"; exit 1; }
@@ -52,6 +53,7 @@ jobs:
           TEST_STUDIO_EMAIL: ${{ secrets.TEST_STUDIO_EMAIL }}
           TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+          EXPECTED_DEPLOYMENT_SHA: ${{ github.sha }}
       - name: Upload full application audit evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
