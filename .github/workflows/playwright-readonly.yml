@@ -1,6 +1,8 @@
 name: Playwright read-only smoke
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       studio_url:
@@ -31,3 +33,11 @@ jobs:
           TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           PRODUCT_AUTHORING_SAVE: "0"
+      - name: Upload read-only audit evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: product-authoring-read-only-audit
+          path: audit-artifacts/product-authoring
+          if-no-files-found: warn
+          retention-days: 14
