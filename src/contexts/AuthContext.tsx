@@ -1,6 +1,15 @@
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
+import {
+  createContext,
+  type ReactNode,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { loadRolesWithTransientRetry, roleLoadErrorMessage } from "./authRoleLoader";
 
 type Role =
   | "owner"
@@ -34,7 +43,9 @@ const Ctx = createContext<AuthCtx>({
 });
 
 const normalizeRole = (role: unknown): Role | null => {
-  const value = String(role ?? "").trim().toLowerCase();
+  const value = String(role ?? "")
+    .trim()
+    .toLowerCase();
 
   if (!value) return null;
 
@@ -55,9 +66,7 @@ const normalizeRole = (role: unknown): Role | null => {
 
 const normalizeRoles = (roles: unknown): Role[] => {
   const raw = Array.isArray(roles) ? roles : [];
-  const normalized = raw
-    .map(normalizeRole)
-    .filter((role): role is Role => Boolean(role));
+  const normalized = raw.map(normalizeRole).filter((role): role is Role => Boolean(role));
 
   return Array.from(new Set(normalized));
 };
@@ -69,33 +78,42 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
+  const roleRequestRef = useRef<Promise<void> | null>(null);
 
   const loadRolesViaRpc = useCallback(async () => {
-    setRolesLoading(true);
-    setBootstrapError(null);
+    if (roleRequestRef.current) return roleRequestRef.current;
 
-    try {
-      const { data, error } = await supabase.rpc("get_current_user_roles");
+    const request = (async () => {
+      setRolesLoading(true);
+      setBootstrapError(null);
 
-      if (error) throw error;
+      try {
+        const data = await loadRolesWithTransientRetry(() =>
+          supabase.rpc("get_current_user_roles"),
+        );
+        const normalizedRoles = normalizeRoles(data);
 
-      const normalizedRoles = normalizeRoles(data);
+        console.log("[Auth] rpc roles raw:", data);
+        console.log("[Auth] rpc roles normalized:", normalizedRoles);
 
-      console.log("[Auth] rpc roles raw:", data);
-      console.log("[Auth] rpc roles normalized:", normalizedRoles);
+        setRoles(normalizedRoles);
 
-      setRoles(normalizedRoles);
-
-      if (normalizedRoles.length === 0) {
-        setBootstrapError("No role assigned. Please contact admin.");
+        if (normalizedRoles.length === 0) {
+          setBootstrapError("No role assigned. Please contact admin.");
+        }
+      } catch (error: unknown) {
+        console.error("[Auth] get_current_user_roles failed:", error);
+        setBootstrapError(roleLoadErrorMessage(error));
+        setRoles([]);
+      } finally {
+        setRolesLoading(false);
       }
-    } catch (e: any) {
-      console.error("[Auth] get_current_user_roles failed:", e);
-      setBootstrapError(e?.message ?? "Role setup failed");
-      setRoles([]);
-    } finally {
-      setRolesLoading(false);
-    }
+    })().finally(() => {
+      roleRequestRef.current = null;
+    });
+
+    roleRequestRef.current = request;
+    return request;
   }, []);
 
   useEffect(() => {
