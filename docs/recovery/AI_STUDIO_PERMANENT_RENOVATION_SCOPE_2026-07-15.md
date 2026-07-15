@@ -1,9 +1,10 @@
 # Oasis AI Studio — Permanent Renovation Scope
 
 Date: 2026-07-15  
-Application baseline: `main` after PR #100  
+Application baseline: `main` at `f29a90c9521a70dedcc329132342771205ed8ff6` after PR #104
 Production database authority: `tcxvcatsqqertcnycuop`  
-Evidence: Full application E2E run `29396674105`
+Evidence: post-merge full application E2E run `29433521163`; product-authoring smoke run
+`29433521348`; production deployment `5460723032`
 
 ## Meaning of this scope
 
@@ -23,10 +24,54 @@ the canonical production project.
 - [x] Fast Create renders 8 authoring controls.
 - [x] Full Editor renders 13 controls and 5 tabs.
 - [x] Fast Create and Full Editor entry links resolve.
-- [ ] Backend contracts are healthy: **22 of 24 routes currently report API failures.**
+- [x] The former invalid-contract baseline is removed: the post-merge crawl recorded zero network
+      errors across all 24 routes, down from API failures on 22 of 24 routes.
+- [ ] Zero console errors: the dashboard recorded one `get_current_user_roles` failed-fetch console
+      message even though the RPC exists and the authenticated crawl completed.
 - [ ] Production write paths have been verified end-to-end.
 
-## Broken or incomplete linked modules
+## Post-merge production audit — 2026-07-15
+
+- [x] PR #104 merged with verified merge commit
+      `f29a90c9521a70dedcc329132342771205ed8ff6`.
+- [x] `main` points to that merge commit and contains both expected parents: the former `main` and
+      reviewed head `9081fd8d050812b1ad82afcf80b0800e389d474f`.
+- [x] Vercel deployed that exact merge SHA to the Production environment.
+- [x] Production alias `https://oasis-ai-studio.vercel.app` passed the exact-SHA authenticated crawl.
+- [x] All post-merge GitHub workflows passed: release quality, ownership boundaries,
+      Super-Linter, security/code quality, Playwright smoke, and full application E2E.
+- [x] Post-merge evidence artifact retained with digest
+      `sha256:3f5f03971a8deaa03197329a0e34839442e7b7dbf821b1c488652c827574a5a8`.
+- [x] Production Supabase project is `ACTIVE_HEALTHY`; `products` and
+      `get_current_user_roles()` exist; the read-only census returned 368 products.
+- [ ] Protect `main` with a GitHub ruleset/branch protection. GitHub currently reports it as
+      unprotected.
+- [ ] Eliminate the single intermittent dashboard role-fetch console error and repeat the crawl.
+- [ ] Replace/update Actions that still target deprecated Node 20 internals; GitHub currently
+      forces them onto Node 24 and emits a warning.
+- [ ] Triage production Supabase advisor debt in the backend owner repository. The current
+      project-wide read-only advisor scan reports 15 security errors, 204 security warnings,
+      3 security informational notices, 441 performance warnings, and 220 performance
+      informational notices. These pre-date and were not changed by PR #104.
+
+### Current runtime classification
+
+The E2E report's `full-built` label means that a route rendered meaningful, non-fatal content. It
+does **not** prove that every persistence or approval action behind that page is complete.
+
+| Runtime group | Modules | Verified position |
+| --- | --- | --- |
+| Render-safe, writes not accepted yet | Dashboard, Products, Fast Create, Full Editor, Media, Catalogue Product Studio, Data Correction, Pilot Readiness, Pilot Aliases, Resolver Preview, Operator Inbox, Approval Inbox | Routes render; selected read-only interactions pass; production writes remain untested. |
+| Intentionally capability-deferred | Tags, Catalogues, Catalogue Builder, Hampers/BOM, Ingredients/Nutrition, Labels, Label Queue, Audit Log | No invalid backend requests; retained implementations are presented safely while canonical backend decisions remain pending. |
+| Partial | Category-1 Import | Route renders, but the workflow remains incomplete. |
+| On hold | AI Studio roadmap, Testing checklist, Settings/integration activation | Explicitly shown as unavailable/future work. |
+
+## Historical pre-R2 failure baseline (closed as a runtime-contract incident)
+
+The following table records what the initial audit found before PRs #101–#104. It is retained as
+incident evidence and is **not** the current production result. PR #104 removed the invalid requests
+or replaced them with explicit capability-deferred states; the current post-merge crawl recorded
+zero network errors.
 
 | Page/link | Route | Verified fault | Current status |
 | --- | --- | --- | --- |
@@ -54,7 +99,9 @@ the canonical production project.
 | Approval Inbox | `/approvals` | `feature_flags` 404 | Partial |
 
 Production introspection confirmed that all 12 reported tables are absent, `products.archived_at` is
-absent, and `search_products_with_aliases` is absent. `get_current_user_roles()` exists.
+absent, and `search_products_with_aliases` is absent. `get_current_user_roles()` exists. Those
+absence decisions remain authoritative until Phase R2 explicitly maps, builds, retires, or defers
+each capability.
 
 ## Permanent renovation plan
 
@@ -74,7 +121,8 @@ absent, and `search_products_with_aliases` is absent. `get_current_user_roles()`
 - [x] Use `is_active` as the current production-compatible active-product rule.
 - [x] Make missing optional capabilities visibly unavailable rather than silently successful.
 - [ ] Regenerate Supabase TypeScript types from production and reconcile stale generated types.
-- [ ] Rerun the full application audit; record the exact reduction in API failures.
+- [x] Rerun the full application audit; network failures reduced from 22 of 24 routes to zero
+      across 24 routes. One dashboard console transport error remains separately tracked.
 
 ### Phase R2 — Canonical backend capability decisions
 
@@ -118,8 +166,8 @@ Each decision requires:
       suppression.
 - [x] R2 quality remeasurement: 663 tests, application typecheck, production build, repository
       boundaries, and production dependency audit (0 vulnerabilities) pass.
-- [ ] Publish R2 and rerun exact-SHA production E2E. Blocked only by the current GitHub connector
-      write-usage limit; local validation is green.
+- [x] Publish R2 through PR #104 and rerun exact-SHA production E2E on both the reviewed head and
+      post-merge Production deployment.
 
 ### Phase R3 — Product authoring completion
 
@@ -152,13 +200,14 @@ Each decision requires:
 
 ### Phase R6 — Release acceptance
 
-- [ ] Zero unexpected 4xx/5xx requests across every registered route.
+- [x] Zero unexpected network failures across every registered route in post-merge read-only E2E.
 - [ ] Zero uncaught console errors.
-- [ ] Every internal navigation target verified.
+- [x] Every registered static route and discovered internal navigation target verified; no unknown
+      internal links were reported.
 - [ ] Desktop and mobile viewport coverage.
 - [ ] Accessibility scan for labels, keyboard navigation, focus, and contrast.
-- [ ] Unit tests, typecheck, production build, boundaries, Biome, Super-Linter, CodeQL, Semgrep, and Trivy green.
-- [ ] Read-only production E2E green.
+- [x] Unit tests, typecheck, production build, boundaries, Biome, Super-Linter, CodeQL, Semgrep, and Trivy green.
+- [x] Read-only production E2E green on merge commit `f29a90c9`.
 - [ ] Write-enabled acceptance green on a disposable branch with cleanup proof.
 - [ ] Explicit owner approval before any production schema or write-path rollout.
 
