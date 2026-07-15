@@ -25,6 +25,7 @@
     "test:product-authoring-audit": "playwright test --config playwright.product-authoring.config.ts",
     "test:full-app-audit": "playwright test --config playwright.full-app-audit.config.ts",
     "test:catalogue-final-acceptance": "playwright test --config playwright.catalogue-acceptance.config.ts",
+    "smoke:catalogue-ai": "node scripts/smoke-catalogue-ai.mjs",
     "check:boundaries": "bash scripts/check-repo-boundaries.sh"
   },
   "dependencies": {
