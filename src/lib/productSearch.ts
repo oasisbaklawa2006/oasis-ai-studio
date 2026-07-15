@@ -191,7 +191,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   const [productsRes, aliasesRes] = await Promise.all([
     supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active")
+      .select(
+        "id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active",
+      )
       .or(buildProductTextSearchOrFilter(text)),
     queryAliasesByPattern(supabase, pattern),
   ]);
@@ -207,7 +209,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (productsRes.error) {
     const broad = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active")
+      .select(
+        "id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active",
+      )
       .order("created_at", { ascending: false })
       .limit(200);
     if (!broad.error) {
@@ -216,7 +220,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   } else if (!products.length) {
     const broad = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active")
+      .select(
+        "id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active",
+      )
       .order("created_at", { ascending: false })
       .limit(200);
     if (!broad.error) {
@@ -233,7 +239,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (missingIds.length) {
     const { data: linked } = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active")
+      .select(
+        "id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active",
+      )
       .in("id", missingIds);
     if (linked?.length) {
       const activeLinked = (linked as ProductRow[]).filter((p) => productVisibleInActiveView(p));
@@ -262,7 +270,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
         .join(",");
       const { data: byName } = await supabase
         .from("products")
-        .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active")
+        .select(
+          "id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active",
+        )
         .or(orFilter);
       if (byName?.length) {
         const seen = new Set(products.map((p) => p.id));
@@ -276,7 +286,9 @@ async function basicSearchFallback(text: string): Promise<ProductSearchResult[]>
   if (!products.length && !aliasRows.length) {
     const { data: broad } = await supabase
       .from("products")
-      .select("id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active")
+      .select(
+        "id, sku, name, product_name, short_name, category, image_url, hero_image_url, aliases, is_active",
+      )
       .limit(200);
     products = ((broad ?? []) as ProductRow[]).filter((p) => productVisibleInActiveView(p));
   }
