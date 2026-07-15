@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: playwright-readonly-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   product-authoring-audit:
     runs-on: ubuntu-latest
@@ -21,10 +25,17 @@ jobs:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
       - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
         with:
-          node-version: "20"
+          node-version: "24"
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Verify protected test configuration
+        env:
+          AI_STUDIO_URL: ${{ vars.AI_STUDIO_TEST_URL || inputs.studio_url }}
+          VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          test -n "$AI_STUDIO_URL" || { echo "AI_STUDIO_URL is not configured"; exit 1; }
+          test -n "$VERCEL_AUTOMATION_BYPASS_SECRET" || { echo "Vercel automation bypass is not configured"; exit 1; }
       - name: Run dry-run UX audit
         run: npm run test:product-authoring-audit
         env:
