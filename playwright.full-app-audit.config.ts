@@ -19,8 +19,5 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "off",
     ignoreHTTPSErrors: true,
-    extraHTTPHeaders: vercelBypassSecret
-      ? { "x-vercel-protection-bypass": vercelBypassSecret }
-      : undefined,
   },
 });
