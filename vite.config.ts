@@ -1,6 +1,6 @@
-import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
-import path from "path";
+import path from "node:path";
+import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
@@ -16,8 +16,7 @@ export default defineConfig(() => ({
     {
       name: "oasis-build-identity",
       transformIndexHtml(html) {
-        const commit =
-          process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "local";
+        const commit = process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "local";
         return html.replace(
           "</head>",
           `    <meta name="oasis-build-commit" content="${commit}" />\n  </head>`,
@@ -29,6 +28,13 @@ export default defineConfig(() => ({
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@tanstack/query-core",
+    ],
   },
 }));
