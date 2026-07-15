@@ -174,6 +174,7 @@ async function listRecentProducts(): Promise<ProductSearchResult[]> {
     .select(
       "id, sku, name, product_name, short_name, category, image_url, hero_image_url, is_active",
     )
+    .or("is_active.is.null,is_active.eq.true")
     .order("name", { ascending: true, nullsFirst: false })
     .limit(50);
 

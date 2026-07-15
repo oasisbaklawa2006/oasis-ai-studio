@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { PRODUCTION_CAPABILITIES } from "@/lib/productionCapabilities";
 import type { Category1AuthorityRow } from "./types";
 
 let importLogsAvailability: boolean | null = null;
@@ -19,11 +20,10 @@ function isImportLogsUnavailableError(error: { code?: string; message?: string }
 
 /** Read-only probe — cached for the session. */
 export async function isImportLogsTableAvailable(): Promise<boolean> {
+  if (!PRODUCTION_CAPABILITIES.importLogs) return false;
   if (importLogsAvailability !== null) return importLogsAvailability;
 
-  const { error } = await supabase
-    .from("import_logs")
-    .select("id", { count: "exact", head: true });
+  const { error } = await supabase.from("import_logs").select("id", { count: "exact", head: true });
 
   if (error && isImportLogsUnavailableError(error)) {
     importLogsAvailability = false;
@@ -56,7 +56,8 @@ export async function createImportLogEntry(args: {
     return {
       ok: true,
       skipped: true,
-      message: "Import audit log unavailable — draft submission still recorded in catalogue_product_drafts.",
+      message:
+        "Import audit log unavailable — draft submission still recorded in catalogue_product_drafts.",
     };
   }
 
@@ -88,7 +89,8 @@ export async function createImportLogEntry(args: {
       return {
         ok: true,
         skipped: true,
-        message: "Import audit log unavailable — draft submission still recorded in catalogue_product_drafts.",
+        message:
+          "Import audit log unavailable — draft submission still recorded in catalogue_product_drafts.",
       };
     }
     return { ok: false, message: error.message };
