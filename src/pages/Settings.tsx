@@ -224,13 +224,16 @@ const FeatureCard = ({
       </button>
       {open && (
         <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-5 border-l-2 border-muted pl-4">
-          {(f.setup_notes ?? "Configure provider, secrets, and test before enabling.")
-            .split("·")
-            .map((note) => note.trim())
-            .filter(Boolean)
-            .map((note, index) => (
-              <li key={`${note}-${index}`}>{note}</li>
-            ))}
+          {[
+            ...new Set(
+              (f.setup_notes ?? "Configure provider, secrets, and test before enabling.")
+                .split("·")
+                .map((note) => note.trim())
+                .filter(Boolean),
+            ),
+          ].map((note) => (
+            <li key={note}>{note}</li>
+          ))}
         </ul>
       )}
       {f.last_test_result && (
