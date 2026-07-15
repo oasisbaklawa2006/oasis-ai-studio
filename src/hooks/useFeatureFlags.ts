@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export type FeatureFlag = {
@@ -15,20 +15,36 @@ export type FeatureFlag = {
 };
 
 let cache: FeatureFlag[] | null = null;
+let capabilityUnavailable = false;
 const subs = new Set<(f: FeatureFlag[]) => void>();
 
 async function loadAll(): Promise<FeatureFlag[]> {
+  if (capabilityUnavailable) return cache ?? [];
   const { data, error } = await supabase.from("feature_flags").select("*");
   if (error) {
+    // Production does not currently expose this optional capability. Cache that
+    // state for the lifetime of the SPA so every page does not repeat the same
+    // failing request. Settings continues to show the capability as unavailable.
+    capabilityUnavailable = true;
+    const unavailableFlags: FeatureFlag[] = [];
+    cache = unavailableFlags;
     console.warn("[feature_flags] load failed", error.message);
-    return [];
+    subs.forEach((cb) => {
+      cb(unavailableFlags);
+    });
+    return unavailableFlags;
   }
-  cache = (data ?? []) as FeatureFlag[];
-  subs.forEach((cb) => cb(cache!));
-  return cache;
+  const loadedFlags = (data ?? []) as FeatureFlag[];
+  cache = loadedFlags;
+  subs.forEach((cb) => {
+    cb(loadedFlags);
+  });
+  return loadedFlags;
 }
 
-export function refreshFeatureFlags() { return loadAll(); }
+export function refreshFeatureFlags() {
+  return loadAll();
+}
 
 export function useFeatureFlags() {
   const [flags, setFlags] = useState<FeatureFlag[]>(cache ?? []);
@@ -38,9 +54,15 @@ export function useFeatureFlags() {
     subs.add(cb);
     if (!cache) loadAll().finally(() => setLoading(false));
     else setLoading(false);
-    return () => { subs.delete(cb); };
+    return () => {
+      subs.delete(cb);
+    };
   }, []);
-  const refresh = useCallback(async () => { setLoading(true); await loadAll(); setLoading(false); }, []);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    await loadAll();
+    setLoading(false);
+  }, []);
   return { flags, loading, refresh };
 }
 
