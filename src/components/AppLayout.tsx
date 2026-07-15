@@ -1,3 +1,4 @@
+import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   ClipboardCheck,
@@ -30,7 +31,13 @@ import { canAccessPage, type PageKey } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
 
-type NavItem = { to: string; label: string; icon: any; page: PageKey; featureKey?: string };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: LucideIcon;
+  page: PageKey;
+  featureKey?: string;
+};
 const nav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, page: "dashboard" },
   { to: "/products", label: "Products", icon: Package, page: "products" },
@@ -82,7 +89,7 @@ export const AppLayout = () => {
   const items = rolesReady
     ? nav.filter((n) => {
         if (n.to === "/approvals") return isAdmin || isReviewer;
-        if (!canAccessPage(roles as any, n.page)) return false;
+        if (!canAccessPage(roles, n.page)) return false;
         if (!n.featureKey) return true; // core pages always visible
         if (flagsLoading) return isAdmin; // don't hide gated items for admin while loading
         const f = flags.find((x) => x.feature_key === n.featureKey);
