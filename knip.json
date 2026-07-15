@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.tsx",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.*.config.ts",
+    "scripts/**/*.{js,mjs,ts}"
+  ],
+  "project": ["src/**/*.{ts,tsx}", "scripts/**/*.{js,mjs,ts}", "e2e/**/*.ts"],
+  "ignore": ["src/components/ui/**", "src/integrations/supabase/types.ts", "src/vite-env.d.ts"],
+  "ignoreDependencies": ["autoprefixer", "tailwindcss-animate"]
+}

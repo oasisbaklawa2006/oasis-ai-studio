@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - recovery/ai-studio-post-catalogue-baseline-2026-07-12
   workflow_dispatch:
 
 jobs:
@@ -15,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           # Full history so BOUNDARY_BASE_REF (a PR base sha or pre-push sha,
           # set below) is always resolvable, and so the script can diff
@@ -24,7 +26,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 20
 

@@ -11,6 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+coverage
+.scannerwork
+knip-report.json
+semgrep-results.sarif
+trivy-results.sarif
 
 # Environment (never commit secrets)
 .env

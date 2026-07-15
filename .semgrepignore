@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+test-results/
+audit-artifacts/
+src/integrations/supabase/types.ts

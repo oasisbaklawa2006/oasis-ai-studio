@@ -1,0 +1,30 @@
+name: Playwright read-only smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      studio_url:
+        description: Protected or public AI Studio preview URL
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  product-authoring-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run dry-run UX audit
+        run: npm run test:product-authoring-audit
+        env:
+          AI_STUDIO_URL: ${{ inputs.studio_url }}
+          PRODUCT_AUTHORING_SAVE: "0"

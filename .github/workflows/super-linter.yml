@@ -1,0 +1,35 @@
+name: Super-Linter changed files
+
+on:
+  pull_request:
+    branches:
+      - main
+      - recovery/ai-studio-post-catalogue-baseline-2026-07-12
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          fetch-depth: 0
+      - name: Lint changed files
+        uses: super-linter/super-linter@729e0f967409dceb0a898cdd94a5534719f85c36
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: false
+          DEFAULT_BRANCH: main
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_JSON: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_TYPESCRIPT_ES: true
+          VALIDATE_TSX: true
+          VALIDATE_YAML: true
+          FILTER_REGEX_EXCLUDE: "(^|/)src/integrations/supabase/types\\.ts$"
