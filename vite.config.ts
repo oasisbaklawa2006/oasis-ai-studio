@@ -11,7 +11,20 @@ export default defineConfig(() => ({
       overlay: false,
     },
   },
-  plugins: [react()],
+  plugins: [
+    react(),
+    {
+      name: "oasis-build-identity",
+      transformIndexHtml(html) {
+        const commit =
+          process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.GITHUB_SHA ?? "local";
+        return html.replace(
+          "</head>",
+          `    <meta name="oasis-build-commit" content="${commit}" />\n  </head>`,
+        );
+      },
+    },
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
