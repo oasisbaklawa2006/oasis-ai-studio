@@ -29,7 +29,7 @@ the canonical production project.
 ## Broken or incomplete linked modules
 
 | Page/link | Route | Verified fault | Current status |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Products | `/products` | `feature_flags` 404; `catalogues` 404; `products.archived_at` 400 | Partial |
 | Fast Create | `/products/new/fast` | `feature_flags` 404 | Partial |
 | Full Editor | `/products/new` | `feature_flags` 404 | Partial |
