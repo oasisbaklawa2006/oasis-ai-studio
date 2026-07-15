@@ -7,6 +7,7 @@ on:
       - ".github/workflows/full-app-e2e-audit.yml"
       - "e2e/full-app-readonly-audit.spec.ts"
       - "playwright.full-app-audit.config.ts"
+      - "src/**"
   workflow_dispatch:
     inputs:
       studio_url:

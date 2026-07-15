@@ -1,13 +1,13 @@
-import { supabase } from "@/integrations/supabase/client";
 import { IMMUTABLE_VERSION_STATUSES } from "@/features/catalogueSnapshot/types";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
-import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 import type { ProductLabelBarcodeRow } from "@/features/productGovernance/types";
+import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 import { groupRowsByProductId } from "@/features/readiness/productReadinessSnapshot";
+import { supabase } from "@/integrations/supabase/client";
 import {
   matchesProductListView,
-  productVisibleInActiveView,
   type ProductListRow,
+  productVisibleInActiveView,
 } from "./productListModel";
 
 export type ProductsFetchResult = {
@@ -31,35 +31,12 @@ export async function fetchProductsForMasterList(opts: {
   showArchived: boolean;
 }): Promise<ProductsFetchResult> {
   const order = { ascending: false as const };
-
-  if (!opts.showArchived) {
-    const filtered = await supabase
-      .from("products")
-      .select("*")
-      .is("archived_at", null)
-      .order("created_at", order);
-
-    if (!filtered.error) {
-      const products = ((filtered.data ?? []) as Array<ProductListRow & Record<string, unknown>>).filter(
-        (p) => productVisibleInActiveView(p),
-      );
-      return { products, error: null };
-    }
-
-    const fallback = await supabase.from("products").select("*").order("created_at", order);
-    if (fallback.error) {
-      return { products: [], error: fallback.error.message };
-    }
-
-    const products = ((fallback.data ?? []) as Array<ProductListRow & Record<string, unknown>>).filter(
-      (p) => matchesProductListView(p, opts.showArchived),
-    );
-    return { products, error: filtered.error.message };
-  }
-
   const res = await supabase.from("products").select("*").order("created_at", order);
   if (res.error) return { products: [], error: res.error.message };
-  return { products: (res.data ?? []) as Array<ProductListRow & Record<string, unknown>>, error: null };
+  const products = ((res.data ?? []) as Array<ProductListRow & Record<string, unknown>>).filter(
+    (p) => matchesProductListView(p, opts.showArchived),
+  );
+  return { products, error: null };
 }
 
 /** Active product ids for search filtering; null when archived_at filter is unavailable. */
@@ -95,7 +72,9 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     supabase.from("labels").select("product_id, barcode, status"),
   ]);
 
-  const hadErrors = [rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes].some((r) => r.error);
+  const hadErrors = [rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes].some(
+    (r) => r.error,
+  );
   if (hadErrors) {
     for (const r of [rulesRes, moqRes, pricingRes, mediaRes, versionsRes, labelsRes]) {
       if (r.error) console.error("[Products] authority bundle:", r.error);
