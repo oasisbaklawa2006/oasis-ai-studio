@@ -82,7 +82,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.3",
+    "@biomejs/biome": "2.5.4",
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/typography": "^0.5.16",
@@ -94,7 +94,7 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
-    "eslint-plugin-react-refresh": "^0.4.20",
+    "eslint-plugin-react-refresh": "^0.5.3",
     "globals": "^15.15.0",
     "jsdom": "^20.0.3",
     "knip": "6.26.0",
