@@ -1,0 +1,44 @@
+{
+  "archived_at": "2026-07-17T14:39:00Z",
+  "project": {
+    "name": "oasis-baklawa-dev",
+    "ref": "mrkgjemisgbsugfyllwr",
+    "organization_id": "ougpjedkzjepjigynivr",
+    "region": "ap-south-1",
+    "created_at": "2026-07-02T02:48:54.898433Z",
+    "status": "ACTIVE_HEALTHY"
+  },
+  "forensic_snapshot": {
+    "database_size": "9979 kB",
+    "public_tables": 0,
+    "public_views": 0,
+    "user_functions": 0,
+    "user_triggers": 0,
+    "auth_users": 0,
+    "storage_buckets": 0,
+    "storage_objects": 0,
+    "storage_bytes": 0,
+    "edge_functions": 0,
+    "migrations_applied": 0,
+    "vault_secrets": 0,
+    "cron_jobs": 0,
+    "extensions": ["pg_stat_statements", "pgcrypto", "plpgsql", "supabase_vault", "uuid-ossp"],
+    "schemas_present": ["auth", "extensions", "graphql", "graphql_public", "public", "realtime", "storage", "vault"],
+    "platform_tables_only": true,
+    "api_logs_24h": "empty",
+    "auth_logs_24h": "empty",
+    "edge_function_logs_24h": "empty",
+    "postgres_logs_24h": "realtime health-check errors only (platform bootstrap incomplete)"
+  },
+  "dependency_verification": {
+    "application_code": "no references in .ts/.tsx/.js/.json/.yml",
+    "env_example": "placeholders only; no dev ref",
+    "supabase_config_toml": "wgajrxyoararisiwjzox (legacy lovable), not dev ref",
+    "supabase_env_map": "dev ref not listed",
+    "github_workflows": "no references",
+    "vercel_json": "no supabase refs",
+    "vercel_team_projects": ["cursor-central-vercel"],
+    "documentation": "audit docs note project was never touched"
+  },
+  "verdict": "application-empty; safe to delete"
+}
