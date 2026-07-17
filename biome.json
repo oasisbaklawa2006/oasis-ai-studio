@@ -2,6 +2,7 @@
   "$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
   "files": {
     "includes": [
+      "docs/archives/**/*.json",
       "src/**/*.{js,jsx,ts,tsx,json}",
       "scripts/**/*.{js,mjs,ts,json}",
       "e2e/**/*.{ts,tsx,json}",

@@ -23,7 +23,16 @@
     "vault_secrets": 0,
     "cron_jobs": 0,
     "extensions": ["pg_stat_statements", "pgcrypto", "plpgsql", "supabase_vault", "uuid-ossp"],
-    "schemas_present": ["auth", "extensions", "graphql", "graphql_public", "public", "realtime", "storage", "vault"],
+    "schemas_present": [
+      "auth",
+      "extensions",
+      "graphql",
+      "graphql_public",
+      "public",
+      "realtime",
+      "storage",
+      "vault"
+    ],
     "platform_tables_only": true,
     "api_logs_24h": "empty",
     "auth_logs_24h": "empty",
