@@ -125,23 +125,31 @@ must never write the authoritative tables directly.
   statements; a real `generate_typescript_types` regen against the live project should replace
   this by hand-edit at the next opportunity — flagged as residual, not a correctness risk since
   the shapes were verified column-for-column against Core's schema).
-- `oasis-supabase-core`: **no changes required** — the governance layer (tables, RLS, RPCs, execute
-  revokes) was already correct; only the *client-side entry points* were wrong.
+- `oasis-supabase-core`: added migration `20260809200000_lockdown_pricing_moq_direct_writes.sql`
+  — revokes `INSERT`/`UPDATE`/`DELETE` on `product_pricing_rules`/`product_moq_rules` from
+  `anon`/`authenticated` (both previously had them via a leftover blanket `GRANT ALL`, predating
+  the catalogue-draft governance layer). `SELECT` for `authenticated` is untouched (the live
+  customer-checkout RPC `customer_order_draft_v1` reads `product_pricing_rules`), `service_role`
+  keeps full access, and the governed approval RPCs are unaffected since they run with elevated
+  definer privileges independent of caller grants. This closes the app-layer fix's server-side gap
+  so the restriction is enforced by Core itself, not only by AI Studio's UI no longer calling it.
+  PR: `oasis-supabase-core#60` (draft, not yet merged — this repo's `migration-ci.yml` clean-replay
+  + pgTAP job could not be run from this session, no Docker/Supabase CLI available here; it is a
+  required check and must go green before merge).
 
 **Verification:** `oasis-ai-studio` — typecheck (net −12 pre-existing errors, 0 new), lint (net −3
 pre-existing issues, 0 new), `check:boundaries` pass, 190 relevant unit tests pass unchanged.
 `oasis-baklawa-central` — typecheck clean (0 errors), lint clean (0 issues) on all touched files,
 `check:boundaries` pass, 19/19 catalogue-approval tests pass (6 new tests added for pricing/moq).
+`oasis-supabase-core` — `check-migration-governance.sh` and `check-canonical-authority.sh` pass
+locally; `migration-ci.yml`'s clean-replay/pgTAP job is unverified from this session (see above).
 
 **Residual / not yet done (tracked, not silently dropped):**
 - Central's hand-added `types.ts` entries should be replaced by a real generated-types regen
   against the live schema at the next safe opportunity.
-- No RLS/grant lockdown migration was written to make the server *itself* refuse a direct
-  `product_pricing_rules`/`product_moq_rules` write from any client (defense in depth beyond the
-  app-layer fix). `product_pricing_rules` is now read by the live customer-checkout RPC
-  (`customer_order_draft_v1`, Core migration `20260807171000`), so a blind grant/RLS change here
-  was deliberately deferred rather than risk that path untested — recorded as a fast-follow, not
-  forgotten.
+- `oasis-supabase-core#60`'s clean-replay + pgTAP CI must be confirmed green before merge — it was
+  written and locally governance-checked but not executed against a real Postgres from this
+  session.
 - No component-level UI test exists for `ApprovalInbox.tsx` in either repo (pre-existing gap, not
   introduced by this change) — logic-level coverage was added instead where the module already had
   a test harness.
