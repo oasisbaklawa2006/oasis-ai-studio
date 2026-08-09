@@ -200,6 +200,54 @@ Master) while keeping true operational fields (availability, operational merchan
 in Central per the target architecture — and if so, is AI Studio's product-creation path currently
 complete enough to be that source of truth for every product class Central creates today?
 
+## Phase 2 — AI Studio route inventory (structural pass)
+
+Every route in `src/App.tsx` (29 total, verified by direct read, not assumption). This is the
+structural layer (route → component → reachability); full read/mutation/audit/error/empty-state
+tracing per route per the original mandate template is not yet done for all 19 "wired" routes and
+remains open Phase-2 work — the classifications below are grounded in what this session directly
+verified (marked ✓) versus what is inferred from the route being wired to a real, non-placeholder
+component and not yet deep-traced (marked •).
+
+| Route | Component | Class | Notes |
+| --- | --- | --- | --- |
+| `/auth` | `Auth` | • WIRED | not traced this session |
+| `/c/:slug` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/` | `Dashboard` | • WIRED | not traced |
+| `/products` | `Products` | • WIRED | not traced |
+| `/products/new/fast` | `FastCreateProduct` | • WIRED | feeds `catalogue_product_drafts`, not traced end-to-end |
+| `/products/:id` | `ProductEdit` | ✓ PARTIAL/CONFIRMED | hosts `ChannelPricingRules`/`ChannelMoqRules` (Finding 2, now governed-draft-only, verified this session) |
+| `/media` | `Media` | • WIRED | not traced |
+| `/tags` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/catalogues` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/admin/catalogue-builder` | `CapabilityUnavailable` | DEFERRED | placeholder notes "builder implementation retained" — likely intentionally paused, not abandoned |
+| `/admin/catalogue-product-studio` | `CatalogueProductStudio` | • WIRED | not traced |
+| `/catalogues/:id` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/catalogues/:id/proposal` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/hampers` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/ingredients` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/labels` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/label-queue` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/ai-studio` | `AIStudio` | • WIRED | not traced |
+| `/testing` | `Testing` | • WIRED | not traced |
+| `/testing/pilot-readiness` | `PilotReadinessDashboard` | • WIRED | not traced |
+| `/testing/pilot-aliases` | `PilotAliasReview` | • WIRED | not traced |
+| `/settings` | `Settings` | • WIRED | not traced |
+| `/audit-log` | `CapabilityUnavailable` | DEFERRED | honest fail-closed placeholder |
+| `/approvals` | `ApprovalInbox` | ✓ CONFIRMED | rewritten and verified this session (Finding 2); pricing/moq now read-only, RPC-governed |
+| `/data-correction` | `DataCorrection` | • WIRED | not traced |
+| `/admin/resolver-preview` | `ResolverPreview` | • WIRED | not traced |
+| `/admin/operator-inbox` | `OperatorInbox` | ✓ PARTIAL/BACKEND-BLOCKED | Finding 1 — real, honest, but architecturally dormant (upstream bridge disabled) |
+| `/admin/import/category-1` | `Category1ImportStaging` | • WIRED | not traced |
+| `*` | `NotFound` | ✓ WIRED | trivial |
+
+**Result: 10 of 29 routes (34%) are honest `CapabilityUnavailable` placeholders — the app already
+does fail-closed disabling correctly at the routing layer for incomplete capabilities.** The 12
+now-deleted orphaned page files (see commit `e540cf9`) were the dead implementations these
+placeholders superseded. 19 routes are wired to real, non-placeholder components; 3 have been
+directly verified end-to-end this session, 16 remain for deeper read/mutation/audit tracing in a
+follow-up pass — noted here as the honest state rather than claimed complete.
+
 ## Verified-safe facts established (no rebuild needed)
 
 - No direct client-side bypass of Core authority found in the Operator Inbox path — it is RPC-only.
