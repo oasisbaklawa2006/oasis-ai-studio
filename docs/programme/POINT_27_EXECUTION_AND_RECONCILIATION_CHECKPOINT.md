@@ -23,7 +23,7 @@ established App-Verse contracts. Do not touch production.
 ## Immutable starting baseline (verified this session)
 
 | Repo | Branch | HEAD SHA | Dirty tree | Open PRs at start |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | oasis-ai-studio | main | `570dbb11d3dbabeb587d50578cf8036d2b2f275f` | clean | not yet enumerated via API (shallow clone; verify via GitHub before merge) |
 | oasis-baklawa-central | main | `dcdd6ca8836c40aa78de301781f4c758b536ede9` | clean | not yet enumerated |
 | oasis-supabase-core | main | `6f7e59874f3a40f52de96c6ad02fee5fd26f5050` | clean | not yet enumerated |
