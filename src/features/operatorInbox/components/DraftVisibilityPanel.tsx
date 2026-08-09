@@ -7,13 +7,19 @@ type DraftVisibilityPanelProps = {
   error: string | null;
 };
 
-export function DraftVisibilityPanel({ drafts, decisions, loading, error }: DraftVisibilityPanelProps) {
+export function DraftVisibilityPanel({
+  drafts,
+  decisions,
+  loading,
+  error,
+}: DraftVisibilityPanelProps) {
   return (
     <div className="card-elevated p-4 sm:p-5 space-y-4" data-testid="draft-visibility-panel">
       <div>
         <h2 className="text-sm font-semibold">Draft visibility</h2>
         <p className="text-xs text-muted-foreground mt-1">
-          Read-only view of whatsapp_sales_order_drafts and whatsapp_operator_decisions. No order promotion.
+          Read-only view of whatsapp_sales_order_drafts and whatsapp_operator_decisions. No order
+          promotion.
         </p>
       </div>
 
@@ -26,7 +32,9 @@ export function DraftVisibilityPanel({ drafts, decisions, loading, error }: Draf
 
       {!loading && drafts.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Drafts</h3>
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Drafts
+          </h3>
           <ul className="space-y-2">
             {drafts.map((draft) => (
               <li
@@ -53,7 +61,9 @@ export function DraftVisibilityPanel({ drafts, decisions, loading, error }: Draf
 
       {!loading && decisions.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Operator decisions</h3>
+          <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Operator decisions
+          </h3>
           <ul className="space-y-2">
             {decisions.map((decision) => (
               <li
