@@ -248,6 +248,36 @@ placeholders superseded. 19 routes are wired to real, non-placeholder components
 directly verified end-to-end this session, 16 remain for deeper read/mutation/audit tracing in a
 follow-up pass — noted here as the honest state rather than claimed complete.
 
+## Phase 4 — AI engine capability audit (first capability: catalogue copy generation)
+
+**Capability:** `generateCatalogueContentDraft` (`catalogueAiGateway.ts`) — AI-assisted catalogue
+copy (title, short/long description, B2B/export/WhatsApp copy, Hindi description, storage/shelf-life
+copy) for the Catalogue Product AI Studio.
+
+**Verified — CONFIRMED, well-governed:**
+- Calls only a dedicated `catalogue-ai-copy` Edge Function; the gateway explicitly refuses to fall
+  back to the legacy general-purpose `oasis-ai-chat` endpoint.
+- Feature-flagged off unless `VITE_CATALOGUE_AI_ENABLED === "true"`; requires an authenticated
+  session (bearer token) to call.
+- Structured-only prompt: explicitly instructs the model never to invent price, ingredients,
+  allergens, nutrition, tax/HSN/GST, or compliance claims — those stay human-owned fields this
+  studio never lets AI set.
+- Response is schema-validated (`validateAiCatalogueContent`) before use — every expected key must
+  be a non-empty string or the whole response is rejected with a truthful reason; malformed/partial
+  AI output is never displayed as if genuine.
+- Server response must explicitly carry `human_review_required: true` or the client rejects it.
+- Persistence never touches `products` directly: content lives in `catalogue_ai_studio_drafts` (own
+  status state machine `DRAFT → UNDER_REVIEW → APPROVED`) plus a
+  `catalogue_ai_studio_draft_audit_log` table, verified by reading `catalogueDraftRepository.ts`
+  (whose own header comment states this explicitly).
+- Every network/parse/validation failure path returns `{ ok: false, reason }` — the function never
+  throws and never leaves the caller displaying corrupted state as real content.
+
+This is the correct pattern per the mandate ("AI-generated content must not silently become
+approved product truth") and can serve as the reference implementation when auditing AI Studio's
+other AI-assisted capabilities (product intelligence/utterance resolution, media generation) in a
+follow-up pass — not yet done this session.
+
 ## Verified-safe facts established (no rebuild needed)
 
 - No direct client-side bypass of Core authority found in the Operator Inbox path — it is RPC-only.
