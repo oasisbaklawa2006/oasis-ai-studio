@@ -301,6 +301,42 @@ approved product truth") and can serve as the reference implementation when audi
 other AI-assisted capabilities (product intelligence/utterance resolution, media generation) in a
 follow-up pass — not yet done this session.
 
+## Phase 3 — Product Master field/authority audit
+
+**Reviewed:** `productSchemaAdapter.ts`, `liveProductsSchema.ts`,
+`docs/AI_STUDIO_SCHEMA_WRITE_CONTRACT.md`.
+
+**Verified — CONFIRMED, well-governed:** AI Studio already maintains an explicit field-authority
+allowlist contract (`PRODUCTS_INSERT_ALLOWLIST`, `LIVE_PRODUCTS_EXCLUDED_COLUMNS`,
+`CENTRAL_COMPAT_PRODUCT_COLUMNS`), documented and kept in sync with the live schema. No undocumented
+or silently-expanding write surface found on the AI Studio side of the Product Master. The
+Central-side counterpart to this finding is Finding 3 (independent SKU/AI-compliance generation),
+still owner-blocked as recorded above; a scoped, non-authority-changing safety fix (an explicit
+human-review gate on Central's AI-generated allergen/ingredient/HSN/GST data before save) was
+implemented this session in `Oasis-Baklawa-Central/src/pages/admin/AdminProducts.tsx` — see Finding 3.
+
+## Phase 12 — Security spot-check: product media upload path
+
+**Reviewed:** `ProductMediaUploader.tsx`, `mediaDraftBoundary.ts`, and the `product-media` storage
+bucket configuration across all three repositories.
+
+**Findings and fixes (this session):**
+- `sanitizeMediaFileName` already strips path-traversal/unsafe characters from uploaded file names
+  before building storage paths — **no path-traversal issue found.**
+- The `product-media` bucket's 50MB size cap and image/video/PDF MIME allowlist were declared only
+  in Core's `supabase/seed.sql`, which Supabase applies to local/preview environments, not to the
+  already-live production bucket — a real gap between intended and (possibly) actual production
+  enforcement, since no migration codified it. **Fixed:** Core migration
+  `20260809210000_enforce_product_media_bucket_limits.sql` UPDATEs the bucket row directly (no-op if
+  the bucket doesn't exist yet, so it's safe for a from-scratch local reset too), with a pgTAP
+  contract test asserting the exact size/MIME configuration.
+- Neither `ProductMediaUploader.tsx` (AI Studio) nor Central's admin upload flow did any client-side
+  file-type/size validation before upload — relied entirely on server-side enforcement, so a bad
+  file only failed after the upload attempt. **Fixed (AI Studio):** added `validateMediaFile()` in
+  `mediaDraftBoundary.ts`, mirroring the server bucket config exactly, wired into both
+  `ProductMediaUploader.tsx` upload entry points, with unit tests. Central's equivalent upload path
+  was not yet inspected this session — flagged for a follow-up pass.
+
 ## Verified-safe facts established (no rebuild needed)
 
 - No direct client-side bypass of Core authority found in the Operator Inbox path — it is RPC-only.
@@ -310,18 +346,26 @@ follow-up pass — not yet done this session.
 
 ## Next steps in this programme (in order, per owner mandate)
 
-1. Central Product Master duplication (Finding 3) — blocked on the owner decision recorded above.
+1. Central Product Master duplication (Finding 3) — blocked on the owner decision recorded above;
+   a scoped review-gate safety fix (not a full resolution) has been applied in the meantime.
 2. Full AI Studio route/capability inventory with reachability + persistence tracing (Phase 2) —
    in progress; first pass found and fixed two broken relative imports in the Operator Inbox
    (`bridge/fixtures/sampleErpWhatsAppRows.ts`, `components/DraftVisibilityPanel.tsx`) that
    `knip`/`tsc` flagged as unresolved modules on a route that is actually wired and reachable.
-3. AI engine capability audit — provider, validation, human-approval gating (Phase 4).
-4. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8).
+   16 of 29 routes still need full read/mutation/error/empty-state tracing.
+3. AI engine capability audit — catalogue copy generation confirmed well-governed (Phase 4); product
+   intelligence/utterance resolution and media generation capabilities not yet audited.
+4. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8) — beyond
+   the pricing/moq lockdown (Finding 2) and product-media bucket enforcement (Phase 12) already
+   fixed this session.
 5. WhatsApp Operator Inbox disposition (Finding 1) — still blocked on the owner decision recorded
    above (retire vs. wire into Central's `sales_order_drafts` pipeline).
-6. Publishing state machine verification (Phase 9), asset pipeline (Phase 10), security (Phase 12).
-7. Testing/CI execution and gap-filling (Phase 13), then remaining implementation PRs (Phase 16).
-8. Regenerate Central's `types.ts` from the live schema to replace the hand-added pricing/moq
+6. Publishing state machine verification (Phase 9), asset pipeline (Phase 10) — media upload path
+   spot-checked (Phase 12, see above); rest of the pipeline not yet audited.
+7. Central's admin media upload flow — same client-side validation gap as AI Studio's
+   `ProductMediaUploader.tsx` had; not yet inspected or fixed this session.
+8. Testing/CI execution and gap-filling (Phase 13), then remaining implementation PRs (Phase 16).
+9. Regenerate Central's `types.ts` from the live schema to replace the hand-added pricing/moq
    draft-table and RPC type entries added in Finding 2.
 
 ## Findings status summary
@@ -335,6 +379,9 @@ follow-up pass — not yet done this session.
 ## Safety
 
 - No production data mutation performed.
-- No Supabase migration or Edge Function deployed from this session.
+- No migration applied directly to production by this session — Core migrations added this session
+  (pricing/moq lockdown, product-media bucket enforcement) are committed to reviewed PR #60 and only
+  reach production through the normal reviewed-merge pipeline, same as any other change in this repo.
+- No Edge Function deployed from this session.
 - No service-role credential use.
 - No destructive git operations performed.
