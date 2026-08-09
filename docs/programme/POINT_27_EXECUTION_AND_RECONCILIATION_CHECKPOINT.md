@@ -133,26 +133,72 @@ must never write the authoritative tables directly.
   keeps full access, and the governed approval RPCs are unaffected since they run with elevated
   definer privileges independent of caller grants. This closes the app-layer fix's server-side gap
   so the restriction is enforced by Core itself, not only by AI Studio's UI no longer calling it.
-  PR: `oasis-supabase-core#60` (draft, not yet merged — this repo's `migration-ci.yml` clean-replay
-  + pgTAP job could not be run from this session, no Docker/Supabase CLI available here; it is a
-  required check and must go green before merge).
+  PR: `oasis-supabase-core#60`.
 
-**Verification:** `oasis-ai-studio` — typecheck (net −12 pre-existing errors, 0 new), lint (net −3
-pre-existing issues, 0 new), `check:boundaries` pass, 190 relevant unit tests pass unchanged.
-`oasis-baklawa-central` — typecheck clean (0 errors), lint clean (0 issues) on all touched files,
-`check:boundaries` pass, 19/19 catalogue-approval tests pass (6 new tests added for pricing/moq).
-`oasis-supabase-core` — `check-migration-governance.sh` and `check-canonical-authority.sh` pass
-locally; `migration-ci.yml`'s clean-replay/pgTAP job is unverified from this session (see above).
+**Verification — all confirmed green by real CI, not just local checks:**
+`oasis-ai-studio` PR #118 — typecheck, Reviewdog ESLint, Biome, `check:boundaries`, CodeQL, Trivy,
+Semgrep all pass (16/16 checks). `oasis-baklawa-central` PR #344 — typecheck, lint,
+`check:boundaries`, 19/19 catalogue-approval tests (6 new) all pass. `oasis-supabase-core` PR #60 —
+`check-migration-governance.sh`, `check-canonical-authority.sh`, and (critically) the real
+clean-replay + pgTAP job (`migration-ci.yml`) all pass — this job spins up a genuine local Postgres,
+replays every migration from zero including the new one, and runs the new pgTAP contract test
+against it. The first version of the migration only revoked INSERT/UPDATE/DELETE; the real pgTAP
+run caught that the original grant also included TRUNCATE/REFERENCES/TRIGGER, which a static
+read-through missed — fixed by revoking ALL and re-granting SELECT explicitly, then reverified
+green. **Finding 2 status: technically closed, all three PRs green, pending normal human review and
+merge** (not merged by this session — no PR was merged autonomously).
 
 **Residual / not yet done (tracked, not silently dropped):**
 - Central's hand-added `types.ts` entries should be replaced by a real generated-types regen
   against the live schema at the next safe opportunity.
-- `oasis-supabase-core#60`'s clean-replay + pgTAP CI must be confirmed green before merge — it was
-  written and locally governance-checked but not executed against a real Postgres from this
-  session.
 - No component-level UI test exists for `ApprovalInbox.tsx` in either repo (pre-existing gap, not
   introduced by this change) — logic-level coverage was added instead where the module already had
   a test harness.
+
+## Finding 3 — Central independently generates SKUs, duplicating AI Studio's Product Master authority
+
+**Area:** Phase 3 (Product Master audit) / Phase 0 (hard boundary) / Phase 7 (Central duplication)
+
+**Evidence:**
+- `oasis-baklawa-central/src/pages/admin/AdminProducts.tsx` is a full, independent product
+  create/edit editor (2297 lines) performing **direct** `supabase.from("products").insert([payload])`
+  / `.update(payload)` — no draft submission, no Core RPC, no AI Studio involvement at all. It
+  edits identity, name, category, description, HSN, GST, pricing, BOM, tags, media — effectively
+  the entire Product Master surface the hard architecture boundary assigns to AI Studio ("Product
+  Master authoring", "product descriptions", "categorisation/taxonomy", editorial fields).
+- It also **auto-generates its own SKU** client-side on create: `` `OAS-${prefix}-${net_weight_grams}` ``
+  (`prefix` = first 3 letters of the product name), editable before save, checked only for
+  uniqueness against Central's own product list. This is completely independent of AI Studio's
+  governed SKU system (`generate_oasis_sku` Core RPC, `isStructuredOasisSku`/`isDraftSku` guards in
+  `skuGuard.ts` that block `ApprovalInbox.tsx` from approving a product with a non-structured or
+  `DRAFT-*` SKU). Two uncoordinated SKU-minting schemes exist for the same `products.sku` column,
+  format drift and collision risk that only Central's own uniqueness check partially bounds.
+- AI Studio's own product-creation path (`saveFastCreateProduct.ts`, `catalogue_product_drafts` →
+  `approve_catalogue_product_draft`) is the governed one and already blocks unstructured/draft SKUs
+  at approval time — but that governance is entirely bypassable by simply using Central's editor
+  instead, since Central writes `products` directly with no cross-check against AI Studio's
+  authority at all.
+
+**Disposition — requires an owner decision (flagged, not unilaterally resolved):**
+This is a larger, higher-risk version of the same pattern as Finding 2, but the correct fix is not
+inferable safely: `AdminProducts.tsx` is a mature, 2297-line, apparently-live operational tool
+(BOM, variants, tags, pricing all wired through it) that Central staff may depend on today for
+real work, including for product classes AI Studio may not fully support yet (e.g.
+`third_party_goods_store` / packaging materials referenced elsewhere in Central). Migrating
+product CREATE/UPDATE authority out of Central without confirming (a) whether AI Studio's
+governed product-creation path is actually adopted and complete enough to be the sole replacement,
+and (b) what happens to Central's BOM/variant/tag workflows that are wired directly to
+`AdminProducts.tsx`'s local state, is a genuine "would this break real operational work with
+nothing to replace it" question — the same class of decision the mandate reserves for the owner
+(Phase 15). No code changed for this finding. Recorded here rather than attempted blind, per the
+instruction to defer only genuinely non-inferable business-authority decisions while continuing
+everything else.
+
+**What would need answering to close this:** should `AdminProducts.tsx` become read-only /
+link-out to AI Studio for identity+editorial fields (consuming AI Studio's published Product
+Master) while keeping true operational fields (availability, operational merchandising) editable
+in Central per the target architecture — and if so, is AI Studio's product-creation path currently
+complete enough to be that source of truth for every product class Central creates today?
 
 ## Verified-safe facts established (no rebuild needed)
 

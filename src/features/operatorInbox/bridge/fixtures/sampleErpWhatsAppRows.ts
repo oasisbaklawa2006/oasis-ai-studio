@@ -1,4 +1,4 @@
-import type { ErpWhatsAppMessageRow } from "./types";
+import type { ErpWhatsAppMessageRow } from "../types";
 
 /** Live-schema fixtures from production audit (tcxvcatsqqertcnycuop, 2026-06-25). */
 export const SAMPLE_ERP_WHATSAPP_ROWS: ErpWhatsAppMessageRow[] = [

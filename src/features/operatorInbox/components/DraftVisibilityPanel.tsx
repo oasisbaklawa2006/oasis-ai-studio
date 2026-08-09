@@ -1,4 +1,4 @@
-import type { WhatsAppDraftRow, WhatsAppOperatorDecisionRow } from "./fetchDraftVisibility";
+import type { WhatsAppDraftRow, WhatsAppOperatorDecisionRow } from "../fetchDraftVisibility";
 
 type DraftVisibilityPanelProps = {
   drafts: WhatsAppDraftRow[];
