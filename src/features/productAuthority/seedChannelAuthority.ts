@@ -1,5 +1,5 @@
-import { resolveChannelUom } from "./channelPricingMapper";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { resolveChannelUom } from "./channelPricingMapper";
 
 export type ChannelSeedTarget = "retail" | "b2b";
 
@@ -43,11 +43,19 @@ export async function seedMoqRowForChannel(
       customer_type: null,
       moq_applicable: moqApplicable,
       min_order_quantity: moqApplicable ? (Number.isFinite(moqValue) ? moqValue : 1) : null,
-      increment_quantity: moqApplicable ? (Number.isFinite(incrementValue) ? incrementValue : 1) : null,
+      increment_quantity: moqApplicable
+        ? Number.isFinite(incrementValue)
+          ? incrementValue
+          : 1
+        : null,
       is_active: moqApplicable,
       moq_value: moqApplicable ? (Number.isFinite(moqValue) ? moqValue : 1) : null,
       moq_uom: moqApplicable ? uom : null,
-      increment_value: moqApplicable ? (Number.isFinite(incrementValue) ? incrementValue : 1) : null,
+      increment_value: moqApplicable
+        ? Number.isFinite(incrementValue)
+          ? incrementValue
+          : 1
+        : null,
       increment_uom: moqApplicable ? incrementUom : null,
       allow_override: false,
       min_carton_qty: null,

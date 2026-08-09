@@ -3,11 +3,18 @@ import { ChannelPricingRules } from "@/components/ChannelPricingRules";
 import { extractChannelPricingFromForm } from "@/features/productAuthority/channelPricingMapper";
 
 describe("pricing upsert contract", () => {
-  it("documents upsert on product_id + price_channel conflict", () => {
+  // Point 27, Finding 2: AI Studio must never write product_pricing_rules
+  // directly - all pricing changes go through the governed catalogue draft
+  // path. Duplicate-channel protection is enforced client-side via
+  // isDuplicateChannel() before a row is staged, not via a DB upsert.
+  it("never writes product_pricing_rules directly and guards duplicate channels", () => {
     const source = ChannelPricingRules.toString();
-    expect(source).toContain("upsert");
-    expect(source).toContain("onConflict");
-    expect(source).toContain("product_id,price_channel");
+    expect(source).not.toContain('.from("product_pricing_rules").insert');
+    expect(source).not.toContain('.from("product_pricing_rules").update');
+    expect(source).not.toContain('.from("product_pricing_rules").upsert');
+    expect(source).not.toContain('.from("product_pricing_rules").delete');
+    expect(source).toContain("isDuplicateChannel");
+    expect(source).toContain("submitPricingDraft");
   });
 
   it("pricing mapper emits product_pricing_rules rows keyed by product_id + price_channel", () => {

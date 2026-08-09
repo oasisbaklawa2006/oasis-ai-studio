@@ -1,21 +1,21 @@
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
 import { resolveChannelUom } from "@/features/productAuthority/channelPricingMapper";
 import {
-  seedRetailB2bMoqFromProduct,
   type ChannelSeedTarget,
+  seedRetailB2bMoqFromProduct,
 } from "@/features/productAuthority/seedChannelAuthority";
+import { supabase } from "@/integrations/supabase/client";
 import { canSubmitDraft, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 
 const PRICE_CHANNELS = [
@@ -36,12 +36,7 @@ const PRICE_CHANNELS = [
   "modern_trade",
 ];
 
-const PRICE_TYPES = [
-  "fixed_price",
-  "discount_from_mrp",
-  "margin_based",
-  "quotation_based",
-];
+const PRICE_TYPES = ["fixed_price", "discount_from_mrp", "margin_based", "quotation_based"];
 
 const SOURCES = [
   "catalogue_local",
@@ -95,7 +90,10 @@ const asNumberOrNull = (value: unknown) => {
   return Number.isFinite(n) ? n : null;
 };
 
-const normalizeText = (value: unknown) => String(value ?? "").trim().toLowerCase();
+const normalizeText = (value: unknown) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase();
 
 const pricingLabel = (channel?: string | null) =>
   String(channel ?? "")
@@ -118,7 +116,7 @@ const computeCalculated = (row: PricingRuleRow, mrp?: number | null) => {
 const isDuplicateChannel = (
   rows: PricingRuleRow[],
   rowId: string,
-  channel: string | null | undefined
+  channel: string | null | undefined,
 ) => {
   const c = normalizeText(channel);
   if (!c) return false;
@@ -137,7 +135,7 @@ const priceSummary = (r: PricingRuleRow) => {
 const normalizePricingPatch = (
   current: PricingRuleRow,
   patch: Record<string, any>,
-  mrp?: number | null
+  mrp?: number | null,
 ) => {
   const normalizedPatch: Record<string, any> = { ...patch };
 
@@ -222,10 +220,12 @@ export const ChannelPricingRules = ({
     onRulesChange?.();
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reload only on productId change, not on every load() identity change
   useEffect(() => {
     load();
   }, [productId]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-check permission when roles change; body only awaits helpers
   useEffect(() => {
     (async () => {
       if (await isCatalogueContributor()) {
@@ -245,7 +245,7 @@ export const ChannelPricingRules = ({
       ...(stagedEdits[row.id] ?? {}),
     }));
     return [...mergedMaster, ...localNewRows].sort((a, b) =>
-      String(a.price_channel).localeCompare(String(b.price_channel))
+      String(a.price_channel).localeCompare(String(b.price_channel)),
     );
   }, [rows, stagedEdits, localNewRows]);
 
@@ -278,7 +278,7 @@ export const ChannelPricingRules = ({
   const submitPricingDraft = async (
     operation: "create" | "update" | "delete_request",
     row: PricingRuleRow,
-    targetRecordId?: string | null
+    targetRecordId?: string | null,
   ) => {
     const payloadRow = {
       ...row,
@@ -352,7 +352,7 @@ export const ChannelPricingRules = ({
           return next;
         });
         toast.success(
-          "Pricing rule submitted for approval. Approved pricing changes will appear here after review."
+          "Pricing rule submitted for approval. Approved pricing changes will appear here after review.",
         );
         return;
       }
@@ -400,7 +400,7 @@ export const ChannelPricingRules = ({
         return;
       }
       toast.success(
-        "Delete request submitted for approval. This pricing rule stays visible until review."
+        "Delete request submitted for approval. This pricing rule stays visible until review.",
       );
     } finally {
       setSubmitting(false);
@@ -471,7 +471,9 @@ export const ChannelPricingRules = ({
         const channels = seeds.map((s) => s.channel as ChannelSeedTarget);
         const moqRes = await seedRetailB2bMoqFromProduct(productId, product ?? {}, channels);
         if (!moqRes.ok) {
-          toast.warning(`Pricing staged but MOQ proposal failed: ${moqRes.message ?? "unknown error"}`);
+          toast.warning(
+            `Pricing staged but MOQ proposal failed: ${moqRes.message ?? "unknown error"}`,
+          );
         }
         toast.success(
           `Staged ${created} channel price row(s)${moqRes.created ? ` and submitted ${moqRes.created} MOQ proposal(s)` : ""}. Submit each for approval.`,
@@ -514,7 +516,12 @@ export const ChannelPricingRules = ({
 
         {canMutate && (
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => void seedRetailB2bFromUom()} disabled={submitting}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void seedRetailB2bFromUom()}
+              disabled={submitting}
+            >
               Seed retail/B2B UOM
             </Button>
             <Button size="sm" onClick={add} disabled={submitting}>
@@ -527,9 +534,10 @@ export const ChannelPricingRules = ({
 
       {writeMode === "draft" && (
         <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
-          Edit fields below, then use <span className="font-medium text-foreground">Submit change</span>{" "}
-          on each rule. Changes are not sent until you submit. To retire a price, use Remove
-          (submits a delete request for approval).
+          Edit fields below, then use{" "}
+          <span className="font-medium text-foreground">Submit change</span> on each rule. Changes
+          are not sent until you submit. To retire a price, use Remove (submits a delete request for
+          approval).
         </div>
       )}
 
@@ -589,9 +597,7 @@ export const ChannelPricingRules = ({
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() =>
-                        setEditing((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
-                      }
+                      onClick={() => setEditing((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
                       disabled={submitting}
                     >
                       <Pencil className="h-3.5 w-3.5 mr-1" />
@@ -650,9 +656,7 @@ export const ChannelPricingRules = ({
                         type="number"
                         value={r.base_price ?? ""}
                         disabled={r.price_type === "quotation_based" || submitting}
-                        onChange={(e) =>
-                          applyFieldChange(r.id, { base_price: e.target.value })
-                        }
+                        onChange={(e) => applyFieldChange(r.id, { base_price: e.target.value })}
                       />
                     </div>
 
@@ -704,9 +708,7 @@ export const ChannelPricingRules = ({
                         className="h-9"
                         value={r.uom ?? ""}
                         disabled={submitting}
-                        onChange={(e) =>
-                          applyFieldChange(r.id, { uom: e.target.value || null })
-                        }
+                        onChange={(e) => applyFieldChange(r.id, { uom: e.target.value || null })}
                         placeholder="per pc / kg"
                       />
                     </div>
@@ -725,9 +727,7 @@ export const ChannelPricingRules = ({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() =>
-                        setAdvanced((prev) => ({ ...prev, [r.id]: !prev[r.id] }))
-                      }
+                      onClick={() => setAdvanced((prev) => ({ ...prev, [r.id]: !prev[r.id] }))}
                       disabled={submitting}
                     >
                       {showAdvanced ? (
@@ -783,9 +783,7 @@ export const ChannelPricingRules = ({
                           type="number"
                           value={r.gst_rate ?? ""}
                           disabled={submitting}
-                          onChange={(e) =>
-                            applyFieldChange(r.id, { gst_rate: e.target.value })
-                          }
+                          onChange={(e) => applyFieldChange(r.id, { gst_rate: e.target.value })}
                         />
                       </div>
 
