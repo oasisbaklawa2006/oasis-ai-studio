@@ -7,17 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import {
-  Archive,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  Pencil,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatPricingSaveError } from "@/features/productTruth/pricingErrors";
 import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { resolveChannelUom } from "@/features/productAuthority/channelPricingMapper";
@@ -25,12 +16,7 @@ import {
   seedRetailB2bMoqFromProduct,
   type ChannelSeedTarget,
 } from "@/features/productAuthority/seedChannelAuthority";
-import {
-  canSubmitDraft,
-  canWriteMasterDirectly,
-  isCatalogueContributor,
-} from "@/shared/auth/centralPermissions";
-import type { Role } from "@/lib/permissions";
+import { canSubmitDraft, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 
 const PRICE_CHANNELS = [
   "mrp",
@@ -57,8 +43,6 @@ const PRICE_TYPES = [
   "quotation_based",
 ];
 
-const STATUSES = ["draft", "needs_review", "approved", "archived"];
-
 const SOURCES = [
   "catalogue_local",
   "oasis_central_synced",
@@ -67,11 +51,13 @@ const SOURCES = [
   "customer_special",
 ];
 
-type WriteMode = "direct" | "draft" | "readonly";
+// Pricing is a Central/Core-governed commercial authority (Point 27, Finding 2).
+// AI Studio may only ever propose changes for approval; it must never write
+// product_pricing_rules directly or self-approve. "direct" write mode has been
+// removed for this reason - every role goes through the draft/approval path.
+type WriteMode = "draft" | "readonly";
 
 type PricingRuleRow = Record<string, any>;
-
-const DIRECT_PRICING_ROLES: Role[] = ["owner", "admin", "product_manager"];
 
 const isLocalRowId = (id: string) => id.startsWith("local-");
 
@@ -217,7 +203,6 @@ export const ChannelPricingRules = ({
   const [advanced, setAdvanced] = useState<Record<string, boolean>>({});
   const [writeMode, setWriteMode] = useState<WriteMode>("readonly");
   const [submitting, setSubmitting] = useState(false);
-  const [canDirectPricing, setCanDirectPricing] = useState(false);
 
   const load = async () => {
     const { data, error } = await supabase
@@ -243,15 +228,6 @@ export const ChannelPricingRules = ({
 
   useEffect(() => {
     (async () => {
-      const roleList = roles as Role[];
-      const hasDirect =
-        roleList.some((r) => DIRECT_PRICING_ROLES.includes(r)) ||
-        (await canWriteMasterDirectly());
-      setCanDirectPricing(hasDirect);
-      if (hasDirect) {
-        setWriteMode("direct");
-        return;
-      }
       if (await isCatalogueContributor()) {
         const canSubmit = await canSubmitDraft(draftTableMap.pricing.permission);
         setWriteMode(canSubmit ? "draft" : "readonly");
@@ -261,10 +237,7 @@ export const ChannelPricingRules = ({
     })();
   }, [roles]);
 
-  const canMutate = writeMode === "direct" || writeMode === "draft";
-  const showMasterApproveArchive = writeMode === "direct" && canDirectPricing;
-  const masterPricingApproval = (): string =>
-    writeMode === "direct" && canDirectPricing ? "approved" : "draft";
+  const canMutate = writeMode === "draft";
 
   const allDisplayRows = useMemo(() => {
     const mergedMaster = rows.map((row) => ({
@@ -319,43 +292,6 @@ export const ChannelPricingRules = ({
     });
   };
 
-  const persistPatch = async (id: string, patch: Record<string, any>) => {
-    const current = rows.find((r) => r.id === id);
-    if (!current) return;
-
-    const next = { ...current, ...patch };
-
-    if (isDuplicateChannel(allDisplayRows, id, next.price_channel)) {
-      toast.error("A pricing rule for this channel already exists.");
-      return;
-    }
-
-    const { normalizedPatch } = normalizePricingPatch(current, patch, product?.mrp);
-    if (writeMode === "direct" && canDirectPricing) {
-      const hasPrice =
-        normalizedPatch.base_price != null ||
-        normalizedPatch.calculated_price != null ||
-        current.base_price != null ||
-        current.calculated_price != null;
-      if (hasPrice && !normalizedPatch.approval_status) {
-        normalizedPatch.approval_status = "approved";
-        normalizedPatch.approved_at = new Date().toISOString();
-      }
-    }
-
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...normalizedPatch } : r)));
-
-    const { error } = await supabase
-      .from("product_pricing_rules")
-      .update(normalizedPatch)
-      .eq("id", id);
-
-    if (error) {
-      toast.error(error.message);
-      load();
-    }
-  };
-
   const stagePatch = (id: string, patch: Record<string, any>) => {
     const current = allDisplayRows.find((r) => r.id === id) ?? baselineRow(id);
     if (!current) return;
@@ -384,10 +320,6 @@ export const ChannelPricingRules = ({
     if ("price_channel" in patch && !("uom" in patch)) {
       const derived = resolveChannelUom(String(patch.price_channel ?? ""), product ?? {});
       if (derived) patch = { ...patch, uom: derived };
-    }
-    if (writeMode === "direct") {
-      void persistPatch(id, patch);
-      return;
     }
     if (writeMode === "draft") {
       stagePatch(id, patch);
@@ -459,17 +391,6 @@ export const ChannelPricingRules = ({
     const row = rows.find((r) => r.id === id);
     if (!row) return;
 
-    if (writeMode === "direct") {
-      const { error } = await supabase.from("product_pricing_rules").delete().eq("id", id);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      toast.success("Pricing rule removed");
-      await load();
-      return;
-    }
-
     setSubmitting(true);
     try {
       const displayRow = allDisplayRows.find((r) => r.id === id) ?? row;
@@ -496,91 +417,19 @@ export const ChannelPricingRules = ({
 
     const defaultUom = resolveChannelUom("retail", product ?? {});
 
-    if (writeMode === "draft") {
-      const tempId = `local-${crypto.randomUUID()}`;
-      const newRule: PricingRuleRow = {
-        id: tempId,
-        product_id: productId,
-        price_channel: "retail",
-        price_type: "quotation_based",
-        currency: "INR",
-        uom: defaultUom,
-        approval_status: masterPricingApproval(),
-        source: "catalogue_local",
-      };
-      setLocalNewRows((prev) => [...prev, newRule]);
-      setEditing((prev) => ({ ...prev, [tempId]: true }));
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("product_pricing_rules")
-      .upsert(
-        {
-          product_id: productId,
-          price_channel: "retail",
-          price_type: "quotation_based",
-          currency: "INR",
-          uom: defaultUom,
-          approval_status: masterPricingApproval(),
-          source: "catalogue_local",
-        },
-        { onConflict: "product_id,price_channel" },
-      )
-      .select("*")
-      .single();
-
-    if (error) {
-      toast.error(formatPricingSaveError(error));
-      return;
-    }
-
-    setRows((prev) =>
-      [...prev, data].sort((a, b) =>
-        String(a.price_channel).localeCompare(String(b.price_channel))
-      )
-    );
-    setEditing((prev) => ({ ...prev, [data.id]: true }));
-    onRulesChange?.();
-  };
-
-  const approve = async (id: string) => {
-    if (!showMasterApproveArchive || submitting) return;
-
-    const { data: authData } = await supabase.auth.getUser();
-    const { error } = await supabase
-      .from("product_pricing_rules")
-      .update({
-        approval_status: "approved",
-        approved_by: authData.user?.id ?? null,
-        approved_at: new Date().toISOString(),
-      })
-      .eq("id", id);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success("Pricing approved");
-    load();
-  };
-
-  const archive = async (id: string) => {
-    if (!showMasterApproveArchive || submitting) return;
-
-    const { error } = await supabase
-      .from("product_pricing_rules")
-      .update({ approval_status: "archived" })
-      .eq("id", id);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success("Pricing archived");
-    load();
+    const tempId = `local-${crypto.randomUUID()}`;
+    const newRule: PricingRuleRow = {
+      id: tempId,
+      product_id: productId,
+      price_channel: "retail",
+      price_type: "quotation_based",
+      currency: "INR",
+      uom: defaultUom,
+      approval_status: "draft",
+      source: "catalogue_local",
+    };
+    setLocalNewRows((prev) => [...prev, newRule]);
+    setEditing((prev) => ({ ...prev, [tempId]: true }));
   };
 
   const seedRetailB2bFromUom = async () => {
@@ -601,41 +450,20 @@ export const ChannelPricingRules = ({
       for (const seed of seeds) {
         if (allDisplayRows.some((r) => normalizeText(r.price_channel) === seed.channel)) continue;
 
-        if (writeMode === "draft") {
-          const tempId = `local-${crypto.randomUUID()}`;
-          setLocalNewRows((prev) => [
-            ...prev,
-            {
-              id: tempId,
-              product_id: productId,
-              price_channel: seed.channel,
-              price_type: "quotation_based",
-              currency: "INR",
-              uom: seed.uom,
-              approval_status: masterPricingApproval(),
-              source: "catalogue_local",
-            },
-          ]);
-          created += 1;
-          continue;
-        }
-
-        const { error } = await supabase.from("product_pricing_rules").upsert(
+        const tempId = `local-${crypto.randomUUID()}`;
+        setLocalNewRows((prev) => [
+          ...prev,
           {
+            id: tempId,
             product_id: productId,
             price_channel: seed.channel,
             price_type: "quotation_based",
             currency: "INR",
             uom: seed.uom,
-            approval_status: masterPricingApproval(),
+            approval_status: "draft",
             source: "catalogue_local",
           },
-          { onConflict: "product_id,price_channel" },
-        );
-        if (error) {
-          toast.error(formatPricingSaveError(error));
-          return;
-        }
+        ]);
         created += 1;
       }
 
@@ -643,10 +471,10 @@ export const ChannelPricingRules = ({
         const channels = seeds.map((s) => s.channel as ChannelSeedTarget);
         const moqRes = await seedRetailB2bMoqFromProduct(productId, product ?? {}, channels);
         if (!moqRes.ok) {
-          toast.warning(`Pricing seeded but MOQ seed failed: ${moqRes.message ?? "unknown error"}`);
+          toast.warning(`Pricing staged but MOQ proposal failed: ${moqRes.message ?? "unknown error"}`);
         }
         toast.success(
-          `Seeded ${created} channel price row(s)${moqRes.created ? ` and ${moqRes.created} MOQ row(s)` : ""}`,
+          `Staged ${created} channel price row(s)${moqRes.created ? ` and submitted ${moqRes.created} MOQ proposal(s)` : ""}. Submit each for approval.`,
         );
         await load();
         onRulesChange?.();
@@ -657,7 +485,7 @@ export const ChannelPricingRules = ({
           seeds.map((s) => s.channel as ChannelSeedTarget),
         );
         if (moqRes.created > 0) {
-          toast.success(`Seeded ${moqRes.created} MOQ row(s) from product UOM`);
+          toast.success(`Submitted ${moqRes.created} MOQ proposal(s) for approval.`);
           onRulesChange?.();
         } else {
           toast.info("Retail and B2B pricing rows already exist.");
@@ -777,30 +605,6 @@ export const ChannelPricingRules = ({
                         disabled={submitting}
                       >
                         Submit change
-                      </Button>
-                    )}
-
-                    {showMasterApproveArchive && r.approval_status !== "approved" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => approve(r.id)}
-                        disabled={submitting}
-                      >
-                        <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                        Approve
-                      </Button>
-                    )}
-
-                    {showMasterApproveArchive && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => archive(r.id)}
-                        disabled={submitting}
-                      >
-                        <Archive className="h-3.5 w-3.5 mr-1" />
-                        Archive
                       </Button>
                     )}
 
@@ -947,20 +751,6 @@ export const ChannelPricingRules = ({
 
                   {showAdvanced && (
                     <div className="grid sm:grid-cols-4 gap-3 rounded-lg border bg-muted/20 p-3">
-                      {writeMode === "direct" && (
-                        <div>
-                          <Label className="text-xs">Status</Label>
-                          <Sel
-                            value={r.approval_status}
-                            onChange={(v) =>
-                              applyFieldChange(r.id, { approval_status: v || "draft" })
-                            }
-                            options={STATUSES}
-                            disabled={submitting}
-                          />
-                        </div>
-                      )}
-
                       {writeMode === "draft" && (
                         <div>
                           <Label className="text-xs">Status</Label>

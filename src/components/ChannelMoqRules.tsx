@@ -18,12 +18,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
-import {
-  canSubmitDraft,
-  canWriteMasterDirectly,
-  isCatalogueContributor,
-} from "@/shared/auth/centralPermissions";
-import type { Role } from "@/lib/permissions";
+import { canSubmitDraft, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 
 const CHANNELS = [
   "retail",
@@ -66,11 +61,13 @@ const TEMPLATE_OPTIONS = [
 
 type TemplateKey = (typeof TEMPLATE_OPTIONS)[number];
 
-type WriteMode = "direct" | "draft" | "readonly";
+// MOQ is a Central/Core-governed commercial authority (Point 27, Finding 2).
+// AI Studio may only ever propose changes for approval; it must never write
+// product_moq_rules directly or self-approve. "direct" write mode has been
+// removed for this reason - every role goes through the draft/approval path.
+type WriteMode = "draft" | "readonly";
 
 type MoqRuleRow = Record<string, any>;
-
-const DIRECT_MOQ_ROLES: Role[] = ["owner", "admin", "product_manager"];
 
 const templateLabel = (v: TemplateKey) =>
   ({
@@ -387,13 +384,6 @@ export const ChannelMoqRules = ({
 
   useEffect(() => {
     (async () => {
-      const roleList = roles as Role[];
-      const hasDirect =
-        roleList.some((r) => DIRECT_MOQ_ROLES.includes(r)) || (await canWriteMasterDirectly());
-      if (hasDirect) {
-        setWriteMode("direct");
-        return;
-      }
       if (await isCatalogueContributor()) {
         const canSubmit = await canSubmitDraft(draftTableMap.moq.permission);
         setWriteMode(canSubmit ? "draft" : "readonly");
@@ -403,7 +393,7 @@ export const ChannelMoqRules = ({
     })();
   }, [roles]);
 
-  const canMutate = writeMode === "direct" || writeMode === "draft";
+  const canMutate = writeMode === "draft";
 
   const allDisplayRows = useMemo(() => {
     const mergedMaster = rows.map((row) => ({
@@ -467,32 +457,6 @@ export const ChannelMoqRules = ({
     });
   };
 
-  const persistPatch = async (id: string, patch: Record<string, any>) => {
-    const current = allDisplayRows.find((r) => r.id === id) ?? baselineRow(id);
-    if (!current) return;
-
-    const next = { ...current, ...patch };
-
-    if (isDuplicateChannel(allDisplayRows, id, next.channel, next.customer_type)) {
-      toast.error("A rule for this channel already exists.");
-      return;
-    }
-
-    const { normalizedPatch } = normalizeMoqPatch(current, patch);
-
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...normalizedPatch } : r)));
-
-    const { error } = await supabase
-      .from("product_moq_rules")
-      .update(normalizedPatch)
-      .eq("id", id);
-
-    if (error) {
-      toast.error(error.message);
-      load();
-    }
-  };
-
   const stagePatch = (id: string, patch: Record<string, any>) => {
     const current = allDisplayRows.find((r) => r.id === id) ?? baselineRow(id);
     if (!current) return;
@@ -518,10 +482,6 @@ export const ChannelMoqRules = ({
   };
 
   const applyFieldChange = (id: string, patch: Record<string, any>) => {
-    if (writeMode === "direct") {
-      void persistPatch(id, patch);
-      return;
-    }
     if (writeMode === "draft") {
       stagePatch(id, patch);
     }
@@ -592,17 +552,6 @@ export const ChannelMoqRules = ({
     const row = rows.find((r) => r.id === id);
     if (!row) return;
 
-    if (writeMode === "direct") {
-      const { error } = await supabase.from("product_moq_rules").delete().eq("id", id);
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-      toast.success("Rule removed");
-      await load();
-      return;
-    }
-
     setSubmitting(true);
     try {
       const displayRow = allDisplayRows.find((r) => r.id === id) ?? row;
@@ -627,39 +576,16 @@ export const ChannelMoqRules = ({
       return;
     }
 
-    if (writeMode === "draft") {
-      const tempId = `local-${crypto.randomUUID()}`;
-      const newRule: MoqRuleRow = {
-        id: tempId,
-        product_id: productId,
-        channel: "retail",
-        moq_applicable: false,
-        customer_type: null,
-      };
-      setLocalNewRows((prev) => [...prev, newRule]);
-      setEditing((prev) => ({ ...prev, [tempId]: true }));
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from("product_moq_rules")
-      .insert({
-        product_id: productId,
-        channel: "retail",
-        moq_applicable: false,
-      })
-      .select("*")
-      .single();
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    setRows((prev) =>
-      [...prev, data].sort((a, b) => String(a.channel).localeCompare(String(b.channel)))
-    );
-    setEditing((prev) => ({ ...prev, [data.id]: true }));
+    const tempId = `local-${crypto.randomUUID()}`;
+    const newRule: MoqRuleRow = {
+      id: tempId,
+      product_id: productId,
+      channel: "retail",
+      moq_applicable: false,
+      customer_type: null,
+    };
+    setLocalNewRows((prev) => [...prev, newRule]);
+    setEditing((prev) => ({ ...prev, [tempId]: true }));
   };
 
   const disableRule = async (id: string) => {
@@ -674,11 +600,6 @@ export const ChannelMoqRules = ({
       min_carton_qty: null,
       carton_logic: null,
     };
-
-    if (writeMode === "direct") {
-      await persistPatch(id, disablePatch);
-      return;
-    }
 
     const row = allDisplayRows.find((r) => r.id === id);
     if (!row) return;
@@ -724,57 +645,39 @@ export const ChannelMoqRules = ({
       return;
     }
 
-    if (writeMode === "draft") {
-      setSubmitting(true);
-      try {
-        let submitted = 0;
-        for (const row of deduped) {
-          if (
-            allDisplayRows.some(
-              (r) =>
-                normalizeText(r.channel) === normalizeText(row.channel) &&
-                normalizeText(r.customer_type) === normalizeText(row.customer_type)
-            )
-          ) {
-            continue;
-          }
-
-          const res = await submitMoqDraft(
-            "create",
-            { ...row, product_id: productId },
-            null
-          );
-          if (res.ok) submitted += 1;
-          else toast.error(res.message);
+    setSubmitting(true);
+    try {
+      let submitted = 0;
+      for (const row of deduped) {
+        if (
+          allDisplayRows.some(
+            (r) =>
+              normalizeText(r.channel) === normalizeText(row.channel) &&
+              normalizeText(r.customer_type) === normalizeText(row.customer_type)
+          )
+        ) {
+          continue;
         }
 
-        if (submitted > 0) {
-          toast.success(
-            `Submitted ${submitted} MOQ rule draft${submitted === 1 ? "" : "s"} for approval. Approved MOQ changes will appear here after review.`
-          );
-        } else {
-          toast.info("No new MOQ rules to submit — channels may already exist.");
-        }
-      } finally {
-        setSubmitting(false);
+        const res = await submitMoqDraft(
+          "create",
+          { ...row, product_id: productId },
+          null
+        );
+        if (res.ok) submitted += 1;
+        else toast.error(res.message);
       }
-      return;
+
+      if (submitted > 0) {
+        toast.success(
+          `Submitted ${submitted} MOQ rule draft${submitted === 1 ? "" : "s"} for approval. Approved MOQ changes will appear here after review.`
+        );
+      } else {
+        toast.info("No new MOQ rules to submit — channels may already exist.");
+      }
+    } finally {
+      setSubmitting(false);
     }
-
-    const payload = deduped.map((row) => ({ product_id: productId, customer_type: null, ...row }));
-
-    const { error } = await supabase.from("product_moq_rules").upsert(payload, {
-      onConflict: "product_id,channel,customer_type",
-      ignoreDuplicates: false,
-    } as any);
-
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-
-    toast.success(`${templateLabel(template)} rules generated`);
-    load();
   };
 
   return (

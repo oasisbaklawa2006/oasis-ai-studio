@@ -27,18 +27,26 @@ type ApprovalItem = {
   reviewed_at?: string | null;
   target_record_id?: string | null;
   draftType: string;
-  approveFn: string;
-  rejectFn: string;
+  approveFn: string | null;
+  rejectFn: string | null;
+  governedByCentral: boolean;
 };
 
+// Pricing and MOQ are Central/Core-governed commercial authority (Point 27,
+// Finding 2) - approval for those draft types happens in Central, not here.
+// AI Studio's editorial reviewers still see pricing/moq drafts (read-only,
+// via the "awaiting Central approval" note below) but cannot action them.
 const SOURCES = [
   { type: "product", table: "catalogue_product_drafts", approve: "approve_catalogue_product_draft", reject: "reject_catalogue_product_draft" },
   { type: "media", table: "catalogue_media_submissions", approve: "approve_catalogue_media_submission", reject: "reject_catalogue_media_submission" },
   { type: "alias", table: "catalogue_alias_drafts", approve: "approve_catalogue_alias_draft", reject: "reject_catalogue_alias_draft" },
   { type: "bom", table: "catalogue_bom_drafts", approve: "approve_catalogue_bom_draft", reject: "reject_catalogue_bom_draft" },
-  { type: "moq", table: "catalogue_moq_drafts", approve: "approve_catalogue_moq_draft", reject: "reject_catalogue_moq_draft" },
-  { type: "pricing", table: "catalogue_pricing_drafts", approve: "approve_catalogue_pricing_draft", reject: "reject_catalogue_pricing_draft" },
   { type: "tag", table: "catalogue_tag_drafts", approve: "approve_catalogue_tag_draft", reject: "reject_catalogue_tag_draft" },
+] as const;
+
+const CENTRAL_GOVERNED_SOURCES = [
+  { type: "moq", table: "catalogue_moq_drafts" },
+  { type: "pricing", table: "catalogue_pricing_drafts" },
 ] as const;
 
 const TABS = [
@@ -155,7 +163,20 @@ export default function ApprovalInbox() {
         .in("status", ["pending_approval", "approved", "rejected"])
         .order("submitted_at", { ascending: false });
 
-      (data ?? []).forEach((d: any) => all.push({ ...d, draftType: s.type, approveFn: s.approve, rejectFn: s.reject }));
+      (data ?? []).forEach((d: any) =>
+        all.push({ ...d, draftType: s.type, approveFn: s.approve, rejectFn: s.reject, governedByCentral: false })
+      );
+    }
+    for (const s of CENTRAL_GOVERNED_SOURCES) {
+      const { data } = await (supabase as any)
+        .from(s.table)
+        .select("*")
+        .in("status", ["pending_approval", "approved", "rejected"])
+        .order("submitted_at", { ascending: false });
+
+      (data ?? []).forEach((d: any) =>
+        all.push({ ...d, draftType: s.type, approveFn: null, rejectFn: null, governedByCentral: true })
+      );
     }
     setItems(all);
   };
@@ -177,6 +198,10 @@ export default function ApprovalInbox() {
   }, [items]);
 
   const approve = async (r: ApprovalItem) => {
+    if (r.governedByCentral || !r.approveFn) {
+      toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
+      return;
+    }
     if (r.draftType === "product") {
       const sku =
         read(r.payload, "sku_draft.sku", "identity.sku", "sku") ??
@@ -204,6 +229,10 @@ export default function ApprovalInbox() {
   };
 
   const reject = async (r: ApprovalItem) => {
+    if (r.governedByCentral || !r.rejectFn) {
+      toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
+      return;
+    }
     const reason = (reasons[r.id] || "").trim();
     if (!reason) {
       toast.error("Rejection reason is required");
@@ -323,7 +352,14 @@ export default function ApprovalInbox() {
                   </pre>
                 </details>
 
-                {isPending && (
+                {isPending && r.governedByCentral && (
+                  <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    Pricing and MOQ are Central/Core-governed commercial authority. This proposal is
+                    awaiting approval in Central, not AI Studio.
+                  </div>
+                )}
+
+                {isPending && !r.governedByCentral && (
                   <div className="flex flex-col sm:flex-row gap-2 pt-1">
                     <Input
                       className="flex-1"

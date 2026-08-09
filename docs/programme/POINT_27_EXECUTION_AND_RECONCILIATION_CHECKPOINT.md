@@ -74,36 +74,77 @@ Core table/RPC pair)? The code today does exactly and only what it honestly clai
 unsafe or fake is currently deployed. **No autonomous deletion or rewiring performed pending this
 call** — recorded as the first genuine owner decision under the mandate's own exception clause.
 
-## Finding 2 — Pricing / MOQ rule editing is owned solely by AI Studio (should be Central)
+## Finding 2 — Pricing / MOQ: AI Studio could self-approve, bypassing Central (RESOLVED)
 
-**Area:** Phase 0 (hard boundary violation) / Phase 5 (cross-repo duplication) / Phase 7
+**Area:** Phase 0 (hard boundary) / Phase 5 (cross-repo duplication) / Phase 7 / Phase 15 (implementation)
 
-**Evidence:**
-- `src/components/ChannelPricingRules.tsx` and `src/components/ChannelMoqRules.tsx` (both mounted
-  live on `src/pages/ProductEdit.tsx`, a reachable authenticated route) perform **direct,
-  ungoverned client-side** `insert` / `update` / `delete` / `upsert` calls against
-  `product_pricing_rules` and `product_moq_rules` — no RPC, no server-side governance layer.
-- Per the hard architectural boundary (Section 0 of the owner mandate), "pricing operations where
-  commercially governed" and "MOQ/carton operational rules" are explicitly **Central's** domain.
-  AI Studio "must not create a second independent operational authority" for them.
-- `oasis-baklawa-central` has **zero** references to `product_pricing_rules` or
-  `product_moq_rules` anywhere in `src/` — Central does not currently own or even read this data.
-  AI Studio is not duplicating Central's authority here; it is the **sole and only** owner of a
-  domain the target architecture assigns to Central (classification: **WRONG REPOSITORY**, not
-  duplicated authority).
+**Corrected evidence** (the initial pass under-read the code; this supersedes the original
+Finding 2 text): `ChannelPricingRules.tsx` / `ChannelMoqRules.tsx` actually ran **two** write
+paths gated by role:
+- A `"draft"` path (catalogue contributors) that already routed through
+  `submitCatalogueDraft` → `catalogue_pricing_drafts` / `catalogue_moq_drafts` → AI Studio's own
+  `ApprovalInbox.tsx`, which called real, governed, `SECURITY DEFINER` Core RPCs
+  (`approve_catalogue_pricing_draft`, `approve_catalogue_moq_draft`, revoked from `public`/`anon`
+  in `oasis-supabase-core/supabase/migrations/20260727122338_harden_privileged_rpc_execution.sql`).
+  This part was never a raw-table bypass.
+- A `"direct"` path (roles `owner`/`admin`/`product_manager`, or `canWriteMasterDirectly()`) that
+  wrote straight to `product_pricing_rules` / `product_moq_rules` via `supabase.from(...).update/
+  insert/delete/upsert`, including **self-approve** (`approve()`/`archive()` in
+  `ChannelPricingRules.tsx` set `approval_status: "approved"` directly, no Core RPC, no Central
+  involvement at all). This is the actual boundary violation: AI Studio could act as final
+  commercial authority for pricing/MOQ, contradicting Section 0 ("Central owns pricing operations
+  where commercially governed" / "MOQ/carton operational rules"). `seedChannelAuthority.ts`
+  (`seedMoqRowForChannel`) had the same direct-upsert pattern, used from 3 more panels.
+- `oasis-baklawa-central` already had a **generic, extensible governed catalogue-approval module**
+  (`src/lib/catalogue-approval/*` + `src/pages/admin/ApprovalInbox.tsx`) supporting `tag`/`alias`
+  drafts against the exact same Core RPC pattern — it just hadn't been extended to `pricing`/`moq`
+  yet, even though the Core RPCs for them already existed and were already revoked from
+  `public`/`anon`. This was the correct, minimal extension point (reuse, not reinvention).
 
-**Disposition — requires an owner decision (flagged, not unilaterally resolved):**
-This is live, reachable, direct-write commercial pricing/MOQ functionality. Moving it is a
-high-blast-radius, cross-repo change to real commercial rule authority with no visible Central
-equivalent to migrate into — before touching it I need to know: (a) is AI Studio currently the
-business's only working tool for setting channel pricing/MOQ today (i.e. would disabling it stop
-real operational work with nothing to replace it), and (b) should the destination be a new
-Central admin surface consuming the same `product_pricing_rules`/`product_moq_rules` tables, or
-should these tables move under Core-governed RPCs first (matching the sales-order-draft pattern)
-before Central gets write access? Executing a cross-repo authority transfer for live pricing rules
-without that answer risks breaking active commercial operations — exactly the "pricing authority"
-class of decision the mandate itself reserves for the owner (Phase 15: "Do not invent... pricing
-authority... where no approved contract exists"). No deletion, move, or disabling performed.
+**Owner decision received:** pricing/MOQ/commercial channel-rule operational authority belongs to
+Central + Core. AI Studio may calculate/recommend/draft, but must never be final authority and
+must never write the authoritative tables directly.
+
+**Implemented this session:**
+- `oasis-ai-studio`: removed the `"direct"` write mode entirely from `ChannelPricingRules.tsx` and
+  `ChannelMoqRules.tsx` (type is now `"draft" | "readonly"` only, for every role) — deleted
+  `persistPatch`, `approve`, `archive`, and all direct `insert`/`update`/`delete`/`upsert` calls.
+  All roles now always propose via the existing catalogue-draft path. `seedChannelAuthority.ts`
+  (`seedMoqRowForChannel`) now submits a governed MOQ draft instead of upserting
+  `product_moq_rules` directly, fixing the same class of bypass for its 3 call sites (the pricing
+  seed button, `PreviewCalculatorPanel.tsx`, `ChannelRulesPanel.tsx`). AI Studio's
+  `ApprovalInbox.tsx` no longer exposes Approve/Reject for `pricing`/`moq` drafts (shown read-only
+  with an "awaiting Central approval" note) — those two draft types are now Central-only actions.
+- `oasis-baklawa-central`: extended the existing `catalogue-approval` module and admin
+  `ApprovalInbox.tsx` with `pricing`/`moq` kinds, reusing the same Core RPCs AI Studio's own
+  approval inbox used to call (`approve_catalogue_pricing_draft`, `reject_catalogue_pricing_draft`,
+  `approve_catalogue_moq_draft`, `reject_catalogue_moq_draft`) — zero new Core migration required,
+  the governed RPC layer already existed and was already locked down server-side. Added
+  `catalogue_pricing_drafts`/`catalogue_moq_drafts` table types and the 4 RPC signatures to
+  Central's generated `types.ts` (hand-added from the Core migration's `CREATE TABLE`/`REVOKE`
+  statements; a real `generate_typescript_types` regen against the live project should replace
+  this by hand-edit at the next opportunity — flagged as residual, not a correctness risk since
+  the shapes were verified column-for-column against Core's schema).
+- `oasis-supabase-core`: **no changes required** — the governance layer (tables, RLS, RPCs, execute
+  revokes) was already correct; only the *client-side entry points* were wrong.
+
+**Verification:** `oasis-ai-studio` — typecheck (net −12 pre-existing errors, 0 new), lint (net −3
+pre-existing issues, 0 new), `check:boundaries` pass, 190 relevant unit tests pass unchanged.
+`oasis-baklawa-central` — typecheck clean (0 errors), lint clean (0 issues) on all touched files,
+`check:boundaries` pass, 19/19 catalogue-approval tests pass (6 new tests added for pricing/moq).
+
+**Residual / not yet done (tracked, not silently dropped):**
+- Central's hand-added `types.ts` entries should be replaced by a real generated-types regen
+  against the live schema at the next safe opportunity.
+- No RLS/grant lockdown migration was written to make the server *itself* refuse a direct
+  `product_pricing_rules`/`product_moq_rules` write from any client (defense in depth beyond the
+  app-layer fix). `product_pricing_rules` is now read by the live customer-checkout RPC
+  (`customer_order_draft_v1`, Core migration `20260807171000`), so a blind grant/RLS change here
+  was deliberately deferred rather than risk that path untested — recorded as a fast-follow, not
+  forgotten.
+- No component-level UI test exists for `ApprovalInbox.tsx` in either repo (pre-existing gap, not
+  introduced by this change) — logic-level coverage was added instead where the module already had
+  a test harness.
 
 ## Verified-safe facts established (no rebuild needed)
 
@@ -117,9 +158,21 @@ authority... where no approved contract exists"). No deletion, move, or disablin
 1. Product Master field-by-field audit + duplication check vs Central AdminProducts (Phase 3 / 7).
 2. Full AI Studio route/capability inventory with reachability + persistence tracing (Phase 2).
 3. AI engine capability audit — provider, validation, human-approval gating (Phase 4).
-4. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8).
-5. Publishing state machine verification (Phase 9), asset pipeline (Phase 10), security (Phase 12).
-6. Testing/CI execution and gap-filling (Phase 13), then implementation PRs (Phase 15/16).
+4. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8) — start
+   with the deferred `product_pricing_rules`/`product_moq_rules` RLS/grant lockdown from Finding 2.
+5. WhatsApp Operator Inbox disposition (Finding 1) — still blocked on the owner decision recorded
+   above (retire vs. wire into Central's `sales_order_drafts` pipeline).
+6. Publishing state machine verification (Phase 9), asset pipeline (Phase 10), security (Phase 12).
+7. Testing/CI execution and gap-filling (Phase 13), then remaining implementation PRs (Phase 16).
+8. Regenerate Central's `types.ts` from the live schema to replace the hand-added pricing/moq
+   draft-table and RPC type entries added in Finding 2.
+
+## Findings status summary
+
+| # | Finding | Status |
+| --- | --- | --- |
+| 1 | Operator Inbox / `whatsapp_sales_order_drafts` dormant dead-end | Owner decision requested, not yet resolved |
+| 2 | Pricing/MOQ self-approval bypass (AI Studio "direct" mode) | **Resolved this session** — see above |
 
 ## Safety
 
