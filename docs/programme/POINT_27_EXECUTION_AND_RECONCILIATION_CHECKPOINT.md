@@ -155,6 +155,32 @@ merge** (not merged by this session — no PR was merged autonomously).
   introduced by this change) — logic-level coverage was added instead where the module already had
   a test harness.
 
+**Recurrence found and fixed (Phase 8 follow-up, same session):** a second, independent instance of
+the exact same self-approval bypass was found in `src/features/productAuthority/
+syncChannelPricingFromForm.ts`, used by `ProductEdit.tsx` (not `ChannelPricingRules.tsx` — a
+separate legacy compliance-tab pricing path), missed by the original sweep because it lives outside
+the two components already audited. `syncChannelPricingFromForm()` upserted `product_pricing_rules`
+directly with `approval_status: "approved"` on every product save by a "direct" writer, and a
+companion `repairDirectMasterPricingRows()` silently force-approved any pricing rows still stuck in
+`draft` status just from opening the product edit page (`loadChannelAuthority`) — no user action,
+no Central involvement, on every page load for a privileged role. Both are now removed:
+`syncChannelPricingFromForm` submits a governed `pricing` catalogue draft per channel (create or
+update against the existing row, looked up via a `SELECT` — still permitted under the Core RLS
+lockdown) instead of writing the table directly; `repairDirectMasterPricingRows` and its
+`loadChannelAuthority` call site were deleted outright (there is no governed version of "silently
+auto-approve stuck drafts"). This was likely already broken by the Core RLS lockdown migration
+(`anon`/`authenticated` now have `SELECT`-only on `product_pricing_rules`), so this fix also restores
+correct save behavior, not only governance. Covered by a new regression test
+(`syncChannelPricingFromForm.test.ts`) asserting no direct table write and no
+`approval_status: "approved"` literal. This is a strong signal Phase 8's broader "audit every
+remaining Supabase mutation" pass should continue rather than being considered complete from the
+first two components alone. A full-repo grep for direct `product_pricing_rules`/`product_moq_rules`
+writes now returns zero matches. (Minor, non-blocking, found in the same pass: `draftTableMap.ts`'s
+`pricing`/`moq` entries carry `targetTable: "pricing_slabs"` / `"moq_rules"` — display-metadata
+labels that don't match the real target tables `product_pricing_rules` / `product_moq_rules`; this
+doesn't affect approval correctness since Core's RPCs operate on the draft payload, not this label,
+but is worth a follow-up rename for clarity.)
+
 ## Finding 3 — Central independently generates SKUs and AI-generated allergen data, duplicating AI Studio's Product Master authority
 
 **Area:** Phase 3 (Product Master audit) / Phase 0 (hard boundary) / Phase 7 (Central duplication) / Phase 4 (AI engine — ungoverned AI write path)

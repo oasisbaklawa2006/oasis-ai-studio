@@ -1,109 +1,104 @@
-import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
+import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { PageHeader } from "@/components/PageHeader";
+import { toast } from "sonner";
+import { AliasManager } from "@/components/AliasManager";
+import { BomBuilder } from "@/components/BomBuilder";
+import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { ChannelMoqRules } from "@/components/ChannelMoqRules";
+import { ChannelPricingRules } from "@/components/ChannelPricingRules";
 import { LabelReadinessPanel } from "@/components/LabelReadinessPanel";
-import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
+import { PageHeader } from "@/components/PageHeader";
+import { ProductMediaUploader } from "@/components/ProductMediaUploader";
+import { SkuBuilder } from "@/components/SkuBuilder";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/contexts/AuthContext";
+import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import {
   clearFastCreateDraft,
   fastCreateFormPatchFromDraft,
   loadFastCreateDraft,
 } from "@/features/fastCreate/fastCreateDraft";
-import { saleTypeFromForm } from "@/features/productAuthority/saleType";
-import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
-  packagingAuthorityFromRulesResult,
   type PackagingTaxonomyAuthority,
+  packagingAuthorityFromRulesResult,
 } from "@/features/productAuthority/catalogueReadyGate";
-import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import { useAuth } from "@/contexts/AuthContext";
-import { SkuBuilder } from "@/components/SkuBuilder";
-import { AliasManager } from "@/components/AliasManager";
-import { ProductMediaUploader } from "@/components/ProductMediaUploader";
-import { BomBuilder } from "@/components/BomBuilder";
-import { ChannelMoqRules } from "@/components/ChannelMoqRules";
-import { ChannelPricingRules } from "@/components/ChannelPricingRules";
-import { AlertTriangle } from "lucide-react";
-import {
-  canWriteProductsDirectly,
-  isCatalogueContributor,
-} from "@/shared/auth/centralPermissions";
-import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
-import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
+import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
+import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { ProductTruthTabSkeleton } from "@/features/productTruth/ProductTruthTabSkeleton";
+import { supabase } from "@/integrations/supabase/client";
+import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
+import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 
 const ProductTruthAdminSection = lazy(() =>
   import("@/features/productTruth/ProductTruthAdminSection").then((m) => ({
     default: m.ProductTruthAdminSection,
   })),
 );
+
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import {
-  stripUnapprovedComplianceFields,
-  COMPLIANCE_SENSITIVE_FIELDS,
-  type ComplianceSensitiveField,
-  type ComplianceFieldMetaMap,
-} from "@/lib/compliance/aiComplianceSafety";
-import { createManualFieldMeta, canApproveComplianceFields } from "@/shared/ai/complianceApproval";
-import {
-  buildComplianceMetaFromSavedProduct,
-  isPersistedComplianceApproved,
-} from "@/shared/ai/compliancePersistence";
+  ComplianceAiPanel,
+  trackManualComplianceEdit,
+} from "@/features/compliance/ComplianceAiPanel";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   repairDirectMasterMediaRows,
   syncProductMediaAuthority,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
-import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
 import {
   isTestingMediaGovernance,
   labelStatusInfoLine,
   mediaGovernanceStatusLine,
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
+import { resolveProductEditTab } from "@/features/productAuthority/productEditTabs";
+import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
+import {
+  buildDimensionsText,
+  dbRowToProductForm,
+  formatProductSaveError,
+  formToDbProductPayload,
+  productSaveValidationMessage,
+  validateProductSavePayload,
+} from "@/features/productAuthority/productSchemaAdapter";
+import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
+import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
+import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
+import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
+import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
+import {
+  type MoqRuleRow,
+  mapMoqRules,
+  mapPricingRules,
+  type PricingRuleRow,
+} from "@/features/productTruth/channelAuthorityMappers";
+import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
+import {
+  COMPLIANCE_SENSITIVE_FIELDS,
+  type ComplianceFieldMetaMap,
+  type ComplianceSensitiveField,
+  stripUnapprovedComplianceFields,
+} from "@/lib/compliance/aiComplianceSafety";
 import {
   mergeDraftOverAuthorityForm,
   stripAuthorityFieldsFromDraft,
 } from "@/lib/formDraftAuthority";
-import {
-  repairDirectMasterPricingRows,
-  syncChannelPricingFromForm,
-} from "@/features/productAuthority/syncChannelPricingFromForm";
-import { ComplianceAiPanel, trackManualComplianceEdit } from "@/features/compliance/ComplianceAiPanel";
-import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
-import {
-  buildDimensionsText,
-  dbRowToProductForm,
-  formToDbProductPayload,
-  formatProductSaveError,
-  productSaveValidationMessage,
-  stripUnknownProductFields,
-  validateProductSavePayload,
-} from "@/features/productAuthority/productSchemaAdapter";
-import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
-import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
-import { resolveProductEditTab } from "@/features/productAuthority/productEditTabs";
-import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
-import {
-  mapMoqRules,
-  mapPricingRules,
-  type MoqRuleRow,
-  type PricingRuleRow,
-} from "@/features/productTruth/channelAuthorityMappers";
-import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 import { resolveProductHeroUrl } from "@/lib/productImage";
-import { Link } from "react-router-dom";
-import { Zap } from "lucide-react";
-import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
+import { canApproveComplianceFields, createManualFieldMeta } from "@/shared/ai/complianceApproval";
+import {
+  buildComplianceMetaFromSavedProduct,
+  isPersistedComplianceApproved,
+} from "@/shared/ai/compliancePersistence";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose product" },
@@ -157,17 +152,7 @@ const PRIMARY_PACK_TYPES = [
   { v: "NA", label: "NA" },
 ];
 
-const PACK_UOM_OPTIONS = [
-  "carton",
-  "box",
-  "tray",
-  "basket",
-  "jar",
-  "packet",
-  "tub",
-  "pack",
-  "pcs",
-];
+const PACK_UOM_OPTIONS = ["carton", "box", "tray", "basket", "jar", "packet", "tub", "pack", "pcs"];
 
 const CONTENT_UOM_OPTIONS = ["pcs", "kg", "grams", "ml", "litre"];
 
@@ -183,7 +168,14 @@ const MOQ_RULE_TYPES = [
 const DEFAULT_CAUTION =
   "Customisation must be confirmed in writing before production. Changes after approval may affect cost, timeline, and dispatch date.";
 
-const PRODUCT_TYPE_PROFILES: Record<string, any> = {
+interface ProductTypeProfile {
+  label: string;
+  showPrivateLabel: boolean;
+  showCustomization: boolean;
+  showHamperBom: boolean;
+}
+
+const PRODUCT_TYPE_PROFILES: Record<string, ProductTypeProfile> = {
   loose_bulk_material: {
     label: "Loose / Bulk Material",
     showPrivateLabel: false,
@@ -236,7 +228,7 @@ const CUSTOMIZATION_TYPES = [
   "other",
 ];
 
-const empty: any = {
+const empty: Record<string, unknown> = {
   product_name: "",
   short_name: "",
   category: "",
@@ -370,14 +362,26 @@ const Field = ({
   </div>
 );
 
-const Select = ({ value, onChange, options, placeholder }: any) => (
+type SelectOption = string | { v: string; label: string };
+
+const Select = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  value: string | null | undefined;
+  onChange: (value: string) => void;
+  options: SelectOption[];
+  placeholder?: string;
+}) => (
   <select
     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
     value={value ?? ""}
     onChange={(e) => onChange(e.target.value)}
   >
     <option value="">{placeholder ?? "— Select —"}</option>
-    {options.map((o: any) =>
+    {options.map((o) =>
       typeof o === "string" ? (
         <option key={o} value={o}>
           {o}
@@ -386,16 +390,17 @@ const Select = ({ value, onChange, options, placeholder }: any) => (
         <option key={o.v} value={o.v}>
           {o.label}
         </option>
-      )
+      ),
     )}
   </select>
 );
 
-const toBlank = (v: any) => (v === null || v === undefined ? "" : v);
+const cleanText = (value: unknown) =>
+  String(value ?? "")
+    .trim()
+    .toLowerCase();
 
-const cleanText = (value: any) => String(value ?? "").trim().toLowerCase();
-
-const getPrimaryPackPreview = (form: any) => {
+const getPrimaryPackPreview = (form: Record<string, unknown>) => {
   if (!form?.primary_pack_uom || !form?.qty_per_pack || !form?.qty_content_uom) {
     return "";
   }
@@ -426,7 +431,7 @@ const primaryPackTypeToUom = (type: string) => {
   }
 };
 
-const normalizeMainDepartment = (data: any) => {
+const normalizeMainDepartment = (data: Record<string, unknown>) => {
   const dept = cleanText(data?.department);
   const prod = cleanText(data?.production_department);
   const cat = cleanText(data?.category);
@@ -484,7 +489,7 @@ const normalizeMainDepartment = (data: any) => {
   return "ready_goods_store";
 };
 
-const normalizeProductionDepartment = (data: any) => {
+const normalizeProductionDepartment = (data: Record<string, unknown>) => {
   const mainDepartment = normalizeMainDepartment(data);
 
   if (mainDepartment !== "ready_goods_store") {
@@ -577,7 +582,7 @@ const normalizeProductionDepartment = (data: any) => {
   return "";
 };
 
-const inferProductClass = (data: any) => {
+const inferProductClass = (data: Record<string, unknown>) => {
   const text = [
     data?.product_family,
     data?.category,
@@ -602,7 +607,7 @@ const inferProductClass = (data: any) => {
 // Explicit return type — without it, TS infers the return type from only the spread's
 // explicit overrides and silently drops dbRowToProductForm's Record<string, unknown>
 // shape, so later reads of e.g. loaded.product_name fail to typecheck.
-const dbProductToForm = (data: any): Record<string, unknown> => {
+const dbProductToForm = (data: Record<string, unknown>): Record<string, unknown> => {
   const loaded = dbRowToProductForm(data, empty);
   const mainDepartment = loaded.main_department || normalizeMainDepartment(data);
   return {
@@ -617,7 +622,7 @@ const dbProductToForm = (data: any): Record<string, unknown> => {
   };
 };
 
-const formToProductRow = (form: any) => formToDbProductPayload(form);
+const formToProductRow = (form: Record<string, unknown>) => formToDbProductPayload(form);
 
 const pickComplianceBaseline = (form: Record<string, unknown>) => {
   const baseline: Record<string, unknown> = {};
@@ -639,6 +644,12 @@ const ProductEdit = () => {
   const canOverride = roles.includes("owner") || roles.includes("admin");
   const authContextContributor = roles.includes("catalogue_contributor");
 
+  // `form` is a large, heterogeneous bag of ~100 dynamically-keyed fields (strings, numbers,
+  // booleans, arrays) read and written throughout this file via direct dot-access against
+  // concrete JSX prop types (string/boolean inputs, etc). Typing it as Record<string, unknown>
+  // would require a cast or narrowing at every one of those call sites for no behavior change —
+  // out of scope for this lint-only cleanup.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [form, setForm] = useState<any>(empty);
   const [loading, setLoading] = useState(false);
   // Distinct from `loading` (which drives the "Saving…" save-button label) — this only
@@ -698,7 +709,9 @@ const ProductEdit = () => {
   // `null` = the active packaging taxonomy (sku_code_rules where code_type = 'packaging')
   // hasn't loaded yet — the catalogue-ready gate must never treat that as "packaging
   // present" just because a form field is non-empty (Defect 1).
-  const [packagingAuthority, setPackagingAuthority] = useState<PackagingTaxonomyAuthority | null>(null);
+  const [packagingAuthority, setPackagingAuthority] = useState<PackagingTaxonomyAuthority | null>(
+    null,
+  );
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
@@ -720,9 +733,7 @@ const ProductEdit = () => {
 
   const complianceMetaPending = useMemo(
     () =>
-      Object.values(complianceMetaMap).some(
-        (m) => m?.source === "ai_suggestion" && !m?.approved,
-      ),
+      Object.values(complianceMetaMap).some((m) => m?.source === "ai_suggestion" && !m?.approved),
     [complianceMetaMap],
   );
 
@@ -734,21 +745,16 @@ const ProductEdit = () => {
   const primaryPackPreview = getPrimaryPackPreview(form);
 
   const primaryPackTypeNeedsUom =
-    !!form.primary_pack_type &&
-    form.primary_pack_type !== "NA" &&
-    !form.primary_pack_uom;
+    !!form.primary_pack_type && form.primary_pack_type !== "NA" && !form.primary_pack_uom;
 
-  const qtyContentUomMissing =
-    !!form.qty_per_pack && !form.qty_content_uom;
+  const qtyContentUomMissing = !!form.qty_per_pack && !form.qty_content_uom;
 
   const moqUomMismatch =
-    !!form.moq_uom &&
-    !!form.increment_uom &&
-    form.moq_uom !== form.increment_uom;
+    !!form.moq_uom && !!form.increment_uom && form.moq_uom !== form.increment_uom;
 
   useEffect(() => {
     if (!isNew) return;
-    setForm((f: any) => {
+    setForm((f: Record<string, unknown>) => {
       const next = applyCreationBaselineDefaults(f);
       complianceBaselineRef.current = pickComplianceBaseline(next);
       return next;
@@ -798,7 +804,7 @@ const ProductEdit = () => {
     const fastDraft = loadFastCreateDraft();
     if (!fastDraft || !fastDraft.productName.trim()) return;
     const patch = fastCreateFormPatchFromDraft(fastDraft);
-    setForm((prev: any) => ({ ...prev, ...patch }));
+    setForm((prev: Record<string, unknown>) => ({ ...prev, ...patch }));
     setDirty(true);
     toast.success("Pre-filled from your Fast Create draft.");
     // Consumed — keep session storage clean so a later fresh product doesn't inherit it.
@@ -854,7 +860,10 @@ const ProductEdit = () => {
   useEffect(() => {
     try {
       localStorage.setItem(tabKey, tab);
-    } catch {}
+    } catch {
+      // Ignore write failures (e.g. private browsing / storage quota) — tab selection
+      // persistence is best-effort only.
+    }
   }, [tab, tabKey]);
 
   const readinessSnapshot = useMemo(() => {
@@ -875,7 +884,6 @@ const ProductEdit = () => {
     productMediaRows,
     pricingRuleRows,
     moqRuleRows,
-    channelMoqRules,
     complianceApproved,
     complianceMetaPending,
   ]);
@@ -929,6 +937,10 @@ const ProductEdit = () => {
   // develops a hard blocker (price removed, SKU invalidated, packaging cleared, etc.) —
   // recalculated on every relevant field change via the memo above. Auto-clear the local
   // flag and surface a visible warning rather than persisting a contradictory state.
+  // Deliberately narrow deps: `autoClearGate` (whole object) and `set` are recreated every
+  // render, so including them would re-run this effect on every render instead of only when
+  // the specific tracked values change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above.
   useEffect(() => {
     // Skip while channel pricing / product media are still hydrating for an existing
     // product — the gate would otherwise judge a genuinely-ready product against the
@@ -976,8 +988,7 @@ const ProductEdit = () => {
       authoritative = await repairDirectMasterMediaRows(productId, rows);
       try {
         const synced = await syncProductMediaAuthority(productId, authoritative, {
-          fallbackHeroUrl:
-            opts?.fallbackHeroUrl ?? resolveProductHeroUrl(form),
+          fallbackHeroUrl: opts?.fallbackHeroUrl ?? resolveProductHeroUrl(form),
         });
         setForm((f: Record<string, unknown>) => ({
           ...f,
@@ -1040,15 +1051,6 @@ const ProductEdit = () => {
     setPricingRuleRows((pricingRes.data ?? []) as PricingRuleRow[]);
     setChannelMoqRules(mapMoqRules((moqRes.data ?? []) as MoqRuleRow[]));
     setMoqRuleRows((moqRes.data ?? []) as MoqRuleRow[]);
-    if (await canWriteProductsDirectly(roles)) {
-      const repair = await repairDirectMasterPricingRows(productId);
-      if (repair.repaired > 0) {
-        const { data: refreshed } = await orderedPricingRulesQuery(productId);
-        const rows = (refreshed ?? []) as PricingRuleRow[];
-        setPricingRuleRows(rows);
-        setChannelPrices(mapPricingRules(rows));
-      }
-    }
   };
 
   const reloadProductAuthority = async (productId: string) => {
@@ -1066,6 +1068,11 @@ const ProductEdit = () => {
   // loading state (Defect 2).
   const productFetchRequestIdRef = useRef<string | null>(null);
 
+  // reloadProductAuthority is a plain closure recreated every render (it depends on
+  // loadProductMedia/loadChannelAuthority, which close over `form`/`roles`); adding it to this
+  // effect's deps would re-run the fetch on every render instead of only when the product
+  // identity (id/isNew/loadedId) actually changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above — reloadProductAuthority is an unstable closure, only id/isNew/loadedId should retrigger this fetch.
   useEffect(() => {
     if (!shouldFetchById(isNew, id, loadedId)) {
       // No fetch will start on this effect run. Force-clear pending rather than leaving it
@@ -1080,12 +1087,12 @@ const ProductEdit = () => {
     productFetchRequestIdRef.current = id;
     setProductFetchPending(true);
 
-    (supabase as any)
+    supabase
       .from("products")
       .select("*")
       .eq("id", id)
       .single()
-      .then(({ data, error }: any) => {
+      .then(({ data, error }) => {
         if (!isCurrentAsyncRequest(id, cancelled, productFetchRequestIdRef.current)) return;
 
         if (error) {
@@ -1112,18 +1119,19 @@ const ProductEdit = () => {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isNew, loadedId]);
 
-  const set = (k: string, v: any) => {
+  const set = (k: string, v: unknown) => {
     setDirty(true);
     setSubmitError(null);
-    setForm((f: any) => ({ ...f, [k]: v }));
+    setForm((f: Record<string, unknown>) => ({ ...f, [k]: v }));
   };
 
-  const patch = (p: any) => {
+  const patch = (p: Record<string, unknown>) => {
     setDirty(true);
     setSubmitError(null);
-    setForm((f: any) => ({ ...f, ...p }));
+    setForm((f: Record<string, unknown>) => ({ ...f, ...p }));
   };
 
   useEffect(() => {
@@ -1135,7 +1143,9 @@ const ProductEdit = () => {
         const draft = JSON.parse(raw) as Record<string, unknown>;
         setForm((f: Record<string, unknown>) => mergeDraftOverAuthorityForm(f, draft));
       }
-    } catch {}
+    } catch {
+      // Ignore corrupt/unreadable draft storage — falls back to a fresh, non-restored form.
+    }
 
     restored.current = true;
   }, [draftKey]);
@@ -1145,7 +1155,10 @@ const ProductEdit = () => {
 
     try {
       localStorage.setItem(draftKey, JSON.stringify(stripAuthorityFieldsFromDraft(form)));
-    } catch {}
+    } catch {
+      // Ignore write failures (e.g. storage quota / private browsing) — draft autosave is
+      // best-effort only.
+    }
   }, [draftKey, form]);
 
   useEffect(() => {
@@ -1163,7 +1176,7 @@ const ProductEdit = () => {
   useEffect(() => {
     if (form.main_department !== "packing_assembly") return;
 
-    setForm((f: any) => {
+    setForm((f: Record<string, unknown>) => {
       if (f.bom_required === true && !f.production_department) return f;
 
       return {
@@ -1177,7 +1190,7 @@ const ProductEdit = () => {
   useEffect(() => {
     if (form.main_department !== "third_party_goods_store") return;
 
-    setForm((f: any) => {
+    setForm((f: Record<string, unknown>) => {
       if (!f.production_department) return f;
       return { ...f, production_department: "" };
     });
@@ -1186,7 +1199,7 @@ const ProductEdit = () => {
   useEffect(() => {
     if (!form.primary_pack_uom) return;
 
-    setForm((f: any) => {
+    setForm((f: Record<string, unknown>) => {
       const next = { ...f };
       let changed = false;
 
@@ -1206,7 +1219,7 @@ const ProductEdit = () => {
 
   useEffect(() => {
     if (form.product_class === "gift_hamper") {
-      setForm((f: any) => {
+      setForm((f: Record<string, unknown>) => {
         const next = {
           ...f,
           main_department: "packing_assembly",
@@ -1227,7 +1240,7 @@ const ProductEdit = () => {
     }
 
     if (form.product_class === "packaging_decoration_material") {
-      setForm((f: any) => {
+      setForm((f: Record<string, unknown>) => {
         const next = {
           ...f,
           main_department: f.main_department || "third_party_goods_store",
@@ -1246,10 +1259,12 @@ const ProductEdit = () => {
         return next;
       });
     }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.product_class]);
 
+  // Deliberately only reacts to `customization_allowed` turning on — `set` is recreated every
+  // render, and `form.customization_caution` must stay excluded so this doesn't re-fire and
+  // clobber a caution message the operator has since edited.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above.
   useEffect(() => {
     if (form.customization_allowed && !form.customization_caution) {
       set("customization_caution", DEFAULT_CAUTION);
@@ -1260,19 +1275,14 @@ const ProductEdit = () => {
 
   const cls = form.product_class;
   const isPackingAssembly = form.main_department === "packing_assembly";
-  const profile = PRODUCT_TYPE_PROFILES[form.product_type || ""] || {};
+  const profile: Partial<ProductTypeProfile> = PRODUCT_TYPE_PROFILES[form.product_type || ""] || {};
   const showPrivateLabel = !!profile.showPrivateLabel || cls === "ready_pack";
   const showCustomization =
-    !!profile.showCustomization ||
-    cls === "gift_hamper" ||
-    cls === "service_or_customization";
-  const showDimensions =
-    cls === "packaging_decoration_material" || form.fixed_carton_required;
+    !!profile.showCustomization || cls === "gift_hamper" || cls === "service_or_customization";
+  const showDimensions = cls === "packaging_decoration_material" || form.fixed_carton_required;
   const showFrozen = cls === "semi_prepared_frozen";
   const canManageBom =
-    roles.includes("owner") ||
-    roles.includes("admin") ||
-    roles.includes("product_manager");
+    roles.includes("owner") || roles.includes("admin") || roles.includes("product_manager");
 
   const bomRelevant =
     isPackingAssembly ||
@@ -1347,13 +1357,11 @@ const ProductEdit = () => {
 
     setLoading(true);
 
-    const payload: any = {
+    const payload: Record<string, unknown> = {
       ...form,
       bom_required: isPackingAssembly || !!form.bom_required,
       production_department:
-        form.main_department === "ready_goods_store"
-          ? form.production_department
-          : null,
+        form.main_department === "ready_goods_store" ? form.production_department : null,
     };
 
     NUMERIC_FIELDS.forEach((k) => {
@@ -1387,7 +1395,7 @@ const ProductEdit = () => {
         complianceMetaMap,
       );
 
-      const skuGuard = assertStructuredSkuForSave(safePayload.sku);
+      const skuGuard = assertStructuredSkuForSave(safePayload.sku as string | null | undefined);
       // Explicit `=== false` (not `!skuGuard.ok`) — with strictNullChecks off in this
       // project's tsconfig, boolean-negation doesn't narrow discriminated unions reliably.
       if (skuGuard.ok === false) {
@@ -1407,9 +1415,20 @@ const ProductEdit = () => {
         return;
       }
 
+      // productRow is a dynamically-assembled Record<string, unknown> (built from the free-form
+      // form state via formToProductRow/formToDbProductPayload), not the generated Insert/Update
+      // row shape, so the generated client's excess-property check rejects it structurally even
+      // though validateProductSavePayload() above already vetted its actual columns.
       const res = isNew
-        ? await (supabase as any).from("products").insert(productRow).select().single()
-        : await (supabase as any).from("products").update(productRow).eq("id", id).select().single();
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any).from("products").insert(productRow).select().single()
+        : // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase as any)
+            .from("products")
+            .update(productRow)
+            .eq("id", id)
+            .select()
+            .single();
 
       setLoading(false);
 
@@ -1421,10 +1440,13 @@ const ProductEdit = () => {
       }
 
       const savedId = res.data.id as string;
-      const pricingSync = await syncChannelPricingFromForm(safePayload, savedId, "direct");
+      const pricingSync = await syncChannelPricingFromForm(safePayload, savedId);
       if (!pricingSync.ok && pricingSync.message) {
         toast.warning(`Product saved; channel pricing sync failed: ${pricingSync.message}`);
       } else if (pricingSync.count > 0) {
+        toast.message(
+          `${pricingSync.count} channel price${pricingSync.count === 1 ? "" : "s"} submitted for approval.`,
+        );
         await loadChannelAuthority(savedId);
       }
 
@@ -1434,7 +1456,10 @@ const ProductEdit = () => {
 
       try {
         localStorage.removeItem(draftKey);
-      } catch {}
+      } catch {
+        // Ignore removal failures — a stale draft key left behind is harmless (it's overwritten
+        // on the next edit).
+      }
 
       setDirty(false);
       setForm(reloaded);
@@ -1495,8 +1520,7 @@ const ProductEdit = () => {
           pieces_per_kg: payload.approximate_piece_weight_g
             ? Number((1000 / Number(payload.approximate_piece_weight_g)).toFixed(2))
             : payload.pieces_per_kg,
-          unit_conversion_note:
-            payload.unit_conversion_note || "Manual conversion required",
+          unit_conversion_note: payload.unit_conversion_note || "Manual conversion required",
         },
         packing: {
           primary_pack_type: payload.primary_pack_type || payload.packaging_code || "NA",
@@ -1524,12 +1548,8 @@ const ProductEdit = () => {
           gst_rate: payload.gst_rate,
           currency: payload.currency,
           mrp: payload.mrp,
-          bulk_price: payload.mrp
-            ? Math.round((Number(payload.mrp) * 0.8) / 10) * 10
-            : null,
-          wholesale_price: payload.mrp
-            ? Math.round((Number(payload.mrp) * 0.7) / 10) * 10
-            : null,
+          bulk_price: payload.mrp ? Math.round((Number(payload.mrp) * 0.8) / 10) * 10 : null,
+          wholesale_price: payload.mrp ? Math.round((Number(payload.mrp) * 0.7) / 10) * 10 : null,
           b2b_price: payload.b2b_price,
           export_price: payload.export_price ? Math.round(Number(payload.export_price)) : null,
         },
@@ -1565,7 +1585,8 @@ const ProductEdit = () => {
           expected_type:
             payload.product_class === "gift_hamper"
               ? "hamper_bom"
-              : payload.product_class === "ready_pack" || payload.main_department === "packing_assembly"
+              : payload.product_class === "ready_pack" ||
+                  payload.main_department === "packing_assembly"
                 ? "internal_bom"
                 : null,
           internal_bom: payload.internal_bom || [],
@@ -1605,7 +1626,10 @@ const ProductEdit = () => {
 
       try {
         localStorage.removeItem(draftKey);
-      } catch {}
+      } catch {
+        // Ignore removal failures — a stale draft key left behind is harmless (it's overwritten
+        // on the next edit).
+      }
 
       setDirty(false);
       toast.success(draftRes.message);
@@ -1695,55 +1719,91 @@ const ProductEdit = () => {
           >
             <div className="-mx-3 sm:mx-0 overflow-x-auto border-b border-border/60 mb-4">
               <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 bg-transparent px-3 sm:px-0 py-0">
-                <TabsTrigger value="identity" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="identity"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                >
                   Identity
                 </TabsTrigger>
-                <TabsTrigger value="uom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="uom"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                >
                   UOM / MOQ
                 </TabsTrigger>
                 {!isNew && (
-                  <TabsTrigger value="media" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="media"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     {isTestingMediaGovernance() ? "Hero image" : "Media"}
                   </TabsTrigger>
                 )}
                 {showPrivateLabel && (
-                  <TabsTrigger value="private_label" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="private_label"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     Private Label
                   </TabsTrigger>
                 )}
                 {showCustomization && (
-                  <TabsTrigger value="customisation" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="customisation"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     Customisation
                   </TabsTrigger>
                 )}
                 {showDimensions && (
-                  <TabsTrigger value="dimensions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="dimensions"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     Dimensions
                   </TabsTrigger>
                 )}
                 {showFrozen && (
-                  <TabsTrigger value="frozen" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="frozen"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     Frozen
                   </TabsTrigger>
                 )}
                 {showBom && (
-                  <TabsTrigger value="bom" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="bom"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     BOM
                   </TabsTrigger>
                 )}
                 {!isNew && (
-                  <TabsTrigger value="channels" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="channels"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     Business Rules
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="compliance" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="compliance"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                >
                   Compliance
                 </TabsTrigger>
-                <TabsTrigger value="ops" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                <TabsTrigger
+                  value="ops"
+                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                >
                   Ops Notes
                 </TabsTrigger>
                 {!isNew && (
-                  <TabsTrigger value="product_truth" className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground">
+                  <TabsTrigger
+                    value="product_truth"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
                     Product Truth
                   </TabsTrigger>
                 )}
@@ -1753,53 +1813,107 @@ const ProductEdit = () => {
             <TabsContent value="identity" className="space-y-6">
               <div className="card-elevated p-6 grid sm:grid-cols-2 gap-4">
                 <Field label="Product Name *">
-                  <Input value={form.product_name} onChange={(e) => set("product_name", e.target.value)} placeholder="Example: Cashew Pyramid Baklawa / Baklawa Acrylic Box 6 pcs" />
+                  <Input
+                    value={form.product_name}
+                    onChange={(e) => set("product_name", e.target.value)}
+                    placeholder="Example: Cashew Pyramid Baklawa / Baklawa Acrylic Box 6 pcs"
+                  />
                 </Field>
 
                 <Field label="Short Name">
-                  <Input value={form.short_name ?? ""} onChange={(e) => set("short_name", e.target.value)} placeholder="Example: Cashew Pyramid" />
+                  <Input
+                    value={form.short_name ?? ""}
+                    onChange={(e) => set("short_name", e.target.value)}
+                    placeholder="Example: Cashew Pyramid"
+                  />
                 </Field>
 
                 <Field label="Product Class *">
-                  <Select value={form.product_class} onChange={(v: string) => set("product_class", v)} options={PRODUCT_CLASSES} />
+                  <Select
+                    value={form.product_class}
+                    onChange={(v: string) => set("product_class", v)}
+                    options={PRODUCT_CLASSES}
+                  />
                 </Field>
 
                 <Field label="Product Type">
-                  <Input value={form.product_type ?? ""} onChange={(e) => set("product_type", e.target.value)} placeholder="Example: Baklawa, Hamper, Jar pack" />
+                  <Input
+                    value={form.product_type ?? ""}
+                    onChange={(e) => set("product_type", e.target.value)}
+                    placeholder="Example: Baklawa, Hamper, Jar pack"
+                  />
                 </Field>
 
                 <Field label="Display Category">
-                  <Input value={form.category ?? ""} onChange={(e) => set("category", e.target.value)} placeholder="Example: Baklawa, Dates, Dragees, Hampers, Packaging Material" />
+                  <Input
+                    value={form.category ?? ""}
+                    onChange={(e) => set("category", e.target.value)}
+                    placeholder="Example: Baklawa, Dates, Dragees, Hampers, Packaging Material"
+                  />
                 </Field>
 
                 <Field label="Display Subcategory">
-                  <Input value={form.subcategory ?? ""} onChange={(e) => set("subcategory", e.target.value)} placeholder="Example: Pyramid, Roll, Acrylic Box" />
+                  <Input
+                    value={form.subcategory ?? ""}
+                    onChange={(e) => set("subcategory", e.target.value)}
+                    placeholder="Example: Pyramid, Roll, Acrylic Box"
+                  />
                 </Field>
 
-                <Field label={isContributorMode ? "Main Department" : "Main Department *"} hint={isContributorMode ? "Optional for draft. Admin can finalize during approval." : "Order first routes to RGS, Packing & Assembly, or Third Party Goods Store."}>
-                  <Select value={form.main_department} onChange={(v: string) => set("main_department", v)} options={MAIN_DEPARTMENTS} />
+                <Field
+                  label={isContributorMode ? "Main Department" : "Main Department *"}
+                  hint={
+                    isContributorMode
+                      ? "Optional for draft. Admin can finalize during approval."
+                      : "Order first routes to RGS, Packing & Assembly, or Third Party Goods Store."
+                  }
+                >
+                  <Select
+                    value={form.main_department}
+                    onChange={(v: string) => set("main_department", v)}
+                    options={MAIN_DEPARTMENTS}
+                  />
                 </Field>
 
                 {form.main_department === "ready_goods_store" && (
-                  <Field label={isContributorMode ? "Production Department" : "Production Department *"}>
-                    <Select value={form.production_department} onChange={(v: string) => set("production_department", v)} options={PRODUCTION_DEPARTMENTS} />
+                  <Field
+                    label={isContributorMode ? "Production Department" : "Production Department *"}
+                  >
+                    <Select
+                      value={form.production_department}
+                      onChange={(v: string) => set("production_department", v)}
+                      options={PRODUCTION_DEPARTMENTS}
+                    />
                   </Field>
                 )}
 
                 <div className="sm:col-span-2">
                   <Field label="Short description">
-                    <Input value={form.short_description ?? ""} onChange={(e) => set("short_description", e.target.value)} placeholder="Example: Premium pyramid-shaped baklawa filled with roasted cashews." />
+                    <Input
+                      value={form.short_description ?? ""}
+                      onChange={(e) => set("short_description", e.target.value)}
+                      placeholder="Example: Premium pyramid-shaped baklawa filled with roasted cashews."
+                    />
                   </Field>
                 </div>
 
                 <div className="sm:col-span-2">
                   <Field label="Description">
-                    <Textarea rows={4} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} />
+                    <Textarea
+                      rows={4}
+                      value={form.description ?? ""}
+                      onChange={(e) => set("description", e.target.value)}
+                    />
                   </Field>
                 </div>
               </div>
 
-              <SkuBuilder value={form} canOverride={canOverride} productClass={form.product_class} onChange={patch} />
+              <SkuBuilder
+                value={form}
+                canOverride={canOverride}
+                productClass={form.product_class}
+                onChange={patch}
+              />
 
               {isContributorMode && (
                 <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">
@@ -1821,40 +1935,81 @@ const ProductEdit = () => {
               <div className="card-elevated p-6 space-y-5">
                 <div>
                   <h3 className="font-display text-xl mb-1">Unit of measure</h3>
-                  <p className="text-xs text-muted-foreground">Define the base selling and pricing unit before packing and MOQ.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Define the base selling and pricing unit before packing and MOQ.
+                  </p>
                 </div>
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="Primary UOM">
-                    <Select value={form.primary_uom} onChange={(v: string) => set("primary_uom", v)} options={UOM_OPTIONS} />
+                    <Select
+                      value={form.primary_uom}
+                      onChange={(v: string) => set("primary_uom", v)}
+                      options={UOM_OPTIONS}
+                    />
                   </Field>
                   <Field label="B2B UOM">
-                    <Select value={form.b2b_uom} onChange={(v: string) => set("b2b_uom", v)} options={UOM_OPTIONS} />
+                    <Select
+                      value={form.b2b_uom}
+                      onChange={(v: string) => set("b2b_uom", v)}
+                      options={UOM_OPTIONS}
+                    />
                   </Field>
                   <Field label="Retail UOM">
-                    <Select value={form.retail_uom} onChange={(v: string) => set("retail_uom", v)} options={UOM_OPTIONS} />
+                    <Select
+                      value={form.retail_uom}
+                      onChange={(v: string) => set("retail_uom", v)}
+                      options={UOM_OPTIONS}
+                    />
                   </Field>
                   <Field label="Price basis">
-                    <Input value={form.price_basis ?? ""} onChange={(e) => set("price_basis", e.target.value)} placeholder="per kg / per pc / per 100g" />
+                    <Input
+                      value={form.price_basis ?? ""}
+                      onChange={(e) => set("price_basis", e.target.value)}
+                      placeholder="per kg / per pc / per 100g"
+                    />
                   </Field>
                   <Field label="B2B price basis">
-                    <Input value={form.b2b_price_basis ?? ""} onChange={(e) => set("b2b_price_basis", e.target.value)} placeholder="per kg" />
+                    <Input
+                      value={form.b2b_price_basis ?? ""}
+                      onChange={(e) => set("b2b_price_basis", e.target.value)}
+                      placeholder="per kg"
+                    />
                   </Field>
                   <Field label="Retail price basis">
-                    <Input value={form.retail_price_basis ?? ""} onChange={(e) => set("retail_price_basis", e.target.value)} placeholder="per pc / per 100g" />
+                    <Input
+                      value={form.retail_price_basis ?? ""}
+                      onChange={(e) => set("retail_price_basis", e.target.value)}
+                      placeholder="per pc / per 100g"
+                    />
                   </Field>
 
                   <div className="sm:col-span-3">
                     <Field label="Unit conversion note">
-                      <Textarea rows={2} value={form.unit_conversion_note ?? ""} onChange={(e) => set("unit_conversion_note", e.target.value)} placeholder="Example: Approx. 55–60 pcs per kg; retail sold by piece." />
+                      <Textarea
+                        rows={2}
+                        value={form.unit_conversion_note ?? ""}
+                        onChange={(e) => set("unit_conversion_note", e.target.value)}
+                        placeholder="Example: Approx. 55–60 pcs per kg; retail sold by piece."
+                      />
                     </Field>
                   </div>
 
                   <Field label="Pieces per kg">
-                    <Input type="number" value={form.pieces_per_kg ?? ""} onChange={(e) => set("pieces_per_kg", e.target.value)} placeholder="55" />
+                    <Input
+                      type="number"
+                      value={form.pieces_per_kg ?? ""}
+                      onChange={(e) => set("pieces_per_kg", e.target.value)}
+                      placeholder="55"
+                    />
                   </Field>
                   <Field label="Approx. piece weight (g)">
-                    <Input type="number" value={form.approximate_piece_weight_g ?? ""} onChange={(e) => set("approximate_piece_weight_g", e.target.value)} placeholder="18" />
+                    <Input
+                      type="number"
+                      value={form.approximate_piece_weight_g ?? ""}
+                      onChange={(e) => set("approximate_piece_weight_g", e.target.value)}
+                      placeholder="18"
+                    />
                   </Field>
                 </div>
               </div>
@@ -1962,7 +2117,8 @@ const ProductEdit = () => {
 
                 {cls === "bulk_loose_product" && (
                   <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-                    For loose bulk products, Primary Packing can remain NA unless the item is sold in a fixed pack.
+                    For loose bulk products, Primary Packing can remain NA unless the item is sold
+                    in a fixed pack.
                   </div>
                 )}
               </div>
@@ -1977,7 +2133,8 @@ const ProductEdit = () => {
 
                 {primaryPackPreview && (
                   <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-                    {primaryPackPreview}. Example: MOQ 6 {form.primary_pack_uom}s means minimum 6 primary packs.
+                    {primaryPackPreview}. Example: MOQ 6 {form.primary_pack_uom}s means minimum 6
+                    primary packs.
                   </div>
                 )}
 
@@ -1985,29 +2142,56 @@ const ProductEdit = () => {
                   <div className="rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs flex gap-2 items-start">
                     <AlertTriangle className="h-4 w-4 mt-0.5 text-warning" />
                     <div>
-                      MOQ UOM and Increment UOM should normally match unless a conversion rule is defined.
+                      MOQ UOM and Increment UOM should normally match unless a conversion rule is
+                      defined.
                     </div>
                   </div>
                 )}
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="MOQ rule type">
-                    <Select value={form.moq_rule_type} onChange={(v: string) => set("moq_rule_type", v)} options={MOQ_RULE_TYPES} />
+                    <Select
+                      value={form.moq_rule_type}
+                      onChange={(v: string) => set("moq_rule_type", v)}
+                      options={MOQ_RULE_TYPES}
+                    />
                   </Field>
                   <Field label="MOQ value">
-                    <Input type="number" value={form.moq_value ?? ""} onChange={(e) => set("moq_value", e.target.value)} placeholder="1" />
+                    <Input
+                      type="number"
+                      value={form.moq_value ?? ""}
+                      onChange={(e) => set("moq_value", e.target.value)}
+                      placeholder="1"
+                    />
                   </Field>
                   <Field label="MOQ UOM">
-                    <Select value={form.moq_uom} onChange={(v: string) => set("moq_uom", v)} options={PACK_UOM_OPTIONS} />
+                    <Select
+                      value={form.moq_uom}
+                      onChange={(v: string) => set("moq_uom", v)}
+                      options={PACK_UOM_OPTIONS}
+                    />
                   </Field>
                   <Field label="Increment value">
-                    <Input type="number" value={form.increment_value ?? ""} onChange={(e) => set("increment_value", e.target.value)} placeholder="1" />
+                    <Input
+                      type="number"
+                      value={form.increment_value ?? ""}
+                      onChange={(e) => set("increment_value", e.target.value)}
+                      placeholder="1"
+                    />
                   </Field>
                   <Field label="Increment UOM">
-                    <Select value={form.increment_uom} onChange={(v: string) => set("increment_uom", v)} options={PACK_UOM_OPTIONS} />
+                    <Select
+                      value={form.increment_uom}
+                      onChange={(v: string) => set("increment_uom", v)}
+                      options={PACK_UOM_OPTIONS}
+                    />
                   </Field>
                   <Field label="Legacy MOQ note">
-                    <Input value={form.moq_text ?? ""} onChange={(e) => set("moq_text", e.target.value)} placeholder="Free text fallback" />
+                    <Input
+                      value={form.moq_text ?? ""}
+                      onChange={(e) => set("moq_text", e.target.value)}
+                      placeholder="Free text fallback"
+                    />
                   </Field>
                 </div>
               </div>
@@ -2016,7 +2200,8 @@ const ProductEdit = () => {
                 <div>
                   <h3 className="font-display text-xl mb-1">Carton / Master Carton logic</h3>
                   <p className="text-xs text-muted-foreground">
-                    Carton logic belongs to master packing / Central App. Keep it as a simple reference here.
+                    Carton logic belongs to master packing / Central App. Keep it as a simple
+                    reference here.
                   </p>
                 </div>
 
@@ -2024,25 +2209,50 @@ const ProductEdit = () => {
                   <>
                     <div className="flex items-center justify-between">
                       <Label>Fixed carton required</Label>
-                      <Switch checked={!!form.fixed_carton_required} onCheckedChange={(v) => set("fixed_carton_required", v)} />
+                      <Switch
+                        checked={!!form.fixed_carton_required}
+                        onCheckedChange={(v) => set("fixed_carton_required", v)}
+                      />
                     </div>
 
                     <div className="grid sm:grid-cols-3 gap-4">
                       <Field label="Carton qty">
-                        <Input type="number" value={form.carton_qty ?? ""} onChange={(e) => set("carton_qty", e.target.value)} placeholder="50" />
+                        <Input
+                          type="number"
+                          value={form.carton_qty ?? ""}
+                          onChange={(e) => set("carton_qty", e.target.value)}
+                          placeholder="50"
+                        />
                       </Field>
                       <Field label="Carton UOM">
-                        <Select value={form.carton_uom} onChange={(v: string) => set("carton_uom", v)} options={PACK_UOM_OPTIONS} />
+                        <Select
+                          value={form.carton_uom}
+                          onChange={(v: string) => set("carton_uom", v)}
+                          options={PACK_UOM_OPTIONS}
+                        />
                       </Field>
                       <Field label="Master carton qty">
-                        <Input type="number" value={form.master_carton_qty ?? ""} onChange={(e) => set("master_carton_qty", e.target.value)} placeholder="6" />
+                        <Input
+                          type="number"
+                          value={form.master_carton_qty ?? ""}
+                          onChange={(e) => set("master_carton_qty", e.target.value)}
+                          placeholder="6"
+                        />
                       </Field>
                       <Field label="Master carton UOM">
-                        <Select value={form.master_carton_uom} onChange={(v: string) => set("master_carton_uom", v)} options={PACK_UOM_OPTIONS} />
+                        <Select
+                          value={form.master_carton_uom}
+                          onChange={(v: string) => set("master_carton_uom", v)}
+                          options={PACK_UOM_OPTIONS}
+                        />
                       </Field>
                       <div className="sm:col-span-3">
                         <Field label="Carton logic note">
-                          <Input value={form.carton_logic ?? ""} onChange={(e) => set("carton_logic", e.target.value)} placeholder="Example: Sold only in closed carton of 50 pcs." />
+                          <Input
+                            value={form.carton_logic ?? ""}
+                            onChange={(e) => set("carton_logic", e.target.value)}
+                            placeholder="Example: Sold only in closed carton of 50 pcs."
+                          />
                         </Field>
                       </div>
                     </div>
@@ -2071,24 +2281,49 @@ const ProductEdit = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-display text-xl">Private label</h3>
-                      <p className="text-xs text-muted-foreground">Example: Private label allowed above 500 pcs. ₹10/pc label cost charged upfront.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Example: Private label allowed above 500 pcs. ₹10/pc label cost charged
+                        upfront.
+                      </p>
                     </div>
-                    <Switch checked={!!form.private_label_allowed} onCheckedChange={(v) => set("private_label_allowed", v)} />
+                    <Switch
+                      checked={!!form.private_label_allowed}
+                      onCheckedChange={(v) => set("private_label_allowed", v)}
+                    />
                   </div>
 
                   {form.private_label_allowed && (
                     <div className="grid sm:grid-cols-2 gap-4">
                       <Field label="Private label MOQ">
-                        <Input type="number" value={form.private_label_moq ?? ""} onChange={(e) => set("private_label_moq", e.target.value)} placeholder="500" />
+                        <Input
+                          type="number"
+                          value={form.private_label_moq ?? ""}
+                          onChange={(e) => set("private_label_moq", e.target.value)}
+                          placeholder="500"
+                        />
                       </Field>
                       <Field label="Private label MOQ UOM">
-                        <Select value={form.private_label_moq_uom} onChange={(v: string) => set("private_label_moq_uom", v)} options={PACK_UOM_OPTIONS} />
+                        <Select
+                          value={form.private_label_moq_uom}
+                          onChange={(v: string) => set("private_label_moq_uom", v)}
+                          options={PACK_UOM_OPTIONS}
+                        />
                       </Field>
                       <Field label="Cost per unit (₹)">
-                        <Input type="number" value={form.private_label_cost_per_unit ?? ""} onChange={(e) => set("private_label_cost_per_unit", e.target.value)} placeholder="10" />
+                        <Input
+                          type="number"
+                          value={form.private_label_cost_per_unit ?? ""}
+                          onChange={(e) => set("private_label_cost_per_unit", e.target.value)}
+                          placeholder="10"
+                        />
                       </Field>
                       <Field label="Upfront cost (₹)">
-                        <Input type="number" value={form.private_label_upfront_cost ?? ""} onChange={(e) => set("private_label_upfront_cost", e.target.value)} placeholder="5000" />
+                        <Input
+                          type="number"
+                          value={form.private_label_upfront_cost ?? ""}
+                          onChange={(e) => set("private_label_upfront_cost", e.target.value)}
+                          placeholder="5000"
+                        />
                       </Field>
                     </div>
                   )}
@@ -2102,9 +2337,14 @@ const ProductEdit = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-display text-xl">Customisation</h3>
-                      <p className="text-xs text-muted-foreground">Example: Logo sticker, ribbon color, greeting card message, client branding.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Example: Logo sticker, ribbon color, greeting card message, client branding.
+                      </p>
                     </div>
-                    <Switch checked={!!form.customization_allowed} onCheckedChange={(v) => set("customization_allowed", v)} />
+                    <Switch
+                      checked={!!form.customization_allowed}
+                      onCheckedChange={(v) => set("customization_allowed", v)}
+                    />
                   </div>
 
                   {cls === "gift_hamper" && (
@@ -2115,7 +2355,10 @@ const ProductEdit = () => {
 
                   {form.customization_allowed && (
                     <>
-                      <Field label="Customization type (multi-select)" hint="Suggested — please review">
+                      <Field
+                        label="Customization type (multi-select)"
+                        hint="Suggested — please review"
+                      >
                         <div className="flex flex-wrap gap-2">
                           {CUSTOMIZATION_TYPES.map((t) => {
                             const selected = (form.customization_types || []).includes(t);
@@ -2129,7 +2372,9 @@ const ProductEdit = () => {
                                 }`}
                                 onClick={() => {
                                   const next = selected
-                                    ? (form.customization_types || []).filter((x: string) => x !== t)
+                                    ? (form.customization_types || []).filter(
+                                        (x: string) => x !== t,
+                                      )
                                     : [...(form.customization_types || []), t];
 
                                   set("customization_types", next);
@@ -2143,11 +2388,21 @@ const ProductEdit = () => {
                       </Field>
 
                       <Field label="Customisation note">
-                        <Textarea rows={3} value={form.customization_note ?? ""} onChange={(e) => set("customization_note", e.target.value)} placeholder="Example: Logo sticker, ribbon color, greeting card message, client branding." />
+                        <Textarea
+                          rows={3}
+                          value={form.customization_note ?? ""}
+                          onChange={(e) => set("customization_note", e.target.value)}
+                          placeholder="Example: Logo sticker, ribbon color, greeting card message, client branding."
+                        />
                       </Field>
 
                       <Field label="Customisation caution">
-                        <Textarea rows={3} value={form.customization_caution ?? ""} onChange={(e) => set("customization_caution", e.target.value)} className="bg-warning/10 underline decoration-warning underline-offset-2 font-medium" />
+                        <Textarea
+                          rows={3}
+                          value={form.customization_caution ?? ""}
+                          onChange={(e) => set("customization_caution", e.target.value)}
+                          className="bg-warning/10 underline decoration-warning underline-offset-2 font-medium"
+                        />
                       </Field>
                     </>
                   )}
@@ -2160,25 +2415,50 @@ const ProductEdit = () => {
                 <div className="card-elevated p-6 space-y-4">
                   <div>
                     <h3 className="font-display text-xl mb-1">Dimensions & material</h3>
-                    <p className="text-xs text-muted-foreground">Example: L 22 cm × W 18 cm × H 6 cm.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Example: L 22 cm × W 18 cm × H 6 cm.
+                    </p>
                   </div>
 
                   <div className="grid sm:grid-cols-3 gap-4">
                     <Field label="Length (cm)">
-                      <Input type="number" value={form.dimension_l_cm ?? ""} onChange={(e) => set("dimension_l_cm", e.target.value)} placeholder="22" />
+                      <Input
+                        type="number"
+                        value={form.dimension_l_cm ?? ""}
+                        onChange={(e) => set("dimension_l_cm", e.target.value)}
+                        placeholder="22"
+                      />
                     </Field>
                     <Field label="Width (cm)">
-                      <Input type="number" value={form.dimension_w_cm ?? ""} onChange={(e) => set("dimension_w_cm", e.target.value)} placeholder="18" />
+                      <Input
+                        type="number"
+                        value={form.dimension_w_cm ?? ""}
+                        onChange={(e) => set("dimension_w_cm", e.target.value)}
+                        placeholder="18"
+                      />
                     </Field>
                     <Field label="Height (cm)">
-                      <Input type="number" value={form.dimension_h_cm ?? ""} onChange={(e) => set("dimension_h_cm", e.target.value)} placeholder="6" />
+                      <Input
+                        type="number"
+                        value={form.dimension_h_cm ?? ""}
+                        onChange={(e) => set("dimension_h_cm", e.target.value)}
+                        placeholder="6"
+                      />
                     </Field>
                     <Field label="Material type">
-                      <Input value={form.material_type ?? ""} onChange={(e) => set("material_type", e.target.value)} placeholder="Acrylic / Kraft / Velvet" />
+                      <Input
+                        value={form.material_type ?? ""}
+                        onChange={(e) => set("material_type", e.target.value)}
+                        placeholder="Acrylic / Kraft / Velvet"
+                      />
                     </Field>
                     <div className="sm:col-span-2">
                       <Field label="Colour / finish notes">
-                        <Input value={form.color_finish_notes ?? ""} onChange={(e) => set("color_finish_notes", e.target.value)} placeholder="Matte gold, transparent lid" />
+                        <Input
+                          value={form.color_finish_notes ?? ""}
+                          onChange={(e) => set("color_finish_notes", e.target.value)}
+                          placeholder="Matte gold, transparent lid"
+                        />
                       </Field>
                     </div>
                   </div>
@@ -2191,21 +2471,41 @@ const ProductEdit = () => {
                 <div className="card-elevated p-6 space-y-4">
                   <div>
                     <h3 className="font-display text-xl mb-1">Frozen / semi-prepared</h3>
-                    <p className="text-xs text-muted-foreground">Example: Store at -18°C. Use within 48 hours after thawing.</p>
+                    <p className="text-xs text-muted-foreground">
+                      Example: Store at -18°C. Use within 48 hours after thawing.
+                    </p>
                   </div>
 
                   <div className="grid sm:grid-cols-2 gap-4">
                     <Field label="Frozen shelf life (days)">
-                      <Input type="number" value={form.frozen_shelf_life_days ?? ""} onChange={(e) => set("frozen_shelf_life_days", e.target.value)} placeholder="180" />
+                      <Input
+                        type="number"
+                        value={form.frozen_shelf_life_days ?? ""}
+                        onChange={(e) => set("frozen_shelf_life_days", e.target.value)}
+                        placeholder="180"
+                      />
                     </Field>
                     <Field label="Post-processing shelf life (days)">
-                      <Input type="number" value={form.post_processing_shelf_life_days ?? ""} onChange={(e) => set("post_processing_shelf_life_days", e.target.value)} placeholder="2" />
+                      <Input
+                        type="number"
+                        value={form.post_processing_shelf_life_days ?? ""}
+                        onChange={(e) => set("post_processing_shelf_life_days", e.target.value)}
+                        placeholder="2"
+                      />
                     </Field>
                     <Field label="Temperature requirement">
-                      <Input value={form.temperature_requirement ?? ""} onChange={(e) => set("temperature_requirement", e.target.value)} placeholder="-18°C" />
+                      <Input
+                        value={form.temperature_requirement ?? ""}
+                        onChange={(e) => set("temperature_requirement", e.target.value)}
+                        placeholder="-18°C"
+                      />
                     </Field>
                     <Field label="Thawing instruction">
-                      <Input value={form.thawing_instruction ?? ""} onChange={(e) => set("thawing_instruction", e.target.value)} placeholder="Thaw at 4°C overnight" />
+                      <Input
+                        value={form.thawing_instruction ?? ""}
+                        onChange={(e) => set("thawing_instruction", e.target.value)}
+                        placeholder="Thaw at 4°C overnight"
+                      />
                     </Field>
                   </div>
                 </div>
@@ -2280,46 +2580,80 @@ const ProductEdit = () => {
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="Pack size">
-                    <Input value={form.pack_size ?? ""} onChange={(e) => set("pack_size", e.target.value)} placeholder="500g jar / 6 pcs box" />
+                    <Input
+                      value={form.pack_size ?? ""}
+                      onChange={(e) => set("pack_size", e.target.value)}
+                      placeholder="500g jar / 6 pcs box"
+                    />
                   </Field>
                   <Field label="Net weight (g)">
-                    <Input type="number" value={form.net_weight_g ?? ""} onChange={(e) => set("net_weight_g", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={form.net_weight_g ?? ""}
+                      onChange={(e) => set("net_weight_g", e.target.value)}
+                    />
                   </Field>
                   <Field label="Gross weight (g)">
-                    <Input type="number" value={form.gross_weight_g ?? ""} onChange={(e) => set("gross_weight_g", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={form.gross_weight_g ?? ""}
+                      onChange={(e) => set("gross_weight_g", e.target.value)}
+                    />
                   </Field>
                   <Field label="Shelf life (days)">
-                    <Input type="number" value={form.shelf_life_days ?? ""} onChange={(e) => setComplianceField("shelf_life_days", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={form.shelf_life_days ?? ""}
+                      onChange={(e) => setComplianceField("shelf_life_days", e.target.value)}
+                    />
                   </Field>
 
                   <div className="sm:col-span-3">
                     <Field label="Storage instructions">
-                      <Textarea rows={2} value={form.storage_instructions ?? ""} onChange={(e) => setComplianceField("storage_instructions", e.target.value)} placeholder="Example: Store in cool, dry place away from sunlight." />
+                      <Textarea
+                        rows={2}
+                        value={form.storage_instructions ?? ""}
+                        onChange={(e) => setComplianceField("storage_instructions", e.target.value)}
+                        placeholder="Example: Store in cool, dry place away from sunlight."
+                      />
                     </Field>
                   </div>
 
                   <div className="sm:col-span-3">
                     <Field label="Ingredients">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Label Designer will use structured ingredient tables.
+                        UI-only draft — not saved on the product row. Label Designer will use
+                        structured ingredient tables.
                       </p>
-                      <Textarea rows={2} value={form.ingredients ?? ""} onChange={(e) => setComplianceField("ingredients", e.target.value)} placeholder="Example: Cashew, sugar, clarified butter, filo pastry." />
+                      <Textarea
+                        rows={2}
+                        value={form.ingredients ?? ""}
+                        onChange={(e) => setComplianceField("ingredients", e.target.value)}
+                        placeholder="Example: Cashew, sugar, clarified butter, filo pastry."
+                      />
                     </Field>
                   </div>
 
                   <div className="sm:col-span-3">
                     <Field label="Allergen warnings">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Use Labels / Ingredients for durable allergen data.
+                        UI-only draft — not saved on the product row. Use Labels / Ingredients for
+                        durable allergen data.
                       </p>
-                      <Textarea rows={2} value={form.allergen_warnings ?? ""} onChange={(e) => setComplianceField("allergen_warnings", e.target.value)} placeholder="Example: Contains nuts, gluten, dairy." />
+                      <Textarea
+                        rows={2}
+                        value={form.allergen_warnings ?? ""}
+                        onChange={(e) => setComplianceField("allergen_warnings", e.target.value)}
+                        placeholder="Example: Contains nuts, gluten, dairy."
+                      />
                     </Field>
                   </div>
 
                   <div className="sm:col-span-3">
                     <Field label="Nutritional information">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Nutrition panels will be owned by Label Designer.
+                        UI-only draft — not saved on the product row. Nutrition panels will be owned
+                        by Label Designer.
                       </p>
                       <Textarea
                         rows={3}
@@ -2337,26 +2671,51 @@ const ProductEdit = () => {
 
               <div className="card-elevated p-6">
                 <h3 className="font-display text-xl mb-4">Tax & pricing (legacy)</h3>
-                <p className="text-xs text-muted-foreground mb-3">Channel-wise pricing comes in the next batch. These fields stay for backward compatibility.</p>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Channel-wise pricing comes in the next batch. These fields stay for backward
+                  compatibility.
+                </p>
 
                 <div className="grid sm:grid-cols-3 gap-4">
                   <Field label="HSN">
-                    <Input value={form.hsn_code ?? ""} onChange={(e) => setComplianceField("hsn_code", e.target.value)} />
+                    <Input
+                      value={form.hsn_code ?? ""}
+                      onChange={(e) => setComplianceField("hsn_code", e.target.value)}
+                    />
                   </Field>
                   <Field label="GST %">
-                    <Input type="number" value={form.gst_rate ?? ""} onChange={(e) => setComplianceField("gst_rate", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={form.gst_rate ?? ""}
+                      onChange={(e) => setComplianceField("gst_rate", e.target.value)}
+                    />
                   </Field>
                   <Field label="Currency">
-                    <Input value={form.currency ?? "INR"} onChange={(e) => set("currency", e.target.value)} />
+                    <Input
+                      value={form.currency ?? "INR"}
+                      onChange={(e) => set("currency", e.target.value)}
+                    />
                   </Field>
                   <Field label="MRP">
-                    <Input type="number" value={form.mrp ?? ""} onChange={(e) => set("mrp", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={form.mrp ?? ""}
+                      onChange={(e) => set("mrp", e.target.value)}
+                    />
                   </Field>
                   <Field label="B2B price">
-                    <Input type="number" value={form.b2b_price ?? ""} onChange={(e) => set("b2b_price", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={form.b2b_price ?? ""}
+                      onChange={(e) => set("b2b_price", e.target.value)}
+                    />
                   </Field>
                   <Field label="Export price">
-                    <Input type="number" value={form.export_price ?? ""} onChange={(e) => set("export_price", e.target.value)} />
+                    <Input
+                      type="number"
+                      value={form.export_price ?? ""}
+                      onChange={(e) => set("export_price", e.target.value)}
+                    />
                   </Field>
                 </div>
               </div>
@@ -2365,18 +2724,29 @@ const ProductEdit = () => {
             <TabsContent value="ops" className="space-y-6">
               <div className="card-elevated p-6 space-y-4">
                 <Field label="Pricing notes">
-                  <Textarea rows={3} value={form.pricing_notes ?? ""} onChange={(e) => set("pricing_notes", e.target.value)} placeholder="Example: MRP ₹1000; Bulk = MRP - 20%; Wholesale = MRP - 30%" />
+                  <Textarea
+                    rows={3}
+                    value={form.pricing_notes ?? ""}
+                    onChange={(e) => set("pricing_notes", e.target.value)}
+                    placeholder="Example: MRP ₹1000; Bulk = MRP - 20%; Wholesale = MRP - 30%"
+                  />
                 </Field>
 
                 <Field label="Operational notes">
-                  <Textarea rows={3} value={form.operational_notes ?? ""} onChange={(e) => set("operational_notes", e.target.value)} placeholder="Example: Supplied by 3rd Party Goods Store; required before assembly." />
+                  <Textarea
+                    rows={3}
+                    value={form.operational_notes ?? ""}
+                    onChange={(e) => set("operational_notes", e.target.value)}
+                    placeholder="Example: Supplied by 3rd Party Goods Store; required before assembly."
+                  />
                 </Field>
 
                 <div className="flex items-center justify-between border-t pt-3">
                   <div>
                     <Label>BOM required</Label>
                     <div className="text-[11px] text-muted-foreground">
-                      Auto-on for Packing & Assembly and gift hampers. Use the BOM tab to add components after saving.
+                      Auto-on for Packing & Assembly and gift hampers. Use the BOM tab to add
+                      components after saving.
                     </div>
                   </div>
                   <Switch
@@ -2402,7 +2772,9 @@ const ProductEdit = () => {
                     onOpenAliasManager={() => {
                       startTransition(() => setTab("identity"));
                       requestAnimationFrame(() => {
-                        document.getElementById("product-language-terms")?.scrollIntoView({ behavior: "smooth" });
+                        document
+                          .getElementById("product-language-terms")
+                          ?.scrollIntoView({ behavior: "smooth" });
                       });
                     }}
                     complianceApproved={complianceApproved}
@@ -2497,8 +2869,9 @@ const ProductEdit = () => {
               API integration note
             </div>
             <p className="text-sm">
-              SKU is the permanent system identity used by Oasis Central, B2B Portal, label & barcode tools, and all future APIs.
-              Aliases are search helpers only — never use alias text as an external reference.
+              SKU is the permanent system identity used by Oasis Central, B2B Portal, label &
+              barcode tools, and all future APIs. Aliases are search helpers only — never use alias
+              text as an external reference.
             </p>
           </div>
         </div>
