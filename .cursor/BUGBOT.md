@@ -5,10 +5,15 @@ They encode recurring defect classes already caught in prior Bugbot rounds (PRs 
 
 ## Repo ownership (blocking)
 
-If the PR adds **new** files under `supabase/migrations/` or `supabase/functions/`, or adds a new `*.sql` file anywhere under `supabase/` that contains DDL/RLS (`CREATE TABLE`, `ALTER TABLE`, `CREATE POLICY`, `ENABLE ROW LEVEL SECURITY`, `CREATE FUNCTION`, `CREATE TRIGGER`), then:
+If the PR adds **new** or **modifies existing** files under `supabase/migrations/`, or adds/modifies any `*.sql` file anywhere under `supabase/` that contains DDL/RLS (`CREATE TABLE`, `ALTER TABLE`, `CREATE POLICY`, `ENABLE ROW LEVEL SECURITY`, `CREATE FUNCTION`, `CREATE TRIGGER`), then:
 
 - Add a **blocking** bug titled "Schema ownership violation"
-- Body: Schema and migrations belong in `oasis-supabase-core`, not this frontend repo. See `docs/repo-ownership-guardrails.md`.
+- Body: Database schema and migrations belong in `oasis-supabase-core`, not this frontend repo. Move these changes to `oasis-supabase-core`. See `docs/repo-ownership-guardrails.md`.
+
+If the PR adds **new** or **modifies existing** files under `supabase/functions/`, then:
+
+- Add a **blocking** bug titled "Supabase Functions ownership violation"
+- Body: Supabase Edge Functions belong in their own designated backend repository, not this frontend repo. Move these changes to the appropriate backend repository. See `docs/repo-ownership-guardrails.md`.
 
 ## Async request races (blocking)
 
