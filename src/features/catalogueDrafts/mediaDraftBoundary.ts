@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Role } from "@/lib/permissions";
 import { AI_STUDIO_MEDIA_BUCKET } from "@/lib/productImage";
-import { submitCatalogueDraft } from "./draftService";
-import { draftTableMap } from "./draftTableMap";
 import {
   canSubmitDraft,
   canWriteMasterDirectly,
   isCatalogueContributor,
 } from "@/shared/auth/centralPermissions";
-import type { Role } from "@/lib/permissions";
+import { submitCatalogueDraft } from "./draftService";
+import { draftTableMap } from "./draftTableMap";
 
 export type MediaWriteMode = "direct" | "draft" | "readonly";
 
@@ -63,11 +63,37 @@ export const buildMediaDraftPayload = (input: MediaDraftPayloadInput) => ({
 });
 
 export const mapIntentToDraftOperation = (
-  intent: MediaOperationIntent
+  intent: MediaOperationIntent,
 ): "create" | "update" | "delete_request" => {
   if (intent === "delete_request") return "delete_request";
   if (intent === "set_hero" || intent === "clear_hero") return "update";
   return "create";
+};
+
+// Mirrors the product-media storage bucket's server-side enforcement (Core migration
+// 20260809210000_enforce_product_media_bucket_limits.sql) so the operator gets immediate
+// feedback instead of a storage rejection after the file has already started uploading.
+// This is a UX convenience only — the server-side bucket config is the actual control.
+export const MAX_MEDIA_FILE_SIZE_BYTES = 52428800;
+export const ALLOWED_MEDIA_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+  "video/mp4",
+  "video/webm",
+  "application/pdf",
+];
+
+export const validateMediaFile = (file: File): string | null => {
+  if (file.size > MAX_MEDIA_FILE_SIZE_BYTES) {
+    return `"${file.name}" is too large (max ${Math.floor(MAX_MEDIA_FILE_SIZE_BYTES / (1024 * 1024))}MB).`;
+  }
+  if (file.type && !ALLOWED_MEDIA_MIME_TYPES.includes(file.type)) {
+    return `"${file.name}" has an unsupported file type (${file.type}).`;
+  }
+  return null;
 };
 
 export const uploadMediaFileToStorage = async (path: string, file: File) =>
@@ -82,7 +108,7 @@ export const getMediaPublicUrl = (path: string) =>
 export const submitMediaCatalogueDraft = async (
   intent: MediaOperationIntent,
   input: MediaDraftPayloadInput,
-  targetRecordId?: string | null
+  targetRecordId?: string | null,
 ) =>
   submitCatalogueDraft({
     draftType: "media",
