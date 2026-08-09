@@ -227,14 +227,18 @@ export const ChannelPricingRules = ({
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-check permission when roles change; body only awaits helpers
   useEffect(() => {
+    let cancelled = false;
     (async () => {
       if (await isCatalogueContributor()) {
         const canSubmit = await canSubmitDraft(draftTableMap.pricing.permission);
-        setWriteMode(canSubmit ? "draft" : "readonly");
+        if (!cancelled) setWriteMode(canSubmit ? "draft" : "readonly");
         return;
       }
-      setWriteMode("readonly");
+      if (!cancelled) setWriteMode("readonly");
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [roles]);
 
   const canMutate = writeMode === "draft";
@@ -474,11 +478,11 @@ export const ChannelPricingRules = ({
           toast.warning(
             `Pricing staged but MOQ proposal failed: ${moqRes.message ?? "unknown error"}`,
           );
+        } else {
+          toast.success(
+            `Staged ${created} channel price row(s)${moqRes.created ? ` and submitted ${moqRes.created} MOQ proposal(s)` : ""}. Submit each for approval.`,
+          );
         }
-        toast.success(
-          `Staged ${created} channel price row(s)${moqRes.created ? ` and submitted ${moqRes.created} MOQ proposal(s)` : ""}. Submit each for approval.`,
-        );
-        await load();
         onRulesChange?.();
       } else {
         const moqRes = await seedRetailB2bMoqFromProduct(

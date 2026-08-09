@@ -190,18 +190,27 @@ export default function ApprovalInbox() {
 
   const fetchDraftRows = async (table: string): Promise<Record<string, unknown>[]> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic draft table name, not in generated types (same escape hatch used throughout this codebase, e.g. BomBuilder.tsx)
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from(table)
       .select("*")
       .in("status", ["pending_approval", "approved", "rejected"])
       .order("submitted_at", { ascending: false });
+    if (error) {
+      toast.error(`Failed to load ${table}: ${error.message}`);
+      return [];
+    }
     return data ?? [];
   };
 
   const load = async () => {
     const all: ApprovalItem[] = [];
-    for (const s of SOURCES) {
-      const rows = await fetchDraftRows(s.table);
+    const [standardRows, centralRows] = await Promise.all([
+      Promise.all(SOURCES.map((s) => fetchDraftRows(s.table).then((rows) => ({ s, rows })))),
+      Promise.all(
+        CENTRAL_GOVERNED_SOURCES.map((s) => fetchDraftRows(s.table).then((rows) => ({ s, rows }))),
+      ),
+    ]);
+    for (const { s, rows } of standardRows) {
       rows.forEach((d) => {
         all.push({
           ...d,
@@ -212,8 +221,7 @@ export default function ApprovalInbox() {
         } as ApprovalItem);
       });
     }
-    for (const s of CENTRAL_GOVERNED_SOURCES) {
-      const rows = await fetchDraftRows(s.table);
+    for (const { s, rows } of centralRows) {
       rows.forEach((d) => {
         all.push({
           ...d,

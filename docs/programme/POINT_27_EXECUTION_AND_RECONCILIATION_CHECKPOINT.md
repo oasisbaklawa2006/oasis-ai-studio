@@ -209,11 +209,13 @@ complete enough to be that source of truth for every product class Central creat
 
 ## Next steps in this programme (in order, per owner mandate)
 
-1. Product Master field-by-field audit + duplication check vs Central AdminProducts (Phase 3 / 7).
-2. Full AI Studio route/capability inventory with reachability + persistence tracing (Phase 2).
+1. Central Product Master duplication (Finding 3) — blocked on the owner decision recorded above.
+2. Full AI Studio route/capability inventory with reachability + persistence tracing (Phase 2) —
+   in progress; first pass found and fixed two broken relative imports in the Operator Inbox
+   (`bridge/fixtures/sampleErpWhatsAppRows.ts`, `components/DraftVisibilityPanel.tsx`) that
+   `knip`/`tsc` flagged as unresolved modules on a route that is actually wired and reachable.
 3. AI engine capability audit — provider, validation, human-approval gating (Phase 4).
-4. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8) — start
-   with the deferred `product_pricing_rules`/`product_moq_rules` RLS/grant lockdown from Finding 2.
+4. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8).
 5. WhatsApp Operator Inbox disposition (Finding 1) — still blocked on the owner decision recorded
    above (retire vs. wire into Central's `sales_order_drafts` pipeline).
 6. Publishing state machine verification (Phase 9), asset pipeline (Phase 10), security (Phase 12).
@@ -226,7 +228,8 @@ complete enough to be that source of truth for every product class Central creat
 | # | Finding | Status |
 | --- | --- | --- |
 | 1 | Operator Inbox / `whatsapp_sales_order_drafts` dormant dead-end | Owner decision requested, not yet resolved |
-| 2 | Pricing/MOQ self-approval bypass (AI Studio "direct" mode) | **Resolved this session** — see above |
+| 2 | Pricing/MOQ self-approval bypass (AI Studio "direct" mode) | **Resolved this session** — see above (3 PRs green, pending merge) |
+| 3 | Central (`AdminProducts.tsx`) independently generates SKUs, duplicates AI Studio's Product Master authority | Owner decision requested, not yet resolved |
 
 ## Safety
 
