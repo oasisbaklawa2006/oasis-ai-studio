@@ -155,9 +155,9 @@ merge** (not merged by this session — no PR was merged autonomously).
   introduced by this change) — logic-level coverage was added instead where the module already had
   a test harness.
 
-## Finding 3 — Central independently generates SKUs, duplicating AI Studio's Product Master authority
+## Finding 3 — Central independently generates SKUs and AI-generated allergen data, duplicating AI Studio's Product Master authority
 
-**Area:** Phase 3 (Product Master audit) / Phase 0 (hard boundary) / Phase 7 (Central duplication)
+**Area:** Phase 3 (Product Master audit) / Phase 0 (hard boundary) / Phase 7 (Central duplication) / Phase 4 (AI engine — ungoverned AI write path)
 
 **Evidence:**
 - `oasis-baklawa-central/src/pages/admin/AdminProducts.tsx` is a full, independent product
@@ -178,6 +178,29 @@ merge** (not merged by this session — no PR was merged autonomously).
   at approval time — but that governance is entirely bypassable by simply using Central's editor
   instead, since Central writes `products` directly with no cross-check against AI Studio's
   authority at all.
+- **Elevated-severity addition (Phase 3/4 cross-check, this session):** Central has its own AI
+  compliance-attribute generator, `handleAiFullGenerate()` in `AdminProducts.tsx`, calling a
+  *different* Edge Function (`generate-product-attributes`, not AI Studio's governed
+  `catalogue-ai-copy`) that returns **allergen_warnings, ingredients, hsn_code, gst_percentage**
+  directly into form state. The only safeguard before this AI output reaches the live `products`
+  row is a client-side toast ("review before save") — no `human_review_required` contract check, no
+  draft/status state machine, no server-side reviewer gate. Contrast with AI Studio's equivalent
+  path (Phase 4 finding above): schema-validated response, mandatory `human_review_required: true`
+  from the server, and compliance data is captured into a `catalogue_product_drafts` payload
+  requiring `is_catalogue_reviewer()` approval before it reaches `products.allergen_warnings` /
+  `products.ingredients`. **Central's path lets AI-generated allergen/ingredient data — a genuine
+  food-safety/labeling concern — reach production with no server-side governance at all.** This is
+  a materially more urgent instance of the same duplicate-authority root cause and should weigh
+  heavily in the owner's disposition of this finding.
+
+**Partial fix applied this session (safe, bounded, independent of the authority question below):**
+`Oasis-Baklawa-Central` — added an `aiComplianceUnreviewed` gate: `handleSaveProduct()` now refuses
+to save while AI-generated allergen/ingredient/HSN/GST data is unacknowledged; the operator must
+either edit the affected field(s) or click an explicit "Mark as reviewed" control before saving.
+This closes the specific "AI output silently becomes approved truth" gap without touching who owns
+product editing — it's an app-layer safety gate, not an authority change, so it didn't need to wait
+on the larger disposition below. Verified: typecheck clean, 4/4 relevant tests pass (2 new),
+check:boundaries pass. Committed to the same branch as Finding 2's Central fix (PR #344).
 
 **Disposition — requires an owner decision (flagged, not unilaterally resolved):**
 This is a larger, higher-risk version of the same pattern as Finding 2, but the correct fix is not
