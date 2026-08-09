@@ -223,9 +223,14 @@ but is worth a follow-up rename for clarity.)
 `Oasis-Baklawa-Central` — added an `aiComplianceUnreviewed` gate: `handleSaveProduct()` now refuses
 to save while AI-generated allergen/ingredient/HSN/GST data is unacknowledged; the operator must
 either edit the affected field(s) or click an explicit "Mark as reviewed" control before saving.
-This closes the specific "AI output silently becomes approved truth" gap without touching who owns
-product editing — it's an app-layer safety gate, not an authority change, so it didn't need to wait
-on the larger disposition below. Verified: typecheck clean, 4/4 relevant tests pass (2 new),
+This blocks unacknowledged AI output specifically in the Central UI path handled by
+`AdminProducts.tsx`'s `handleSaveProduct()` — it is a client-side gate, not server-side/database
+governance, so it does not close the gap globally: `products` still has no RPC or RLS layer that
+enforces a reviewed state before allergen/ingredient/HSN/GST data lands, meaning any other permitted
+client or a direct authenticated write against `products` bypasses it entirely. It reduces risk for
+the one UI Central staff actually use for this today, without touching who owns product editing —
+so it didn't need to wait on the larger disposition below — but should not be read as closing the
+underlying food-safety governance gap. Verified: typecheck clean, 4/4 relevant tests pass (2 new),
 check:boundaries pass. Committed to the same branch as Finding 2's Central fix (PR #344).
 
 **Disposition — requires an owner decision (flagged, not unilaterally resolved):**
@@ -290,12 +295,15 @@ component and not yet deep-traced (marked •).
 | `/admin/import/category-1` | `Category1ImportStaging` | • WIRED | not traced |
 | `*` | `NotFound` | ✓ WIRED | trivial |
 
-**Result: 10 of 29 routes (34%) are honest `CapabilityUnavailable` placeholders — the app already
+**Result: 11 of 29 routes (38%) are honest `CapabilityUnavailable` placeholders — the app already
 does fail-closed disabling correctly at the routing layer for incomplete capabilities.** The 12
 now-deleted orphaned page files (see commit `e540cf9`) were the dead implementations these
-placeholders superseded. 19 routes are wired to real, non-placeholder components; 3 have been
-directly verified end-to-end this session, 16 remain for deeper read/mutation/audit tracing in a
-follow-up pass — noted here as the honest state rather than claimed complete.
+placeholders superseded. 18 routes are wired to real, non-placeholder components. Three of those
+18 were directly inspected this session — `/approvals` is confirmed end-to-end, `/products/:id` is
+partial (only its pricing/MOQ panels were traced, for Finding 2), and `/admin/operator-inbox` is
+partial/backend-blocked (Finding 1) — so "verified end-to-end" only actually applies to one of the
+three. The remaining 15 wired routes still need deeper read/mutation/audit/error/empty-state
+tracing in a follow-up pass — noted here as the honest state rather than claimed complete.
 
 ## Phase 4 — AI engine capability audit (first capability: catalogue copy generation)
 

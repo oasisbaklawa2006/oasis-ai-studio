@@ -25,9 +25,27 @@ export async function syncChannelPricingFromForm(
 
   const existingIdByChannel = new Map((existingRows ?? []).map((r) => [r.price_channel, r.id]));
 
+  // Guards against submitting another pending proposal for a channel that already has one
+  // in flight (e.g. saving the product again before Central reviews the first draft) - only
+  // this submitter's own pending drafts are visible under RLS, which is a real limit (another
+  // submitter's in-flight draft for the same channel isn't detected here), but still prevents
+  // the common single-operator duplicate-save case.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: pendingDrafts } = await (supabase as any)
+    .from("catalogue_pricing_drafts")
+    .select("payload")
+    .eq("status", "pending_approval")
+    .eq("payload->>product_id", productId);
+  const pendingChannels = new Set(
+    (pendingDrafts ?? [])
+      .map((d: { payload?: { price_channel?: string } }) => d.payload?.price_channel)
+      .filter((c: unknown): c is string => typeof c === "string"),
+  );
+
   let count = 0;
   for (const row of rows) {
     const channel = String(row.price_channel ?? "");
+    if (pendingChannels.has(channel)) continue;
     const uom = row.uom ?? resolveChannelUom(channel, form);
     const existingId = existingIdByChannel.get(channel) ?? null;
     const result = await submitCatalogueDraft({

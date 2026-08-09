@@ -28,4 +28,11 @@ describe("syncChannelPricingFromForm contract", () => {
     expect(source).toContain("submitCatalogueDraft");
     expect(source).toMatch(/draftType:\s*["']pricing["']/);
   });
+
+  // CodeRabbit-flagged: saving the product again before Central reviews the first pricing
+  // draft must not submit a second pending proposal for the same channel.
+  it("skips a channel that already has a pending draft for this submitter", () => {
+    expect(source).toMatch(/status["']?,?\s*["']pending_approval["']/);
+    expect(source).toContain("pendingChannels.has(channel)");
+  });
 });

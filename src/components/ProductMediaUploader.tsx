@@ -20,10 +20,12 @@ import {
   buildDirectMediaPath,
   buildStagingMediaPath,
   getMediaPublicUrl,
+  IMAGE_MIME_TYPES,
   type MediaOperationIntent,
   submitMediaCatalogueDraft,
   uploadMediaFileToStorage,
   useCatalogueMediaWriteMode,
+  VIDEO_MIME_TYPES,
   validateMediaFile,
 } from "@/features/catalogueDrafts/mediaDraftBoundary";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
@@ -398,9 +400,10 @@ export function ProductMediaUploader({
 
   const uploadToSlot = async (files: FileList | null, slot: MediaType) => {
     if (!files?.length || !canMutate) return;
-    const validationError = validateMediaFile(files[0]);
+    const validationError = validateMediaFile(files[0], IMAGE_MIME_TYPES);
     if (validationError) {
       toast.error(validationError);
+      if (slotInputRef.current) slotInputRef.current.value = "";
       return;
     }
     setUploading(true);
@@ -470,8 +473,9 @@ export function ProductMediaUploader({
 
   const upload = async (files: FileList | null, isVideo = false) => {
     if (!files || files.length === 0 || !canMutate) return;
+    const allowedTypes = isVideo ? VIDEO_MIME_TYPES : IMAGE_MIME_TYPES;
     for (const file of Array.from(files)) {
-      const validationError = validateMediaFile(file);
+      const validationError = validateMediaFile(file, allowedTypes);
       if (validationError) {
         toast.error(validationError);
         return;
@@ -562,7 +566,10 @@ export function ProductMediaUploader({
             angle: m.angle,
             altText: m.alt_text,
             status: m.status,
-            source: m.source ?? "gallery",
+            // product_media has no `source` column (select("*") never returns one), so this
+            // was always the fallback in practice - kept as a literal instead of the dead
+            // `m.source ??` read for both correctness and type-checking.
+            source: "gallery",
             requestedHero: true,
           },
           m.id,
@@ -666,7 +673,8 @@ export function ProductMediaUploader({
             angle: m.angle,
             altText: m.alt_text,
             status: m.status,
-            source: m.source ?? null,
+            // See setAsHero above - product_media has no `source` column, so this was always null.
+            source: null,
           },
           m.id,
         );
@@ -1099,7 +1107,10 @@ export function ProductMediaUploader({
         type="file"
         accept="video/*"
         hidden
-        onChange={(e) => upload(e.target.files, true)}
+        onChange={(e) => {
+          void upload(e.target.files, true);
+          if (videoRef.current) videoRef.current.value = "";
+        }}
       />
 
       {(heroOnly || testingMode) && canMutate && (

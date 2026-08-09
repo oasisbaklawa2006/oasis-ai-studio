@@ -752,13 +752,17 @@ const ProductEdit = () => {
   const moqUomMismatch =
     !!form.moq_uom && !!form.increment_uom && form.moq_uom !== form.increment_uom;
 
+  // Mount-once-per-new-product effect: reads `form` at its current (initial/empty) value only
+  // to seed creation-baseline defaults, not to react to every subsequent edit — including
+  // `form` in the deps would re-apply the baseline (and reset complianceBaselineRef) on every
+  // keystroke instead of once when `isNew` becomes true.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above.
   useEffect(() => {
     if (!isNew) return;
-    setForm((f: Record<string, unknown>) => {
-      const next = applyCreationBaselineDefaults(f);
-      complianceBaselineRef.current = pickComplianceBaseline(next);
-      return next;
-    });
+    const next = applyCreationBaselineDefaults(form);
+    complianceBaselineRef.current = pickComplianceBaseline(next);
+    setForm(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
 
   useEffect(() => {

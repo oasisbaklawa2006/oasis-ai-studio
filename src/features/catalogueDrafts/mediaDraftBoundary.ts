@@ -75,22 +75,34 @@ export const mapIntentToDraftOperation = (
 // feedback instead of a storage rejection after the file has already started uploading.
 // This is a UX convenience only — the server-side bucket config is the actual control.
 export const MAX_MEDIA_FILE_SIZE_BYTES = 52428800;
-export const ALLOWED_MEDIA_MIME_TYPES = [
+export const IMAGE_MIME_TYPES = [
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
   "image/avif",
-  "video/mp4",
-  "video/webm",
+];
+export const VIDEO_MIME_TYPES = ["video/mp4", "video/webm"];
+export const ALLOWED_MEDIA_MIME_TYPES = [
+  ...IMAGE_MIME_TYPES,
+  ...VIDEO_MIME_TYPES,
   "application/pdf",
 ];
 
-export const validateMediaFile = (file: File): string | null => {
+/**
+ * `allowedTypes` narrows validation to what a specific input actually accepts (e.g. image-only
+ * slots must reject a video/PDF even though the bucket as a whole permits it) — the `accept`
+ * attribute on a file input is a UI hint only, never a validation boundary. Defaults to the full
+ * bucket allowlist for callers with no narrower requirement.
+ */
+export const validateMediaFile = (
+  file: File,
+  allowedTypes: readonly string[] = ALLOWED_MEDIA_MIME_TYPES,
+): string | null => {
   if (file.size > MAX_MEDIA_FILE_SIZE_BYTES) {
     return `"${file.name}" is too large (max ${Math.floor(MAX_MEDIA_FILE_SIZE_BYTES / (1024 * 1024))}MB).`;
   }
-  if (file.type && !ALLOWED_MEDIA_MIME_TYPES.includes(file.type)) {
+  if (file.type && !allowedTypes.includes(file.type)) {
     return `"${file.name}" has an unsupported file type (${file.type}).`;
   }
   return null;

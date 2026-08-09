@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   ALLOWED_MEDIA_MIME_TYPES,
+  IMAGE_MIME_TYPES,
   MAX_MEDIA_FILE_SIZE_BYTES,
   sanitizeMediaFileName,
+  VIDEO_MIME_TYPES,
   validateMediaFile,
 } from "./mediaDraftBoundary";
 
@@ -38,6 +40,28 @@ describe("validateMediaFile", () => {
       "video/webm",
       "application/pdf",
     ]);
+  });
+
+  // CodeRabbit-flagged: an image-only input must not accept a video/PDF just because the
+  // bucket as a whole permits it (accept="..." is a UI hint, not a validation boundary).
+  it("rejects a video file when restricted to image MIME types", () => {
+    const file = new File(["x"], "clip.mp4", { type: "video/mp4" });
+    expect(validateMediaFile(file, IMAGE_MIME_TYPES)).toMatch(/unsupported file type/i);
+  });
+
+  it("rejects a PDF file when restricted to image MIME types", () => {
+    const file = new File(["x"], "doc.pdf", { type: "application/pdf" });
+    expect(validateMediaFile(file, IMAGE_MIME_TYPES)).toMatch(/unsupported file type/i);
+  });
+
+  it("rejects an image file when restricted to video MIME types", () => {
+    const file = new File(["x"], "photo.jpg", { type: "image/jpeg" });
+    expect(validateMediaFile(file, VIDEO_MIME_TYPES)).toMatch(/unsupported file type/i);
+  });
+
+  it("accepts a video file when restricted to video MIME types", () => {
+    const file = new File(["x"], "clip.mp4", { type: "video/mp4" });
+    expect(validateMediaFile(file, VIDEO_MIME_TYPES)).toBeNull();
   });
 });
 
