@@ -13,46 +13,54 @@
 // resolution logic may be worth salvaging into a future Central-facing contract - but whether to
 // delete it outright is a scale/reversibility call for the owner, not something this session
 // infers. Do not wire this module's drafts anywhere, and do not re-enable the bridge.
-export { default as OperatorInboxPanel } from "./OperatorInboxPanel";
-export { resolveInboundMessage } from "./resolveInboundMessage";
-export { ingestInboundMessage, createInMemoryIngestStore } from "./ingestInboundMessage";
-export { fetchInboundMessages, resolveInboxFeed } from "./fetchInboundMessages";
-export { processWebhookPayload } from "./webhook/processWebhookPayload";
-export { normalizeWebhookPayload } from "./webhook/normalizeWebhookPayload";
+
 export {
+  createInMemoryDraftStore,
   createSalesOrderDraftFromOperator,
   recordOperatorDecision,
-  createInMemoryDraftStore,
 } from "./createSalesOrderDraft";
 export { canCreateSalesOrderDraft, isCompleteResolution } from "./draftGovernance";
-export { validateWhatsAppInboundInput, isWhatsAppTableUnavailable } from "./validateWhatsAppInbound";
-export {
-  seedPhase2cTestMessagesInMemory,
-  seedPhase2cTestMessagesToDatabase,
-  isPhase2cTestSeedEnabled,
-  PHASE2C_TEST_SEED_MESSAGES,
-} from "./seedPhase2cTestMessages";
-export { appendSuggestionAudit, getSuggestionAuditLog, clearSuggestionAuditLog } from "./suggestionAudit";
+export { fetchInboundMessages, resolveInboxFeed } from "./fetchInboundMessages";
+export { SAMPLE_INBOUND_MESSAGES } from "./fixtures/sampleMessages";
+export { createInMemoryIngestStore, ingestInboundMessage } from "./ingestInboundMessage";
+export { default as OperatorInboxPanel } from "./OperatorInboxPanel";
 export {
   confirmSuggestion,
   initialOperatorState,
   rejectSuggestion,
   selectAlternative,
 } from "./operatorSuggestionState";
+export { resolveInboundMessage } from "./resolveInboundMessage";
+export {
+  isPhase2cTestSeedEnabled,
+  PHASE2C_TEST_SEED_MESSAGES,
+  seedPhase2cTestMessagesInMemory,
+  seedPhase2cTestMessagesToDatabase,
+} from "./seedPhase2cTestMessages";
+export {
+  appendSuggestionAudit,
+  clearSuggestionAuditLog,
+  getSuggestionAuditLog,
+} from "./suggestionAudit";
 export {
   canPreselectTopMatch,
   displayActionForBand,
   showPrimarySuggestion,
 } from "./suggestionGovernance";
-export { SAMPLE_INBOUND_MESSAGES } from "./fixtures/sampleMessages";
 export type {
   InboundWhatsAppMessage,
   OperatorSuggestionState,
   SuggestionAuditEvent,
 } from "./types";
+export {
+  isWhatsAppTableUnavailable,
+  validateWhatsAppInboundInput,
+} from "./validateWhatsAppInbound";
+export { normalizeWebhookPayload } from "./webhook/normalizeWebhookPayload";
+export { processWebhookPayload } from "./webhook/processWebhookPayload";
 export type {
-  WhatsAppInboundInput,
-  WhatsAppInboundMessageRow,
   InboxFeedMode,
   InboxFeedResult,
+  WhatsAppInboundInput,
+  WhatsAppInboundMessageRow,
 } from "./whatsappInboundTypes";
