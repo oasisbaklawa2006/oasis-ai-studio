@@ -1644,17 +1644,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      submit_catalogue_pricing_draft_v1: {
-        Args: {
-          p_operation: string
-          p_payload: Json
-          p_target_record_id: string | null
-        }
-        Returns: {
-          already_pending: boolean
-          draft_id: string
-        }[]
-      }
       bootstrap_current_user: {
         Args: never
         Returns: {
