@@ -1,8 +1,12 @@
-import { supabase } from "@/integrations/supabase/client";
+import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { resolveChannelUom } from "./channelPricingMapper";
 
 export type ChannelSeedTarget = "retail" | "b2b";
 
+// MOQ is a Central/Core-governed commercial authority (Point 27, Finding 2).
+// This submits a proposal only - it is never written to product_moq_rules
+// directly from AI Studio. It goes through the same catalogue draft/approval
+// path as manual MOQ edits and only becomes live once approved in Central.
 export async function seedMoqRowForChannel(
   productId: string,
   channel: ChannelSeedTarget,
@@ -26,22 +30,41 @@ export async function seedMoqRowForChannel(
       : moqValue;
 
   const incrementUom = String(product.increment_uom ?? product.moq_uom ?? uom);
+  const moqApplicable = channel !== "retail";
 
-  const { error } = await supabase.from("product_moq_rules").upsert(
-    {
+  const res = await submitCatalogueDraft({
+    draftType: "moq",
+    operation: "create",
+    targetRecordId: null,
+    payload: {
+      scope: "product_moq_rule",
       product_id: productId,
       channel,
       customer_type: null,
-      moq_applicable: channel !== "retail",
-      moq_value: Number.isFinite(moqValue) ? moqValue : 1,
-      moq_uom: uom,
-      increment_value: Number.isFinite(incrementValue) ? incrementValue : 1,
-      increment_uom: incrementUom,
+      moq_applicable: moqApplicable,
+      min_order_quantity: moqApplicable ? (Number.isFinite(moqValue) ? moqValue : 1) : null,
+      increment_quantity: moqApplicable
+        ? Number.isFinite(incrementValue)
+          ? incrementValue
+          : 1
+        : null,
+      is_active: moqApplicable,
+      moq_value: moqApplicable ? (Number.isFinite(moqValue) ? moqValue : 1) : null,
+      moq_uom: moqApplicable ? uom : null,
+      increment_value: moqApplicable
+        ? Number.isFinite(incrementValue)
+          ? incrementValue
+          : 1
+        : null,
+      increment_uom: moqApplicable ? incrementUom : null,
+      allow_override: false,
+      min_carton_qty: null,
+      carton_logic: null,
+      notes: null,
     },
-    { onConflict: "product_id,channel,customer_type" },
-  );
+  });
 
-  if (error) return { ok: false, message: error.message };
+  if (!res.ok) return { ok: false, message: res.message };
   return { ok: true };
 }
 

@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import {
   blockPilotApprovalMessage,
   isDraftSku,
   isStructuredOasisSku,
 } from "@/features/productAuthority/skuGuard";
+import { supabase } from "@/integrations/supabase/client";
+import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
 
 type ApprovalStatus = "pending_approval" | "approved" | "rejected";
 
@@ -27,18 +27,51 @@ type ApprovalItem = {
   reviewed_at?: string | null;
   target_record_id?: string | null;
   draftType: string;
-  approveFn: string;
-  rejectFn: string;
+  approveFn: string | null;
+  rejectFn: string | null;
+  governedByCentral: boolean;
 };
 
+// Pricing and MOQ are Central/Core-governed commercial authority (Point 27,
+// Finding 2) - approval for those draft types happens in Central, not here.
+// AI Studio's editorial reviewers still see pricing/moq drafts (read-only,
+// via the "awaiting Central approval" note below) but cannot action them.
 const SOURCES = [
-  { type: "product", table: "catalogue_product_drafts", approve: "approve_catalogue_product_draft", reject: "reject_catalogue_product_draft" },
-  { type: "media", table: "catalogue_media_submissions", approve: "approve_catalogue_media_submission", reject: "reject_catalogue_media_submission" },
-  { type: "alias", table: "catalogue_alias_drafts", approve: "approve_catalogue_alias_draft", reject: "reject_catalogue_alias_draft" },
-  { type: "bom", table: "catalogue_bom_drafts", approve: "approve_catalogue_bom_draft", reject: "reject_catalogue_bom_draft" },
-  { type: "moq", table: "catalogue_moq_drafts", approve: "approve_catalogue_moq_draft", reject: "reject_catalogue_moq_draft" },
-  { type: "pricing", table: "catalogue_pricing_drafts", approve: "approve_catalogue_pricing_draft", reject: "reject_catalogue_pricing_draft" },
-  { type: "tag", table: "catalogue_tag_drafts", approve: "approve_catalogue_tag_draft", reject: "reject_catalogue_tag_draft" },
+  {
+    type: "product",
+    table: "catalogue_product_drafts",
+    approve: "approve_catalogue_product_draft",
+    reject: "reject_catalogue_product_draft",
+  },
+  {
+    type: "media",
+    table: "catalogue_media_submissions",
+    approve: "approve_catalogue_media_submission",
+    reject: "reject_catalogue_media_submission",
+  },
+  {
+    type: "alias",
+    table: "catalogue_alias_drafts",
+    approve: "approve_catalogue_alias_draft",
+    reject: "reject_catalogue_alias_draft",
+  },
+  {
+    type: "bom",
+    table: "catalogue_bom_drafts",
+    approve: "approve_catalogue_bom_draft",
+    reject: "reject_catalogue_bom_draft",
+  },
+  {
+    type: "tag",
+    table: "catalogue_tag_drafts",
+    approve: "approve_catalogue_tag_draft",
+    reject: "reject_catalogue_tag_draft",
+  },
+] as const;
+
+const CENTRAL_GOVERNED_SOURCES = [
+  { type: "moq", table: "catalogue_moq_drafts" },
+  { type: "pricing", table: "catalogue_pricing_drafts" },
 ] as const;
 
 const TABS = [
@@ -50,7 +83,8 @@ const TABS = [
 /** Fallback labels when payload has no `needs_admin_review_flags` (main inbox behavior). */
 const FLAG_CHIPS = ["SKU", "Pricing", "Nutrition", "Compliance", "BOM", "MOQ", "Department"];
 
-const getSubmittedBy = (item: ApprovalItem) => item.submitter_name || item.submitter_email || item.submitted_by || "Unknown";
+const getSubmittedBy = (item: ApprovalItem) =>
+  item.submitter_name || item.submitter_email || item.submitted_by || "Unknown";
 
 const formatAge = (dateStr?: string | null) => {
   if (!dateStr) return "Submitted recently";
@@ -82,8 +116,12 @@ const formatProductMoq = (payload: Record<string, any> | null | undefined) => {
   const incValue = nestedRead(payload, "moq.increment_value");
   const incUom = nestedRead(payload, "moq.increment_uom");
 
-  const base = [moqValue, moqUom].filter((v) => v !== undefined && v !== null && v !== "").join(" ");
-  const increment = [incValue, incUom].filter((v) => v !== undefined && v !== null && v !== "").join(" ");
+  const base = [moqValue, moqUom]
+    .filter((v) => v !== undefined && v !== null && v !== "")
+    .join(" ");
+  const increment = [incValue, incUom]
+    .filter((v) => v !== undefined && v !== null && v !== "")
+    .join(" ");
 
   if (!base && !increment) {
     const legacy = read(payload, "moq");
@@ -102,7 +140,9 @@ const formatPricing = (payload: Record<string, any> | null | undefined) => {
   const lines = [
     mrp !== undefined && mrp !== null && mrp !== "" ? `MRP: ${mrp}` : null,
     b2b !== undefined && b2b !== null && b2b !== "" ? `B2B: ${b2b}` : null,
-    exportPrice !== undefined && exportPrice !== null && exportPrice !== "" ? `Export: ${exportPrice}` : null,
+    exportPrice !== undefined && exportPrice !== null && exportPrice !== ""
+      ? `Export: ${exportPrice}`
+      : null,
     gst !== undefined && gst !== null && gst !== "" ? `GST: ${gst}` : null,
   ].filter(Boolean);
 
@@ -122,7 +162,9 @@ const formatBom = (payload: Record<string, any> | null | undefined) => {
   const legacyRequired = read(payload, "bom_required");
   const legacyType = read(payload, "expected_bom_type");
   if (legacyRequired !== "—" || legacyType !== "—") {
-    return [legacyRequired !== "—" ? legacyRequired : null, legacyType !== "—" ? legacyType : null].filter(Boolean).join(" · ");
+    return [legacyRequired !== "—" ? legacyRequired : null, legacyType !== "—" ? legacyType : null]
+      .filter(Boolean)
+      .join(" · ");
   }
   return "—";
 };
@@ -146,20 +188,54 @@ export default function ApprovalInbox() {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ApprovalStatus>("pending_approval");
 
+  const fetchDraftRows = async (table: string): Promise<Record<string, unknown>[]> => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic draft table name, not in generated types (same escape hatch used throughout this codebase, e.g. BomBuilder.tsx)
+    const { data, error } = await (supabase as any)
+      .from(table)
+      .select("*")
+      .in("status", ["pending_approval", "approved", "rejected"])
+      .order("submitted_at", { ascending: false });
+    if (error) {
+      toast.error(`Failed to load ${table}: ${error.message}`);
+      return [];
+    }
+    return data ?? [];
+  };
+
   const load = async () => {
     const all: ApprovalItem[] = [];
-    for (const s of SOURCES) {
-      const { data } = await (supabase as any)
-        .from(s.table)
-        .select("*")
-        .in("status", ["pending_approval", "approved", "rejected"])
-        .order("submitted_at", { ascending: false });
-
-      (data ?? []).forEach((d: any) => all.push({ ...d, draftType: s.type, approveFn: s.approve, rejectFn: s.reject }));
+    const [standardRows, centralRows] = await Promise.all([
+      Promise.all(SOURCES.map((s) => fetchDraftRows(s.table).then((rows) => ({ s, rows })))),
+      Promise.all(
+        CENTRAL_GOVERNED_SOURCES.map((s) => fetchDraftRows(s.table).then((rows) => ({ s, rows }))),
+      ),
+    ]);
+    for (const { s, rows } of standardRows) {
+      rows.forEach((d) => {
+        all.push({
+          ...d,
+          draftType: s.type,
+          approveFn: s.approve,
+          rejectFn: s.reject,
+          governedByCentral: false,
+        } as ApprovalItem);
+      });
+    }
+    for (const { s, rows } of centralRows) {
+      rows.forEach((d) => {
+        all.push({
+          ...d,
+          draftType: s.type,
+          approveFn: null,
+          rejectFn: null,
+          governedByCentral: true,
+        } as ApprovalItem);
+      });
     }
     setItems(all);
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount only; load() identity is stable in intent
   useEffect(() => {
     (async () => {
       const ok = await isCatalogueReviewer();
@@ -177,6 +253,10 @@ export default function ApprovalInbox() {
   }, [items]);
 
   const approve = async (r: ApprovalItem) => {
+    if (r.governedByCentral || !r.approveFn) {
+      toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
+      return;
+    }
     if (r.draftType === "product") {
       const sku =
         read(r.payload, "sku_draft.sku", "identity.sku", "sku") ??
@@ -204,6 +284,10 @@ export default function ApprovalInbox() {
   };
 
   const reject = async (r: ApprovalItem) => {
+    if (r.governedByCentral || !r.rejectFn) {
+      toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
+      return;
+    }
     const reason = (reasons[r.id] || "").trim();
     if (!reason) {
       toast.error("Rejection reason is required");
@@ -216,13 +300,17 @@ export default function ApprovalInbox() {
     load();
   };
 
-  if (!allowed) return <div className="p-4 text-sm">Approval inbox is restricted to catalogue reviewers.</div>;
+  if (!allowed)
+    return <div className="p-4 text-sm">Approval inbox is restricted to catalogue reviewers.</div>;
 
   const currentItems = groupedByStatus[activeTab];
 
   return (
     <>
-      <PageHeader title="Approval Inbox" subtitle="Review desk for pending, approved, and rejected drafts" />
+      <PageHeader
+        title="Approval Inbox"
+        subtitle="Review desk for pending, approved, and rejected drafts"
+      />
 
       <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
@@ -230,7 +318,12 @@ export default function ApprovalInbox() {
             const count = groupedByStatus[tab.key].length;
             const isActive = activeTab === tab.key;
             return (
-              <Button key={tab.key} variant={isActive ? "default" : "outline"} className="rounded-full" onClick={() => setActiveTab(tab.key)}>
+              <Button
+                key={tab.key}
+                variant={isActive ? "default" : "outline"}
+                className="rounded-full"
+                onClick={() => setActiveTab(tab.key)}
+              >
                 {tab.label} ({count})
               </Button>
             );
@@ -255,42 +348,102 @@ export default function ApprovalInbox() {
               <div key={`${r.draftType}-${r.id}`} className="luxe-panel space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm">
-                    <div className="font-semibold capitalize text-foreground">{r.draftType} draft · {r.operation || "update"}</div>
-                    <div className="text-muted-foreground">Target: {r.target_record_id || "(new)"}</div>
+                    <div className="font-semibold capitalize text-foreground">
+                      {r.draftType} draft · {r.operation || "update"}
+                    </div>
+                    <div className="text-muted-foreground">
+                      Target: {r.target_record_id || "(new)"}
+                    </div>
                   </div>
 
-                  {isPending && <span className="badge-soft catalogue-status-review">Awaiting approval</span>}
-                  {isApproved && <span className="badge-soft catalogue-status-published">Approved</span>}
-                  {isRejected && <span className="badge-soft bg-destructive/10 text-destructive border border-destructive/20">Rejected</span>}
+                  {isPending && (
+                    <span className="badge-soft catalogue-status-review">Awaiting approval</span>
+                  )}
+                  {isApproved && (
+                    <span className="badge-soft catalogue-status-published">Approved</span>
+                  )}
+                  {isRejected && (
+                    <span className="badge-soft bg-destructive/10 text-destructive border border-destructive/20">
+                      Rejected
+                    </span>
+                  )}
                 </div>
 
                 <div className="text-sm text-muted-foreground space-y-1">
                   <div>{formatAge(r.submitted_at)}</div>
                   <div>Submitted by: {getSubmittedBy(r)}</div>
-                  {isRejected && <div className="text-destructive font-medium">Reason: {r.rejection_reason || "No reason provided"}</div>}
-                  {isRejected && r.rejected_at && <div>Rejected at: {new Date(r.rejected_at).toLocaleString()}</div>}
+                  {isRejected && (
+                    <div className="text-destructive font-medium">
+                      Reason: {r.rejection_reason || "No reason provided"}
+                    </div>
+                  )}
+                  {isRejected && r.rejected_at && (
+                    <div>Rejected at: {new Date(r.rejected_at).toLocaleString()}</div>
+                  )}
                 </div>
 
                 {r.draftType === "product" ? (
                   <div className="rounded-xl border border-border/60 bg-secondary/30 p-4 text-sm space-y-2">
-                    <div><span className="font-medium text-foreground">Product Name:</span> {read(r.payload, "identity.product_name", "product_name", "name")}</div>
-                    <div><span className="font-medium text-foreground">Product Class:</span> {read(r.payload, "identity.product_class", "product_class", "class")}</div>
-                    <div><span className="font-medium text-foreground">Product Type:</span> {read(r.payload, "identity.product_type", "product_type", "type")}</div>
-                    <div><span className="font-medium text-foreground">Category:</span> {read(r.payload, "identity.category", "category")}</div>
-                    <div><span className="font-medium text-foreground">Subcategory:</span> {read(r.payload, "identity.subcategory", "subcategory")}</div>
+                    <div>
+                      <span className="font-medium text-foreground">Product Name:</span>{" "}
+                      {read(r.payload, "identity.product_name", "product_name", "name")}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Product Class:</span>{" "}
+                      {read(r.payload, "identity.product_class", "product_class", "class")}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Product Type:</span>{" "}
+                      {read(r.payload, "identity.product_type", "product_type", "type")}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Category:</span>{" "}
+                      {read(r.payload, "identity.category", "category")}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Subcategory:</span>{" "}
+                      {read(r.payload, "identity.subcategory", "subcategory")}
+                    </div>
                     <div>
                       <span className="font-medium text-foreground">Department Route:</span>{" "}
                       {`${read(r.payload, "identity.main_department", "main_department")} → ${read(r.payload, "identity.production_department", "production_department")}`}
                     </div>
-                    <div><span className="font-medium text-foreground">Primary Pack:</span> {read(r.payload, "packing.pack_preview", "primary_pack")}</div>
-                    <div><span className="font-medium text-foreground">MOQ:</span> {formatProductMoq(r.payload)}</div>
-                    <div><span className="font-medium text-foreground">Pricing:</span> {formatPricing(r.payload)}</div>
-                    <div><span className="font-medium text-foreground">Compliance Review Needed:</span> {read(r.payload, "compliance.review_needed", "compliance_review_needed")}</div>
-                    <div><span className="font-medium text-foreground">BOM:</span> {formatBom(r.payload)}</div>
-                    <div><span className="font-medium text-foreground">Submitted By:</span> {getSubmittedBy(r)}</div>
-                    <div><span className="font-medium text-foreground">Submitted At:</span> {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "—"}</div>
-                    <div><span className="font-medium text-foreground">Target:</span> {r.target_record_id || "(new)"}</div>
-                    <div><span className="font-medium text-foreground">Operation:</span> {r.operation || "update"}</div>
+                    <div>
+                      <span className="font-medium text-foreground">Primary Pack:</span>{" "}
+                      {read(r.payload, "packing.pack_preview", "primary_pack")}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">MOQ:</span>{" "}
+                      {formatProductMoq(r.payload)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Pricing:</span>{" "}
+                      {formatPricing(r.payload)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Compliance Review Needed:</span>{" "}
+                      {read(r.payload, "compliance.review_needed", "compliance_review_needed")}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">BOM:</span>{" "}
+                      {formatBom(r.payload)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Submitted By:</span>{" "}
+                      {getSubmittedBy(r)}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Submitted At:</span>{" "}
+                      {r.submitted_at ? new Date(r.submitted_at).toLocaleString() : "—"}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Target:</span>{" "}
+                      {r.target_record_id || "(new)"}
+                    </div>
+                    <div>
+                      <span className="font-medium text-foreground">Operation:</span>{" "}
+                      {r.operation || "update"}
+                    </div>
 
                     <div className="pt-2 border-t border-border/50">
                       <div className="font-medium mb-1.5 text-foreground">
@@ -310,7 +463,8 @@ export default function ApprovalInbox() {
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">
-                    Draft type: <span className="font-medium capitalize text-foreground">{r.draftType}</span>
+                    Draft type:{" "}
+                    <span className="font-medium capitalize text-foreground">{r.draftType}</span>
                   </div>
                 )}
 
@@ -323,7 +477,14 @@ export default function ApprovalInbox() {
                   </pre>
                 </details>
 
-                {isPending && (
+                {isPending && r.governedByCentral && (
+                  <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    Pricing and MOQ are Central/Core-governed commercial authority. This proposal is
+                    awaiting approval in Central, not AI Studio.
+                  </div>
+                )}
+
+                {isPending && !r.governedByCentral && (
                   <div className="flex flex-col sm:flex-row gap-2 pt-1">
                     <Input
                       className="flex-1"
@@ -333,10 +494,17 @@ export default function ApprovalInbox() {
                       aria-label="Rejection reason"
                     />
                     <div className="flex gap-2 shrink-0">
-                      <Button variant="outline" className="rounded-full" onClick={() => reject(r)} disabled={!(reasons[r.id] || "").trim()}>
+                      <Button
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={() => reject(r)}
+                        disabled={!(reasons[r.id] || "").trim()}
+                      >
                         Reject
                       </Button>
-                      <Button className="rounded-full" onClick={() => approve(r)}>Approve</Button>
+                      <Button className="rounded-full" onClick={() => approve(r)}>
+                        Approve
+                      </Button>
                     </div>
                   </div>
                 )}
