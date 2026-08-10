@@ -1,5 +1,5 @@
-import { resolveProductHeroUrl } from "@/lib/productImage";
 import { MEDIA_UPLOADER_TO_READINESS } from "@/features/productTruth/readinessProfiles";
+import { resolveProductHeroUrl } from "@/lib/productImage";
 import type { MediaAsset, MediaAssetType } from "./types";
 
 /** Row shape from `product_media` table (select *). */
@@ -192,9 +192,11 @@ export function productMediaContextFromForm(form: Record<string, unknown>): {
   };
 }
 
-export function slotDisplayLabel(
-  slot: { present: boolean; approved: boolean; status: MediaAsset["status"] | "missing" },
-): string {
+export function slotDisplayLabel(slot: {
+  present: boolean;
+  approved: boolean;
+  status: MediaAsset["status"] | "missing";
+}): string {
   if (!slot.present) return "missing";
   if (!slot.approved) return "draft pending approval";
   return slot.status === "approved" ? "approved" : String(slot.status);
