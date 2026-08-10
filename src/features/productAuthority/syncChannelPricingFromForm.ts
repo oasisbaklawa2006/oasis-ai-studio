@@ -1,4 +1,3 @@
-import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { supabase } from "@/integrations/supabase/client";
 import { extractChannelPricingFromForm, resolveChannelUom } from "./channelPricingMapper";
 
@@ -25,34 +24,12 @@ export async function syncChannelPricingFromForm(
 
   const existingIdByChannel = new Map((existingRows ?? []).map((r) => [r.price_channel, r.id]));
 
-  // Guards against submitting another pending proposal for a channel that already has one
-  // in flight (e.g. saving the product again before Central reviews the first draft) - only
-  // this submitter's own pending drafts are visible under RLS, which is a real limit (another
-  // submitter's in-flight draft for the same channel isn't detected here), but still prevents
-  // the common single-operator duplicate-save case.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pendingDrafts } = await (supabase as any)
-    .from("catalogue_pricing_drafts")
-    .select("payload")
-    .eq("status", "pending_approval")
-    .eq("payload->>product_id", productId);
-  const pendingChannels = new Set(
-    (pendingDrafts ?? [])
-      .map((d: { payload?: { price_channel?: string } }) => d.payload?.price_channel)
-      .filter((c: unknown): c is string => typeof c === "string"),
-  );
-
   let count = 0;
   for (const row of rows) {
     const channel = String(row.price_channel ?? "");
-    if (pendingChannels.has(channel)) continue;
     const uom = row.uom ?? resolveChannelUom(channel, form);
     const existingId = existingIdByChannel.get(channel) ?? null;
-    const result = await submitCatalogueDraft({
-      draftType: "pricing",
-      operation: existingId ? "update" : "create",
-      targetRecordId: existingId,
-      payload: {
+    const payload = {
         scope: "product_pricing_rule" as const,
         product_id: productId,
         price_channel: row.price_channel ?? null,
@@ -63,10 +40,15 @@ export async function syncChannelPricingFromForm(
         uom: uom ?? null,
         source: row.source ?? null,
         approval_status: "draft",
-      },
+    };
+    const { data, error } = await supabase.rpc("submit_catalogue_pricing_draft_v1", {
+      p_operation: existingId ? "update" : "create",
+      p_target_record_id: existingId,
+      p_payload: payload,
     });
-    if (!result.ok) return { ok: false, message: result.message, count };
-    count += 1;
+    if (error) return { ok: false, message: error.message, count };
+    const result = Array.isArray(data) ? data[0] : data;
+    if (!result?.already_pending) count += 1;
   }
 
   return { ok: true, count };
