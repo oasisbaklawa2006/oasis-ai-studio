@@ -442,9 +442,9 @@ bucket configuration across all three repositories.
 5. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8) — beyond
    the pricing/moq lockdown (Finding 2, including its recurrence fix) and product-media bucket
    enforcement (Phase 12) already fixed this session.
-6. Publishing state machine verification (Phase 9), asset pipeline (Phase 10) — media upload path
-   spot-checked and hardened (Phase 12, see above, including Central's image upload); rest of the
-   pipeline not yet audited.
+6. Publishing state machine verification (Phase 9), asset pipeline (Phase 10) — AI Studio's
+   media upload path was spot-checked and hardened (Phase 12, see above); Central's uploader was not
+   included in this publishing-state verification, and the rest of the pipeline remains unaudited.
 7. Testing/CI execution and gap-filling (Phase 13), then remaining implementation PRs (Phase 16).
 8. Regenerate Central's `types.ts` from the live schema to replace the hand-added pricing/moq
    draft-table and RPC type entries added in Finding 2.
