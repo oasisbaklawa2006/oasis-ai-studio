@@ -24,15 +24,13 @@ describe("syncChannelPricingFromForm contract", () => {
     expect(source).not.toMatch(/approval_status:\s*["']approved["']/);
   });
 
-  it("submits every channel price as a catalogue draft", () => {
-    expect(source).toContain("submitCatalogueDraft");
-    expect(source).toMatch(/draftType:\s*["']pricing["']/);
+  it("submits every channel price through the canonical Core RPC", () => {
+    expect(source).toContain("submit_catalogue_pricing_draft_v1");
   });
 
   // CodeRabbit-flagged: saving the product again before Central reviews the first pricing
   // draft must not submit a second pending proposal for the same channel.
-  it("skips a channel that already has a pending draft for this submitter", () => {
-    expect(source).toMatch(/status["']?,?\s*["']pending_approval["']/);
-    expect(source).toContain("pendingChannels.has(channel)");
+  it("delegates cross-user pending-draft idempotency to Core", () => {
+    expect(source).toContain("already_pending");
   });
 });
