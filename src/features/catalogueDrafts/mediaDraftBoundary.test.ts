@@ -63,6 +63,14 @@ describe("validateMediaFile", () => {
     const file = new File(["x"], "clip.mp4", { type: "video/mp4" });
     expect(validateMediaFile(file, VIDEO_MIME_TYPES)).toBeNull();
   });
+
+  // CodeRabbit-flagged: an empty/unrecognized file.type (e.g. an unusual browser, a renamed
+  // file, or a spoofed extension the browser can't sniff) must not silently skip MIME
+  // validation - fail closed, don't treat "unknown" as "allowed".
+  it("rejects a file with an empty/unknown MIME type", () => {
+    const file = new File(["x"], "mystery", { type: "" });
+    expect(validateMediaFile(file, IMAGE_MIME_TYPES)).toMatch(/unsupported file type/i);
+  });
 });
 
 describe("sanitizeMediaFileName", () => {

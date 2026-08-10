@@ -405,9 +405,13 @@ bucket configuration across all three repositories.
 - Neither `ProductMediaUploader.tsx` (AI Studio) nor Central's admin upload flow did any client-side
   file-type/size validation before upload — relied entirely on server-side enforcement, so a bad
   file only failed after the upload attempt. **Fixed (AI Studio):** added `validateMediaFile()` in
-  `mediaDraftBoundary.ts`, mirroring the server bucket config exactly, wired into both
-  `ProductMediaUploader.tsx` upload entry points, with unit tests. Central's equivalent upload path
-  was not yet inspected this session — flagged for a follow-up pass.
+  `mediaDraftBoundary.ts`, mirroring the server bucket config exactly, wired into every
+  `ProductMediaUploader.tsx` and `uploadFastCreateHero.ts` upload entry point, scoped per input
+  type (image-only slots reject video/PDF and vice versa), with unit tests. **Fixed (Central):**
+  `product-images` (the bucket Central's `AdminProducts.tsx handleImageUpload` writes to) had *no*
+  server-side size/MIME enforcement at all — Core migration
+  `20260809211500_enforce_product_images_bucket_limits.sql` added a 10MB/image-only allowlist, and
+  Central's `handleImageUpload` gained the matching client-side check.
 
 ## Verified-safe facts established (no rebuild needed)
 
