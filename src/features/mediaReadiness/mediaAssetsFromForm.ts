@@ -11,6 +11,7 @@ export type ProductMediaRow = {
   status?: string | null;
   alt_text?: string | null;
   angle?: string | null;
+  source?: string | null;
   created_at?: string | null;
 };
 
@@ -61,7 +62,7 @@ export function mediaAssetsFromProductMedia(rows: ProductMediaRow[]): MediaAsset
         mapped,
         url,
         parseStatus(row.status),
-        "manual",
+        parseSource(row.source),
         row.alt_text ? String(row.alt_text) : rawType || undefined,
       ),
     );
