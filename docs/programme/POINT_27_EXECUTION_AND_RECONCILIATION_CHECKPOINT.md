@@ -64,15 +64,34 @@ Clones are shallow (`--depth 1`); only current `main` tip was inspected, not ful
   ("legacy whatsapp-webhook untouched"), and is **out of AI Studio's ownership scope** — noted here
   for the cross-repo matrix but not actioned by AI Studio.
 
-**Disposition — requires an owner decision (flagged, not unilaterally resolved):**
-This is a genuine product-authority question, not something safely inferable from code: does the
-business still want AI Studio's WhatsApp-utterance→SKU resolution step (Operator Inbox) as a feed
-into Central's governed Sales Order Draft pipeline (CONSUME CORE CONTRACT — wire a promotion path
-from `whatsapp_sales_order_drafts` into `sales_order_drafts`), or has Central's newer
-extraction/readiness pipeline fully superseded it (RETIRE — remove the route and the now-redundant
-Core table/RPC pair)? The code today does exactly and only what it honestly claims; nothing
-unsafe or fake is currently deployed. **No autonomous deletion or rewiring performed pending this
-call** — recorded as the first genuine owner decision under the mandate's own exception clause.
+**Disposition — re-evaluated and conceptually resolved against the canonical ownership model
+(Central + Core own operational/commercial authority; AI Studio owns intelligence, extraction,
+recommendation and editorial assistance):**
+
+Under that model this is no longer a live "which pipeline should we build" question. Central's
+`sales_order_drafts` pipeline (packet-based, extraction-versioned, actor-audited, feeds real Sales
+Orders) is the canonical, more complete operational-authority implementation of exactly what
+Operator Inbox does — it is not a peer to be merged with, it is the thing Operator Inbox would be
+competing operational authority against if it were live. Two conclusions follow directly from the
+model, with no further business input needed:
+1. **No promotion path should be built** from `whatsapp_sales_order_drafts` into
+   `sales_order_drafts`. Wiring one would mean AI Studio minting reviewable sales-order state in
+   parallel with Central's own pipeline for the same real-world event — exactly the "competing
+   operational authority" pattern the model says to retire, not extend.
+2. **The upstream bridge (`BRIDGE_ENABLED=false`) must stay disabled by this session** — it was
+   turned off "for safety" by a prior deliberate decision, and re-enabling a live WhatsApp
+   order-intake feed is an operational-safety action, not a code-architecture inference; nothing
+   here overrides that.
+
+**What is still a genuine scale/reversibility call, not an authority question, and is left for the
+owner:** whether to now delete the ~35-file Operator Inbox feature outright, or leave it in place,
+dormant and clearly marked superseded, in case the WhatsApp-utterance→SKU *resolution logic itself*
+(the intelligence/extraction layer, as distinct from the operational draft table it currently
+writes to) is worth salvaging into a future Central-facing contract. This is real, working,
+honestly-labeled, previously-deliberately-preserved (not deleted) engineering investment — a
+same-session unilateral deletion of it is the kind of hard-to-walk-back scale decision the mandate
+still reserves for a human, even though the architecture question it used to be entangled with is
+now settled. No code deleted this session; see the module-level disposition note added instead.
 
 ## Finding 2 — Pricing / MOQ: AI Studio could self-approve, bypassing Central (RESOLVED)
 
@@ -233,26 +252,45 @@ so it didn't need to wait on the larger disposition below — but should not be 
 underlying food-safety governance gap. Verified: typecheck clean, 4/4 relevant tests pass (2 new),
 check:boundaries pass. Committed to the same branch as Finding 2's Central fix (PR #344).
 
-**Disposition — requires an owner decision (flagged, not unilaterally resolved):**
-This is a larger, higher-risk version of the same pattern as Finding 2, but the correct fix is not
-inferable safely: `AdminProducts.tsx` is a mature, 2297-line, apparently-live operational tool
-(BOM, variants, tags, pricing all wired through it) that Central staff may depend on today for
-real work, including for product classes AI Studio may not fully support yet (e.g.
-`third_party_goods_store` / packaging materials referenced elsewhere in Central). Migrating
-product CREATE/UPDATE authority out of Central without confirming (a) whether AI Studio's
-governed product-creation path is actually adopted and complete enough to be the sole replacement,
-and (b) what happens to Central's BOM/variant/tag workflows that are wired directly to
-`AdminProducts.tsx`'s local state, is a genuine "would this break real operational work with
-nothing to replace it" question — the same class of decision the mandate reserves for the owner
-(Phase 15). No code changed for this finding. Recorded here rather than attempted blind, per the
-instruction to defer only genuinely non-inferable business-authority decisions while continuing
-everything else.
+**Disposition — re-evaluated and conceptually resolved against the canonical ownership model
+(Central + Core own operational/commercial authority; AI Studio owns intelligence, extraction,
+recommendation and editorial assistance):**
 
-**What would need answering to close this:** should `AdminProducts.tsx` become read-only /
-link-out to AI Studio for identity+editorial fields (consuming AI Studio's published Product
-Master) while keeping true operational fields (availability, operational merchandising) editable
-in Central per the target architecture — and if so, is AI Studio's product-creation path currently
-complete enough to be that source of truth for every product class Central creates today?
+The original framing of this finding ("wrong repo owns Product Master authority, should Central
+defer to AI Studio") does not survive that model. Central + Core own operational/commercial
+authority, which includes product CREATE/UPDATE for the products Central's own staff manage —
+`AdminProducts.tsx` writing directly to `products` is Central exercising authority it legitimately
+holds, not a boundary violation, and no read-only/link-out migration is warranted or being pursued.
+**No code migration performed for authority itself — none is required.**
+
+What the evidence in this finding actually identifies, independent of the authority question, are
+two governance-quality gaps in how Central exercises that authority, both already addressed or
+now scoped correctly under the model's "preserve useful AI capability by feeding governed
+Central/Core contracts" instruction:
+1. **AI-generated compliance data with no server-side review gate** — partially fixed this
+   session (`aiComplianceUnreviewed` client-side gate in `handleSaveProduct()`). Full closure
+   would mean Central's `generate-product-attributes` Edge Function adopting the same
+   `human_review_required` contract AI Studio's governed `catalogue-ai-copy` function already
+   uses, with server-side (not just client-side) enforcement — a real schema/Edge-Function change
+   with its own rollout risk, not attempted this session; recorded as a follow-up, not re-opened
+   as an authority question.
+2. **Two independent SKU-minting schemes for the same `products.sku` column** — investigated this
+   session for a safe fix (having Central call the same governed `generate_oasis_sku` Core RPC
+   AI Studio uses). Rejected as unsafe to do quickly: that RPC requires a structured
+   division/category/subcategory/packaging taxonomy input Central's form does not collect, and
+   Central's own category taxonomy (`department`/`category`/`sub_category`) does not map 1:1 onto
+   it — an incorrect auto-mapping would silently mint malformed SKUs, which is a worse outcome
+   than the status quo. Separately, and more urgently: **`products.sku` has no `UNIQUE` constraint
+   in the production schema at all** (verified against the canonical baseline migration — only
+   `product_variants.sku`, `ols_products_cache.sku`, and `catalogue_product_mappings(source_app,
+   sku)` are uniqueness-constrained; the base `products` table is not). Two uncoordinated minting
+   schemes writing into an unconstrained column is a real latent data-integrity gap. Not fixed
+   this session: adding the constraint requires confirming no duplicate SKUs already exist in
+   production, which this session cannot check without production access — a blind
+   `ADD CONSTRAINT UNIQUE` migration could fail to apply, or silently be blocked, if such
+   duplicates exist. **Recommended next action for someone with production read access:** run
+   `SELECT sku, count(*) FROM products GROUP BY sku HAVING count(*) > 1`, resolve any hits, then
+   add the unique constraint in a Core migration.
 
 ## Phase 2 — AI Studio route inventory (structural pass)
 
@@ -380,35 +418,40 @@ bucket configuration across all three repositories.
 
 ## Next steps in this programme (in order, per owner mandate)
 
-1. Central Product Master duplication (Finding 3) — blocked on the owner decision recorded above;
-   a scoped review-gate safety fix (not a full resolution) has been applied in the meantime.
-2. Full AI Studio route/capability inventory with reachability + persistence tracing (Phase 2) —
+1. Central Product Master authority question (Finding 3) — **resolved this session**: Central
+   legitimately owns this, no migration pursued. Residual governance follow-ups (not
+   authority-blocked): server-side `human_review_required` gate for Central's AI-compliance
+   generation (client-side gate already shipped), and a `products.sku` uniqueness audit +
+   constraint (needs production read access first — see Finding 3).
+2. WhatsApp Operator Inbox disposition (Finding 1) — **resolved this session**: no promotion path
+   to Central's `sales_order_drafts` should be built, bridge stays disabled, module kept in place
+   with a disposition note. Only remaining owner call: delete the dormant module outright vs. keep
+   it as potential future intelligence-layer salvage — a scale/reversibility decision, not an
+   architecture one.
+3. Full AI Studio route/capability inventory with reachability + persistence tracing (Phase 2) —
    in progress; first pass found and fixed two broken relative imports in the Operator Inbox
    (`bridge/fixtures/sampleErpWhatsAppRows.ts`, `components/DraftVisibilityPanel.tsx`) that
    `knip`/`tsc` flagged as unresolved modules on a route that is actually wired and reachable.
-   16 of 29 routes still need full read/mutation/error/empty-state tracing.
-3. AI engine capability audit — catalogue copy generation confirmed well-governed (Phase 4); product
+   15 of 29 routes still need full read/mutation/error/empty-state tracing.
+4. AI engine capability audit — catalogue copy generation confirmed well-governed (Phase 4); product
    intelligence/utterance resolution and media generation capabilities not yet audited.
-4. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8) — beyond
-   the pricing/moq lockdown (Finding 2) and product-media bucket enforcement (Phase 12) already
-   fixed this session.
-5. WhatsApp Operator Inbox disposition (Finding 1) — still blocked on the owner decision recorded
-   above (retire vs. wire into Central's `sales_order_drafts` pipeline).
+5. Core DB/RPC/RLS authority audit for AI Studio's remaining Supabase mutations (Phase 8) — beyond
+   the pricing/moq lockdown (Finding 2, including its recurrence fix) and product-media bucket
+   enforcement (Phase 12) already fixed this session.
 6. Publishing state machine verification (Phase 9), asset pipeline (Phase 10) — media upload path
-   spot-checked (Phase 12, see above); rest of the pipeline not yet audited.
-7. Central's admin media upload flow — same client-side validation gap as AI Studio's
-   `ProductMediaUploader.tsx` had; not yet inspected or fixed this session.
-8. Testing/CI execution and gap-filling (Phase 13), then remaining implementation PRs (Phase 16).
-9. Regenerate Central's `types.ts` from the live schema to replace the hand-added pricing/moq
+   spot-checked and hardened (Phase 12, see above, including Central's image upload); rest of the
+   pipeline not yet audited.
+7. Testing/CI execution and gap-filling (Phase 13), then remaining implementation PRs (Phase 16).
+8. Regenerate Central's `types.ts` from the live schema to replace the hand-added pricing/moq
    draft-table and RPC type entries added in Finding 2.
 
 ## Findings status summary
 
 | # | Finding | Status |
 | --- | --- | --- |
-| 1 | Operator Inbox / `whatsapp_sales_order_drafts` dormant dead-end | Owner decision requested, not yet resolved |
-| 2 | Pricing/MOQ self-approval bypass (AI Studio "direct" mode) | **Resolved this session** — see above (3 PRs green, pending merge) |
-| 3 | Central (`AdminProducts.tsx`) independently generates SKUs, duplicates AI Studio's Product Master authority | Owner decision requested, not yet resolved |
+| 1 | Operator Inbox / `whatsapp_sales_order_drafts` dormant dead-end | **Authority question resolved this session** (no promotion path should be built; bridge stays disabled) — module kept in place with a clear disposition note; delete-vs-keep-dormant is the one remaining owner call, now scale/reversibility only |
+| 2 | Pricing/MOQ self-approval bypass (AI Studio "direct" mode) | **Resolved** — merged (Core PR #60, Central PR #344; AI Studio PR #118 green, merge-ready). A second recurrence (`syncChannelPricingFromForm.ts`) was found and fixed in the same pass. |
+| 3 | Central (`AdminProducts.tsx`) independently generates SKUs, duplicates AI Studio's Product Master authority | **Authority question resolved this session** (Central legitimately owns this; no migration needed) — residual governance gaps (AI-compliance server-side gate, `products.sku` uniqueness) documented as follow-ups, not authority-blocked |
 
 ## Safety
 
