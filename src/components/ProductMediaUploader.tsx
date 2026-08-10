@@ -566,10 +566,7 @@ export function ProductMediaUploader({
             angle: m.angle,
             altText: m.alt_text,
             status: m.status,
-            // product_media has no `source` column (select("*") never returns one), so this
-            // was always the fallback in practice - kept as a literal instead of the dead
-            // `m.source ??` read for both correctness and type-checking.
-            source: "gallery",
+            source: m.source ?? "gallery",
             requestedHero: true,
           },
           m.id,
