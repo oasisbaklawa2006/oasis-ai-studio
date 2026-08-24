@@ -25,18 +25,22 @@ describe("WhatsApp intelligence knowledge bundle", () => {
 
   it("pins a stable checksum for Core snapshot provenance", async () => {
     const knowledge = buildWhatsAppIntelligenceKnowledge(PHASE2A_FIXTURE_CATALOG);
+    const reversed = buildWhatsAppIntelligenceKnowledge({
+      products: [...PHASE2A_FIXTURE_CATALOG.products].reverse(),
+      aliases: [...PHASE2A_FIXTURE_CATALOG.aliases].reverse(),
+    });
     const preview = await previewApprovedKnowledgePublication(knowledge);
     expect(preview.lifecycle).toBe("APPROVED");
     expect(preview.core_activation).toBe("NOT_EXECUTED");
     expect(preview.content_checksum).toBe(await knowledgeContentChecksum(knowledge));
+    expect(preview.content_checksum).toBe(await knowledgeContentChecksum(reversed));
     expect(preview.content_checksum).toMatch(/^[a-f0-9]{64}$/);
   });
 
   it("runs golden utterances and keeps family-level terms unresolved", () => {
     const report = runKnowledgeGoldenCases(PHASE2A_FIXTURE_CATALOG);
     expect(report.total).toBeGreaterThanOrEqual(10);
-    expect(report.failed.map((row) => row.utterance)).not.toContain("midya");
-    const midya = report.failed.find((row) => row.utterance === "midya");
-    expect(midya).toBeUndefined();
+    expect(report.failed).toEqual([]);
+    expect(report.passed).toBe(report.total);
   });
 });

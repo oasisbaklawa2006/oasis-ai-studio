@@ -1,5 +1,18 @@
 import type { RuntimeCatalog } from "../runtime/types";
 
+function sortedRecord<T>(entries: Iterable<[string, T]>): Record<string, T> {
+  const out = Object.create(null) as Record<string, T>;
+  for (const [key, value] of [...entries].sort(([left], [right]) => left.localeCompare(right))) {
+    Object.defineProperty(out, key, {
+      value,
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  return out;
+}
+
 export async function knowledgeContentChecksum(
   knowledge: WhatsAppIntelligenceKnowledge,
 ): Promise<string> {
@@ -63,9 +76,9 @@ export function buildWhatsAppIntelligenceKnowledge(
   catalog: RuntimeCatalog,
   sourceCatalogueVersionIds: string[] = [],
 ): WhatsAppIntelligenceKnowledge {
-  const sku_map: Record<string, WhatsAppKnowledgeSku> = Object.create(null);
-  const terminology: Record<string, string> = Object.create(null);
-  const aliases: Record<string, string> = Object.create(null);
+  const skuEntries = new Map<string, WhatsAppKnowledgeSku>();
+  const terminologyEntries = new Map<string, string>();
+  const aliasEntries = new Map<string, string>();
   const nameToSkus = new Map<string, Set<string>>();
   const productsById = new Map(catalog.products.map((product) => [product.id, product]));
 
@@ -73,14 +86,16 @@ export function buildWhatsAppIntelligenceKnowledge(
     const sku = product.sku.trim();
     if (!sku) continue;
     const name = (product.product_name || product.name || sku).trim();
-    sku_map[sku] = {
+    skuEntries.set(sku, {
       sku,
       name,
       family: skuFamily(product.category, product.subcategory),
       variant: product.short_name,
-    };
-    terminology[name.toLowerCase()] = sku;
-    if (product.short_name?.trim()) terminology[product.short_name.trim().toLowerCase()] = sku;
+    });
+    terminologyEntries.set(name.toLowerCase(), sku);
+    if (product.short_name?.trim()) {
+      terminologyEntries.set(product.short_name.trim().toLowerCase(), sku);
+    }
     const nameKey = name.toLowerCase();
     const bucket = nameToSkus.get(nameKey) ?? new Set<string>();
     bucket.add(sku);
@@ -91,9 +106,10 @@ export function buildWhatsAppIntelligenceKnowledge(
     const text = alias.alias_text.trim().toLowerCase();
     if (!text) continue;
     const product = productsById.get(alias.product_id);
-    if (!product?.sku) continue;
-    aliases[text] = product.sku;
-    terminology[text] = product.sku;
+    const sku = product?.sku.trim();
+    if (!sku) continue;
+    aliasEntries.set(text, sku);
+    terminologyEntries.set(text, sku);
   }
 
   const ambiguous_terms = [...nameToSkus.entries()]
@@ -103,9 +119,9 @@ export function buildWhatsAppIntelligenceKnowledge(
 
   const knowledge: WhatsAppIntelligenceKnowledge = {
     schema_version: WHATSAPP_KNOWLEDGE_SCHEMA_VERSION,
-    terminology,
-    aliases,
-    sku_map,
+    terminology: sortedRecord(terminologyEntries),
+    aliases: sortedRecord(aliasEntries),
+    sku_map: sortedRecord(skuEntries),
     packaging: {
       carton: {
         unit: "carton",
