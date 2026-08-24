@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { PHASE2A_FIXTURE_CATALOG } from "@/features/productIntelligence/runtime/fixtures/phase2aCatalog";
+import { runKnowledgeGoldenCases } from "@/features/productIntelligence/knowledge/goldenHarness";
 import {
   buildWhatsAppIntelligenceKnowledge,
   previewApprovedKnowledgePublication,
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
-import { runKnowledgeGoldenCases } from "@/features/productIntelligence/knowledge/goldenHarness";
+import { PHASE2A_FIXTURE_CATALOG } from "@/features/productIntelligence/runtime/fixtures/phase2aCatalog";
 
 const TABS = ["Knowledge", "Test", "Failures", "Publish"] as const;
 type Tab = (typeof TABS)[number];
@@ -51,7 +51,9 @@ export default function ProductIntelligenceKnowledgePage() {
             type="button"
             size="sm"
             variant={tab === item ? "default" : "outline"}
-            onClick={() => setTab(item)}
+            onClick={() => {
+              setTab(item);
+            }}
           >
             {item}
           </Button>
@@ -61,15 +63,18 @@ export default function ProductIntelligenceKnowledgePage() {
       {tab === "Knowledge" ? (
         <section className="rounded-md border p-4 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Canonical SKUs, aliases, and family names from productIntelligence. Core remains the only
-            runtime authority after an ACTIVE snapshot is selected.
+            Canonical SKUs, aliases, and family names from productIntelligence. Core remains the
+            only runtime authority after an ACTIVE snapshot is selected.
           </p>
-          <label className="block text-sm">
+          <label className="block text-sm" htmlFor="wa-knowledge-source-ids">
             Source catalogue version ids (references only)
             <Textarea
+              id="wa-knowledge-source-ids"
               className="mt-1"
               value={sourceIds}
-              onChange={(event) => setSourceIds(event.target.value)}
+              onChange={(event) => {
+                setSourceIds(event.target.value);
+              }}
               placeholder="uuid-1, uuid-2"
             />
           </label>
@@ -81,9 +86,12 @@ export default function ProductIntelligenceKnowledgePage() {
 
       {tab === "Test" ? (
         <section className="rounded-md border p-4 space-y-2">
-          <p className="text-sm">Golden cases: {report.passed}/{report.total} passed</p>
+          <p className="text-sm">
+            Golden cases: {report.passed}/{report.total} passed
+          </p>
           <p className="text-xs text-muted-foreground">
-            Family-level terms such as “midya” must stay unresolved. This test plane does not create orders.
+            Family-level terms such as “midya” must stay unresolved. This test plane does not create
+            orders.
           </p>
         </section>
       ) : null}
@@ -106,9 +114,7 @@ export default function ProductIntelligenceKnowledgePage() {
 
       {tab === "Publish" ? (
         <section className="rounded-md border p-4 space-y-3">
-          <p className="text-sm">
-            Lifecycle: APPROVED. Core activation: NOT_EXECUTED.
-          </p>
+          <p className="text-sm">Lifecycle: APPROVED. Core activation: NOT_EXECUTED.</p>
           <p className="font-mono text-xs break-all">checksum {checksum || "computing…"}</p>
           <p className="text-xs text-muted-foreground">
             This preview is the payload Core already consumes after knowledge-snapshot governance.

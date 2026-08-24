@@ -61,7 +61,10 @@ export function runKnowledgeGoldenCases(catalog: RuntimeCatalog): KnowledgeGolde
         reason: `expected ${testCase.expectSku}`,
       });
     }
-    if (testCase.expectSkuIn && (!result.resolved_sku || !testCase.expectSkuIn.includes(result.resolved_sku))) {
+    if (
+      testCase.expectSkuIn &&
+      (!result.resolved_sku || !testCase.expectSkuIn.includes(result.resolved_sku))
+    ) {
       failed.push({
         utterance: testCase.utterance,
         resolvedSku: result.resolved_sku,

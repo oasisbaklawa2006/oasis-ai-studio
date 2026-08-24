@@ -1,6 +1,8 @@
 import type { RuntimeCatalog } from "../runtime/types";
 
-export async function knowledgeContentChecksum(knowledge: WhatsAppIntelligenceKnowledge): Promise<string> {
+export async function knowledgeContentChecksum(
+  knowledge: WhatsAppIntelligenceKnowledge,
+): Promise<string> {
   const encoded = new TextEncoder().encode(JSON.stringify(knowledge));
   const digest = await crypto.subtle.digest("SHA-256", encoded);
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -38,7 +40,7 @@ const FORBIDDEN_KNOWLEDGE_KEYS = [
 export function assertNoTransactionalPayload(knowledge: WhatsAppIntelligenceKnowledge): void {
   const encoded = JSON.stringify(knowledge).toLowerCase();
   for (const key of FORBIDDEN_KNOWLEDGE_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(knowledge, key)) {
+    if (Object.hasOwn(knowledge, key)) {
       throw new Error(`KNOWLEDGE_TRANSACTION_FIELD_FORBIDDEN:${key}`);
     }
   }
@@ -47,8 +49,13 @@ export function assertNoTransactionalPayload(knowledge: WhatsAppIntelligenceKnow
   }
 }
 
-function skuFamily(category: string | null | undefined, subcategory: string | null | undefined): string | null {
-  const family = [category, subcategory].filter((part) => typeof part === "string" && part.trim()).join(" / ");
+function skuFamily(
+  category: string | null | undefined,
+  subcategory: string | null | undefined,
+): string | null {
+  const family = [category, subcategory]
+    .filter((part) => typeof part === "string" && part.trim())
+    .join(" / ");
   return family || null;
 }
 
@@ -56,10 +63,11 @@ export function buildWhatsAppIntelligenceKnowledge(
   catalog: RuntimeCatalog,
   sourceCatalogueVersionIds: string[] = [],
 ): WhatsAppIntelligenceKnowledge {
-  const sku_map: Record<string, WhatsAppKnowledgeSku> = {};
-  const terminology: Record<string, string> = {};
-  const aliases: Record<string, string> = {};
+  const sku_map: Record<string, WhatsAppKnowledgeSku> = Object.create(null);
+  const terminology: Record<string, string> = Object.create(null);
+  const aliases: Record<string, string> = Object.create(null);
   const nameToSkus = new Map<string, Set<string>>();
+  const productsById = new Map(catalog.products.map((product) => [product.id, product]));
 
   for (const product of catalog.products) {
     const sku = product.sku.trim();
@@ -82,7 +90,7 @@ export function buildWhatsAppIntelligenceKnowledge(
   for (const alias of catalog.aliases) {
     const text = alias.alias_text.trim().toLowerCase();
     if (!text) continue;
-    const product = catalog.products.find((row) => row.id === alias.product_id);
+    const product = productsById.get(alias.product_id);
     if (!product?.sku) continue;
     aliases[text] = product.sku;
     terminology[text] = product.sku;
@@ -99,11 +107,14 @@ export function buildWhatsAppIntelligenceKnowledge(
     aliases,
     sku_map,
     packaging: {
-      carton: { unit: "carton", notes: "Governed conversion must come from Core packaging master, not this snapshot." },
+      carton: {
+        unit: "carton",
+        notes: "Governed conversion must come from Core packaging master, not this snapshot.",
+      },
       box: { unit: "box", notes: "Ambiguous unless uniquely mapped in Core packaging master." },
     },
     ambiguous_terms,
-    source_catalogue_version_ids: [...new Set(sourceCatalogueVersionIds.filter(Boolean))],
+    source_catalogue_version_ids: [...new Set(sourceCatalogueVersionIds.filter(Boolean))].sort(),
   };
   assertNoTransactionalPayload(knowledge);
   return knowledge;

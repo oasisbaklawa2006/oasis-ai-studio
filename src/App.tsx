@@ -26,6 +26,7 @@ const PilotReadinessDashboard = lazy(() => import("./pages/PilotReadinessDashboa
 const ProductEdit = lazy(() => import("./pages/ProductEdit"));
 const Products = lazy(() => import("./pages/Products"));
 const ProductIntelligenceKnowledge = lazy(() => import("./pages/ProductIntelligenceKnowledge"));
+const ResolverPreview = lazy(() => import("./pages/ResolverPreview"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Testing = lazy(() => import("./pages/Testing"));
 
