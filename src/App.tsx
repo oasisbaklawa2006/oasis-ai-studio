@@ -25,7 +25,7 @@ const PilotAliasReview = lazy(() => import("./pages/PilotAliasReview"));
 const PilotReadinessDashboard = lazy(() => import("./pages/PilotReadinessDashboard"));
 const ProductEdit = lazy(() => import("./pages/ProductEdit"));
 const Products = lazy(() => import("./pages/Products"));
-const ResolverPreview = lazy(() => import("./pages/ResolverPreview"));
+const ProductIntelligenceKnowledge = lazy(() => import("./pages/ProductIntelligenceKnowledge"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Testing = lazy(() => import("./pages/Testing"));
 
@@ -276,6 +276,14 @@ const App = () => (
                     element={
                       <RoleGate page="testing">
                         <ResolverPreview />
+                      </RoleGate>
+                    }
+                  />
+                  <Route
+                    path="/admin/product-intelligence"
+                    element={
+                      <RoleGate page="testing">
+                        <ProductIntelligenceKnowledge />
                       </RoleGate>
                     }
                   />

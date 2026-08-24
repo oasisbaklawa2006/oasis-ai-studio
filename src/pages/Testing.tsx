@@ -140,6 +140,9 @@ const Testing = () => {
               <Link to="/testing/pilot-readiness">5-SKU Pilot Readiness</Link>
             </Button>
             <Button variant="outline" asChild>
+              <Link to="/admin/product-intelligence">Knowledge / Test / Failures / Publish</Link>
+            </Button>
+            <Button variant="outline" asChild>
               <Link to="/admin/resolver-preview">Resolver Preview</Link>
             </Button>
             <Button variant="outline" asChild>
