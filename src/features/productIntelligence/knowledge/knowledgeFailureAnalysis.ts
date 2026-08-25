@@ -23,13 +23,23 @@ function classifyFailure(failure: KnowledgeGoldenFailure): KnowledgeFailureInsig
   let failureCategory = "Resolver mismatch";
   let ambiguityReason: string | null = null;
 
-  if (
-    failure.clarificationRequired ||
-    reason.includes("unresolved") ||
-    reason.includes("ambiguous")
+  if (reason.includes("family-level or ambiguous term must remain unresolved")) {
+    suggestedAction = "MARK_AMBIGUOUS";
+    failureCategory = failure.resolvedSku
+      ? "Family term wrongly resolved to SKU"
+      : "Clarification not requested for ambiguous family term";
+    ambiguityReason = failure.reason;
+  } else if (
+    reason.includes("ambiguous") ||
+    reason.includes("duplicate") ||
+    reason.includes("one of")
   ) {
-    suggestedAction = "NO_CHANGE_EXPECTED_CLARIFICATION";
-    failureCategory = "Expected clarification";
+    suggestedAction = "MARK_AMBIGUOUS";
+    failureCategory = "Duplicate or ambiguous ownership";
+    ambiguityReason = failure.reason;
+  } else if (failure.clarificationRequired) {
+    suggestedAction = "MARK_AMBIGUOUS";
+    failureCategory = "Unexpected clarification";
     ambiguityReason = failure.reason;
   } else if (reason.includes("family")) {
     suggestedAction = "FIX_FAMILY_OR_VERSION_RELATION";
@@ -37,10 +47,6 @@ function classifyFailure(failure: KnowledgeGoldenFailure): KnowledgeFailureInsig
   } else if (reason.includes("packaging") || reason.includes("pc")) {
     suggestedAction = "PACKAGING_SEMANTIC_REVIEW";
     failureCategory = "Packaging-specific resolution";
-  } else if (reason.includes("duplicate") || reason.includes("one of")) {
-    suggestedAction = "MARK_AMBIGUOUS";
-    failureCategory = "Duplicate canonical ownership";
-    ambiguityReason = failure.reason;
   } else if (reason.includes("canonical")) {
     suggestedAction = "FIX_CANONICAL_NAME";
     failureCategory = "Canonical naming drift";

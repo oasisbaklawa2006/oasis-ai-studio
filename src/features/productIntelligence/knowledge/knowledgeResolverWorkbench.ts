@@ -44,7 +44,6 @@ export function resolveKnowledgeWorkbench(
 
   let resolutionStatus: KnowledgeWorkbenchResolution["resolutionStatus"] = "UNRESOLVED";
   if (result.clarification_required) resolutionStatus = "CLARIFICATION_REQUIRED";
-  else if (resolvedSku && result.alternatives.length > 1) resolutionStatus = "AMBIGUOUS";
   else if (resolvedSku) resolutionStatus = "RESOLVED";
 
   return {

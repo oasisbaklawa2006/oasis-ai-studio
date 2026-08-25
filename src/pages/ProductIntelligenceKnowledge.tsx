@@ -43,6 +43,9 @@ export default function ProductIntelligenceKnowledgePage() {
 
   useEffect(() => {
     let cancelled = false;
+    setCatalog(null);
+    setChecksum("");
+    setPublicationJson("Preparing publication candidate…");
     setCatalogError(null);
     setCatalogLabel(catalogModeLabel(catalogMode));
     void loadKnowledgeCatalog(catalogMode)
@@ -79,6 +82,7 @@ export default function ProductIntelligenceKnowledgePage() {
 
   useEffect(() => {
     if (!knowledge || !catalog) return;
+    const modeForCandidate = catalogMode;
     let cancelled = false;
     void (async () => {
       const checksumValue = await knowledgeContentChecksum(knowledge);
@@ -86,7 +90,7 @@ export default function ProductIntelligenceKnowledgePage() {
         knowledge,
         preparedBy: user?.email ?? null,
         sourceSummary: {
-          mode: catalogMode === "live" ? "live_catalogue" : catalogMode,
+          mode: modeForCandidate === "live" ? "live_catalogue" : modeForCandidate,
           product_count: catalog.products.length,
           alias_count: catalog.aliases.length,
           ambiguous_term_count: knowledge.ambiguous_terms.length,
@@ -98,7 +102,7 @@ export default function ProductIntelligenceKnowledgePage() {
           production_total: goldenReports.production.total,
         },
       });
-      if (cancelled) return;
+      if (cancelled || modeForCandidate !== catalogMode) return;
       setChecksum(checksumValue);
       setPublicationJson(JSON.stringify(candidate, null, 2));
     })();

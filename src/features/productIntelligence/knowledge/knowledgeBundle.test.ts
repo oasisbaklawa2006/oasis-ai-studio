@@ -110,7 +110,7 @@ describe("WhatsApp intelligence knowledge bundle", () => {
     expect(cashewTart).toBeTruthy();
     expect(knowledge.ambiguous_terms).toContain(pistachioBulbul);
     expect(knowledge.ambiguous_terms).toContain(cashewTart);
-    expect(knowledge.terminology[pistachioBulbul ?? ""]).toBeUndefined();
+    expect(knowledge.terminology[pistachioBulbul as string]).toBeUndefined();
     expect(knowledge.sku_map["OAS-AS-BKL-PST-BULK-0017"]).toBeDefined();
     expect(knowledge.sku_map["OAS-AS-BKL-PST-BULK-0017"].packaging_code).toBe("BULK");
     expect(Object.keys(knowledge.packaging)).toContain("BULK");
