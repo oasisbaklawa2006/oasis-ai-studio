@@ -1,9 +1,10 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import type { WhatsAppKnowledgePublicationCandidate } from "./knowledgeBundle";
 
-export const CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC = "whatsapp_submit_intelligence_knowledge_draft" as const;
+export const CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC =
+  "whatsapp_submit_intelligence_knowledge_draft" as const;
 
 export type CoreKnowledgeSnapshotRow = {
   id: string;
@@ -62,7 +63,10 @@ export type SubmitKnowledgeDraftDeps = {
   rpc: (
     fn: typeof CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC,
     args: SubmitKnowledgeDraftRpcArgs,
-  ) => Promise<{ data: Record<string, unknown> | null; error: { message: string; code?: string } | null }>;
+  ) => Promise<{
+    data: Record<string, unknown> | null;
+    error: { message: string; code?: string } | null;
+  }>;
 };
 
 const authorityDb = supabase as unknown as SupabaseClient<ExtendedDatabase>;
@@ -79,7 +83,10 @@ const defaultDeps: SubmitKnowledgeDraftDeps = {
 
 /** Stable per-candidate idempotency key — changes when canonical checksum changes. */
 export function buildKnowledgeSubmissionIdempotencyKey(
-  candidate: Pick<WhatsAppKnowledgePublicationCandidate, "content_checksum" | "source_catalogue_version_ids">,
+  candidate: Pick<
+    WhatsAppKnowledgePublicationCandidate,
+    "content_checksum" | "source_catalogue_version_ids"
+  >,
 ): string {
   const provenance = [...candidate.source_catalogue_version_ids].sort().join(",");
   return `wa-knowledge-handoff:${candidate.content_checksum}:${provenance}`;
@@ -100,7 +107,9 @@ export function toCoreSubmitKnowledgeDraftRpcArgs(
   };
 }
 
-export function rowFromKnowledgeSnapshotPayload(data: Record<string, unknown>): CoreKnowledgeSnapshotRow {
+export function rowFromKnowledgeSnapshotPayload(
+  data: Record<string, unknown>,
+): CoreKnowledgeSnapshotRow {
   return {
     id: String(data.id),
     schema_version: String(data.schema_version),
@@ -146,7 +155,10 @@ export function classifyKnowledgeSubmissionError(error: {
     return { code: "NOT_AUTHORIZED", message, serverCode };
   }
 
-  if (serverCode === "23505" || normalized.includes("idempotency key reused with conflicting payload")) {
+  if (
+    serverCode === "23505" ||
+    normalized.includes("idempotency key reused with conflicting payload")
+  ) {
     return { code: "IDEMPOTENCY_CONFLICT", message, serverCode };
   }
 

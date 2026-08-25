@@ -47,7 +47,10 @@ export type HandoffEvaluation = {
 
 export function goldenTestsBlocking(summary: GoldenTestSummary | null): boolean {
   if (!summary) return true;
-  return summary.phase2a_passed < summary.phase2a_total || summary.production_passed < summary.production_total;
+  return (
+    summary.phase2a_passed < summary.phase2a_total ||
+    summary.production_passed < summary.production_total
+  );
 }
 
 export function evaluateHandoffSubmission(input: EvaluateHandoffInput): HandoffEvaluation {
@@ -88,7 +91,11 @@ export function evaluateHandoffSubmission(input: EvaluateHandoffInput): HandoffE
     };
   }
 
-  if (submittedChecksum && submittedChecksum === currentChecksum && currentChecksum === candidate.content_checksum) {
+  if (
+    submittedChecksum &&
+    submittedChecksum === currentChecksum &&
+    currentChecksum === candidate.content_checksum
+  ) {
     return {
       uiState: "SUBMITTED_TO_CORE",
       canSubmit: false,
@@ -102,7 +109,8 @@ export function evaluateHandoffSubmission(input: EvaluateHandoffInput): HandoffE
       uiState: "SUBMISSION_BLOCKED",
       canSubmit: false,
       blockReason: "STALE_CANDIDATE",
-      blockMessage: "Knowledge changed after a prior submission identity. Reconcile the new checksum before publishing again.",
+      blockMessage:
+        "Knowledge changed after a prior submission identity. Reconcile the new checksum before publishing again.",
     };
   }
 

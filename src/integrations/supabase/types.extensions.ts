@@ -127,13 +127,48 @@ export type CatalogueAuthorityTableDefinitions = {
     Update: Partial<CatalogueAuthorityTableDefinitions["catalogue_share_links"]["Row"]>;
     Relationships: [];
   };
-  catalogue_product_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
-  catalogue_media_submissions: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
-  catalogue_alias_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
-  catalogue_bom_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
-  catalogue_moq_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
-  catalogue_pricing_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
-  catalogue_tag_drafts: { Row: CatalogueDraftRow; Insert: Partial<CatalogueDraftRow>; Update: Partial<CatalogueDraftRow>; Relationships: [] };
+  catalogue_product_drafts: {
+    Row: CatalogueDraftRow;
+    Insert: Partial<CatalogueDraftRow>;
+    Update: Partial<CatalogueDraftRow>;
+    Relationships: [];
+  };
+  catalogue_media_submissions: {
+    Row: CatalogueDraftRow;
+    Insert: Partial<CatalogueDraftRow>;
+    Update: Partial<CatalogueDraftRow>;
+    Relationships: [];
+  };
+  catalogue_alias_drafts: {
+    Row: CatalogueDraftRow;
+    Insert: Partial<CatalogueDraftRow>;
+    Update: Partial<CatalogueDraftRow>;
+    Relationships: [];
+  };
+  catalogue_bom_drafts: {
+    Row: CatalogueDraftRow;
+    Insert: Partial<CatalogueDraftRow>;
+    Update: Partial<CatalogueDraftRow>;
+    Relationships: [];
+  };
+  catalogue_moq_drafts: {
+    Row: CatalogueDraftRow;
+    Insert: Partial<CatalogueDraftRow>;
+    Update: Partial<CatalogueDraftRow>;
+    Relationships: [];
+  };
+  catalogue_pricing_drafts: {
+    Row: CatalogueDraftRow;
+    Insert: Partial<CatalogueDraftRow>;
+    Update: Partial<CatalogueDraftRow>;
+    Relationships: [];
+  };
+  catalogue_tag_drafts: {
+    Row: CatalogueDraftRow;
+    Insert: Partial<CatalogueDraftRow>;
+    Update: Partial<CatalogueDraftRow>;
+    Relationships: [];
+  };
   product_governance_audit: {
     Row: {
       id: string;

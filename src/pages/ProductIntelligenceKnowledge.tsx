@@ -14,17 +14,6 @@ import {
   type WhatsAppKnowledgePublicationCandidate,
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
 import {
-  evaluateHandoffSubmission,
-  publicationUiLabel,
-} from "@/features/productIntelligence/knowledge/publishSubmissionState";
-import {
-  buildKnowledgeSubmissionIdempotencyKey,
-  classifyKnowledgeSubmissionError,
-  submitKnowledgeDraftToCore,
-  type CoreKnowledgeSnapshotRow,
-  type KnowledgeSubmissionError,
-} from "@/features/productIntelligence/knowledge/submitKnowledgeDraft";
-import {
   catalogModeLabel,
   type KnowledgeCatalogLoadResult,
   type KnowledgeCatalogMode,
@@ -38,6 +27,17 @@ import {
   KNOWLEDGE_WORKBENCH_EXAMPLES,
   resolveKnowledgeWorkbench,
 } from "@/features/productIntelligence/knowledge/knowledgeResolverWorkbench";
+import {
+  evaluateHandoffSubmission,
+  publicationUiLabel,
+} from "@/features/productIntelligence/knowledge/publishSubmissionState";
+import {
+  buildKnowledgeSubmissionIdempotencyKey,
+  type CoreKnowledgeSnapshotRow,
+  classifyKnowledgeSubmissionError,
+  type KnowledgeSubmissionError,
+  submitKnowledgeDraftToCore,
+} from "@/features/productIntelligence/knowledge/submitKnowledgeDraft";
 import type { RuntimeCatalog } from "@/features/productIntelligence/runtime/types";
 
 const TABS = ["Knowledge", "Test", "Failures", "Publish"] as const;
@@ -182,14 +182,7 @@ export default function ProductIntelligenceKnowledgePage() {
         isSubmitting,
         submissionFailed,
       }),
-    [
-      checksum,
-      isFixture,
-      isSubmitting,
-      publicationCandidate,
-      submissionFailed,
-      submittedChecksum,
-    ],
+    [checksum, isFixture, isSubmitting, publicationCandidate, submissionFailed, submittedChecksum],
   );
 
   async function handleSubmitToCore(): Promise<void> {
@@ -490,9 +483,7 @@ export default function ProductIntelligenceKnowledgePage() {
             <li>Not reviewed · Not approved · Not active</li>
           </ul>
           {submissionIdempotencyKey ? (
-            <p className="font-mono text-xs break-all">
-              idempotency {submissionIdempotencyKey}
-            </p>
+            <p className="font-mono text-xs break-all">idempotency {submissionIdempotencyKey}</p>
           ) : null}
           {isFixture ? (
             <p className="text-xs text-amber-800">

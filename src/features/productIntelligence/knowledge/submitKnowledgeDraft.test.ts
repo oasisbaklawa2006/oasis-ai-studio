@@ -15,12 +15,12 @@ import {
 } from "./publishSubmissionState";
 import {
   buildKnowledgeSubmissionIdempotencyKey,
-  classifyKnowledgeSubmissionError,
   CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC,
+  classifyKnowledgeSubmissionError,
   rowFromKnowledgeSnapshotPayload,
+  type SubmitKnowledgeDraftDeps,
   submitKnowledgeDraftToCore,
   toCoreSubmitKnowledgeDraftRpcArgs,
-  type SubmitKnowledgeDraftDeps,
 } from "./submitKnowledgeDraft";
 
 async function handoffReadyCandidate(): Promise<WhatsAppKnowledgePublicationCandidate> {
@@ -47,9 +47,7 @@ async function handoffReadyCandidate(): Promise<WhatsAppKnowledgePublicationCand
   });
 }
 
-function mockDeps(
-  impl: SubmitKnowledgeDraftDeps["rpc"],
-): SubmitKnowledgeDraftDeps {
+function mockDeps(impl: SubmitKnowledgeDraftDeps["rpc"]): SubmitKnowledgeDraftDeps {
   return { rpc: impl };
 }
 
@@ -172,7 +170,9 @@ describe("submitKnowledgeDraftToCore", () => {
     const result = await submitKnowledgeDraftToCore(candidate, {}, deps);
     expect(calls).toHaveLength(1);
     expect(calls[0]?.fn).toBe(CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC);
-    expect(calls[0]?.args).toEqual(toCoreSubmitKnowledgeDraftRpcArgs(candidate, result.idempotencyKey));
+    expect(calls[0]?.args).toEqual(
+      toCoreSubmitKnowledgeDraftRpcArgs(candidate, result.idempotencyKey),
+    );
     expect(calls[0]?.args.p_content_checksum).toBe(candidate.content_checksum);
     expect(calls[0]?.args.p_source_catalogue_version_ids).toEqual(
       candidate.source_catalogue_version_ids,
@@ -296,9 +296,9 @@ describe("submitKnowledgeDraftToCore", () => {
     }));
     const result = await submitKnowledgeDraftToCore(candidate, {}, deps);
     expect(result.snapshot.id).toBe("ab000000-0000-0000-0000-000000000099");
-    expect(rowFromKnowledgeSnapshotPayload(result.snapshot as unknown as Record<string, unknown>).id).toBe(
-      "ab000000-0000-0000-0000-000000000099",
-    );
+    expect(
+      rowFromKnowledgeSnapshotPayload(result.snapshot as unknown as Record<string, unknown>).id,
+    ).toBe("ab000000-0000-0000-0000-000000000099");
   });
 
   it("reuses explicit idempotency key on timeout retry", async () => {
