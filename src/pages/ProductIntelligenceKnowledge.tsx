@@ -7,9 +7,9 @@ import { runAllKnowledgeGoldenCases } from "@/features/productIntelligence/knowl
 import {
   buildKnowledgePublicationCandidate,
   buildWhatsAppIntelligenceKnowledge,
-  knowledgeContentChecksum,
   type KnowledgeCandidateStatus,
   type KnowledgeHandoffEligibility,
+  knowledgeContentChecksum,
   type WhatsAppIntelligenceKnowledge,
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
 import {
