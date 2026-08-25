@@ -42,7 +42,7 @@ export default function ProductIntelligenceKnowledgePage() {
   const [checksum, setChecksum] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setCatalog(null);
     setChecksum("");
     setPublicationJson("Preparing publication candidate…");
@@ -50,17 +50,17 @@ export default function ProductIntelligenceKnowledgePage() {
     setCatalogLabel(catalogModeLabel(catalogMode));
     void loadKnowledgeCatalog(catalogMode)
       .then((loaded) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setCatalog(loaded.catalog);
         setCatalogLabel(loaded.label);
       })
       .catch((error) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setCatalog(null);
         setCatalogError(error instanceof Error ? error.message : String(error));
       });
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [catalogMode]);
 
@@ -82,7 +82,7 @@ export default function ProductIntelligenceKnowledgePage() {
 
   useEffect(() => {
     if (!knowledge || !catalog) return;
-    let cancelled = false;
+    const controller = new AbortController();
     void (async () => {
       const checksumValue = await knowledgeContentChecksum(knowledge);
       const candidate = await buildKnowledgePublicationCandidate({
@@ -101,12 +101,12 @@ export default function ProductIntelligenceKnowledgePage() {
           production_total: goldenReports.production.total,
         },
       });
-      if (cancelled) return;
+      if (controller.signal.aborted) return;
       setChecksum(checksumValue);
       setPublicationJson(JSON.stringify(candidate, null, 2));
     })();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [catalog, catalogMode, goldenReports, knowledge, user?.email]);
 
