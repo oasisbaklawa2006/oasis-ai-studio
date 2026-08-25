@@ -1,16 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { runAllKnowledgeGoldenCases } from "@/features/productIntelligence/knowledge/goldenHarness";
 import {
+  buildKnowledgePublicationCandidate,
   buildWhatsAppIntelligenceKnowledge,
+  knowledgeContentChecksum,
   type KnowledgeCandidateStatus,
   type KnowledgeHandoffEligibility,
   type WhatsAppIntelligenceKnowledge,
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
-import type { KnowledgeCatalogMode } from "@/features/productIntelligence/knowledge/knowledgeCatalogSource";
+import {
+  catalogModeLabel,
+  type KnowledgeCatalogLoadResult,
+  type KnowledgeCatalogMode,
+  loadKnowledgeCatalog,
+} from "@/features/productIntelligence/knowledge/knowledgeCatalogSource";
 import {
   analyzeKnowledgeFailures,
   suggestedActionLabel,
@@ -19,8 +26,6 @@ import {
   KNOWLEDGE_WORKBENCH_EXAMPLES,
   resolveKnowledgeWorkbench,
 } from "@/features/productIntelligence/knowledge/knowledgeResolverWorkbench";
-import { useKnowledgeCatalogLoad } from "@/features/productIntelligence/knowledge/useKnowledgeCatalogLoad";
-import { useKnowledgePublicationCandidate } from "@/features/productIntelligence/knowledge/useKnowledgePublicationCandidate";
 import type { RuntimeCatalog } from "@/features/productIntelligence/runtime/types";
 
 const TABS = ["Knowledge", "Test", "Failures", "Publish"] as const;
@@ -49,8 +54,35 @@ export default function ProductIntelligenceKnowledgePage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("Knowledge");
   const [catalogMode, setCatalogMode] = useState<KnowledgeCatalogMode>("live");
+  const [catalogLoad, setCatalogLoad] = useState<KnowledgeCatalogLoadResult | null>(null);
+  const [catalogLabel, setCatalogLabel] = useState("Loading catalogue…");
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [testInput, setTestInput] = useState("pista bulbul");
-  const { catalogLoad, catalogLabel, catalogError } = useKnowledgeCatalogLoad(catalogMode);
+  const [publicationJson, setPublicationJson] = useState("Preparing publication candidate…");
+  const [checksum, setChecksum] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setCatalogLoad(null);
+    setChecksum("");
+    setPublicationJson("Preparing publication candidate…");
+    setCatalogError(null);
+    setCatalogLabel(catalogModeLabel(catalogMode));
+    void loadKnowledgeCatalog(catalogMode)
+      .then((loaded) => {
+        if (controller.signal.aborted) return;
+        setCatalogLoad(loaded);
+        setCatalogLabel(loaded.label);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setCatalogLoad(null);
+        setCatalogError(error instanceof Error ? error.message : String(error));
+      });
+    return () => {
+      controller.abort();
+    };
+  }, [catalogMode]);
 
   const catalog: RuntimeCatalog | null = catalogLoad?.catalog ?? null;
   const isFixture = catalogMode !== "live";
@@ -96,7 +128,20 @@ export default function ProductIntelligenceKnowledgePage() {
     };
   }, [catalog, catalogLoad, catalogMode, goldenReports, isFixture, knowledge, user?.email]);
 
-  const { checksum, publicationJson } = useKnowledgePublicationCandidate(publicationInput);
+  useEffect(() => {
+    if (!publicationInput) return;
+    const controller = new AbortController();
+    void (async () => {
+      const checksumValue = await knowledgeContentChecksum(publicationInput.knowledge);
+      const candidate = await buildKnowledgePublicationCandidate(publicationInput);
+      if (controller.signal.aborted) return;
+      setChecksum(checksumValue);
+      setPublicationJson(JSON.stringify(candidate, null, 2));
+    })();
+    return () => {
+      controller.abort();
+    };
+  }, [publicationInput]);
 
   const workbench = useMemo(() => {
     if (!catalog || !knowledge || !testInput.trim()) return null;
