@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,9 +57,12 @@ export default function ProductIntelligenceKnowledgePage() {
   const [testInput, setTestInput] = useState("pista bulbul");
   const [publicationJson, setPublicationJson] = useState("Preparing publication candidate…");
   const [checksum, setChecksum] = useState("");
+  const catalogLoadGenerationRef = useRef(0);
+  const publicationGenerationRef = useRef(0);
 
   useEffect(() => {
-    const controller = new AbortController();
+    const generation = catalogLoadGenerationRef.current + 1;
+    catalogLoadGenerationRef.current = generation;
     setCatalogLoad(null);
     setChecksum("");
     setPublicationJson("Preparing publication candidate…");
@@ -67,18 +70,15 @@ export default function ProductIntelligenceKnowledgePage() {
     setCatalogLabel(catalogModeLabel(catalogMode));
     void loadKnowledgeCatalog(catalogMode)
       .then((loaded) => {
-        if (controller.signal.aborted) return;
+        if (catalogLoadGenerationRef.current !== generation) return;
         setCatalogLoad(loaded);
         setCatalogLabel(loaded.label);
       })
       .catch((error) => {
-        if (controller.signal.aborted) return;
+        if (catalogLoadGenerationRef.current !== generation) return;
         setCatalogLoad(null);
         setCatalogError(error instanceof Error ? error.message : String(error));
       });
-    return () => {
-      controller.abort();
-    };
   }, [catalogMode]);
 
   const catalog: RuntimeCatalog | null = catalogLoad?.catalog ?? null;
@@ -103,7 +103,8 @@ export default function ProductIntelligenceKnowledgePage() {
 
   useEffect(() => {
     if (!knowledge || !catalog || !catalogLoad) return;
-    const controller = new AbortController();
+    const generation = publicationGenerationRef.current + 1;
+    publicationGenerationRef.current = generation;
     const semantics = candidateSemantics(catalogLoad);
     void (async () => {
       const checksumValue = await knowledgeContentChecksum(knowledge);
@@ -126,13 +127,10 @@ export default function ProductIntelligenceKnowledgePage() {
           production_total: goldenReports.production.total,
         },
       });
-      if (controller.signal.aborted) return;
+      if (publicationGenerationRef.current !== generation) return;
       setChecksum(checksumValue);
       setPublicationJson(JSON.stringify(candidate, null, 2));
     })();
-    return () => {
-      controller.abort();
-    };
   }, [catalog, catalogLoad, catalogMode, goldenReports, knowledge, user?.email]);
 
   const workbench = useMemo(() => {
