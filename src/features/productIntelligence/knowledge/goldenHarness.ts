@@ -1,4 +1,6 @@
 import { resolveProductUtterance } from "../runtime/resolveProductUtterance";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "../runtime/fixtures/productionSnapshotCatalog";
+import { PHASE2A_FIXTURE_CATALOG } from "../runtime/fixtures/phase2aCatalog";
 import type { RuntimeCatalog } from "../runtime/types";
 
 export type KnowledgeGoldenCase = {
@@ -25,6 +27,14 @@ export const KNOWLEDGE_GOLDEN_CASES: KnowledgeGoldenCase[] = [
   { utterance: "OAS-AS-BKL-CSH-BULK-0004", expectSku: "OAS-AS-BKL-CSH-BULK-0004" },
 ];
 
+export const PRODUCTION_SHAPE_GOLDEN_CASES: KnowledgeGoldenCase[] = [
+  { utterance: "pista bulbul", expectSku: "OAS-AS-BKL-PST-BULK-0017" },
+  { utterance: "midya", expectClarify: true, expectSku: null },
+  { utterance: "6 pc midya", expectSku: "OAS-AS-BKL-PST-MAAPET-0003" },
+  { utterance: "kaju tart", expectSkuIn: ["OAS-AS-BKL-CSH-BULK-0004", "OAS-AS-BKL-CSH-BULK-0003"] },
+  { utterance: "OAS-AS-BKL-PST-BULK-0017", expectSku: "OAS-AS-BKL-PST-BULK-0017" },
+];
+
 export type KnowledgeGoldenFailure = {
   utterance: string;
   resolvedSku: string | null;
@@ -33,14 +43,19 @@ export type KnowledgeGoldenFailure = {
 };
 
 export type KnowledgeGoldenReport = {
+  corpus: "phase2a" | "production_snapshot";
   total: number;
   passed: number;
   failed: KnowledgeGoldenFailure[];
 };
 
-export function runKnowledgeGoldenCases(catalog: RuntimeCatalog): KnowledgeGoldenReport {
+function evaluateGoldenCases(
+  catalog: RuntimeCatalog,
+  cases: KnowledgeGoldenCase[],
+  corpus: KnowledgeGoldenReport["corpus"],
+): KnowledgeGoldenReport {
   const failed: KnowledgeGoldenFailure[] = [];
-  for (const testCase of KNOWLEDGE_GOLDEN_CASES) {
+  for (const testCase of cases) {
     const result = resolveProductUtterance(testCase.utterance, catalog);
     if (testCase.expectClarify) {
       if (!result.clarification_required || result.resolved_sku !== null) {
@@ -74,8 +89,31 @@ export function runKnowledgeGoldenCases(catalog: RuntimeCatalog): KnowledgeGolde
     }
   }
   return {
-    total: KNOWLEDGE_GOLDEN_CASES.length,
-    passed: KNOWLEDGE_GOLDEN_CASES.length - failed.length,
+    corpus,
+    total: cases.length,
+    passed: cases.length - failed.length,
     failed,
+  };
+}
+
+export function runKnowledgeGoldenCases(
+  catalog: RuntimeCatalog = PHASE2A_FIXTURE_CATALOG,
+): KnowledgeGoldenReport {
+  return evaluateGoldenCases(catalog, KNOWLEDGE_GOLDEN_CASES, "phase2a");
+}
+
+export function runProductionSnapshotGoldenCases(
+  catalog: RuntimeCatalog = PRODUCTION_SNAPSHOT_CATALOG,
+): KnowledgeGoldenReport {
+  return evaluateGoldenCases(catalog, PRODUCTION_SHAPE_GOLDEN_CASES, "production_snapshot");
+}
+
+export function runAllKnowledgeGoldenCases(): {
+  phase2a: KnowledgeGoldenReport;
+  production: KnowledgeGoldenReport;
+} {
+  return {
+    phase2a: runKnowledgeGoldenCases(PHASE2A_FIXTURE_CATALOG),
+    production: runProductionSnapshotGoldenCases(PRODUCTION_SNAPSHOT_CATALOG),
   };
 }
