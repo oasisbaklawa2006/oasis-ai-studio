@@ -1,36 +1,11 @@
 import type { LanguageTermCounts, ProductLanguageReadinessResult } from "./types";
 
 const DISCOVERABILITY_DIMENSIONS = [
-  {
-    key: "has_aliases",
-    label: "Official aliases",
-    termType: "official_alias" as const,
-    minCount: 1,
-  },
-  {
-    key: "has_customer_terms",
-    label: "Customer terms",
-    termType: "customer_term" as const,
-    minCount: 1,
-  },
-  {
-    key: "has_whatsapp_keywords",
-    label: "WhatsApp keywords",
-    termType: "whatsapp_keyword" as const,
-    minCount: 1,
-  },
-  {
-    key: "has_search_keywords",
-    label: "Search keywords",
-    termType: "search_keyword" as const,
-    minCount: 1,
-  },
-  {
-    key: "has_regional_terms",
-    label: "Regional terms",
-    termType: "regional_term" as const,
-    minCount: 1,
-  },
+  { key: "has_aliases", label: "Official aliases", termType: "official_alias" as const, minCount: 1 },
+  { key: "has_customer_terms", label: "Customer terms", termType: "customer_term" as const, minCount: 1 },
+  { key: "has_whatsapp_keywords", label: "WhatsApp keywords", termType: "whatsapp_keyword" as const, minCount: 1 },
+  { key: "has_search_keywords", label: "Search keywords", termType: "search_keyword" as const, minCount: 1 },
+  { key: "has_regional_terms", label: "Regional terms", termType: "regional_term" as const, minCount: 1 },
 ] as const;
 
 export function evaluateProductLanguageReadiness(
@@ -64,16 +39,11 @@ export function evaluateProductLanguageReadiness(
 
   let nextAction = "Add customer terms and WhatsApp keywords for sales discovery";
   if (!hasOfficialName) nextAction = "Set official name on Identity tab";
-  else if ((counts.whatsapp_keyword ?? 0) === 0)
-    nextAction = "Add WhatsApp keywords for chat order matching";
-  else if ((counts.customer_term ?? 0) === 0)
-    nextAction = "Add customer terms for natural-language search";
-  else if ((counts.search_keyword ?? 0) === 0)
-    nextAction = "Add broad search keywords for catalogue discovery";
-  else if ((counts.regional_term ?? 0) === 0)
-    nextAction = "Add regional terms for locale-specific sales";
-  else if (readyForDiscoverability)
-    nextAction = "Language discoverability baseline complete — queue typed schema migration";
+  else if ((counts.whatsapp_keyword ?? 0) === 0) nextAction = "Add WhatsApp keywords for chat order matching";
+  else if ((counts.customer_term ?? 0) === 0) nextAction = "Add customer terms for natural-language search";
+  else if ((counts.search_keyword ?? 0) === 0) nextAction = "Add broad search keywords for catalogue discovery";
+  else if ((counts.regional_term ?? 0) === 0) nextAction = "Add regional terms for locale-specific sales";
+  else if (readyForDiscoverability) nextAction = "Language discoverability baseline complete — queue typed schema migration";
 
   return {
     score,

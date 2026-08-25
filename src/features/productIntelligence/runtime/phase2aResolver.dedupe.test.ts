@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { collapseCandidatesByLogicalGroup, logicalGroupKey, skuSerial } from "./candidateGrouping";
-import { PHASE2A_FIXTURE_CATALOG } from "./fixtures/phase2aCatalog";
+import {
+  collapseCandidatesByLogicalGroup,
+  logicalGroupKey,
+  skuSerial,
+} from "./candidateGrouping";
 import { resolveProductUtterance } from "./resolveProductUtterance";
+import { PHASE2A_FIXTURE_CATALOG } from "./fixtures/phase2aCatalog";
 import type { RuntimeCatalog } from "./types";
 
 const DUPLICATE_BULBUL_CATALOG: RuntimeCatalog = {
@@ -96,12 +100,8 @@ describe("candidateGrouping", () => {
   });
 
   it("keeps bulk and gift pack in different logical groups", () => {
-    const bulk = PHASE2A_FIXTURE_CATALOG.products.find(
-      (p) => p.sku === "OAS-AS-BKL-PST-BULK-0016",
-    )!;
-    const gift = PHASE2A_FIXTURE_CATALOG.products.find(
-      (p) => p.sku === "OAS-AS-BKL-PST-MAAPET-0003",
-    )!;
+    const bulk = PHASE2A_FIXTURE_CATALOG.products.find((p) => p.sku === "OAS-AS-BKL-PST-BULK-0016")!;
+    const gift = PHASE2A_FIXTURE_CATALOG.products.find((p) => p.sku === "OAS-AS-BKL-PST-MAAPET-0003")!;
     expect(logicalGroupKey(bulk)).not.toBe(logicalGroupKey(gift));
   });
 
@@ -132,9 +132,7 @@ describe("candidateGrouping", () => {
     expect(collapsed).toHaveLength(1);
     expect(collapsed[0].sku).toBe("OAS-AS-BKL-PST-BULK-0017");
     expect(collapsedDuplicateCount).toBe(1);
-    expect(skuSerial("OAS-AS-BKL-PST-BULK-0017")).toBeGreaterThan(
-      skuSerial("OAS-AS-BKL-PST-BULK-0013"),
-    );
+    expect(skuSerial("OAS-AS-BKL-PST-BULK-0017")).toBeGreaterThan(skuSerial("OAS-AS-BKL-PST-BULK-0013"));
   });
 
   it("prefers active product over inactive duplicate", () => {
@@ -156,11 +154,7 @@ describe("candidateGrouping", () => {
         confidence: 1,
       },
     ];
-    const { collapsed } = collapseCandidatesByLogicalGroup(
-      candidates,
-      INACTIVE_VS_ACTIVE_DUP,
-      "pista bulbul",
-    );
+    const { collapsed } = collapseCandidatesByLogicalGroup(candidates, INACTIVE_VS_ACTIVE_DUP, "pista bulbul");
     expect(collapsed[0].sku).toBe("OAS-AS-BKL-PST-BULK-0017");
   });
 });
@@ -173,9 +167,7 @@ describe("resolver dedupe integration", () => {
     expect(res.resolved_sku).toBe("OAS-AS-BKL-PST-BULK-0017");
     expect(res.resolved_name).toBe("Pistachio Bulbul Bulk");
     expect(res.reason).toMatch(/duplicate catalogue rows collapsed/i);
-    expect(res.alternatives.filter((a) => a.product_name === "Pistachio Bulbul Bulk")).toHaveLength(
-      1,
-    );
+    expect(res.alternatives.filter((a) => a.product_name === "Pistachio Bulbul Bulk")).toHaveLength(1);
   });
 
   it("midya bulk vs gift pack remains clarification after dedupe", () => {

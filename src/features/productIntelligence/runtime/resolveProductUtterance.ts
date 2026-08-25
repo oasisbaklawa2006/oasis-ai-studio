@@ -1,9 +1,14 @@
-import { collapseCandidatesByLogicalGroup } from "./candidateGrouping";
 import { buildCatalogLexicon, type CatalogLexiconEntry } from "./catalogLexicon";
-import { actionForBand, assignConfidenceBand, buildReason, isAmbiguous } from "./confidenceBands";
+import { collapseCandidatesByLogicalGroup } from "./candidateGrouping";
+import { cashewTartFamilyConfidenceBoost } from "./productFamilies";
+import {
+  actionForBand,
+  assignConfidenceBand,
+  buildReason,
+  isAmbiguous,
+} from "./confidenceBands";
 import { normalizeUtterance } from "./normalizeUtterance";
 import { extractOrderQuantity } from "./parseOrderQuantity";
-import { cashewTartFamilyConfidenceBoost } from "./productFamilies";
 import {
   bulkPhraseBoost,
   cheeseIntentBoost,
@@ -97,10 +102,7 @@ function scoreEntryTerms(
     } else {
       for (const qv of queryVariants) {
         const qTokens = tokenize(qv);
-        const overlap = tokenOverlapScore(
-          qTokens.length ? qTokens : normalized.tokens,
-          term.tokens,
-        );
+        const overlap = tokenOverlapScore(qTokens.length ? qTokens : normalized.tokens, term.tokens);
         score = Math.max(score, overlap);
       }
     }
@@ -108,7 +110,9 @@ function scoreEntryTerms(
     if (score <= 0) continue;
 
     let capped =
-      term.source === "sku" ? score : Math.min(0.97, score + (term.source === "alias" ? 0.02 : 0));
+      term.source === "sku"
+        ? score
+        : Math.min(0.97, score + (term.source === "alias" ? 0.02 : 0));
 
     if (term.source === "alias") {
       capped = Math.min(1, capped + exactUtteranceAliasBoost(normalized.raw, term.text));
@@ -241,9 +245,7 @@ export function resolveProductUtterance(
   ranked = logicalRanked;
 
   const midyaAmbiguous = isMidyaSingleTokenAmbiguous(normalized, catalog);
-  const exactWinner = midyaAmbiguous
-    ? undefined
-    : pickExactAliasWinner(catalog, ranked, normalized.raw);
+  const exactWinner = midyaAmbiguous ? undefined : pickExactAliasWinner(catalog, ranked, normalized.raw);
   const top = exactWinner ?? ranked[0];
   const second = exactWinner
     ? ranked.find((r) => r.product_id !== exactWinner.product_id)

@@ -40,16 +40,14 @@ export function packVariantIndicator(product: RuntimeCatalogProduct): string {
     .join(" ")
     .toLowerCase();
 
-  if (hay.includes("gift pack") || (hay.includes("gift") && hay.includes("pc"))) return "gift_pack";
+  if (hay.includes("gift pack") || hay.includes("gift") && hay.includes("pc")) return "gift_pack";
   if (product.sku.includes("MAAPET") || hay.includes("maapet")) return "maapet";
   if (product.sku.includes("BULK") || hay.includes(" bulk")) return "bulk";
   if (product.packaging_code) return normalizeLabel(product.packaging_code);
 
-  const skuSegment = product.sku
-    .split("-")
-    .find((s) =>
-      ["BULK", "MAAPET", "LOOSE", "TRAY1KG", "RBOX", "MAPTRAY"].includes(s.toUpperCase()),
-    );
+  const skuSegment = product.sku.split("-").find((s) =>
+    ["BULK", "MAAPET", "LOOSE", "TRAY1KG", "RBOX", "MAPTRAY"].includes(s.toUpperCase()),
+  );
   if (skuSegment) return skuSegment.toLowerCase();
 
   return "default";
@@ -126,13 +124,7 @@ function pickGroupRepresentative<T extends ScoredCandidateLike>(
   rawUtterance: string,
 ): T {
   return [...group].sort((a, b) =>
-    compareRepresentatives(
-      a,
-      b,
-      productById.get(a.product_id),
-      productById.get(b.product_id),
-      rawUtterance,
-    ),
+    compareRepresentatives(a, b, productById.get(a.product_id), productById.get(b.product_id), rawUtterance),
   )[0];
 }
 

@@ -2,11 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { isProductLanguageTermsSchemaDeployed } from "./languageSchema";
 import { buildLanguageTermInventory, countLanguageTerms } from "./languageTermInventory";
 import { evaluateProductLanguageReadiness } from "./productLanguageReadiness";
-import type {
-  LanguageTermCounts,
-  LanguageTermRecord,
-  ProductLanguageReadinessResult,
-} from "./types";
+import type { LanguageTermCounts, LanguageTermRecord, ProductLanguageReadinessResult } from "./types";
 
 export type ProductLanguageSnapshot = {
   inventory: LanguageTermRecord[];

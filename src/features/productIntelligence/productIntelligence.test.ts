@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { assessBatch001Cohort, BATCH_001_SKUS, summarizeBatch001Gaps } from "./batch001Assessment";
-import { buildLanguageTermInventory, countLanguageTerms } from "./languageTermInventory";
+import {
+  assessBatch001Cohort,
+  BATCH_001_SKUS,
+  summarizeBatch001Gaps,
+} from "./batch001Assessment";
+import {
+  buildLanguageTermInventory,
+  countLanguageTerms,
+} from "./languageTermInventory";
 import {
   capabilityReadinessScore,
   evaluateProductLanguageReadiness,
@@ -58,13 +65,7 @@ describe("language term inventory", () => {
   it("merges DB rows with inferred term types", () => {
     const inventory = buildLanguageTermInventory("prod-1", "Cashew Kitta", [
       { id: "a1", alias_text: "Kaju Kitta", product_id: "prod-1" },
-      {
-        id: "a2",
-        alias_text: "old name",
-        product_id: null,
-        canonical_name: "Cashew Kitta",
-        alias_type: "old_name",
-      },
+      { id: "a2", alias_text: "old name", product_id: null, canonical_name: "Cashew Kitta", alias_type: "old_name" },
     ]);
     expect(inventory).toHaveLength(2);
     const counts = countLanguageTerms(inventory);

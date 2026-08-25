@@ -32,9 +32,7 @@ export function buildSnapshotLanguageIntelligence(args: {
     const inventory = args.aliasRows?.length
       ? buildLanguageTermInventory(args.productId, officialName, args.aliasRows)
       : [];
-    const term_counts = inventory.length
-      ? countLanguageTerms(inventory)
-      : emptyLanguageTermCounts();
+    const term_counts = inventory.length ? countLanguageTerms(inventory) : emptyLanguageTermCounts();
 
     return {
       schema_available: false,

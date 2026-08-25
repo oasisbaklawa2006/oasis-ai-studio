@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { resolveProductUtterance } from "./resolveProductUtterance";
 import { PRODUCTION_SNAPSHOT_CATALOG } from "./fixtures/productionSnapshotCatalog";
 import { isCashewTartFamilySku } from "./productFamilies";
-import { resolveProductUtterance } from "./resolveProductUtterance";
 
 const catalog = PRODUCTION_SNAPSHOT_CATALOG;
 
