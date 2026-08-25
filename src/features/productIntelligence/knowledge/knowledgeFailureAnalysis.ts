@@ -23,7 +23,11 @@ function classifyFailure(failure: KnowledgeGoldenFailure): KnowledgeFailureInsig
   let failureCategory = "Resolver mismatch";
   let ambiguityReason: string | null = null;
 
-  if (failure.clarificationRequired || reason.includes("unresolved") || reason.includes("ambiguous")) {
+  if (
+    failure.clarificationRequired ||
+    reason.includes("unresolved") ||
+    reason.includes("ambiguous")
+  ) {
     suggestedAction = "NO_CHANGE_EXPECTED_CLARIFICATION";
     failureCategory = "Expected clarification";
     ambiguityReason = failure.reason;
@@ -44,7 +48,9 @@ function classifyFailure(failure: KnowledgeGoldenFailure): KnowledgeFailureInsig
 
   return {
     ...failure,
-    expectedOutcome: failure.reason.startsWith("expected") ? failure.reason : "Golden expectation not met",
+    expectedOutcome: failure.reason.startsWith("expected")
+      ? failure.reason
+      : "Golden expectation not met",
     actualOutcome: failure.resolvedSku
       ? `Resolved to ${failure.resolvedSku}`
       : failure.clarificationRequired
@@ -57,7 +63,9 @@ function classifyFailure(failure: KnowledgeGoldenFailure): KnowledgeFailureInsig
   };
 }
 
-export function analyzeKnowledgeFailures(failures: KnowledgeGoldenFailure[]): KnowledgeFailureInsight[] {
+export function analyzeKnowledgeFailures(
+  failures: KnowledgeGoldenFailure[],
+): KnowledgeFailureInsight[] {
   return failures.map(classifyFailure);
 }
 

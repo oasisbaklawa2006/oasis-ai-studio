@@ -1,6 +1,6 @@
 import { normalizeUtterance } from "../runtime/normalizeUtterance";
 import type { RuntimeCatalog } from "../runtime/types";
-import { compareDeterministicKeys, sortDeterministicKeys, sortDeterministicStrings } from "./deterministicSort";
+import { sortDeterministicKeys, sortDeterministicStrings } from "./deterministicSort";
 
 function sortedRecord<T>(entries: Iterable<[string, T]>): Record<string, T> {
   const out = Object.create(null) as Record<string, T>;
@@ -111,7 +111,10 @@ function claimTerm(
 ): void {
   const normalized = normalizeKnowledgeTerm(term);
   if (!normalized) return;
-  const bucket = ownership.get(normalized) ?? { skus: new Set<string>(), aliasClaimants: new Set<string>() };
+  const bucket = ownership.get(normalized) ?? {
+    skus: new Set<string>(),
+    aliasClaimants: new Set<string>(),
+  };
   bucket.skus.add(sku);
   if (fromAlias) bucket.aliasClaimants.add(sku);
   ownership.set(normalized, bucket);
@@ -159,8 +162,9 @@ export function buildWhatsAppIntelligenceKnowledge(
     const sku = product?.sku.trim();
     if (!sku) continue;
     claimTerm(ownership, text, sku, true);
-    if (alias.canonical_name?.trim() && alias.canonical_name.trim() !== text) {
-      claimTerm(ownership, alias.canonical_name, sku, true);
+    const canonicalName = alias.canonical_name.trim();
+    if (canonicalName && canonicalName !== text) {
+      claimTerm(ownership, canonicalName, sku, true);
     }
   }
 
@@ -173,7 +177,8 @@ export function buildWhatsAppIntelligenceKnowledge(
       ambiguousTerms.add(term);
       continue;
     }
-    const sku = [...claim.skus][0]!;
+    const sku = Array.from(claim.skus)[0];
+    if (!sku) continue;
     terminologyEntries.set(term, sku);
     if (claim.aliasClaimants.size > 0) aliasEntries.set(term, sku);
   }

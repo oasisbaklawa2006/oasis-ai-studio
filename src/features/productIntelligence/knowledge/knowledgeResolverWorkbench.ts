@@ -65,7 +65,8 @@ export function resolveKnowledgeWorkbench(
     whyMatched: resolvedSku ? result.reason : "No unique governed match",
     whyFailed: resolvedSku ? null : result.reason,
     packagingContext: resolvedProduct?.packaging_code?.trim() || null,
-    familyContext: [resolvedProduct?.category, resolvedProduct?.subcategory].filter(Boolean).join(" / ") || null,
+    familyContext:
+      [resolvedProduct?.category, resolvedProduct?.subcategory].filter(Boolean).join(" / ") || null,
     knowledgeChecksum,
   };
 }

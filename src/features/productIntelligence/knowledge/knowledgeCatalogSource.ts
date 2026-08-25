@@ -27,7 +27,9 @@ export function loadFixtureCatalog(mode: Exclude<KnowledgeCatalogMode, "live">):
   return mode === "production_fixture" ? PRODUCTION_SNAPSHOT_CATALOG : PHASE2A_FIXTURE_CATALOG;
 }
 
-export async function loadKnowledgeCatalog(mode: KnowledgeCatalogMode): Promise<KnowledgeCatalogLoadResult> {
+export async function loadKnowledgeCatalog(
+  mode: KnowledgeCatalogMode,
+): Promise<KnowledgeCatalogLoadResult> {
   if (mode !== "live") {
     const catalog = loadFixtureCatalog(mode);
     return {

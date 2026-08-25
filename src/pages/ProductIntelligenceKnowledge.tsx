@@ -4,10 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { analyzeKnowledgeFailures, suggestedActionLabel } from "@/features/productIntelligence/knowledge/knowledgeFailureAnalysis";
-import {
-  runAllKnowledgeGoldenCases,
-} from "@/features/productIntelligence/knowledge/goldenHarness";
+import { runAllKnowledgeGoldenCases } from "@/features/productIntelligence/knowledge/goldenHarness";
 import {
   buildKnowledgePublicationCandidate,
   buildWhatsAppIntelligenceKnowledge,
@@ -16,9 +13,13 @@ import {
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
 import {
   catalogModeLabel,
-  loadKnowledgeCatalog,
   type KnowledgeCatalogMode,
+  loadKnowledgeCatalog,
 } from "@/features/productIntelligence/knowledge/knowledgeCatalogSource";
+import {
+  analyzeKnowledgeFailures,
+  suggestedActionLabel,
+} from "@/features/productIntelligence/knowledge/knowledgeFailureAnalysis";
 import {
   KNOWLEDGE_WORKBENCH_EXAMPLES,
   resolveKnowledgeWorkbench,
@@ -63,15 +64,16 @@ export default function ProductIntelligenceKnowledgePage() {
   const isFixture = catalogMode !== "live";
   const knowledge: WhatsAppIntelligenceKnowledge | null = useMemo(() => {
     if (!catalog) return null;
-    return buildWhatsAppIntelligenceKnowledge(
-      catalog,
-      sourceIds.split(/[\s,]+/).filter(Boolean),
-    );
+    return buildWhatsAppIntelligenceKnowledge(catalog, sourceIds.split(/[\s,]+/).filter(Boolean));
   }, [catalog, sourceIds]);
 
   const goldenReports = useMemo(() => runAllKnowledgeGoldenCases(), []);
   const failureInsights = useMemo(
-    () => analyzeKnowledgeFailures([...goldenReports.phase2a.failed, ...goldenReports.production.failed]),
+    () =>
+      analyzeKnowledgeFailures([
+        ...goldenReports.phase2a.failed,
+        ...goldenReports.production.failed,
+      ]),
     [goldenReports],
   );
 
@@ -130,14 +132,19 @@ export default function ProductIntelligenceKnowledgePage() {
                 setCatalogMode(mode);
               }}
             >
-              {mode === "live" ? "Live catalogue" : mode === "phase2a_fixture" ? "Phase 2A fixture" : "Production fixture"}
+              {mode === "live"
+                ? "Live catalogue"
+                : mode === "phase2a_fixture"
+                  ? "Phase 2A fixture"
+                  : "Production fixture"}
             </Button>
           ))}
         </div>
         <p className="text-sm text-muted-foreground">{catalogLabel}</p>
         {isFixture ? (
           <p className="text-xs text-amber-800">
-            Test fixture corpus — cannot become a live publication candidate without switching to the live canonical source.
+            Test fixture corpus — cannot become a live publication candidate without switching to
+            the live canonical source.
           </p>
         ) : (
           <p className="text-xs text-emerald-800">
@@ -166,7 +173,8 @@ export default function ProductIntelligenceKnowledgePage() {
       {tab === "Knowledge" && knowledge ? (
         <section className="rounded-md border p-4 space-y-3">
           <p className="text-sm text-muted-foreground">
-            Canonical SKUs, aliases, packaging references, and explicit ambiguity markers. Core remains the only runtime activation authority.
+            Canonical SKUs, aliases, packaging references, and explicit ambiguity markers. Core
+            remains the only runtime activation authority.
           </p>
           <label className="block text-sm" htmlFor="wa-knowledge-source-ids">
             Source catalogue version ids (references only)
@@ -217,21 +225,44 @@ export default function ProductIntelligenceKnowledgePage() {
           </div>
           {workbench ? (
             <div className="grid gap-2 sm:grid-cols-2 text-sm">
-              <p><span className="font-medium">Input:</span> {workbench.input}</p>
-              <p><span className="font-medium">Normalized input:</span> {workbench.normalizedInput}</p>
-              <p><span className="font-medium">Resolution status:</span> {workbench.resolutionStatus}</p>
-              <p><span className="font-medium">Resolved SKU:</span> {workbench.resolvedSku ?? "none"}</p>
-              <p><span className="font-medium">Match method:</span> {workbench.matchMethod}</p>
-              <p><span className="font-medium">Knowledge checksum:</span> {workbench.knowledgeChecksum}</p>
-              <p className="sm:col-span-2"><span className="font-medium">Why it matched:</span> {workbench.whyMatched}</p>
+              <p>
+                <span className="font-medium">Input:</span> {workbench.input}
+              </p>
+              <p>
+                <span className="font-medium">Normalized input:</span> {workbench.normalizedInput}
+              </p>
+              <p>
+                <span className="font-medium">Resolution status:</span> {workbench.resolutionStatus}
+              </p>
+              <p>
+                <span className="font-medium">Resolved SKU:</span> {workbench.resolvedSku ?? "none"}
+              </p>
+              <p>
+                <span className="font-medium">Match method:</span> {workbench.matchMethod}
+              </p>
+              <p>
+                <span className="font-medium">Knowledge checksum:</span>{" "}
+                {workbench.knowledgeChecksum}
+              </p>
+              <p className="sm:col-span-2">
+                <span className="font-medium">Why it matched:</span> {workbench.whyMatched}
+              </p>
               {workbench.whyFailed ? (
-                <p className="sm:col-span-2"><span className="font-medium">Why it failed / needs clarification:</span> {workbench.whyFailed}</p>
+                <p className="sm:col-span-2">
+                  <span className="font-medium">Why it failed / needs clarification:</span>{" "}
+                  {workbench.whyFailed}
+                </p>
               ) : null}
               {workbench.packagingContext ? (
-                <p><span className="font-medium">Packaging context:</span> {workbench.packagingContext}</p>
+                <p>
+                  <span className="font-medium">Packaging context:</span>{" "}
+                  {workbench.packagingContext}
+                </p>
               ) : null}
               {workbench.familyContext ? (
-                <p><span className="font-medium">Family context:</span> {workbench.familyContext}</p>
+                <p>
+                  <span className="font-medium">Family context:</span> {workbench.familyContext}
+                </p>
               ) : null}
               <div className="sm:col-span-2">
                 <p className="font-medium">Candidates</p>
@@ -241,7 +272,8 @@ export default function ProductIntelligenceKnowledgePage() {
                   <ul className="list-disc pl-5">
                     {workbench.candidates.map((candidate) => (
                       <li key={`${candidate.sku}-${candidate.matchedTerm}`}>
-                        {candidate.sku} — {candidate.name} ({candidate.matchSource}, {(candidate.confidence * 100).toFixed(1)}%)
+                        {candidate.sku} — {candidate.name} ({candidate.matchSource},{" "}
+                        {(candidate.confidence * 100).toFixed(1)}%)
                       </li>
                     ))}
                   </ul>
@@ -258,7 +290,9 @@ export default function ProductIntelligenceKnowledgePage() {
       {tab === "Failures" ? (
         <section className="rounded-md border p-4 space-y-3">
           <p className="text-sm">
-            Phase 2A golden: {goldenReports.phase2a.passed}/{goldenReports.phase2a.total} passed · Production-shaped: {goldenReports.production.passed}/{goldenReports.production.total} passed
+            Phase 2A golden: {goldenReports.phase2a.passed}/{goldenReports.phase2a.total} passed ·
+            Production-shaped: {goldenReports.production.passed}/{goldenReports.production.total}{" "}
+            passed
           </p>
           {failureInsights.length === 0 ? (
             <p className="text-sm">No golden failures on protected corpora.</p>
@@ -289,14 +323,19 @@ export default function ProductIntelligenceKnowledgePage() {
           </ul>
           {isFixture ? (
             <p className="text-xs text-amber-800">
-              Fixture source selected — switch to live catalogue before preparing a real handoff candidate.
+              Fixture source selected — switch to live catalogue before preparing a real handoff
+              candidate.
             </p>
           ) : null}
           <p className="font-mono text-xs break-all">checksum {checksum || "computing…"}</p>
           <p className="text-xs text-muted-foreground">
-            AI Studio prepares deterministic knowledge only. Core owns review, approval, publication, activation, and single ACTIVE snapshot selection. No service_role browser path and no direct Core lifecycle mutation from this page.
+            AI Studio prepares deterministic knowledge only. Core owns review, approval,
+            publication, activation, and single ACTIVE snapshot selection. No service_role browser
+            path and no direct Core lifecycle mutation from this page.
           </p>
-          <pre className="max-h-96 overflow-auto rounded bg-muted p-3 text-[11px]">{publicationJson}</pre>
+          <pre className="max-h-96 overflow-auto rounded bg-muted p-3 text-[11px]">
+            {publicationJson}
+          </pre>
         </section>
       ) : null}
     </div>

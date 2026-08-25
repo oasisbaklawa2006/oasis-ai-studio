@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { PHASE2A_FIXTURE_CATALOG } from "../runtime/fixtures/phase2aCatalog";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "../runtime/fixtures/productionSnapshotCatalog";
 import { compareDeterministicKeys } from "./deterministicSort";
 import {
   runAllKnowledgeGoldenCases,
   runKnowledgeGoldenCases,
   runProductionSnapshotGoldenCases,
 } from "./goldenHarness";
-import { PRODUCTION_SNAPSHOT_CATALOG } from "../runtime/fixtures/productionSnapshotCatalog";
-import { PHASE2A_FIXTURE_CATALOG } from "../runtime/fixtures/phase2aCatalog";
 import {
   assertNoTransactionalPayload,
   buildKnowledgePublicationCandidate,
@@ -104,15 +104,19 @@ describe("WhatsApp intelligence knowledge bundle", () => {
 
   it("marks duplicate canonical ownership as ambiguous instead of last-write-wins", () => {
     const knowledge = buildWhatsAppIntelligenceKnowledge(PRODUCTION_SNAPSHOT_CATALOG);
-    expect(knowledge.ambiguous_terms).toContain(
-      normalizeKnowledgeTerm("Pistachio Bulbul Bulk")!,
-    );
-    expect(knowledge.ambiguous_terms).toContain(normalizeKnowledgeTerm("Cashew Tart Bulk")!);
-    expect(knowledge.terminology[normalizeKnowledgeTerm("Pistachio Bulbul Bulk")!]).toBeUndefined();
+    const pistachioBulbul = normalizeKnowledgeTerm("Pistachio Bulbul Bulk");
+    const cashewTart = normalizeKnowledgeTerm("Cashew Tart Bulk");
+    expect(pistachioBulbul).toBeTruthy();
+    expect(cashewTart).toBeTruthy();
+    expect(knowledge.ambiguous_terms).toContain(pistachioBulbul);
+    expect(knowledge.ambiguous_terms).toContain(cashewTart);
+    expect(knowledge.terminology[pistachioBulbul ?? ""]).toBeUndefined();
     expect(knowledge.sku_map["OAS-AS-BKL-PST-BULK-0017"]).toBeDefined();
     expect(knowledge.sku_map["OAS-AS-BKL-PST-BULK-0017"].packaging_code).toBe("BULK");
     expect(Object.keys(knowledge.packaging)).toContain("BULK");
-    expect(JSON.stringify(knowledge.packaging)).not.toMatch(/carton quantity|box conversion|moq|price/);
+    expect(JSON.stringify(knowledge.packaging)).not.toMatch(
+      /carton quantity|box conversion|moq|price/,
+    );
   });
 
   it("keeps exact unique SKU resolvable while family terms stay ambiguous in bundle", () => {
@@ -122,7 +126,9 @@ describe("WhatsApp intelligence knowledge bundle", () => {
   });
 
   it("serializes into Core draft snapshot contract without fabricated approval fields", async () => {
-    const knowledge = buildWhatsAppIntelligenceKnowledge(PHASE2A_FIXTURE_CATALOG, ["11111111-1111-4111-8111-111111111111"]);
+    const knowledge = buildWhatsAppIntelligenceKnowledge(PHASE2A_FIXTURE_CATALOG, [
+      "11111111-1111-4111-8111-111111111111",
+    ]);
     const candidate = await buildKnowledgePublicationCandidate({
       knowledge,
       sourceSummary: {

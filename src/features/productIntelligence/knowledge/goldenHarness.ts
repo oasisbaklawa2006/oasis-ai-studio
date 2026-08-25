@@ -1,6 +1,6 @@
-import { resolveProductUtterance } from "../runtime/resolveProductUtterance";
-import { PRODUCTION_SNAPSHOT_CATALOG } from "../runtime/fixtures/productionSnapshotCatalog";
 import { PHASE2A_FIXTURE_CATALOG } from "../runtime/fixtures/phase2aCatalog";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "../runtime/fixtures/productionSnapshotCatalog";
+import { resolveProductUtterance } from "../runtime/resolveProductUtterance";
 import type { RuntimeCatalog } from "../runtime/types";
 
 export type KnowledgeGoldenCase = {
