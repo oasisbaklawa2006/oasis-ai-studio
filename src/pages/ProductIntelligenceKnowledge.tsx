@@ -1,23 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { runAllKnowledgeGoldenCases } from "@/features/productIntelligence/knowledge/goldenHarness";
 import {
-  buildKnowledgePublicationCandidate,
   buildWhatsAppIntelligenceKnowledge,
   type KnowledgeCandidateStatus,
   type KnowledgeHandoffEligibility,
-  knowledgeContentChecksum,
   type WhatsAppIntelligenceKnowledge,
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
-import {
-  catalogModeLabel,
-  type KnowledgeCatalogLoadResult,
-  type KnowledgeCatalogMode,
-  loadKnowledgeCatalog,
-} from "@/features/productIntelligence/knowledge/knowledgeCatalogSource";
+import type { KnowledgeCatalogMode } from "@/features/productIntelligence/knowledge/knowledgeCatalogSource";
 import {
   analyzeKnowledgeFailures,
   suggestedActionLabel,
@@ -26,16 +19,21 @@ import {
   KNOWLEDGE_WORKBENCH_EXAMPLES,
   resolveKnowledgeWorkbench,
 } from "@/features/productIntelligence/knowledge/knowledgeResolverWorkbench";
+import { useKnowledgeCatalogLoad } from "@/features/productIntelligence/knowledge/useKnowledgeCatalogLoad";
+import { useKnowledgePublicationCandidate } from "@/features/productIntelligence/knowledge/useKnowledgePublicationCandidate";
 import type { RuntimeCatalog } from "@/features/productIntelligence/runtime/types";
 
 const TABS = ["Knowledge", "Test", "Failures", "Publish"] as const;
 type Tab = (typeof TABS)[number];
 
-function candidateSemantics(loaded: KnowledgeCatalogLoadResult): {
+function candidateSemantics(
+  isFixture: boolean,
+  handoffReady: boolean,
+): {
   candidateStatus: KnowledgeCandidateStatus;
   handoffEligibility: KnowledgeHandoffEligibility;
 } {
-  if (loaded.isFixture) {
+  if (isFixture) {
     return {
       candidateStatus: "TEST_CANDIDATE",
       handoffEligibility: "NOT_HANDOFF_ELIGIBLE",
@@ -43,7 +41,7 @@ function candidateSemantics(loaded: KnowledgeCatalogLoadResult): {
   }
   return {
     candidateStatus: "PUBLICATION_CANDIDATE",
-    handoffEligibility: loaded.provenance.handoffReady ? "HANDOFF_READY" : "NOT_HANDOFF_READY",
+    handoffEligibility: handoffReady ? "HANDOFF_READY" : "NOT_HANDOFF_READY",
   };
 }
 
@@ -51,35 +49,8 @@ export default function ProductIntelligenceKnowledgePage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("Knowledge");
   const [catalogMode, setCatalogMode] = useState<KnowledgeCatalogMode>("live");
-  const [catalogLoad, setCatalogLoad] = useState<KnowledgeCatalogLoadResult | null>(null);
-  const [catalogLabel, setCatalogLabel] = useState("Loading catalogue…");
-  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [testInput, setTestInput] = useState("pista bulbul");
-  const [publicationJson, setPublicationJson] = useState("Preparing publication candidate…");
-  const [checksum, setChecksum] = useState("");
-  const catalogLoadGenerationRef = useRef(0);
-  const publicationGenerationRef = useRef(0);
-
-  useEffect(() => {
-    const generation = catalogLoadGenerationRef.current + 1;
-    catalogLoadGenerationRef.current = generation;
-    setCatalogLoad(null);
-    setChecksum("");
-    setPublicationJson("Preparing publication candidate…");
-    setCatalogError(null);
-    setCatalogLabel(catalogModeLabel(catalogMode));
-    void loadKnowledgeCatalog(catalogMode)
-      .then((loaded) => {
-        if (catalogLoadGenerationRef.current !== generation) return;
-        setCatalogLoad(loaded);
-        setCatalogLabel(loaded.label);
-      })
-      .catch((error) => {
-        if (catalogLoadGenerationRef.current !== generation) return;
-        setCatalogLoad(null);
-        setCatalogError(error instanceof Error ? error.message : String(error));
-      });
-  }, [catalogMode]);
+  const { catalogLoad, catalogLabel, catalogError } = useKnowledgeCatalogLoad(catalogMode);
 
   const catalog: RuntimeCatalog | null = catalogLoad?.catalog ?? null;
   const isFixture = catalogMode !== "live";
@@ -101,37 +72,31 @@ export default function ProductIntelligenceKnowledgePage() {
     [goldenReports],
   );
 
-  useEffect(() => {
-    if (!knowledge || !catalog || !catalogLoad) return;
-    const generation = publicationGenerationRef.current + 1;
-    publicationGenerationRef.current = generation;
-    const semantics = candidateSemantics(catalogLoad);
-    void (async () => {
-      const checksumValue = await knowledgeContentChecksum(knowledge);
-      const candidate = await buildKnowledgePublicationCandidate({
-        knowledge,
-        preparedBy: user?.email ?? null,
-        candidateStatus: semantics.candidateStatus,
-        handoffEligibility: semantics.handoffEligibility,
-        provenanceReason: catalogLoad.provenance.provenanceReason,
-        sourceSummary: {
-          mode: catalogMode === "live" ? "live_catalogue" : catalogMode,
-          product_count: catalog.products.length,
-          alias_count: catalog.aliases.length,
-          ambiguous_term_count: knowledge.ambiguous_terms.length,
-        },
-        goldenSummary: {
-          phase2a_passed: goldenReports.phase2a.passed,
-          phase2a_total: goldenReports.phase2a.total,
-          production_passed: goldenReports.production.passed,
-          production_total: goldenReports.production.total,
-        },
-      });
-      if (publicationGenerationRef.current !== generation) return;
-      setChecksum(checksumValue);
-      setPublicationJson(JSON.stringify(candidate, null, 2));
-    })();
-  }, [catalog, catalogLoad, catalogMode, goldenReports, knowledge, user?.email]);
+  const publicationInput = useMemo(() => {
+    if (!knowledge || !catalog || !catalogLoad) return null;
+    const semantics = candidateSemantics(isFixture, catalogLoad.provenance.handoffReady);
+    return {
+      knowledge,
+      preparedBy: user?.email ?? null,
+      candidateStatus: semantics.candidateStatus,
+      handoffEligibility: semantics.handoffEligibility,
+      provenanceReason: catalogLoad.provenance.provenanceReason,
+      sourceSummary: {
+        mode: catalogMode === "live" ? ("live_catalogue" as const) : catalogMode,
+        product_count: catalog.products.length,
+        alias_count: catalog.aliases.length,
+        ambiguous_term_count: knowledge.ambiguous_terms.length,
+      },
+      goldenSummary: {
+        phase2a_passed: goldenReports.phase2a.passed,
+        phase2a_total: goldenReports.phase2a.total,
+        production_passed: goldenReports.production.passed,
+        production_total: goldenReports.production.total,
+      },
+    };
+  }, [catalog, catalogLoad, catalogMode, goldenReports, isFixture, knowledge, user?.email]);
+
+  const { checksum, publicationJson } = useKnowledgePublicationCandidate(publicationInput);
 
   const workbench = useMemo(() => {
     if (!catalog || !knowledge || !testInput.trim()) return null;
@@ -139,7 +104,7 @@ export default function ProductIntelligenceKnowledgePage() {
   }, [catalog, checksum, knowledge, testInput]);
 
   const handoffEligibility = catalogLoad
-    ? candidateSemantics(catalogLoad).handoffEligibility
+    ? candidateSemantics(isFixture, catalogLoad.provenance.handoffReady).handoffEligibility
     : null;
 
   return (
