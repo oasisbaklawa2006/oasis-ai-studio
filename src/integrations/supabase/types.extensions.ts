@@ -212,6 +212,41 @@ export type CatalogueAuthorityTableDefinitions = {
     Update: never;
     Relationships: [];
   };
+  whatsapp_intelligence_knowledge_snapshots: {
+    Row: {
+      id: string;
+      schema_version: string;
+      lifecycle: string;
+      source_catalogue_version_ids: string[];
+      knowledge: Record<string, unknown>;
+      content_checksum: string;
+      created_by: string | null;
+      created_at: string;
+      reviewed_by: string | null;
+      reviewed_at: string | null;
+      approved_by: string | null;
+      approved_at: string | null;
+      published_at: string | null;
+      activated_at: string | null;
+      superseded_at: string | null;
+      superseded_by: string | null;
+    };
+    Insert: never;
+    Update: never;
+    Relationships: [];
+  };
+  whatsapp_intelligence_knowledge_submissions: {
+    Row: {
+      content_checksum: string;
+      snapshot_id: string;
+      idempotency_key: string | null;
+      created_by: string;
+      created_at: string;
+    };
+    Insert: never;
+    Update: never;
+    Relationships: [];
+  };
 };
 
 export type ProductGovernanceRpc = {
@@ -266,6 +301,18 @@ export type ProductGovernanceRpc = {
       _confidence_band?: string | null;
     };
     Returns: CatalogueAuthorityTableDefinitions["whatsapp_operator_decisions"]["Row"];
+  };
+  whatsapp_submit_intelligence_knowledge_draft: {
+    Args: {
+      p_schema_version: string;
+      p_source_catalogue_version_ids: string[];
+      p_knowledge: Record<string, unknown>;
+      p_content_checksum: string;
+      p_candidate_status: string;
+      p_handoff_eligibility: string;
+      p_idempotency_key?: string | null;
+    };
+    Returns: CatalogueAuthorityTableDefinitions["whatsapp_intelligence_knowledge_snapshots"]["Row"];
   };
 };
 
