@@ -101,8 +101,7 @@ export function packCountBoost(
     hay.includes(`${queryPackCount} pcs`) ||
     hay.includes("maapet") ||
     hay.includes("gift pack");
-  const isBulkOnly =
-    hay.includes("bulk") && !hay.includes("maapet") && !hay.includes("gift pack");
+  const isBulkOnly = hay.includes("bulk") && !hay.includes("maapet") && !hay.includes("gift pack");
   if (hasPack) return 0.25;
   if (isBulkOnly) return -0.2;
   return 0;
@@ -132,13 +131,13 @@ export function exactUtteranceAliasBoost(rawUtterance: string, aliasText: string
   if (raw === alias) return 0.08;
   const rawTokens = raw.split(" ");
   const aliasTokens = alias.split(" ");
-  if (
-    rawTokens.length === aliasTokens.length &&
-    rawTokens.every((t, i) => t === aliasTokens[i])
-  ) {
+  if (rawTokens.length === aliasTokens.length && rawTokens.every((t, i) => t === aliasTokens[i])) {
     return 0.08;
   }
-  if (rawTokens.length === aliasTokens.length && [...rawTokens].sort().join() === [...aliasTokens].sort().join()) {
+  if (
+    rawTokens.length === aliasTokens.length &&
+    [...rawTokens].sort().join() === [...aliasTokens].sort().join()
+  ) {
     return 0.05;
   }
   return 0;

@@ -87,8 +87,16 @@ export async function insertProductAliases(
   if (!migration.error) return { error: null };
   if (!isAliasSchemaMismatchError(migration.error.message)) return { error: migration.error };
 
-  const legacy = await client.from("product_aliases").insert(rows.map((row) => toLegacyInsert(row)) as never);
+  const legacy = await client
+    .from("product_aliases")
+    .insert(rows.map((row) => toLegacyInsert(row)) as never);
   return { error: legacy.error };
+}
+
+function filterActiveAliasRows(
+  rows: Array<Record<string, unknown>>,
+): Array<Record<string, unknown>> {
+  return rows.filter((row) => (typeof row.is_active === "boolean" ? row.is_active : true));
 }
 
 /** Alias rows for a product — migration schema first, legacy Central fallback. */
@@ -96,16 +104,26 @@ export async function queryProductAliasesForProduct(
   client: AliasClient,
   productId: string,
 ): Promise<Array<Record<string, unknown>>> {
+  const rows = await queryProductAliasesForProducts(client, [productId]);
+  return rows.filter((row) => String(row.product_id ?? "") === productId);
+}
+
+/** Bulk alias rows for many products — one query per batch, migration schema first. */
+export async function queryProductAliasesForProducts(
+  client: AliasClient,
+  productIds: string[],
+): Promise<Array<Record<string, unknown>>> {
+  const uniqueIds = [...new Set(productIds.map((id) => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length) return [];
+
   const migration = await client
     .from("product_aliases")
     .select("id, alias, alias_text, canonical_name, alias_type, product_id, source, is_active")
-    .eq("product_id", productId)
+    .in("product_id", uniqueIds)
     .order("created_at", { ascending: false });
 
   if (!migration.error) {
-    return (migration.data ?? []).filter((row) =>
-      typeof row.is_active === "boolean" ? row.is_active : true,
-    );
+    return filterActiveAliasRows(migration.data ?? []);
   }
 
   if (!isAliasSchemaMismatchError(migration.error.message)) {
@@ -115,7 +133,7 @@ export async function queryProductAliasesForProduct(
   const legacy = await client
     .from("product_aliases")
     .select("id, alias_text, canonical_name, product_id")
-    .eq("product_id", productId)
+    .in("product_id", uniqueIds)
     .order("created_at", { ascending: false });
 
   if (!legacy.error) return legacy.data ?? [];

@@ -1,10 +1,10 @@
-import { getAliasText } from "@/lib/aliasDisplay";
 import {
   inferDefaultTermType,
   PRODUCT_LANGUAGE_TERM_TYPES,
   type ProductLanguageTermType,
 } from "@/features/productLanguage/terms";
 import { getStoredTermType } from "@/features/productLanguage/termTypeStorage";
+import { getAliasText } from "@/lib/aliasDisplay";
 import type { LanguageTermCounts, LanguageTermRecord } from "./types";
 
 type AliasRow = {
@@ -61,9 +61,10 @@ export function buildLanguageTermInventory(
 }
 
 export function countLanguageTerms(inventory: LanguageTermRecord[]): LanguageTermCounts {
-  const counts = Object.fromEntries(
-    PRODUCT_LANGUAGE_TERM_TYPES.map((t) => [t, 0]),
-  ) as Record<ProductLanguageTermType, number>;
+  const counts = Object.fromEntries(PRODUCT_LANGUAGE_TERM_TYPES.map((t) => [t, 0])) as Record<
+    ProductLanguageTermType,
+    number
+  >;
 
   for (const row of inventory) {
     counts[row.term_type] += 1;

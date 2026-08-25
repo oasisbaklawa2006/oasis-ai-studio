@@ -233,8 +233,16 @@ export function toCoreKnowledgeSnapshotDraftInsert(
   };
 }
 
+export type KnowledgeCandidateStatus = "PUBLICATION_CANDIDATE" | "TEST_CANDIDATE";
+
+export type KnowledgeHandoffEligibility =
+  | "HANDOFF_READY"
+  | "NOT_HANDOFF_READY"
+  | "NOT_HANDOFF_ELIGIBLE";
+
 export type WhatsAppKnowledgePublicationCandidate = {
-  candidate_status: "PUBLICATION_CANDIDATE";
+  candidate_status: KnowledgeCandidateStatus;
+  handoff_eligibility: KnowledgeHandoffEligibility;
   lifecycle: "DRAFT";
   schema_version: string;
   source_catalogue_version_ids: string[];
@@ -242,6 +250,7 @@ export type WhatsAppKnowledgePublicationCandidate = {
   content_checksum: string;
   generated_at: string;
   prepared_by: string | null;
+  provenance_reason: string;
   source_summary: {
     mode: "live_catalogue" | "phase2a_fixture" | "production_fixture";
     product_count: number;
@@ -264,6 +273,9 @@ export type BuildKnowledgePublicationCandidateInput = {
   sourceSummary: WhatsAppKnowledgePublicationCandidate["source_summary"];
   goldenSummary: WhatsAppKnowledgePublicationCandidate["golden_test_summary"];
   preparedBy?: string | null;
+  candidateStatus: KnowledgeCandidateStatus;
+  handoffEligibility: KnowledgeHandoffEligibility;
+  provenanceReason: string;
 };
 
 export async function buildKnowledgePublicationCandidate(
@@ -272,7 +284,8 @@ export async function buildKnowledgePublicationCandidate(
   assertNoTransactionalPayload(input.knowledge);
   const canonical = canonicalKnowledgePayload(input.knowledge);
   return {
-    candidate_status: "PUBLICATION_CANDIDATE",
+    candidate_status: input.candidateStatus,
+    handoff_eligibility: input.handoffEligibility,
     lifecycle: "DRAFT",
     schema_version: canonical.schema_version,
     source_catalogue_version_ids: canonical.source_catalogue_version_ids,
@@ -280,31 +293,11 @@ export async function buildKnowledgePublicationCandidate(
     content_checksum: await knowledgeContentChecksum(canonical),
     generated_at: new Date().toISOString(),
     prepared_by: input.preparedBy ?? null,
+    provenance_reason: input.provenanceReason,
     source_summary: input.sourceSummary,
     golden_test_summary: input.goldenSummary,
     core_review: "NOT_EXECUTED",
     core_approval: "NOT_EXECUTED",
     core_activation: "NOT_EXECUTED",
   };
-}
-
-/** @deprecated Use buildKnowledgePublicationCandidate — never fabricates APPROVED state. */
-export async function previewApprovedKnowledgePublication(
-  knowledge: WhatsAppIntelligenceKnowledge,
-): Promise<WhatsAppKnowledgePublicationCandidate> {
-  return buildKnowledgePublicationCandidate({
-    knowledge,
-    sourceSummary: {
-      mode: "phase2a_fixture",
-      product_count: Object.keys(knowledge.sku_map).length,
-      alias_count: Object.keys(knowledge.aliases).length,
-      ambiguous_term_count: knowledge.ambiguous_terms.length,
-    },
-    goldenSummary: {
-      phase2a_passed: 0,
-      phase2a_total: 0,
-      production_passed: 0,
-      production_total: 0,
-    },
-  });
 }

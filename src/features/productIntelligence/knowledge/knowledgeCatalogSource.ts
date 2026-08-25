@@ -1,7 +1,12 @@
-import { loadRuntimeCatalog } from "../runtime/catalogLexicon";
+import { loadRuntimeCatalogWithStats } from "../runtime/catalogLexicon";
 import { PHASE2A_FIXTURE_CATALOG } from "../runtime/fixtures/phase2aCatalog";
 import { PRODUCTION_SNAPSHOT_CATALOG } from "../runtime/fixtures/productionSnapshotCatalog";
 import type { RuntimeCatalog } from "../runtime/types";
+import {
+  type CatalogueVersionProvenance,
+  deriveCatalogueVersionProvenance,
+  FIXTURE_CATALOGUE_PROVENANCE,
+} from "./knowledgeCatalogProvenance";
 
 export type KnowledgeCatalogMode = "live" | "phase2a_fixture" | "production_fixture";
 
@@ -10,6 +15,8 @@ export type KnowledgeCatalogLoadResult = {
   catalog: RuntimeCatalog;
   label: string;
   isFixture: boolean;
+  aliasQueryCount: number;
+  provenance: CatalogueVersionProvenance;
 };
 
 export function catalogModeLabel(mode: KnowledgeCatalogMode): string {
@@ -37,18 +44,29 @@ export async function loadKnowledgeCatalog(
       catalog,
       label: catalogModeLabel(mode),
       isFixture: true,
+      aliasQueryCount: 0,
+      provenance: FIXTURE_CATALOGUE_PROVENANCE,
     };
   }
 
-  const loaded = await loadRuntimeCatalog();
+  const loaded = await loadRuntimeCatalogWithStats();
   const catalog: RuntimeCatalog = {
-    products: loaded.products.filter((product) => product.is_active !== false),
-    aliases: loaded.aliases,
+    products: loaded.catalog.products.filter((product) => product.is_active !== false),
+    aliases: loaded.catalog.aliases.filter((alias) =>
+      loaded.catalog.products.some(
+        (product) => product.is_active !== false && product.id === alias.product_id,
+      ),
+    ),
   };
+  const provenance = await deriveCatalogueVersionProvenance(
+    catalog.products.map((product) => product.id),
+  );
   return {
     mode: "live",
     catalog,
     label: catalogModeLabel("live"),
     isFixture: false,
+    aliasQueryCount: loaded.stats.aliasQueryCount,
+    provenance,
   };
 }

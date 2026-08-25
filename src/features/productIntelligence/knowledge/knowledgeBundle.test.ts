@@ -79,6 +79,9 @@ describe("WhatsApp intelligence knowledge bundle", () => {
     });
     const candidate = await buildKnowledgePublicationCandidate({
       knowledge,
+      candidateStatus: "TEST_CANDIDATE",
+      handoffEligibility: "NOT_HANDOFF_ELIGIBLE",
+      provenanceReason: "fixture_corpus_not_handoff_eligible",
       sourceSummary: {
         mode: "phase2a_fixture",
         product_count: Object.keys(knowledge.sku_map).length,
@@ -92,7 +95,8 @@ describe("WhatsApp intelligence knowledge bundle", () => {
         production_total: 5,
       },
     });
-    expect(candidate.candidate_status).toBe("PUBLICATION_CANDIDATE");
+    expect(candidate.candidate_status).toBe("TEST_CANDIDATE");
+    expect(candidate.handoff_eligibility).toBe("NOT_HANDOFF_ELIGIBLE");
     expect(candidate.lifecycle).toBe("DRAFT");
     expect(candidate.core_review).toBe("NOT_EXECUTED");
     expect(candidate.core_approval).toBe("NOT_EXECUTED");
@@ -131,6 +135,9 @@ describe("WhatsApp intelligence knowledge bundle", () => {
     ]);
     const candidate = await buildKnowledgePublicationCandidate({
       knowledge,
+      candidateStatus: "PUBLICATION_CANDIDATE",
+      handoffEligibility: "HANDOFF_READY",
+      provenanceReason: "immutable_catalogue_versions_resolved",
       sourceSummary: {
         mode: "phase2a_fixture",
         product_count: Object.keys(knowledge.sku_map).length,
@@ -163,6 +170,30 @@ describe("WhatsApp intelligence knowledge bundle", () => {
         orders: [],
       } as typeof knowledge);
     }).toThrow(/KNOWLEDGE_TRANSACTION_FIELD_FORBIDDEN/);
+  });
+
+  it("marks live candidates without provenance as not handoff ready", async () => {
+    const knowledge = buildWhatsAppIntelligenceKnowledge(PHASE2A_FIXTURE_CATALOG);
+    const candidate = await buildKnowledgePublicationCandidate({
+      knowledge,
+      candidateStatus: "PUBLICATION_CANDIDATE",
+      handoffEligibility: "NOT_HANDOFF_READY",
+      provenanceReason: "missing_immutable_catalogue_version:p1",
+      sourceSummary: {
+        mode: "live_catalogue",
+        product_count: Object.keys(knowledge.sku_map).length,
+        alias_count: Object.keys(knowledge.aliases).length,
+        ambiguous_term_count: knowledge.ambiguous_terms.length,
+      },
+      goldenSummary: {
+        phase2a_passed: 10,
+        phase2a_total: 10,
+        production_passed: 5,
+        production_total: 5,
+      },
+    });
+    expect(candidate.source_catalogue_version_ids).toEqual([]);
+    expect(candidate.handoff_eligibility).toBe("NOT_HANDOFF_READY");
   });
 
   it("runs phase2a and production-shaped golden corpora without regression", () => {

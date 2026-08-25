@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { resolveProductUtterance } from "./resolveProductUtterance";
-import { normalizeUtterance } from "./normalizeUtterance";
+import { actionForBand, assignConfidenceBand } from "./confidenceBands";
 import { PHASE2A_FIXTURE_CATALOG } from "./fixtures/phase2aCatalog";
-import { assignConfidenceBand, actionForBand } from "./confidenceBands";
+import { normalizeUtterance } from "./normalizeUtterance";
+import { resolveProductUtterance } from "./resolveProductUtterance";
 
 const catalog = PHASE2A_FIXTURE_CATALOG;
 

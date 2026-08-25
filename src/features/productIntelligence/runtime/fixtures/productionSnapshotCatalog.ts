@@ -113,17 +113,65 @@ export const PRODUCTION_SNAPSHOT_CATALOG: RuntimeCatalog = {
     },
   ],
   aliases: [
-    { alias_text: "Bulbul Pista", canonical_name: "Pistachio Bulbul Bulk", product_id: "f994903d-a5b3-443d-a601-7d54d828c01a" },
-    { alias_text: "Bulbul Pista", canonical_name: "Pistachio Bulbul Bulk", product_id: "e68cdd2a-c1df-40e7-ab63-026b845d0704" },
-    { alias_text: "Midya Bulk Pista", canonical_name: "Classic Pistachio Midya Bulk", product_id: "1e11bdd1-56dd-4b4d-b93a-115d4190f00c" },
-    { alias_text: "Midya Gift 6", canonical_name: "Classic Pistachio Midya Gift Pack 6 pcs", product_id: "e00ea6f9-14d5-4e76-bcf5-9a6abd0231ad" },
-    { alias_text: "6 pc midya", canonical_name: "Classic Pistachio Midya Gift Pack 6 pcs", product_id: "e00ea6f9-14d5-4e76-bcf5-9a6abd0231ad" },
-    { alias_text: "Kaju Tart Bulk", canonical_name: "Cashew Tart Bulk", product_id: "dd56eaf7-e80b-4397-9d73-13a966299467" },
-    { alias_text: "Kaju Tart Bulk", canonical_name: "Cashew Tart Bulk", product_id: "45ff8530-d23f-4d3d-8515-02814605d070" },
-    { alias_text: "kaju tart", canonical_name: "Cashew Tart Bulk", product_id: "dd56eaf7-e80b-4397-9d73-13a966299467" },
-    { alias_text: "Cheese Kunafa Frozen", canonical_name: "Frozen Cheese Kunafa", product_id: "3ee6ab9b-fb48-46a1-84d8-fc44ac7166b2" },
-    { alias_text: "frozen kunafa", canonical_name: "Frozen Cheese Kunafa", product_id: "3ee6ab9b-fb48-46a1-84d8-fc44ac7166b2" },
-    { alias_text: "Roasted KNA", canonical_name: "Roasted Kunafa", product_id: "1dc4bbce-0fc6-4ace-8f7f-ad6667fb6f63" },
-    { alias_text: "tart kaju", canonical_name: "Tart Cashew", product_id: "b0aee1c4-4502-4a15-9880-e2c01378c0b5" },
+    {
+      alias_text: "Bulbul Pista",
+      canonical_name: "Pistachio Bulbul Bulk",
+      product_id: "f994903d-a5b3-443d-a601-7d54d828c01a",
+    },
+    {
+      alias_text: "Bulbul Pista",
+      canonical_name: "Pistachio Bulbul Bulk",
+      product_id: "e68cdd2a-c1df-40e7-ab63-026b845d0704",
+    },
+    {
+      alias_text: "Midya Bulk Pista",
+      canonical_name: "Classic Pistachio Midya Bulk",
+      product_id: "1e11bdd1-56dd-4b4d-b93a-115d4190f00c",
+    },
+    {
+      alias_text: "Midya Gift 6",
+      canonical_name: "Classic Pistachio Midya Gift Pack 6 pcs",
+      product_id: "e00ea6f9-14d5-4e76-bcf5-9a6abd0231ad",
+    },
+    {
+      alias_text: "6 pc midya",
+      canonical_name: "Classic Pistachio Midya Gift Pack 6 pcs",
+      product_id: "e00ea6f9-14d5-4e76-bcf5-9a6abd0231ad",
+    },
+    {
+      alias_text: "Kaju Tart Bulk",
+      canonical_name: "Cashew Tart Bulk",
+      product_id: "dd56eaf7-e80b-4397-9d73-13a966299467",
+    },
+    {
+      alias_text: "Kaju Tart Bulk",
+      canonical_name: "Cashew Tart Bulk",
+      product_id: "45ff8530-d23f-4d3d-8515-02814605d070",
+    },
+    {
+      alias_text: "kaju tart",
+      canonical_name: "Cashew Tart Bulk",
+      product_id: "dd56eaf7-e80b-4397-9d73-13a966299467",
+    },
+    {
+      alias_text: "Cheese Kunafa Frozen",
+      canonical_name: "Frozen Cheese Kunafa",
+      product_id: "3ee6ab9b-fb48-46a1-84d8-fc44ac7166b2",
+    },
+    {
+      alias_text: "frozen kunafa",
+      canonical_name: "Frozen Cheese Kunafa",
+      product_id: "3ee6ab9b-fb48-46a1-84d8-fc44ac7166b2",
+    },
+    {
+      alias_text: "Roasted KNA",
+      canonical_name: "Roasted Kunafa",
+      product_id: "1dc4bbce-0fc6-4ace-8f7f-ad6667fb6f63",
+    },
+    {
+      alias_text: "tart kaju",
+      canonical_name: "Tart Cashew",
+      product_id: "b0aee1c4-4502-4a15-9880-e2c01378c0b5",
+    },
   ],
 };

@@ -78,6 +78,9 @@ export function normalizeUtterance(raw: string): NormalizedUtterance {
     normalized_text: tokens.join(" "),
     tokens,
     pack_count,
-    alias_match_text: alias_match_text.replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim(),
+    alias_match_text: alias_match_text
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
   };
 }

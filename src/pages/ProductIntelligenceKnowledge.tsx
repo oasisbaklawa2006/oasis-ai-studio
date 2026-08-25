@@ -2,17 +2,19 @@ import { useEffect, useMemo, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { runAllKnowledgeGoldenCases } from "@/features/productIntelligence/knowledge/goldenHarness";
 import {
   buildKnowledgePublicationCandidate,
   buildWhatsAppIntelligenceKnowledge,
+  type KnowledgeCandidateStatus,
+  type KnowledgeHandoffEligibility,
   knowledgeContentChecksum,
   type WhatsAppIntelligenceKnowledge,
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
 import {
   catalogModeLabel,
+  type KnowledgeCatalogLoadResult,
   type KnowledgeCatalogMode,
   loadKnowledgeCatalog,
 } from "@/features/productIntelligence/knowledge/knowledgeCatalogSource";
@@ -29,21 +31,36 @@ import type { RuntimeCatalog } from "@/features/productIntelligence/runtime/type
 const TABS = ["Knowledge", "Test", "Failures", "Publish"] as const;
 type Tab = (typeof TABS)[number];
 
+function candidateSemantics(loaded: KnowledgeCatalogLoadResult): {
+  candidateStatus: KnowledgeCandidateStatus;
+  handoffEligibility: KnowledgeHandoffEligibility;
+} {
+  if (loaded.isFixture) {
+    return {
+      candidateStatus: "TEST_CANDIDATE",
+      handoffEligibility: "NOT_HANDOFF_ELIGIBLE",
+    };
+  }
+  return {
+    candidateStatus: "PUBLICATION_CANDIDATE",
+    handoffEligibility: loaded.provenance.handoffReady ? "HANDOFF_READY" : "NOT_HANDOFF_READY",
+  };
+}
+
 export default function ProductIntelligenceKnowledgePage() {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("Knowledge");
   const [catalogMode, setCatalogMode] = useState<KnowledgeCatalogMode>("live");
-  const [catalog, setCatalog] = useState<RuntimeCatalog | null>(null);
+  const [catalogLoad, setCatalogLoad] = useState<KnowledgeCatalogLoadResult | null>(null);
   const [catalogLabel, setCatalogLabel] = useState("Loading catalogue…");
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [sourceIds, setSourceIds] = useState("");
   const [testInput, setTestInput] = useState("pista bulbul");
   const [publicationJson, setPublicationJson] = useState("Preparing publication candidate…");
   const [checksum, setChecksum] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
-    setCatalog(null);
+    setCatalogLoad(null);
     setChecksum("");
     setPublicationJson("Preparing publication candidate…");
     setCatalogError(null);
@@ -51,12 +68,12 @@ export default function ProductIntelligenceKnowledgePage() {
     void loadKnowledgeCatalog(catalogMode)
       .then((loaded) => {
         if (controller.signal.aborted) return;
-        setCatalog(loaded.catalog);
+        setCatalogLoad(loaded);
         setCatalogLabel(loaded.label);
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
-        setCatalog(null);
+        setCatalogLoad(null);
         setCatalogError(error instanceof Error ? error.message : String(error));
       });
     return () => {
@@ -64,11 +81,15 @@ export default function ProductIntelligenceKnowledgePage() {
     };
   }, [catalogMode]);
 
+  const catalog: RuntimeCatalog | null = catalogLoad?.catalog ?? null;
   const isFixture = catalogMode !== "live";
   const knowledge: WhatsAppIntelligenceKnowledge | null = useMemo(() => {
-    if (!catalog) return null;
-    return buildWhatsAppIntelligenceKnowledge(catalog, sourceIds.split(/[\s,]+/).filter(Boolean));
-  }, [catalog, sourceIds]);
+    if (!catalog || !catalogLoad) return null;
+    return buildWhatsAppIntelligenceKnowledge(
+      catalog,
+      catalogLoad.provenance.sourceCatalogueVersionIds,
+    );
+  }, [catalog, catalogLoad]);
 
   const goldenReports = useMemo(() => runAllKnowledgeGoldenCases(), []);
   const failureInsights = useMemo(
@@ -81,13 +102,17 @@ export default function ProductIntelligenceKnowledgePage() {
   );
 
   useEffect(() => {
-    if (!knowledge || !catalog) return;
+    if (!knowledge || !catalog || !catalogLoad) return;
     const controller = new AbortController();
+    const semantics = candidateSemantics(catalogLoad);
     void (async () => {
       const checksumValue = await knowledgeContentChecksum(knowledge);
       const candidate = await buildKnowledgePublicationCandidate({
         knowledge,
         preparedBy: user?.email ?? null,
+        candidateStatus: semantics.candidateStatus,
+        handoffEligibility: semantics.handoffEligibility,
+        provenanceReason: catalogLoad.provenance.provenanceReason,
         sourceSummary: {
           mode: catalogMode === "live" ? "live_catalogue" : catalogMode,
           product_count: catalog.products.length,
@@ -108,12 +133,16 @@ export default function ProductIntelligenceKnowledgePage() {
     return () => {
       controller.abort();
     };
-  }, [catalog, catalogMode, goldenReports, knowledge, user?.email]);
+  }, [catalog, catalogLoad, catalogMode, goldenReports, knowledge, user?.email]);
 
   const workbench = useMemo(() => {
     if (!catalog || !knowledge || !testInput.trim()) return null;
     return resolveKnowledgeWorkbench(testInput, catalog, checksum || "pending");
   }, [catalog, checksum, knowledge, testInput]);
+
+  const handoffEligibility = catalogLoad
+    ? candidateSemantics(catalogLoad).handoffEligibility
+    : null;
 
   return (
     <div className="space-y-4">
@@ -146,14 +175,21 @@ export default function ProductIntelligenceKnowledgePage() {
         <p className="text-sm text-muted-foreground">{catalogLabel}</p>
         {isFixture ? (
           <p className="text-xs text-amber-800">
-            Test fixture corpus — cannot become a live publication candidate without switching to
-            the live canonical source.
+            Test fixture corpus — TEST_CANDIDATE only. NOT HANDOFF ELIGIBLE. Cannot become a live
+            Core handoff candidate.
           </p>
         ) : (
           <p className="text-xs text-emerald-800">
             Live/canonical knowledge source — read-only product master and approved aliases.
           </p>
         )}
+        {catalogLoad && !isFixture ? (
+          <p className="text-xs text-muted-foreground">
+            Alias queries: {catalogLoad.aliasQueryCount} bulk read
+            {catalogLoad.aliasQueryCount === 1 ? "" : "s"} · Catalogue version provenance:{" "}
+            {catalogLoad.provenance.provenanceReason}
+          </p>
+        ) : null}
         {catalogError ? <p className="text-sm text-destructive">{catalogError}</p> : null}
       </section>
 
@@ -173,24 +209,18 @@ export default function ProductIntelligenceKnowledgePage() {
         ))}
       </div>
 
-      {tab === "Knowledge" && knowledge ? (
+      {tab === "Knowledge" && knowledge && catalogLoad ? (
         <section className="rounded-md border p-4 space-y-3">
           <p className="text-sm text-muted-foreground">
             Canonical SKUs, aliases, packaging references, and explicit ambiguity markers. Core
             remains the only runtime activation authority.
           </p>
-          <label className="block text-sm" htmlFor="wa-knowledge-source-ids">
-            Source catalogue version ids (references only)
-            <Textarea
-              id="wa-knowledge-source-ids"
-              className="mt-1"
-              value={sourceIds}
-              onChange={(event) => {
-                setSourceIds(event.target.value);
-              }}
-              placeholder="uuid-1, uuid-2"
-            />
-          </label>
+          <p className="text-sm">
+            Derived catalogue version ids:{" "}
+            {knowledge.source_catalogue_version_ids.length
+              ? knowledge.source_catalogue_version_ids.join(", ")
+              : "none (not handoff ready until immutable catalogue_versions link every active product)"}
+          </p>
           <p className="text-sm">SKUs: {Object.keys(knowledge.sku_map).length}</p>
           <p className="text-sm">Aliases: {Object.keys(knowledge.aliases).length}</p>
           <p className="text-sm">Ambiguous terms: {knowledge.ambiguous_terms.length}</p>
@@ -314,11 +344,24 @@ export default function ProductIntelligenceKnowledgePage() {
         </section>
       ) : null}
 
-      {tab === "Publish" && knowledge ? (
+      {tab === "Publish" && knowledge && catalogLoad ? (
         <section className="rounded-md border p-4 space-y-3">
           <p className="text-sm font-medium">Prepared for governed Core publication</p>
           <ul className="text-sm list-disc pl-5 space-y-1">
-            <li>Candidate status: PUBLICATION_CANDIDATE (DRAFT only)</li>
+            <li>
+              Candidate status:{" "}
+              {isFixture
+                ? "TEST_CANDIDATE (DRAFT semantics only)"
+                : "PUBLICATION_CANDIDATE (DRAFT)"}
+            </li>
+            <li>
+              Handoff eligibility:{" "}
+              {handoffEligibility === "HANDOFF_READY"
+                ? "HANDOFF READY"
+                : handoffEligibility === "NOT_HANDOFF_ELIGIBLE"
+                  ? "NOT HANDOFF ELIGIBLE (fixture)"
+                  : "NOT HANDOFF READY (missing derived catalogue version provenance)"}
+            </li>
             <li>Core review: NOT EXECUTED</li>
             <li>Core approval: NOT EXECUTED</li>
             <li>Core activation: NOT EXECUTED</li>
@@ -326,8 +369,7 @@ export default function ProductIntelligenceKnowledgePage() {
           </ul>
           {isFixture ? (
             <p className="text-xs text-amber-800">
-              Fixture source selected — switch to live catalogue before preparing a real handoff
-              candidate.
+              Fixture source — regression/test candidate only. No live Core handoff.
             </p>
           ) : null}
           <p className="font-mono text-xs break-all">checksum {checksum || "computing…"}</p>

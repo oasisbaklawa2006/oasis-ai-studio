@@ -5,28 +5,32 @@ export {
   skuSerial,
 } from "./candidateGrouping";
 export {
-  CASHEW_TART_FAMILY_SKUS,
-  isCashewTartFamilyProduct,
-  isCashewTartFamilySku,
-  isCashewTartFamilyUtterance,
-  cashewTartFamilyConfidenceBoost,
-} from "./productFamilies";
-export { resolveProductUtterance } from "./resolveProductUtterance";
-export { loadRuntimeCatalog, buildRuntimeCatalogFromFixtures } from "./catalogLexicon";
-export { normalizeUtterance, extractPackCount } from "./normalizeUtterance";
-export { extractOrderQuantity } from "./parseOrderQuantity";
+  buildRuntimeCatalogFromFixtures,
+  loadRuntimeCatalog,
+  loadRuntimeCatalogWithStats,
+} from "./catalogLexicon";
 export {
-  assignConfidenceBand,
   actionForBand,
+  assignConfidenceBand,
   buildReason,
   isAmbiguous,
 } from "./confidenceBands";
+export { extractPackCount, normalizeUtterance } from "./normalizeUtterance";
+export { extractOrderQuantity } from "./parseOrderQuantity";
+export {
+  CASHEW_TART_FAMILY_SKUS,
+  cashewTartFamilyConfidenceBoost,
+  isCashewTartFamilyProduct,
+  isCashewTartFamilySku,
+  isCashewTartFamilyUtterance,
+} from "./productFamilies";
+export { resolveProductUtterance } from "./resolveProductUtterance";
 export type {
-  ProductUtteranceResolution,
-  RuntimeCatalog,
-  RuntimeAlternative,
   ConfidenceBand,
+  ProductUtteranceResolution,
   ResolverAction,
+  RuntimeAlternative,
+  RuntimeCatalog,
   RuntimeResolverConfig,
 } from "./types";
 export { DEFAULT_RUNTIME_RESOLVER_CONFIG } from "./types";
