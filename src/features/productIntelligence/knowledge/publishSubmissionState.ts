@@ -48,8 +48,10 @@ export type HandoffEvaluation = {
 export function goldenTestsBlocking(summary: GoldenTestSummary | null): boolean {
   if (!summary) return true;
   return (
-    summary.phase2a_passed < summary.phase2a_total ||
-    summary.production_passed < summary.production_total
+    summary.phase2a_total <= 0 ||
+    summary.production_total <= 0 ||
+    summary.phase2a_passed !== summary.phase2a_total ||
+    summary.production_passed !== summary.production_total
   );
 }
 

@@ -5,7 +5,7 @@ import {
   buildWhatsAppIntelligenceKnowledge,
   type WhatsAppKnowledgePublicationCandidate,
 } from "./knowledgeBundle";
-import { evaluateHandoffSubmission } from "./publishSubmissionState";
+import { evaluateHandoffSubmission, goldenTestsBlocking } from "./publishSubmissionState";
 
 async function handoffReadyCandidate(): Promise<WhatsAppKnowledgePublicationCandidate> {
   const knowledge = buildWhatsAppIntelligenceKnowledge(PHASE2A_FIXTURE_CATALOG, [
@@ -47,7 +47,48 @@ function baseRetryInput(
   };
 }
 
+describe("goldenTestsBlocking", () => {
+  it("blocks all-zero golden summaries", () => {
+    expect(
+      goldenTestsBlocking({
+        phase2a_passed: 0,
+        phase2a_total: 0,
+        production_passed: 0,
+        production_total: 0,
+      }),
+    ).toBe(true);
+  });
+
+  it("blocks inconsistent passed counts above totals", () => {
+    expect(
+      goldenTestsBlocking({
+        phase2a_passed: 11,
+        phase2a_total: 10,
+        production_passed: 5,
+        production_total: 5,
+      }),
+    ).toBe(true);
+  });
+});
+
 describe("evaluateHandoffSubmission retry gates", () => {
+  it("never makes all-zero golden summary retryable after failure", async () => {
+    const candidate = await handoffReadyCandidate();
+    const evaluation = evaluateHandoffSubmission(
+      baseRetryInput(candidate, {
+        goldenSummary: {
+          phase2a_passed: 0,
+          phase2a_total: 0,
+          production_passed: 0,
+          production_total: 0,
+        },
+      }),
+    );
+    expect(evaluation.uiState).toBe("FAILURES_FOUND");
+    expect(evaluation.canSubmit).toBe(false);
+    expect(evaluation.blockReason).toBe("GOLDEN_FAILURES");
+  });
+
   it("allows retry for valid HANDOFF_READY candidate after transient failure", async () => {
     const candidate = await handoffReadyCandidate();
     const evaluation = evaluateHandoffSubmission(baseRetryInput(candidate));
