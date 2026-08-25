@@ -17,7 +17,7 @@ import {
   buildKnowledgeSubmissionIdempotencyKey,
   CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC,
   classifyKnowledgeSubmissionError,
-  rowFromKnowledgeSnapshotPayload,
+  parseKnowledgeSnapshotResponse,
   type SubmitKnowledgeDraftDeps,
   submitKnowledgeDraftToCore,
   toCoreSubmitKnowledgeDraftRpcArgs,
@@ -297,7 +297,10 @@ describe("submitKnowledgeDraftToCore", () => {
     const result = await submitKnowledgeDraftToCore(candidate, {}, deps);
     expect(result.snapshot.id).toBe("ab000000-0000-0000-0000-000000000099");
     expect(
-      rowFromKnowledgeSnapshotPayload(result.snapshot as unknown as Record<string, unknown>).id,
+      parseKnowledgeSnapshotResponse(
+        result.snapshot as unknown as Record<string, unknown>,
+        candidate.content_checksum,
+      ).id,
     ).toBe("ab000000-0000-0000-0000-000000000099");
   });
 

@@ -284,6 +284,9 @@ export type CatalogueAuthorityTableDefinitions = {
   };
 };
 
+export type CoreKnowledgeSnapshotRow =
+  CatalogueAuthorityTableDefinitions["whatsapp_intelligence_knowledge_snapshots"]["Row"];
+
 export type ProductGovernanceRpc = {
   assess_product_delete_eligibility: {
     Args: { _product_id: string };

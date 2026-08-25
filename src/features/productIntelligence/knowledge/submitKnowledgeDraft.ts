@@ -1,29 +1,15 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+import type {
+  CoreKnowledgeSnapshotRow,
+  ExtendedDatabase,
+} from "@/integrations/supabase/types.extensions";
 import type { WhatsAppKnowledgePublicationCandidate } from "./knowledgeBundle";
+
+export type { CoreKnowledgeSnapshotRow };
 
 export const CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC =
   "whatsapp_submit_intelligence_knowledge_draft" as const;
-
-export type CoreKnowledgeSnapshotRow = {
-  id: string;
-  schema_version: string;
-  lifecycle: string;
-  source_catalogue_version_ids: string[];
-  knowledge: Record<string, unknown>;
-  content_checksum: string;
-  created_by: string | null;
-  created_at: string;
-  reviewed_by: string | null;
-  reviewed_at: string | null;
-  approved_by: string | null;
-  approved_at: string | null;
-  published_at: string | null;
-  activated_at: string | null;
-  superseded_at: string | null;
-  superseded_by: string | null;
-};
 
 export type KnowledgeSubmissionFailureCode =
   | "AUTHENTICATION_REQUIRED"
@@ -34,6 +20,7 @@ export type KnowledgeSubmissionFailureCode =
   | "CATALOGUE_PROVENANCE_INVALID"
   | "IDEMPOTENCY_CONFLICT"
   | "LIFECYCLE_CONFLICT"
+  | "INVALID_CORE_RESPONSE"
   | "NETWORK_OR_RPC_FAILURE"
   | "UNKNOWN_SERVER_FAILURE";
 
@@ -81,6 +68,82 @@ const defaultDeps: SubmitKnowledgeDraftDeps = {
   },
 };
 
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
+}
+
+function isKnowledgeObject(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function optionalNullableString(value: unknown): string | null {
+  if (value === null || value === undefined) return null;
+  return typeof value === "string" ? value : null;
+}
+
+function invalidCoreResponse(detail: string): Error {
+  const classified: KnowledgeSubmissionError = {
+    code: "INVALID_CORE_RESPONSE",
+    message: `Core response invalid: ${detail}`,
+    serverCode: null,
+  };
+  return Object.assign(new Error(classified.message), { classified });
+}
+
+/** Fail-closed parser for governed Core DRAFT snapshot RPC responses. */
+export function parseKnowledgeSnapshotResponse(
+  data: Record<string, unknown>,
+  expectedChecksum: string,
+): CoreKnowledgeSnapshotRow {
+  if (!isNonEmptyString(data.id)) {
+    throw invalidCoreResponse("missing or invalid snapshot id");
+  }
+  if (!isNonEmptyString(data.schema_version)) {
+    throw invalidCoreResponse("missing or invalid schema_version");
+  }
+  if (data.lifecycle !== "DRAFT") {
+    throw invalidCoreResponse(`lifecycle must be DRAFT, received ${String(data.lifecycle)}`);
+  }
+  if (!isNonEmptyString(data.content_checksum)) {
+    throw invalidCoreResponse("missing or invalid content_checksum");
+  }
+  if (data.content_checksum !== expectedChecksum) {
+    throw invalidCoreResponse("content_checksum does not match submitted candidate");
+  }
+  if (!isStringArray(data.source_catalogue_version_ids)) {
+    throw invalidCoreResponse("source_catalogue_version_ids must be a string array");
+  }
+  if (!isKnowledgeObject(data.knowledge)) {
+    throw invalidCoreResponse("knowledge must be a JSON object");
+  }
+  if (!isNonEmptyString(data.created_at)) {
+    throw invalidCoreResponse("missing or invalid created_at");
+  }
+
+  return {
+    id: data.id,
+    schema_version: data.schema_version,
+    lifecycle: data.lifecycle,
+    source_catalogue_version_ids: data.source_catalogue_version_ids,
+    knowledge: data.knowledge,
+    content_checksum: data.content_checksum,
+    created_by: optionalNullableString(data.created_by),
+    created_at: data.created_at,
+    reviewed_by: optionalNullableString(data.reviewed_by),
+    reviewed_at: optionalNullableString(data.reviewed_at),
+    approved_by: optionalNullableString(data.approved_by),
+    approved_at: optionalNullableString(data.approved_at),
+    published_at: optionalNullableString(data.published_at),
+    activated_at: optionalNullableString(data.activated_at),
+    superseded_at: optionalNullableString(data.superseded_at),
+    superseded_by: optionalNullableString(data.superseded_by),
+  };
+}
+
 /** Stable per-candidate idempotency key — changes when canonical checksum changes. */
 export function buildKnowledgeSubmissionIdempotencyKey(
   candidate: Pick<
@@ -107,28 +170,79 @@ export function toCoreSubmitKnowledgeDraftRpcArgs(
   };
 }
 
-export function rowFromKnowledgeSnapshotPayload(
-  data: Record<string, unknown>,
-): CoreKnowledgeSnapshotRow {
-  return {
-    id: String(data.id),
-    schema_version: String(data.schema_version),
-    lifecycle: String(data.lifecycle),
-    source_catalogue_version_ids: (data.source_catalogue_version_ids as string[] | null) ?? [],
-    knowledge: (data.knowledge as Record<string, unknown>) ?? {},
-    content_checksum: String(data.content_checksum),
-    created_by: (data.created_by as string | null) ?? null,
-    created_at: String(data.created_at),
-    reviewed_by: (data.reviewed_by as string | null) ?? null,
-    reviewed_at: (data.reviewed_at as string | null) ?? null,
-    approved_by: (data.approved_by as string | null) ?? null,
-    approved_at: (data.approved_at as string | null) ?? null,
-    published_at: (data.published_at as string | null) ?? null,
-    activated_at: (data.activated_at as string | null) ?? null,
-    superseded_at: (data.superseded_at as string | null) ?? null,
-    superseded_by: (data.superseded_by as string | null) ?? null,
-  };
-}
+type ErrorClassifierContext = {
+  message: string;
+  normalized: string;
+  serverCode: string | null;
+};
+
+type ErrorClassifierRule = {
+  code: KnowledgeSubmissionFailureCode;
+  match: (ctx: ErrorClassifierContext) => boolean;
+};
+
+const ERROR_CLASSIFIER_RULES: ErrorClassifierRule[] = [
+  {
+    code: "AUTHENTICATION_REQUIRED",
+    match: ({ normalized, serverCode }) =>
+      serverCode === "PGRST301" ||
+      normalized.includes("jwt") ||
+      normalized.includes("not authenticated") ||
+      normalized.includes("authentication required"),
+  },
+  {
+    code: "NOT_AUTHORIZED",
+    match: ({ normalized, serverCode }) =>
+      serverCode === "42501" ||
+      normalized.includes("not authorized") ||
+      normalized.includes("authority required"),
+  },
+  {
+    code: "IDEMPOTENCY_CONFLICT",
+    match: ({ normalized, serverCode }) =>
+      serverCode === "23505" ||
+      normalized.includes("idempotency key reused with conflicting payload"),
+  },
+  {
+    code: "LIFECYCLE_CONFLICT",
+    match: ({ normalized, serverCode }) =>
+      serverCode === "55000" || normalized.includes("lifecycle conflict"),
+  },
+  {
+    code: "CHECKSUM_MISMATCH",
+    match: ({ normalized }) => normalized.includes("content_checksum does not match"),
+  },
+  {
+    code: "CATALOGUE_PROVENANCE_INVALID",
+    match: ({ normalized }) =>
+      normalized.includes("catalogue version") ||
+      normalized.includes("source_catalogue_version_ids") ||
+      normalized.includes("provenance"),
+  },
+  {
+    code: "CANDIDATE_NOT_HANDOFF_READY",
+    match: ({ normalized }) =>
+      normalized.includes("only handoff_ready") ||
+      normalized.includes("only publication_candidate") ||
+      normalized.includes("not_handoff_ready"),
+  },
+  {
+    code: "INVALID_KNOWLEDGE",
+    match: ({ normalized, serverCode }) =>
+      serverCode === "22023" ||
+      normalized.includes("knowledge bundle") ||
+      normalized.includes("forbidden transactional") ||
+      normalized.includes("unknown top-level knowledge field"),
+  },
+  {
+    code: "NETWORK_OR_RPC_FAILURE",
+    match: ({ normalized, serverCode }) =>
+      normalized.includes("fetch failed") ||
+      normalized.includes("network") ||
+      normalized.includes("failed to fetch") ||
+      serverCode === "PGRST000",
+  },
+];
 
 export function classifyKnowledgeSubmissionError(error: {
   message: string;
@@ -136,72 +250,16 @@ export function classifyKnowledgeSubmissionError(error: {
 }): KnowledgeSubmissionError {
   const message = error.message || "Unknown submission failure";
   const serverCode = error.code ?? null;
-  const normalized = message.toLowerCase();
+  const ctx: ErrorClassifierContext = {
+    message,
+    normalized: message.toLowerCase(),
+    serverCode,
+  };
 
-  if (
-    serverCode === "PGRST301" ||
-    normalized.includes("jwt") ||
-    normalized.includes("not authenticated") ||
-    normalized.includes("authentication required")
-  ) {
-    return { code: "AUTHENTICATION_REQUIRED", message, serverCode };
-  }
-
-  if (
-    serverCode === "42501" ||
-    normalized.includes("not authorized") ||
-    normalized.includes("authority required")
-  ) {
-    return { code: "NOT_AUTHORIZED", message, serverCode };
-  }
-
-  if (
-    serverCode === "23505" ||
-    normalized.includes("idempotency key reused with conflicting payload")
-  ) {
-    return { code: "IDEMPOTENCY_CONFLICT", message, serverCode };
-  }
-
-  if (serverCode === "55000" || normalized.includes("lifecycle conflict")) {
-    return { code: "LIFECYCLE_CONFLICT", message, serverCode };
-  }
-
-  if (normalized.includes("content_checksum does not match")) {
-    return { code: "CHECKSUM_MISMATCH", message, serverCode };
-  }
-
-  if (
-    normalized.includes("catalogue version") ||
-    normalized.includes("source_catalogue_version_ids") ||
-    normalized.includes("provenance")
-  ) {
-    return { code: "CATALOGUE_PROVENANCE_INVALID", message, serverCode };
-  }
-
-  if (
-    normalized.includes("only handoff_ready") ||
-    normalized.includes("only publication_candidate") ||
-    normalized.includes("not_handoff_ready")
-  ) {
-    return { code: "CANDIDATE_NOT_HANDOFF_READY", message, serverCode };
-  }
-
-  if (
-    serverCode === "22023" ||
-    normalized.includes("knowledge bundle") ||
-    normalized.includes("forbidden transactional") ||
-    normalized.includes("unknown top-level knowledge field")
-  ) {
-    return { code: "INVALID_KNOWLEDGE", message, serverCode };
-  }
-
-  if (
-    normalized.includes("fetch failed") ||
-    normalized.includes("network") ||
-    normalized.includes("failed to fetch") ||
-    serverCode === "PGRST000"
-  ) {
-    return { code: "NETWORK_OR_RPC_FAILURE", message, serverCode };
+  for (const rule of ERROR_CLASSIFIER_RULES) {
+    if (rule.match(ctx)) {
+      return { code: rule.code, message, serverCode };
+    }
   }
 
   return { code: "UNKNOWN_SERVER_FAILURE", message, serverCode };
@@ -253,8 +311,10 @@ export async function submitKnowledgeDraftToCore(
     throw Object.assign(new Error(classified.message), { classified });
   }
 
+  const snapshot = parseKnowledgeSnapshotResponse(data, candidate.content_checksum);
+
   return {
-    snapshot: rowFromKnowledgeSnapshotPayload(data),
+    snapshot,
     idempotencyKey,
     replayed: options.replayed ?? false,
   };
