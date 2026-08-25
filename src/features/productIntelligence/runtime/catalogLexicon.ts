@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { queryProductAliasesForProduct } from "@/lib/aliasSchemaAdapter";
+import { queryProductAliasesForProducts } from "@/lib/aliasSchemaAdapter";
 import type { RuntimeCatalog, RuntimeCatalogAlias, RuntimeCatalogProduct } from "./types";
 
 function aliasTextFromRow(row: Record<string, unknown>): string {
@@ -27,7 +27,11 @@ export type CatalogLexiconEntry = {
   resolved_name: string;
   search_text: string;
   name_tokens: string[];
-  terms: Array<{ text: string; tokens: string[]; source: "sku" | "name" | "short_name" | "alias" | "canonical_name" | "category" | "subcategory" }>;
+  terms: Array<{
+    text: string;
+    tokens: string[];
+    source: "sku" | "name" | "short_name" | "alias" | "canonical_name" | "category" | "subcategory";
+  }>;
 };
 
 export function buildCatalogLexicon(catalog: RuntimeCatalog): CatalogLexiconEntry[] {
@@ -84,11 +88,56 @@ export function buildCatalogLexicon(catalog: RuntimeCatalog): CatalogLexiconEntr
   });
 }
 
+export const RUNTIME_CATALOG_ALIAS_BATCH_SIZE = 200;
+
+export type RuntimeCatalogLoadStats = {
+  aliasQueryCount: number;
+};
+
+export type RuntimeCatalogLoadResult = {
+  catalog: RuntimeCatalog;
+  stats: RuntimeCatalogLoadStats;
+};
+
+export function batchProductIds(productIds: string[], batchSize: number): string[][] {
+  const uniqueIds = [...new Set(productIds.map((id) => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length || batchSize < 1) return [];
+  const batches: string[][] = [];
+  for (let index = 0; index < uniqueIds.length; index += batchSize) {
+    batches.push(uniqueIds.slice(index, index + batchSize));
+  }
+  return batches;
+}
+
+function mapAliasRowsToRuntimeAliases(
+  rows: Array<Record<string, unknown>>,
+  productsById: Map<string, RuntimeCatalogProduct>,
+): RuntimeCatalogAlias[] {
+  const aliases: RuntimeCatalogAlias[] = [];
+  for (const row of rows) {
+    const productId = String(row.product_id ?? "").trim();
+    if (!productId) continue;
+    const product = productsById.get(productId);
+    if (!product) continue;
+    const alias_text = aliasTextFromRow(row);
+    if (!alias_text) continue;
+    aliases.push({
+      alias_text,
+      canonical_name: canonicalFromRow(row, product.name),
+      product_id: productId,
+      alias_type: typeof row.alias_type === "string" ? row.alias_type : null,
+    });
+  }
+  return aliases;
+}
+
 /**
  * Read-only catalogue loader v2 for Product Intelligence runtime.
- * Uses aliasSchemaAdapter for legacy + migration alias schemas.
+ * Uses bulk aliasSchemaAdapter queries (batched) for legacy + migration alias schemas.
  */
-export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeCatalog> {
+export async function loadRuntimeCatalogWithStats(
+  skuFilter?: string[],
+): Promise<RuntimeCatalogLoadResult> {
   let productQuery = supabase
     .from("products")
     .select(
@@ -117,22 +166,28 @@ export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeC
     updated_at: null,
   }));
 
-  const aliases: RuntimeCatalogAlias[] = [];
-  for (const product of mappedProducts) {
-    const rows = await queryProductAliasesForProduct(supabase, product.id);
-    for (const row of rows) {
-      const alias_text = aliasTextFromRow(row);
-      if (!alias_text) continue;
-      aliases.push({
-        alias_text,
-        canonical_name: canonicalFromRow(row, product.name),
-        product_id: product.id,
-        alias_type: typeof row.alias_type === "string" ? row.alias_type : null,
-      });
-    }
+  const productsById = new Map(mappedProducts.map((product) => [product.id, product]));
+  const aliasRows: Array<Record<string, unknown>> = [];
+  let aliasQueryCount = 0;
+  for (const batch of batchProductIds(
+    mappedProducts.map((product) => product.id),
+    RUNTIME_CATALOG_ALIAS_BATCH_SIZE,
+  )) {
+    aliasQueryCount += 1;
+    aliasRows.push(...(await queryProductAliasesForProducts(supabase, batch)));
   }
 
-  return { products: mappedProducts, aliases };
+  return {
+    catalog: {
+      products: mappedProducts,
+      aliases: mapAliasRowsToRuntimeAliases(aliasRows, productsById),
+    },
+    stats: { aliasQueryCount },
+  };
+}
+
+export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeCatalog> {
+  return (await loadRuntimeCatalogWithStats(skuFilter)).catalog;
 }
 
 /** Build in-memory catalog from fixtures (tests / offline audit). */
