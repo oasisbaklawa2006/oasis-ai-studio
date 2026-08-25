@@ -53,66 +53,16 @@ export function goldenTestsBlocking(summary: GoldenTestSummary | null): boolean 
   );
 }
 
-export function evaluateHandoffSubmission(input: EvaluateHandoffInput): HandoffEvaluation {
-  const {
-    candidate,
-    isFixture,
-    goldenSummary,
-    currentChecksum,
-    submittedChecksum,
-    isSubmitting,
-    submissionFailed,
-  } = input;
+type BlockingGateContext = {
+  candidate: WhatsAppKnowledgePublicationCandidate;
+  isFixture: boolean;
+  goldenSummary: GoldenTestSummary | null;
+  currentChecksum: string;
+};
 
-  if (!candidate || !currentChecksum) {
-    return {
-      uiState: "NOT_READY",
-      canSubmit: false,
-      blockReason: "CATALOG_NOT_LOADED",
-      blockMessage: "Catalogue knowledge is still loading.",
-    };
-  }
-
-  if (isSubmitting) {
-    return {
-      uiState: "SUBMITTING",
-      canSubmit: false,
-      blockReason: null,
-      blockMessage: null,
-    };
-  }
-
-  if (submissionFailed) {
-    return {
-      uiState: "SUBMISSION_FAILED",
-      canSubmit: true,
-      blockReason: null,
-      blockMessage: null,
-    };
-  }
-
-  if (
-    submittedChecksum &&
-    submittedChecksum === currentChecksum &&
-    currentChecksum === candidate.content_checksum
-  ) {
-    return {
-      uiState: "SUBMITTED_TO_CORE",
-      canSubmit: false,
-      blockReason: null,
-      blockMessage: null,
-    };
-  }
-
-  if (submittedChecksum && submittedChecksum !== candidate.content_checksum) {
-    return {
-      uiState: "SUBMISSION_BLOCKED",
-      canSubmit: false,
-      blockReason: "STALE_CANDIDATE",
-      blockMessage:
-        "Knowledge changed after a prior submission identity. Reconcile the new checksum before publishing again.",
-    };
-  }
+/** Authoritative eligibility gates — must run before any retry-after-failure path. */
+function evaluateBlockingGates(ctx: BlockingGateContext): HandoffEvaluation | null {
+  const { candidate, isFixture, goldenSummary, currentChecksum } = ctx;
 
   if (isFixture || candidate.candidate_status === "TEST_CANDIDATE") {
     return {
@@ -156,6 +106,80 @@ export function evaluateHandoffSubmission(input: EvaluateHandoffInput): HandoffE
       canSubmit: false,
       blockReason: "STALE_CANDIDATE",
       blockMessage: "Checksum is stale relative to the prepared candidate. Wait for regeneration.",
+    };
+  }
+
+  return null;
+}
+
+export function evaluateHandoffSubmission(input: EvaluateHandoffInput): HandoffEvaluation {
+  const {
+    candidate,
+    isFixture,
+    goldenSummary,
+    currentChecksum,
+    submittedChecksum,
+    isSubmitting,
+    submissionFailed,
+  } = input;
+
+  if (!candidate || !currentChecksum) {
+    return {
+      uiState: "NOT_READY",
+      canSubmit: false,
+      blockReason: "CATALOG_NOT_LOADED",
+      blockMessage: "Catalogue knowledge is still loading.",
+    };
+  }
+
+  if (isSubmitting) {
+    return {
+      uiState: "SUBMITTING",
+      canSubmit: false,
+      blockReason: null,
+      blockMessage: null,
+    };
+  }
+
+  if (
+    submittedChecksum &&
+    submittedChecksum === currentChecksum &&
+    currentChecksum === candidate.content_checksum
+  ) {
+    return {
+      uiState: "SUBMITTED_TO_CORE",
+      canSubmit: false,
+      blockReason: null,
+      blockMessage: null,
+    };
+  }
+
+  if (submittedChecksum && submittedChecksum !== candidate.content_checksum) {
+    return {
+      uiState: "SUBMISSION_BLOCKED",
+      canSubmit: false,
+      blockReason: "STALE_CANDIDATE",
+      blockMessage:
+        "Knowledge changed after a prior submission identity. Reconcile the new checksum before publishing again.",
+    };
+  }
+
+  const blocked = evaluateBlockingGates({
+    candidate,
+    isFixture,
+    goldenSummary,
+    currentChecksum,
+  });
+  if (blocked) {
+    return blocked;
+  }
+
+  if (submissionFailed) {
+    return {
+      uiState: "SUBMISSION_FAILED",
+      canSubmit: true,
+      blockReason: null,
+      blockMessage: null,
     };
   }
 
