@@ -23,6 +23,7 @@ export function useKnowledgePublicationCandidate(
     void (async () => {
       const checksumValue = await knowledgeContentChecksum(input.knowledge);
       const candidate = await buildKnowledgePublicationCandidate(input);
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- abort may flip after await
       if (controller.signal.aborted) return;
       setChecksum(checksumValue);
       setPublicationJson(JSON.stringify(candidate, null, 2));

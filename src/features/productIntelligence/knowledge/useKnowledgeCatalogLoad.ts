@@ -18,11 +18,13 @@ export function useKnowledgeCatalogLoad(catalogMode: KnowledgeCatalogMode) {
     setCatalogLabel(catalogModeLabel(catalogMode));
     void loadKnowledgeCatalog(catalogMode)
       .then((loaded) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- abort may flip after await
         if (controller.signal.aborted) return;
         setCatalogLoad(loaded);
         setCatalogLabel(loaded.label);
       })
       .catch((error) => {
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- abort may flip after await
         if (controller.signal.aborted) return;
         setCatalogLoad(null);
         setCatalogError(error instanceof Error ? error.message : String(error));
