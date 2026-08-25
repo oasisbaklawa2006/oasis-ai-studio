@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   type BuildKnowledgePublicationCandidateInput,
   buildKnowledgePublicationCandidate,
@@ -10,23 +10,26 @@ export function useKnowledgePublicationCandidate(
 ) {
   const [checksum, setChecksum] = useState("");
   const [publicationJson, setPublicationJson] = useState("Preparing publication candidate…");
-  const publicationGenerationRef = useRef(0);
 
   useEffect(() => {
+    const controller = new AbortController();
     if (!input) {
       setChecksum("");
       setPublicationJson("Preparing publication candidate…");
-      return;
+      return () => {
+        controller.abort();
+      };
     }
-    const generation = publicationGenerationRef.current + 1;
-    publicationGenerationRef.current = generation;
     void (async () => {
       const checksumValue = await knowledgeContentChecksum(input.knowledge);
       const candidate = await buildKnowledgePublicationCandidate(input);
-      if (publicationGenerationRef.current !== generation) return;
+      if (controller.signal.aborted) return;
       setChecksum(checksumValue);
       setPublicationJson(JSON.stringify(candidate, null, 2));
     })();
+    return () => {
+      controller.abort();
+    };
   }, [input]);
 
   return { checksum, publicationJson };
