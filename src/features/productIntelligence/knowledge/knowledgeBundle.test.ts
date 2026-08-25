@@ -157,12 +157,12 @@ describe("WhatsApp intelligence knowledge bundle", () => {
 
   it("rejects forbidden transactional payload keys", () => {
     const knowledge = buildWhatsAppIntelligenceKnowledge(PHASE2A_FIXTURE_CATALOG);
-    expect(() =>
+    expect(() => {
       assertNoTransactionalPayload({
         ...knowledge,
         orders: [],
-      } as typeof knowledge),
-    ).toThrow(/KNOWLEDGE_TRANSACTION_FIELD_FORBIDDEN/);
+      } as typeof knowledge);
+    }).toThrow(/KNOWLEDGE_TRANSACTION_FIELD_FORBIDDEN/);
   });
 
   it("runs phase2a and production-shaped golden corpora without regression", () => {
