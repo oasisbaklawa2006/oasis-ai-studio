@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   type KnowledgeHandoffEligibility,
   knowledgeContentChecksum,
   type WhatsAppIntelligenceKnowledge,
+  type WhatsAppKnowledgePublicationCandidate,
 } from "@/features/productIntelligence/knowledge/knowledgeBundle";
 import {
   catalogModeLabel,
@@ -26,6 +27,18 @@ import {
   KNOWLEDGE_WORKBENCH_EXAMPLES,
   resolveKnowledgeWorkbench,
 } from "@/features/productIntelligence/knowledge/knowledgeResolverWorkbench";
+import {
+  evaluateHandoffSubmission,
+  publicationUiLabel,
+  submissionStateShouldReset,
+} from "@/features/productIntelligence/knowledge/publishSubmissionState";
+import {
+  buildKnowledgeSubmissionIdempotencyKey,
+  type CoreKnowledgeSnapshotRow,
+  classifyKnowledgeSubmissionError,
+  type KnowledgeSubmissionError,
+  submitKnowledgeDraftToCore,
+} from "@/features/productIntelligence/knowledge/submitKnowledgeDraft";
 import type { RuntimeCatalog } from "@/features/productIntelligence/runtime/types";
 
 const TABS = ["Knowledge", "Test", "Failures", "Publish"] as const;
@@ -60,6 +73,15 @@ export default function ProductIntelligenceKnowledgePage() {
   const [testInput, setTestInput] = useState("pista bulbul");
   const [publicationJson, setPublicationJson] = useState("Preparing publication candidate…");
   const [checksum, setChecksum] = useState("");
+  const [publicationCandidate, setPublicationCandidate] =
+    useState<WhatsAppKnowledgePublicationCandidate | null>(null);
+  const [coreSnapshot, setCoreSnapshot] = useState<CoreKnowledgeSnapshotRow | null>(null);
+  const [submittedChecksum, setSubmittedChecksum] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionFailed, setSubmissionFailed] = useState(false);
+  const [submissionError, setSubmissionError] = useState<KnowledgeSubmissionError | null>(null);
+  const priorHandoffIdentityRef = useRef<string | null>(null);
+  const submissionGenerationRef = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,12 +158,87 @@ export default function ProductIntelligenceKnowledgePage() {
       const candidate = await buildKnowledgePublicationCandidate(publicationInput);
       if (controller.signal.aborted) return;
       setChecksum(checksumValue);
+      setPublicationCandidate(candidate);
       setPublicationJson(JSON.stringify(candidate, null, 2));
+      const nextHandoffIdentity = buildKnowledgeSubmissionIdempotencyKey(candidate);
+      if (
+        submissionStateShouldReset({
+          priorHandoffIdentity: priorHandoffIdentityRef.current,
+          nextHandoffIdentity,
+          submittedChecksum,
+          candidateChecksum: candidate.content_checksum,
+        })
+      ) {
+        submissionGenerationRef.current += 1;
+        setCoreSnapshot(null);
+        setSubmittedChecksum(null);
+        setSubmissionFailed(false);
+        setSubmissionError(null);
+        setIsSubmitting(false);
+      }
+      priorHandoffIdentityRef.current = nextHandoffIdentity;
     })();
     return () => {
       controller.abort();
     };
-  }, [publicationInput]);
+  }, [publicationInput, submittedChecksum]);
+
+  const derivedIdempotencyKey = useMemo(
+    () =>
+      publicationCandidate ? buildKnowledgeSubmissionIdempotencyKey(publicationCandidate) : null,
+    [publicationCandidate],
+  );
+
+  const handoffEvaluation = useMemo(
+    () =>
+      evaluateHandoffSubmission({
+        candidate: publicationCandidate,
+        isFixture,
+        goldenSummary: publicationCandidate?.golden_test_summary ?? null,
+        currentChecksum: checksum || null,
+        submittedChecksum,
+        isSubmitting,
+        submissionFailed,
+      }),
+    [checksum, isFixture, isSubmitting, publicationCandidate, submissionFailed, submittedChecksum],
+  );
+
+  async function handleSubmitToCore(): Promise<void> {
+    if (!publicationCandidate || !handoffEvaluation.canSubmit) return;
+    const submittedCandidate = publicationCandidate;
+    const requestHandoffIdentity = buildKnowledgeSubmissionIdempotencyKey(submittedCandidate);
+    const requestGeneration = submissionGenerationRef.current;
+    setIsSubmitting(true);
+    setSubmissionFailed(false);
+    setSubmissionError(null);
+    try {
+      const result = await submitKnowledgeDraftToCore(submittedCandidate, {
+        idempotencyKey: requestHandoffIdentity,
+      });
+      if (requestGeneration !== submissionGenerationRef.current) return;
+      setCoreSnapshot(result.snapshot);
+      setSubmittedChecksum(submittedCandidate.content_checksum);
+      setSubmissionFailed(false);
+      setSubmissionError(null);
+    } catch (error) {
+      if (requestGeneration !== submissionGenerationRef.current) return;
+      const classified =
+        typeof error === "object" &&
+        error !== null &&
+        "classified" in error &&
+        (error as { classified?: KnowledgeSubmissionError }).classified
+          ? (error as { classified: KnowledgeSubmissionError }).classified
+          : classifyKnowledgeSubmissionError({
+              message: error instanceof Error ? error.message : String(error),
+            });
+      setSubmissionFailed(true);
+      setSubmissionError(classified);
+    } finally {
+      if (requestGeneration === submissionGenerationRef.current) {
+        setIsSubmitting(false);
+      }
+    }
+  }
 
   const workbench = useMemo(() => {
     if (!catalog || !knowledge || !testInput.trim()) return null;
@@ -355,6 +452,40 @@ export default function ProductIntelligenceKnowledgePage() {
       {tab === "Publish" && knowledge && catalogLoad ? (
         <section className="rounded-md border p-4 space-y-3">
           <p className="text-sm font-medium">Prepared for governed Core publication</p>
+          <div className="rounded border border-dashed p-3 space-y-2">
+            <p className="text-sm font-medium">{publicationUiLabel(handoffEvaluation.uiState)}</p>
+            {handoffEvaluation.blockMessage ? (
+              <p className="text-sm text-amber-800">{handoffEvaluation.blockMessage}</p>
+            ) : null}
+            {submissionError ? (
+              <p className="text-sm text-destructive">
+                {submissionError.code.replaceAll("_", " ")}: {submissionError.message}
+              </p>
+            ) : null}
+            {coreSnapshot ? (
+              <div className="text-sm space-y-1">
+                <p>
+                  Core snapshot id: <span className="font-mono text-xs">{coreSnapshot.id}</span>
+                </p>
+                <p>Core lifecycle: {coreSnapshot.lifecycle}</p>
+                <p>Core review required before approval or activation.</p>
+              </div>
+            ) : null}
+            <Button
+              type="button"
+              disabled={!handoffEvaluation.canSubmit || isSubmitting || !user}
+              onClick={() => {
+                void handleSubmitToCore();
+              }}
+            >
+              {isSubmitting ? "Submitting to Core…" : "Submit to Core as Draft"}
+            </Button>
+            {!user ? (
+              <p className="text-xs text-muted-foreground">
+                Authenticated team-member session required for governed Core submission.
+              </p>
+            ) : null}
+          </div>
           <ul className="text-sm list-disc pl-5 space-y-1">
             <li>
               Candidate status:{" "}
@@ -370,11 +501,14 @@ export default function ProductIntelligenceKnowledgePage() {
                   ? "NOT HANDOFF ELIGIBLE (fixture)"
                   : "NOT HANDOFF READY (missing derived catalogue version provenance)"}
             </li>
-            <li>Core review: NOT EXECUTED</li>
+            <li>Core review: {coreSnapshot ? "PENDING IN CORE" : "NOT EXECUTED"}</li>
             <li>Core approval: NOT EXECUTED</li>
             <li>Core activation: NOT EXECUTED</li>
             <li>Not reviewed · Not approved · Not active</li>
           </ul>
+          {derivedIdempotencyKey ? (
+            <p className="font-mono text-xs break-all">idempotency {derivedIdempotencyKey}</p>
+          ) : null}
           {isFixture ? (
             <p className="text-xs text-amber-800">
               Fixture source — regression/test candidate only. No live Core handoff.
@@ -382,9 +516,10 @@ export default function ProductIntelligenceKnowledgePage() {
           ) : null}
           <p className="font-mono text-xs break-all">checksum {checksum || "computing…"}</p>
           <p className="text-xs text-muted-foreground">
-            AI Studio prepares deterministic knowledge only. Core owns review, approval,
-            publication, activation, and single ACTIVE snapshot selection. No service_role browser
-            path and no direct Core lifecycle mutation from this page.
+            AI Studio prepares deterministic knowledge and may submit a governed Core DRAFT only.
+            Core owns review, approval, publication, activation, and single ACTIVE snapshot
+            selection. No service_role browser path and no direct Core lifecycle mutation from this
+            page.
           </p>
           <pre className="max-h-96 overflow-auto rounded bg-muted p-3 text-[11px]">
             {publicationJson}
