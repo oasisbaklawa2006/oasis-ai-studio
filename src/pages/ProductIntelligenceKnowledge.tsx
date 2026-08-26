@@ -30,6 +30,7 @@ import {
 import {
   evaluateHandoffSubmission,
   publicationUiLabel,
+  submissionStateShouldReset,
 } from "@/features/productIntelligence/knowledge/publishSubmissionState";
 import {
   buildKnowledgeSubmissionIdempotencyKey,
@@ -76,7 +77,6 @@ export default function ProductIntelligenceKnowledgePage() {
     useState<WhatsAppKnowledgePublicationCandidate | null>(null);
   const [coreSnapshot, setCoreSnapshot] = useState<CoreKnowledgeSnapshotRow | null>(null);
   const [submittedChecksum, setSubmittedChecksum] = useState<string | null>(null);
-  const [submissionIdempotencyKey, setSubmissionIdempotencyKey] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionFailed, setSubmissionFailed] = useState(false);
   const [submissionError, setSubmissionError] = useState<KnowledgeSubmissionError | null>(null);
@@ -158,10 +158,16 @@ export default function ProductIntelligenceKnowledgePage() {
       setChecksum(checksumValue);
       setPublicationCandidate(candidate);
       setPublicationJson(JSON.stringify(candidate, null, 2));
-      if (submittedChecksum && submittedChecksum !== candidate.content_checksum) {
+      if (
+        submissionStateShouldReset({
+          priorChecksum: checksum,
+          nextChecksum: checksumValue,
+          submittedChecksum,
+          candidateChecksum: candidate.content_checksum,
+        })
+      ) {
         setCoreSnapshot(null);
         setSubmittedChecksum(null);
-        setSubmissionIdempotencyKey(null);
         setSubmissionFailed(false);
         setSubmissionError(null);
       }
@@ -169,7 +175,13 @@ export default function ProductIntelligenceKnowledgePage() {
     return () => {
       controller.abort();
     };
-  }, [publicationInput, submittedChecksum]);
+  }, [checksum, publicationInput, submittedChecksum]);
+
+  const derivedIdempotencyKey = useMemo(
+    () =>
+      publicationCandidate ? buildKnowledgeSubmissionIdempotencyKey(publicationCandidate) : null,
+    [publicationCandidate],
+  );
 
   const handoffEvaluation = useMemo(
     () =>
@@ -187,9 +199,7 @@ export default function ProductIntelligenceKnowledgePage() {
 
   async function handleSubmitToCore(): Promise<void> {
     if (!publicationCandidate || !handoffEvaluation.canSubmit) return;
-    const idempotencyKey =
-      submissionIdempotencyKey ?? buildKnowledgeSubmissionIdempotencyKey(publicationCandidate);
-    setSubmissionIdempotencyKey(idempotencyKey);
+    const idempotencyKey = buildKnowledgeSubmissionIdempotencyKey(publicationCandidate);
     setIsSubmitting(true);
     setSubmissionFailed(false);
     setSubmissionError(null);
@@ -482,8 +492,8 @@ export default function ProductIntelligenceKnowledgePage() {
             <li>Core activation: NOT EXECUTED</li>
             <li>Not reviewed · Not approved · Not active</li>
           </ul>
-          {submissionIdempotencyKey ? (
-            <p className="font-mono text-xs break-all">idempotency {submissionIdempotencyKey}</p>
+          {derivedIdempotencyKey ? (
+            <p className="font-mono text-xs break-all">idempotency {derivedIdempotencyKey}</p>
           ) : null}
           {isFixture ? (
             <p className="text-xs text-amber-800">

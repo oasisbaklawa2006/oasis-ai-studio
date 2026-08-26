@@ -5,7 +5,11 @@ import {
   buildWhatsAppIntelligenceKnowledge,
   type WhatsAppKnowledgePublicationCandidate,
 } from "./knowledgeBundle";
-import { evaluateHandoffSubmission, goldenTestsBlocking } from "./publishSubmissionState";
+import {
+  evaluateHandoffSubmission,
+  goldenTestsBlocking,
+  submissionStateShouldReset,
+} from "./publishSubmissionState";
 
 async function handoffReadyCandidate(): Promise<WhatsAppKnowledgePublicationCandidate> {
   const knowledge = buildWhatsAppIntelligenceKnowledge(PHASE2A_FIXTURE_CATALOG, [
@@ -46,6 +50,52 @@ function baseRetryInput(
     ...overrides,
   };
 }
+
+describe("submissionStateShouldReset", () => {
+  it("resets after failed submission when knowledge checksum changes", () => {
+    expect(
+      submissionStateShouldReset({
+        priorChecksum: "a".repeat(64),
+        nextChecksum: "b".repeat(64),
+        submittedChecksum: null,
+        candidateChecksum: "b".repeat(64),
+      }),
+    ).toBe(true);
+  });
+
+  it("does not reset while retrying the same checksum after failure", () => {
+    expect(
+      submissionStateShouldReset({
+        priorChecksum: "a".repeat(64),
+        nextChecksum: "a".repeat(64),
+        submittedChecksum: null,
+        candidateChecksum: "a".repeat(64),
+      }),
+    ).toBe(false);
+  });
+
+  it("resets when a prior successful submission identity is stale", () => {
+    expect(
+      submissionStateShouldReset({
+        priorChecksum: "a".repeat(64),
+        nextChecksum: "b".repeat(64),
+        submittedChecksum: "a".repeat(64),
+        candidateChecksum: "b".repeat(64),
+      }),
+    ).toBe(true);
+  });
+
+  it("skips reset on initial checksum computation", () => {
+    expect(
+      submissionStateShouldReset({
+        priorChecksum: "",
+        nextChecksum: "a".repeat(64),
+        submittedChecksum: null,
+        candidateChecksum: "a".repeat(64),
+      }),
+    ).toBe(false);
+  });
+});
 
 describe("goldenTestsBlocking", () => {
   it("blocks all-zero golden summaries", () => {
