@@ -45,15 +45,16 @@ export type HandoffEvaluation = {
   blockMessage: string | null;
 };
 
-/** True when knowledge identity changed and UI submission state must reconcile. */
+/** True when handoff identity changed and UI submission state must reconcile. */
 export function submissionStateShouldReset(input: {
-  priorChecksum: string;
-  nextChecksum: string;
+  priorHandoffIdentity: string | null;
+  nextHandoffIdentity: string;
   submittedChecksum: string | null;
   candidateChecksum: string;
 }): boolean {
   return (
-    (input.priorChecksum.length > 0 && input.priorChecksum !== input.nextChecksum) ||
+    (input.priorHandoffIdentity !== null &&
+      input.priorHandoffIdentity !== input.nextHandoffIdentity) ||
     (input.submittedChecksum !== null && input.submittedChecksum !== input.candidateChecksum)
   );
 }

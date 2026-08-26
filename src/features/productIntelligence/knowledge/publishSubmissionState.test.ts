@@ -52,24 +52,41 @@ function baseRetryInput(
 }
 
 describe("submissionStateShouldReset", () => {
-  it("resets after failed submission when knowledge checksum changes", () => {
+  const identity = (checksum: string, provenance: string[]) =>
+    `wa-knowledge-handoff:${checksum}:${[...provenance].sort().join(",")}`;
+
+  it("resets after failed submission when handoff identity changes", () => {
+    const checksum = "a".repeat(64);
     expect(
       submissionStateShouldReset({
-        priorChecksum: "a".repeat(64),
-        nextChecksum: "b".repeat(64),
+        priorHandoffIdentity: identity(checksum, ["11111111-1111-4111-8111-111111111111"]),
+        nextHandoffIdentity: identity(checksum, ["22222222-2222-4222-8222-222222222222"]),
+        submittedChecksum: null,
+        candidateChecksum: checksum,
+      }),
+    ).toBe(true);
+  });
+
+  it("resets after failed submission when content checksum changes", () => {
+    expect(
+      submissionStateShouldReset({
+        priorHandoffIdentity: identity("a".repeat(64), ["11111111-1111-4111-8111-111111111111"]),
+        nextHandoffIdentity: identity("b".repeat(64), ["11111111-1111-4111-8111-111111111111"]),
         submittedChecksum: null,
         candidateChecksum: "b".repeat(64),
       }),
     ).toBe(true);
   });
 
-  it("does not reset while retrying the same checksum after failure", () => {
+  it("does not reset while retrying the same handoff identity after failure", () => {
+    const checksum = "a".repeat(64);
+    const key = identity(checksum, ["11111111-1111-4111-8111-111111111111"]);
     expect(
       submissionStateShouldReset({
-        priorChecksum: "a".repeat(64),
-        nextChecksum: "a".repeat(64),
+        priorHandoffIdentity: key,
+        nextHandoffIdentity: key,
         submittedChecksum: null,
-        candidateChecksum: "a".repeat(64),
+        candidateChecksum: checksum,
       }),
     ).toBe(false);
   });
@@ -77,19 +94,19 @@ describe("submissionStateShouldReset", () => {
   it("resets when a prior successful submission identity is stale", () => {
     expect(
       submissionStateShouldReset({
-        priorChecksum: "a".repeat(64),
-        nextChecksum: "b".repeat(64),
+        priorHandoffIdentity: identity("a".repeat(64), ["11111111-1111-4111-8111-111111111111"]),
+        nextHandoffIdentity: identity("b".repeat(64), ["11111111-1111-4111-8111-111111111111"]),
         submittedChecksum: "a".repeat(64),
         candidateChecksum: "b".repeat(64),
       }),
     ).toBe(true);
   });
 
-  it("skips reset on initial checksum computation", () => {
+  it("skips reset on initial handoff identity computation", () => {
     expect(
       submissionStateShouldReset({
-        priorChecksum: "",
-        nextChecksum: "a".repeat(64),
+        priorHandoffIdentity: null,
+        nextHandoffIdentity: identity("a".repeat(64), ["11111111-1111-4111-8111-111111111111"]),
         submittedChecksum: null,
         candidateChecksum: "a".repeat(64),
       }),

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +80,7 @@ export default function ProductIntelligenceKnowledgePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionFailed, setSubmissionFailed] = useState(false);
   const [submissionError, setSubmissionError] = useState<KnowledgeSubmissionError | null>(null);
+  const priorHandoffIdentityRef = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,10 +159,11 @@ export default function ProductIntelligenceKnowledgePage() {
       setChecksum(checksumValue);
       setPublicationCandidate(candidate);
       setPublicationJson(JSON.stringify(candidate, null, 2));
+      const nextHandoffIdentity = buildKnowledgeSubmissionIdempotencyKey(candidate);
       if (
         submissionStateShouldReset({
-          priorChecksum: checksum,
-          nextChecksum: checksumValue,
+          priorHandoffIdentity: priorHandoffIdentityRef.current,
+          nextHandoffIdentity,
           submittedChecksum,
           candidateChecksum: candidate.content_checksum,
         })
@@ -171,11 +173,12 @@ export default function ProductIntelligenceKnowledgePage() {
         setSubmissionFailed(false);
         setSubmissionError(null);
       }
+      priorHandoffIdentityRef.current = nextHandoffIdentity;
     })();
     return () => {
       controller.abort();
     };
-  }, [checksum, publicationInput, submittedChecksum]);
+  }, [publicationInput, submittedChecksum]);
 
   const derivedIdempotencyKey = useMemo(
     () =>
