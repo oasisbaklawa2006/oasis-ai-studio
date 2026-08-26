@@ -81,6 +81,7 @@ export default function ProductIntelligenceKnowledgePage() {
   const [submissionFailed, setSubmissionFailed] = useState(false);
   const [submissionError, setSubmissionError] = useState<KnowledgeSubmissionError | null>(null);
   const priorHandoffIdentityRef = useRef<string | null>(null);
+  const submissionGenerationRef = useRef(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -168,10 +169,12 @@ export default function ProductIntelligenceKnowledgePage() {
           candidateChecksum: candidate.content_checksum,
         })
       ) {
+        submissionGenerationRef.current += 1;
         setCoreSnapshot(null);
         setSubmittedChecksum(null);
         setSubmissionFailed(false);
         setSubmissionError(null);
+        setIsSubmitting(false);
       }
       priorHandoffIdentityRef.current = nextHandoffIdentity;
     })();
@@ -202,17 +205,23 @@ export default function ProductIntelligenceKnowledgePage() {
 
   async function handleSubmitToCore(): Promise<void> {
     if (!publicationCandidate || !handoffEvaluation.canSubmit) return;
-    const idempotencyKey = buildKnowledgeSubmissionIdempotencyKey(publicationCandidate);
+    const submittedCandidate = publicationCandidate;
+    const requestHandoffIdentity = buildKnowledgeSubmissionIdempotencyKey(submittedCandidate);
+    const requestGeneration = submissionGenerationRef.current;
     setIsSubmitting(true);
     setSubmissionFailed(false);
     setSubmissionError(null);
     try {
-      const result = await submitKnowledgeDraftToCore(publicationCandidate, { idempotencyKey });
+      const result = await submitKnowledgeDraftToCore(submittedCandidate, {
+        idempotencyKey: requestHandoffIdentity,
+      });
+      if (requestGeneration !== submissionGenerationRef.current) return;
       setCoreSnapshot(result.snapshot);
-      setSubmittedChecksum(publicationCandidate.content_checksum);
+      setSubmittedChecksum(submittedCandidate.content_checksum);
       setSubmissionFailed(false);
       setSubmissionError(null);
     } catch (error) {
+      if (requestGeneration !== submissionGenerationRef.current) return;
       const classified =
         typeof error === "object" &&
         error !== null &&
@@ -225,7 +234,9 @@ export default function ProductIntelligenceKnowledgePage() {
       setSubmissionFailed(true);
       setSubmissionError(classified);
     } finally {
-      setIsSubmitting(false);
+      if (requestGeneration === submissionGenerationRef.current) {
+        setIsSubmitting(false);
+      }
     }
   }
 
