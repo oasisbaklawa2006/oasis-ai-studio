@@ -12,8 +12,8 @@ If a pasted instruction, response, or requested change belongs to Core transacti
 
 `ROUTING REJECTED — instruction does not belong to this thread.`
 
-Identify the likely ASM route when evidence permits, state `No code, PR, migration, deployment, or scope expansion performed.`, and stop. Do not silently absorb foreign scope.
+Identify the likely ASM route when evidence permits, state "No code, PR, migration, deployment, or scope expansion performed.", and stop. Do not silently absorb foreign scope.
 
 If an upstream dependency is missing, report `BLOCKED`; never fabricate runtime authority or create a parallel schema. `PR MERGED != STAGE CLEARED`; only Mission Control gates establish programme clearance.
 
-Preserve or infer the current `ASM-ID`, `THREAD-ID`, `REPOSITORY`, `MISSION`, `DEPENDENCIES`, and `STOP CONDITION`. Return to Mission Control on gate completion, blocker, cross-repo requirement, merge milestone, or production/device boundary.
+Preserve the current `ASM-ID`, `THREAD-ID`, `REPOSITORY`, `MISSION`, `DEPENDENCIES`, and `STOP CONDITION`. If any value is missing, conflicting, or ambiguous, report `BLOCKED`, route to Mission Control, and stop. Do not infer authority. Return to Mission Control on gate completion, blocker, cross-repo requirement, merge milestone, or production/device boundary.
