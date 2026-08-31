@@ -16,11 +16,12 @@ const changed = execFileSync(
   .split("\n")
   .map((file) => file.trim())
   .filter(Boolean)
+  .filter((file) => file !== "package-lock.json")
   .filter((file) => /\.(?:cjs|js|json|jsx|mjs|ts|tsx)$/.test(file))
   .filter((file) => existsSync(file));
 
 if (changed.length === 0) {
-  console.log("No changed JavaScript, TypeScript or JSON files to check.");
+  console.log("No changed JavaScript, TypeScript or source JSON files to check.");
   process.exit(0);
 }
 
