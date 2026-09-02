@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  detectProductMasterDuplicates,
-  productNameSimilarity,
-} from "./duplicateDetection";
+import { detectProductMasterDuplicates, productNameSimilarity } from "./duplicateDetection";
 
 describe("detectProductMasterDuplicates", () => {
   it("flags same SKU across products", () => {

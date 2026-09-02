@@ -1,8 +1,4 @@
-import type {
-  ProductDuplicateSignal,
-  ProductGovernanceRow,
-  ProductLabelBarcodeRow,
-} from "./types";
+import type { ProductDuplicateSignal, ProductGovernanceRow, ProductLabelBarcodeRow } from "./types";
 
 const SIMILAR_NAME_THRESHOLD = 0.82;
 
@@ -81,10 +77,7 @@ export function productNameSimilarity(
   const rightCompact = rightTokens.join("");
   if (leftCompact.length < 6 || rightCompact.length < 6) return 0;
   if (leftCompact === rightCompact) return 1;
-  return Math.max(
-    tokenJaccard(leftTokens, rightTokens),
-    trigramDice(leftCompact, rightCompact),
-  );
+  return Math.max(tokenJaccard(leftTokens, rightTokens), trigramDice(leftCompact, rightCompact));
 }
 
 /**
@@ -125,13 +118,13 @@ export function detectProductMasterDuplicates(
       if (existing) {
         add(p.id, {
           kind: "same_sku",
-          matchedValue: p.sku!,
+          matchedValue: p.sku ?? sku,
           otherProductId: existing.id,
           otherLabel: productGovernanceLabel(existing),
         });
         add(existing.id, {
           kind: "same_sku",
-          matchedValue: existing.sku!,
+          matchedValue: existing.sku ?? sku,
           otherProductId: p.id,
           otherLabel: productGovernanceLabel(p),
         });
