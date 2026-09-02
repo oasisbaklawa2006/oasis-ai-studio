@@ -155,14 +155,12 @@ export function detectProductMasterDuplicates(
     }
   }
 
-  for (let i = 0; i < products.length; i += 1) {
-    const left = products[i];
+  for (const [i, left] of products.entries()) {
     const leftName = left.product_name ?? left.name;
     const leftExact = normName(leftName);
     if (!leftExact) continue;
 
-    for (let j = i + 1; j < products.length; j += 1) {
-      const right = products[j];
+    for (const right of products.slice(i + 1)) {
       const rightName = right.product_name ?? right.name;
       const rightExact = normName(rightName);
       if (!rightExact || leftExact === rightExact) continue;
