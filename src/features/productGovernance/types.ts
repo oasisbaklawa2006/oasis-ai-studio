@@ -14,7 +14,7 @@ export type ProductLabelBarcodeRow = {
   status?: string | null;
 };
 
-export type DuplicateKind = "same_sku" | "same_name" | "same_barcode";
+export type DuplicateKind = "same_sku" | "same_name" | "same_barcode" | "similar_name";
 
 export type ProductDuplicateSignal = {
   kind: DuplicateKind;
