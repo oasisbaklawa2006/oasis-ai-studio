@@ -26,7 +26,7 @@ describe("detectProductMasterDuplicates", () => {
     const dupes = detectProductMasterDuplicates(products);
     expect(dupes.get("a")?.[0].kind).toBe("same_name");
     expect(dupes.get("b")?.[0].otherProductId).toBe("a");
-    expect(dupes.get("a")?.some((signal) => signal.kind === "similar_name")).toBe(false);
+    expect(dupes.get("a")?.some((signal) => signal.kind === "similar_name") ?? false).toBe(false);
   });
 
   it("flags same barcode from labels table", () => {
@@ -72,8 +72,8 @@ describe("detectProductMasterDuplicates", () => {
     ];
 
     const dupes = detectProductMasterDuplicates(products);
-    expect(dupes.get("a")?.some((signal) => signal.kind === "similar_name")).toBe(false);
-    expect(dupes.get("b")?.some((signal) => signal.kind === "similar_name")).toBe(false);
+    expect(dupes.get("a")?.some((signal) => signal.kind === "similar_name") ?? false).toBe(false);
+    expect(dupes.get("b")?.some((signal) => signal.kind === "similar_name") ?? false).toBe(false);
   });
 });
 
