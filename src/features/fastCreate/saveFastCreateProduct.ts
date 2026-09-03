@@ -1,23 +1,23 @@
-import { supabase } from "@/integrations/supabase/client";
-import { insertProductAliases, type ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
-import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
-import {
-  canWriteProductsDirectly,
-  isCatalogueContributor,
-} from "@/shared/auth/centralPermissions";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
-import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
-import { generateFastCreateSku, type FastCreateSuggestions } from "./fastCreateSuggestions";
-import { resolveFastCreateSkuCodes, type FastCreateSkuCodeSet } from "./fastCreateSkuCodes";
-import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import {
-  formToDbProductPayload,
   formatProductSaveError,
+  formToDbProductPayload,
   productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
-import { assertStructuredSkuForSave, skuPackagingSegment } from "@/features/productAuthority/skuGuard";
+import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
+import {
+  assertStructuredSkuForSave,
+  skuPackagingSegment,
+} from "@/features/productAuthority/skuGuard";
+import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
+import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
+import { supabase } from "@/integrations/supabase/client";
+import { insertProductAliases, type ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
+import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
+import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
+import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
+import { type FastCreateSuggestions, generateFastCreateSku } from "./fastCreateSuggestions";
 
 export const FAST_CREATE_SKU_BLOCK_MESSAGE =
   "Structured SKU could not be generated. Ensure sku_code_rules are configured and generate_oasis_sku RPC is deployed. Placeholder SKUs (DRAFT-*, OAS-FC-*) are blocked.";
@@ -65,7 +65,8 @@ export async function requireFastCreateSku(
   return generated;
 }
 
-export const FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX = "has no supported catalogue classification yet";
+export const FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX =
+  "has no supported catalogue classification yet";
 
 export type FastCreateSaveInput = {
   suggestions: FastCreateSuggestions;
@@ -96,7 +97,8 @@ export async function saveFastCreateProduct(
   }
 
   const direct = await canWriteProductsDirectly(input.roles);
-  const contributor = input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
+  const contributor =
+    input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
 
   if (direct) {
     // Sale types without a persisted product_class (internal_bom, export,
@@ -141,7 +143,11 @@ export async function saveFastCreateProduct(
       throw new Error(skuGuard.reason);
     }
 
-    const res = await (supabase as any).from("products").insert(productRow).select("id, sku").single();
+    const res = await (supabase as any)
+      .from("products")
+      .insert(productRow)
+      .select("id, sku")
+      .single();
     if (res.error) {
       throw new Error(formatProductSaveError(res.error));
     }
@@ -226,7 +232,12 @@ async function persistFastCreateAliases(
   const seen = new Set<string>();
   const rows: ProductAliasInsertInput[] = [];
 
-  const push = (alias: string, alias_type: string, language?: string | null, script?: string | null) => {
+  const push = (
+    alias: string,
+    alias_type: string,
+    language?: string | null,
+    script?: string | null,
+  ) => {
     const key = alias.trim().toLowerCase();
     if (!key || seen.has(key)) return;
     seen.add(key);
