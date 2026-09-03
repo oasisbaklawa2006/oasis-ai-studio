@@ -1,26 +1,26 @@
+import { CheckCircle2, ShieldAlert, Sparkles } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  applyGovernedComplianceToForm,
+  extractGovernedCompliance,
+} from "@/features/governedAiExtraction";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  approveComplianceFieldMeta,
+  type ComplianceFieldMetaMap,
+  canApproveComplianceFields,
+} from "@/shared/ai/complianceApproval";
 import {
   AI_COMPLIANCE_UI_DISCLAIMER,
   type ComplianceSensitiveField,
 } from "@/shared/ai/complianceConstants";
 import {
-  approveComplianceFieldMeta,
-  canApproveComplianceFields,
-  type ComplianceFieldMetaMap,
-} from "@/shared/ai/complianceApproval";
-import {
   PERSISTED_COMPLIANCE_PRODUCT_COLUMNS,
   UI_ONLY_COMPLIANCE_FIELDS,
 } from "@/shared/ai/compliancePersistence";
-import {
-  applyGovernedComplianceToForm,
-  extractGovernedCompliance,
-} from "@/features/governedAiExtraction";
-import { toast } from "sonner";
 
 type Props = {
   form: Record<string, unknown>;
@@ -46,8 +46,12 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
   const canApprove = canApproveComplianceFields(roles);
 
   const applyGovernedExtraction = (extraction: ReturnType<typeof extractGovernedCompliance>) => {
-    const { form: mergedForm, appliedFields, preservedFields, complianceFieldMeta } =
-      applyGovernedComplianceToForm(form, extraction, metaMap);
+    const {
+      form: mergedForm,
+      appliedFields,
+      preservedFields,
+      complianceFieldMeta,
+    } = applyGovernedComplianceToForm(form, extraction, metaMap);
 
     setMetaMap((prev) => ({ ...prev, ...complianceFieldMeta }));
 
@@ -62,7 +66,9 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       return;
     }
 
-    toast.message("AI suggestions applied to form — not approved for save until authorized user approves.");
+    toast.message(
+      "AI suggestions applied to form — not approved for save until authorized user approves.",
+    );
   };
 
   const generateSuggestions = async () => {
@@ -142,7 +148,11 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       return { label: "AI pending approval", className: "text-warning" };
     }
     if (meta?.approved) return { label: "Approved for save", className: "text-success" };
-    if (PERSISTED_COMPLIANCE_PRODUCT_COLUMNS.includes(field as (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number])) {
+    if (
+      PERSISTED_COMPLIANCE_PRODUCT_COLUMNS.includes(
+        field as (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number],
+      )
+    ) {
       return { label: "Saved on product", className: "text-success" };
     }
     return { label: "Draft (form only)", className: "text-muted-foreground" };
@@ -172,22 +182,37 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
-        <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={generateSuggestions}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={loading}
+          onClick={generateSuggestions}
+        >
           <Sparkles className="h-4 w-4 mr-1" />
           {loading ? "Generating…" : "Generate AI compliance suggestions"}
         </Button>
-        <span className="text-xs text-muted-foreground">Apply fills the form only — does not approve for catalogue truth.</span>
+        <span className="text-xs text-muted-foreground">
+          Apply fills the form only — does not approve for catalogue truth.
+        </span>
       </div>
 
       {pendingFields.length > 0 && (
         <div className="rounded-md border p-3 space-y-2">
-          <p className="text-sm font-medium">Pending AI suggestions (require approval before save)</p>
+          <p className="text-sm font-medium">
+            Pending AI suggestions (require approval before save)
+          </p>
           <ul className="space-y-1">
             {pendingFields.map(([field]) => (
               <li key={field} className="flex items-center justify-between gap-2 text-sm">
                 <span>{FIELD_LABELS[field] ?? field}</span>
                 {canApprove ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => approveField(field as ComplianceSensitiveField)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => approveField(field as ComplianceSensitiveField)}
+                  >
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Approve for save
                   </Button>
@@ -201,7 +226,8 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       )}
 
       <p className="text-[11px] text-muted-foreground">
-        Manual edits to compliance fields are tracked separately. Contributors may suggest; only authorized roles may approve GST/HSN and related compliance fields.
+        Manual edits to compliance fields are tracked separately. Contributors may suggest; only
+        authorized roles may approve GST/HSN and related compliance fields.
       </p>
     </div>
   );

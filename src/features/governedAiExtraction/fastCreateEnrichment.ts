@@ -1,10 +1,13 @@
-import { supabase } from "@/integrations/supabase/client";
+import type { FastCreateSuggestions } from "@/features/fastCreate/fastCreateSuggestions";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import { whatsappKeywordsFromAliases } from "@/features/productLanguage/aliasSeedRules";
-import { mergeComplianceMetaMaps } from "./governedFieldMerge";
-import { applyGovernedComplianceToForm, extractGovernedCompliance } from "./governedComplianceExtraction";
+import { supabase } from "@/integrations/supabase/client";
 import { extractGovernedAliases } from "./governedAliasExtraction";
-import type { FastCreateSuggestions } from "@/features/fastCreate/fastCreateSuggestions";
+import {
+  applyGovernedComplianceToForm,
+  extractGovernedCompliance,
+} from "./governedComplianceExtraction";
+import { mergeComplianceMetaMaps } from "./governedFieldMerge";
 import type { GovernedAiProvenance } from "./types";
 
 export type GovernedFastCreateEnrichment = {
@@ -54,7 +57,10 @@ export async function enrichFastCreateWithGovernedAi(
       next.complianceFieldMeta,
     );
     next.formPatch = form;
-    next.complianceFieldMeta = mergeComplianceMetaMaps(next.complianceFieldMeta, complianceFieldMeta);
+    next.complianceFieldMeta = mergeComplianceMetaMaps(
+      next.complianceFieldMeta,
+      complianceFieldMeta,
+    );
 
     if (appliedFields.length > 0) {
       next.labelStarter.ingredients_hint = String(next.formPatch.ingredients ?? "");
@@ -77,7 +83,10 @@ export async function enrichFastCreateWithGovernedAi(
       next.complianceFieldMeta,
     );
     next.formPatch = form;
-    next.complianceFieldMeta = mergeComplianceMetaMaps(next.complianceFieldMeta, complianceFieldMeta);
+    next.complianceFieldMeta = mergeComplianceMetaMaps(
+      next.complianceFieldMeta,
+      complianceFieldMeta,
+    );
     next.labelStarter.ingredients_hint = String(next.formPatch.ingredients ?? "");
     next.labelStarter.allergen_hint = String(next.formPatch.allergen_warnings ?? "");
     next.sources.aiCompliance = false;
@@ -105,9 +114,7 @@ export async function enrichFastCreateWithGovernedAi(
 
       if (resp.ok) {
         const text = await resp.text();
-        const rawFragments = text
-          .split(/[,\n]/)
-          .map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
+        const rawFragments = text.split(/[,\n]/).map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
         const aliasExtraction = extractGovernedAliases(rawFragments);
         provenance.push(aliasExtraction.provenance);
 

@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createAiSuggestionFieldMeta, createManualFieldMeta } from "@/shared/ai/complianceApproval";
 import {
   applyGovernedComplianceToForm,
-  extractGovernedCompliance,
   extractGovernedAliases,
+  extractGovernedCompliance,
   mergeGovernedComplianceSuggestions,
 } from "./index";
-import { createAiSuggestionFieldMeta, createManualFieldMeta } from "@/shared/ai/complianceApproval";
 
 describe("governedFieldMerge", () => {
   it("does not overwrite approved canonical compliance fields", () => {
@@ -57,7 +57,8 @@ describe("extractGovernedCompliance", () => {
       edgeData: {
         suggestion_only: true,
         approved: false,
-        disclaimer: "AI suggestion only. Final GST/HSN must be approved manually by authorized user.",
+        disclaimer:
+          "AI suggestion only. Final GST/HSN must be approved manually by authorized user.",
         suggestions: { hsn_code: "18069090", gst_rate: "5" },
       },
       edgeError: null,
@@ -107,7 +108,8 @@ describe("applyGovernedComplianceToForm", () => {
       edgeData: {
         suggestion_only: true,
         approved: false,
-        disclaimer: "AI suggestion only. Final GST/HSN must be approved manually by authorized user.",
+        disclaimer:
+          "AI suggestion only. Final GST/HSN must be approved manually by authorized user.",
         suggestions: { hsn_code: "19059090", ingredients: "AI draft" },
       },
       edgeError: null,

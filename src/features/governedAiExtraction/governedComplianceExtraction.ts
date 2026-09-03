@@ -1,19 +1,19 @@
+import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
 import { AI_COMPLIANCE_LEGAL_DISCLAIMER } from "@/shared/ai/complianceConstants";
 import {
-  buildHeuristicComplianceSuggestions,
-  parseAiComplianceResponse,
   type AiComplianceResponse,
   type AiComplianceSuggestionPayload,
+  buildHeuristicComplianceSuggestions,
+  parseAiComplianceResponse,
 } from "@/shared/ai/complianceSuggestions";
-import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
 import { mergeGovernedComplianceSuggestions } from "./governedFieldMerge";
 import type {
   GovernedAiConfidence,
+  GovernedAiFieldSuggestion,
+  GovernedAiProvenance,
   GovernedAiProviderStatus,
   GovernedAiService,
   GovernedComplianceExtraction,
-  GovernedAiFieldSuggestion,
-  GovernedAiProvenance,
 } from "./types";
 
 const COMPLIANCE_FIELD_KEYS: ComplianceSensitiveField[] = [
@@ -97,7 +97,7 @@ export function extractGovernedCompliance(
   }
 
   const uncertaintyReason = hasEdgeError
-    ? input.edgeError?.message ?? "Edge function unavailable"
+    ? (input.edgeError?.message ?? "Edge function unavailable")
     : "Invalid or non-governed AI response shape";
 
   const heuristic = buildHeuristicComplianceSuggestions({

@@ -1,20 +1,15 @@
-import { supabase } from "@/integrations/supabase/client";
-import {
-  applyCategoryDefaults,
-} from "@/features/productDefaults/applyDefaults";
-import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import {
-  seedAliasesFromName,
-  whatsappKeywordsFromAliases,
-  type AliasSeed,
-} from "@/features/productLanguage/aliasSeedRules";
-import type { ComplianceFieldMetaMap } from "@/shared/ai/complianceApproval";
 import type { GovernedAiProvenance } from "@/features/governedAiExtraction";
 import { enrichFastCreateWithGovernedAi } from "@/features/governedAiExtraction";
+import { applyCategoryDefaults } from "@/features/productDefaults/applyDefaults";
+import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import {
-  resolveFastCreateSkuCodes,
-  type FastCreateSkuCodeSet,
-} from "./fastCreateSkuCodes";
+  type AliasSeed,
+  seedAliasesFromName,
+  whatsappKeywordsFromAliases,
+} from "@/features/productLanguage/aliasSeedRules";
+import { supabase } from "@/integrations/supabase/client";
+import type { ComplianceFieldMetaMap } from "@/shared/ai/complianceApproval";
+import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 
 export type FastCreateSuggestions = {
   formPatch: Record<string, unknown>;
@@ -49,7 +44,7 @@ function buildDescription(name: string, category: string, productType: string): 
 }
 
 function buildShortDescription(name: string, productType: string): string {
-  const short = name.split(/[\/,|]/)[0]?.trim() || name;
+  const short = name.split(/[/,|]/)[0]?.trim() || name;
   return `${short} — signature ${productType || "Oasis"} product.`;
 }
 
@@ -69,7 +64,7 @@ export function buildHeuristicSuggestions(
 
   const category = String(formPatch.category ?? "");
   const productType = String(formPatch.product_type ?? "");
-  formPatch.short_name = productName.split(/[\/,|]/)[0]?.trim() || productName.trim();
+  formPatch.short_name = productName.split(/[/,|]/)[0]?.trim() || productName.trim();
   formPatch.description = buildDescription(productName, category, productType);
   formPatch.short_description = buildShortDescription(productName, productType);
   formPatch.allergen_warnings =

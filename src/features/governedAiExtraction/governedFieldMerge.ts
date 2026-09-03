@@ -1,7 +1,7 @@
 import {
-  createAiSuggestionFieldMeta,
   type ComplianceFieldMeta,
   type ComplianceFieldMetaMap,
+  createAiSuggestionFieldMeta,
 } from "@/shared/ai/complianceApproval";
 import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
 
@@ -33,9 +33,7 @@ export type MergeGovernedComplianceOptions = {
  * facts. Locked fields (approved manual values, or any pre-existing non-empty value without
  * ai_suggestion meta) are preserved.
  */
-export function mergeGovernedComplianceSuggestions(
-  options: MergeGovernedComplianceOptions,
-): {
+export function mergeGovernedComplianceSuggestions(options: MergeGovernedComplianceOptions): {
   merged: Record<string, unknown>;
   appliedFields: ComplianceSensitiveField[];
   preservedFields: ComplianceSensitiveField[];

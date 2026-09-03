@@ -1,3 +1,19 @@
+export {
+  enrichFastCreateWithGovernedAi,
+  type GovernedFastCreateEnrichment,
+} from "./fastCreateEnrichment";
+export { extractGovernedAliases, type GovernedAliasExtraction } from "./governedAliasExtraction";
+export {
+  applyGovernedComplianceToForm,
+  extractGovernedCompliance,
+  type GovernedComplianceExtractionInput,
+} from "./governedComplianceExtraction";
+export {
+  fieldMetaRequiresApproval,
+  type MergeGovernedComplianceOptions,
+  mergeComplianceMetaMaps,
+  mergeGovernedComplianceSuggestions,
+} from "./governedFieldMerge";
 export type {
   GovernedAiConfidence,
   GovernedAiFieldSuggestion,
@@ -7,20 +23,3 @@ export type {
   GovernedComplianceExtraction,
   GovernedFieldMergeResult,
 } from "./types";
-
-export {
-  extractGovernedCompliance,
-  applyGovernedComplianceToForm,
-  type GovernedComplianceExtractionInput,
-} from "./governedComplianceExtraction";
-
-export {
-  mergeGovernedComplianceSuggestions,
-  mergeComplianceMetaMaps,
-  fieldMetaRequiresApproval,
-  type MergeGovernedComplianceOptions,
-} from "./governedFieldMerge";
-
-export { extractGovernedAliases, type GovernedAliasExtraction } from "./governedAliasExtraction";
-
-export { enrichFastCreateWithGovernedAi, type GovernedFastCreateEnrichment } from "./fastCreateEnrichment";
