@@ -141,7 +141,12 @@ export async function saveFastCreateProduct(
       form.barcode_sku = await claimReviewedIntakeBarcode(intakeBarcode);
     }
 
-    const safePayload = stripUnapprovedComplianceFields(form, input.roles, {}, {});
+    const safePayload = stripUnapprovedComplianceFields(
+      form,
+      input.roles,
+      {},
+      input.suggestions.complianceFieldMeta ?? {},
+    );
     const productRow = formToDbProductPayload(safePayload);
 
     const validation = validateProductSavePayload(productRow, "create");

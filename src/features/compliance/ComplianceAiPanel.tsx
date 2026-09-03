@@ -10,15 +10,16 @@ import {
 import {
   approveComplianceFieldMeta,
   canApproveComplianceFields,
-  createAiSuggestionFieldMeta,
   type ComplianceFieldMetaMap,
 } from "@/shared/ai/complianceApproval";
 import {
   PERSISTED_COMPLIANCE_PRODUCT_COLUMNS,
   UI_ONLY_COMPLIANCE_FIELDS,
 } from "@/shared/ai/compliancePersistence";
-import type { AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
-import { resolveAiComplianceResponse } from "@/shared/ai/complianceSuggestions";
+import {
+  applyGovernedComplianceToForm,
+  extractGovernedCompliance,
+} from "@/features/governedAiExtraction";
 import { toast } from "sonner";
 
 type Props = {
@@ -44,36 +45,21 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
   const [loading, setLoading] = useState(false);
   const canApprove = canApproveComplianceFields(roles);
 
-  const applyAiResponse = (response: AiComplianceResponse) => {
-    const { suggestions } = response;
-    const updates: Array<[ComplianceSensitiveField, unknown]> = [];
+  const applyGovernedExtraction = (extraction: ReturnType<typeof extractGovernedCompliance>) => {
+    const { form: mergedForm, appliedFields, preservedFields, complianceFieldMeta } =
+      applyGovernedComplianceToForm(form, extraction, metaMap);
 
-    if (suggestions.hsn_code != null) updates.push(["hsn_code", String(suggestions.hsn_code)]);
-    if (suggestions.gst_rate != null) updates.push(["gst_rate", String(suggestions.gst_rate)]);
-    if (suggestions.shelf_life_days != null) {
-      updates.push(["shelf_life_days", String(suggestions.shelf_life_days)]);
-    }
-    if (suggestions.ingredients != null) updates.push(["ingredients", suggestions.ingredients]);
-    if (suggestions.allergen_warnings != null) {
-      updates.push(["allergen_warnings", suggestions.allergen_warnings]);
-    }
-    if (suggestions.nutritional_info != null) {
-      updates.push(["nutritional_info", suggestions.nutritional_info]);
-    }
-    if (suggestions.storage_instructions != null) {
-      updates.push(["storage_instructions", suggestions.storage_instructions]);
+    setMetaMap((prev) => ({ ...prev, ...complianceFieldMeta }));
+
+    for (const field of appliedFields) {
+      set(field, mergedForm[field]);
     }
 
-    setMetaMap((prev) => {
-      const next = { ...prev };
-      for (const [field] of updates) {
-        next[field] = createAiSuggestionFieldMeta();
-      }
-      return next;
-    });
-
-    for (const [field, value] of updates) {
-      set(field, value);
+    if (preservedFields.length > 0) {
+      toast.message(
+        `AI suggestions applied to ${appliedFields.length} field(s). ${preservedFields.length} canonical field(s) preserved.`,
+      );
+      return;
     }
 
     toast.message("AI suggestions applied to form — not approved for save until authorized user approves.");
@@ -89,31 +75,36 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
         },
       });
 
-      const { response, usedHeuristic } = resolveAiComplianceResponse(data, {
+      const extraction = extractGovernedCompliance({
         product_name: String(form.product_name ?? ""),
         category: String(form.category ?? ""),
+        edgeData: data,
+        edgeError: error,
       });
 
-      if (error && usedHeuristic) {
-        if (import.meta.env.DEV) {
-          console.warn("[ComplianceAiPanel] edge function unavailable, using heuristic:", error.message);
-        }
+      if (extraction.provenance.used_heuristic_fallback && import.meta.env.DEV) {
+        console.warn(
+          "[ComplianceAiPanel] governed fallback:",
+          extraction.provenance.uncertainty_reason ?? "provider uncertain",
+        );
       }
 
-      applyAiResponse(response);
+      applyGovernedExtraction(extraction);
       toast.message(
-        usedHeuristic
+        extraction.provenance.fail_closed
           ? "Offline compliance suggestions applied — review and approve before save."
           : "AI suggestions applied to form — not approved for save until authorized user approves.",
       );
     } catch (e) {
-      const { response } = resolveAiComplianceResponse(null, {
+      const extraction = extractGovernedCompliance({
         product_name: String(form.product_name ?? ""),
         category: String(form.category ?? ""),
+        edgeData: null,
+        edgeError: { message: e instanceof Error ? e.message : "Unknown error" },
       });
-      applyAiResponse(response);
+      applyGovernedExtraction(extraction);
       if (import.meta.env.DEV) {
-        console.warn("[ComplianceAiPanel] fallback after error:", e);
+        console.warn("[ComplianceAiPanel] governed fallback after error:", e);
       }
       toast.message("Offline compliance suggestions applied — review and approve before save.");
     } finally {
