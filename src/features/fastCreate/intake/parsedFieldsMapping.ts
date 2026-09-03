@@ -1,7 +1,11 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import { intakeFieldSuggestion } from "./intakeFieldSuggestion";
-import type { ParsedProductTextFields, ProductIntakeFieldSuggestion } from "./types";
+import type {
+  ParsedProductTextFields,
+  ProductIntakeFieldSuggestion,
+  ProductIntakeResult,
+} from "./types";
 
 export function parsedFieldsToDraft(
   parsed: ParsedProductTextFields,
@@ -94,4 +98,32 @@ export function parsedFieldsToSuggestions(
     out.push(intakeFieldSuggestion("barcode", parsed.barcode, "medium", "text_parse"));
   if (parsed.notes) out.push(intakeFieldSuggestion("notes", parsed.notes, "low", "text_parse"));
   return out;
+}
+
+/**
+ * Merge a reviewable intake result into the canonical Fast Create draft snapshot.
+ */
+export function applyIntakeToDraft(
+  current: FastCreateDraftSnapshot,
+  intake: ProductIntakeResult,
+): FastCreateDraftSnapshot {
+  if (intakeBlocksDraftApply(intake) || intake.status === "empty") {
+    return current;
+  }
+
+  const values = draftFieldValuesFromSuggestions(intake.suggestions);
+  return {
+    ...current,
+    productName: values.productName ?? current.productName,
+    categoryKey: values.categoryKey ?? current.categoryKey,
+    mrp: values.mrp ?? current.mrp,
+    b2bPrice: values.b2bPrice ?? current.b2bPrice,
+    qtyPerPack: values.qtyPerPack ?? current.qtyPerPack,
+    resolvedSku: values.resolvedSku ?? current.resolvedSku,
+    suggestions: values.clearSuggestions ? null : current.suggestions,
+  };
+}
+
+export function intakeBlocksDraftApply(intake: ProductIntakeResult): boolean {
+  return intake.status === "duplicate_barcode" || intake.status === "unsupported";
 }
