@@ -50,6 +50,22 @@ function compactWhitespace(value: string): string {
   return out;
 }
 
+function trimEdges(value: string): string {
+  let started = false;
+  const chars: string[] = [];
+  for (const ch of value) {
+    if (!started && (ch === " " || ch === "\t" || ch === "\n" || ch === "\r")) continue;
+    started = true;
+    chars.push(ch);
+  }
+  while (chars.length > 0) {
+    const last = chars[chars.length - 1];
+    if (last !== " " && last !== "\t" && last !== "\n" && last !== "\r") break;
+    chars.pop();
+  }
+  return chars.join("");
+}
+
 function isAllDigits(value: string): boolean {
   if (!value) return false;
   for (const ch of value) {
@@ -86,4 +102,5 @@ export {
   splitWords,
   stripSpacesAndDashes,
   tokenize,
+  trimEdges,
 };

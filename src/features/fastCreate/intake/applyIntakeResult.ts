@@ -2,37 +2,59 @@ import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDr
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import type { ProductIntakeFieldSuggestion, ProductIntakeResult } from "./types";
 
-function applySuggestion(
-  next: FastCreateDraftSnapshot,
-  suggestion: ProductIntakeFieldSuggestion,
-): void {
-  const value = suggestion.value;
-  if (!value) return;
+type DraftFieldValues = {
+  productName: string | null;
+  categoryKey: FastCreateCategoryKey | null;
+  mrp: string | null;
+  b2bPrice: string | null;
+  qtyPerPack: string | null;
+  resolvedSku: string | null;
+  clearSuggestions: boolean;
+};
 
-  if (suggestion.field === "productName") {
-    next.productName = value;
-    next.suggestions = null;
-    return;
+function emptyDraftFieldValues(): DraftFieldValues {
+  return {
+    productName: null,
+    categoryKey: null,
+    mrp: null,
+    b2bPrice: null,
+    qtyPerPack: null,
+    resolvedSku: null,
+    clearSuggestions: false,
+  };
+}
+
+function collectDraftFieldValues(suggestions: ProductIntakeFieldSuggestion[]): DraftFieldValues {
+  const values = emptyDraftFieldValues();
+  for (const suggestion of suggestions) {
+    const value = suggestion.value;
+    if (!value) continue;
+    if (suggestion.field === "productName") {
+      values.productName = value;
+      values.clearSuggestions = true;
+      continue;
+    }
+    if (suggestion.field === "category") {
+      values.categoryKey = value as FastCreateCategoryKey;
+      continue;
+    }
+    if (suggestion.field === "mrp") {
+      values.mrp = value;
+      continue;
+    }
+    if (suggestion.field === "b2bPrice") {
+      values.b2bPrice = value;
+      continue;
+    }
+    if (suggestion.field === "qtyPerPack") {
+      values.qtyPerPack = value;
+      continue;
+    }
+    if (suggestion.field === "sku") {
+      values.resolvedSku = value;
+    }
   }
-  if (suggestion.field === "category") {
-    next.categoryKey = value as FastCreateCategoryKey;
-    return;
-  }
-  if (suggestion.field === "mrp") {
-    next.mrp = value;
-    return;
-  }
-  if (suggestion.field === "b2bPrice") {
-    next.b2bPrice = value;
-    return;
-  }
-  if (suggestion.field === "qtyPerPack") {
-    next.qtyPerPack = value;
-    return;
-  }
-  if (suggestion.field === "sku") {
-    next.resolvedSku = value;
-  }
+  return values;
 }
 
 /**
@@ -46,11 +68,17 @@ export function applyIntakeToDraft(
     return current;
   }
 
-  const next: FastCreateDraftSnapshot = { ...current };
-  for (const suggestion of intake.suggestions) {
-    applySuggestion(next, suggestion);
-  }
-  return next;
+  const values = collectDraftFieldValues(intake.suggestions);
+  return {
+    ...current,
+    productName: values.productName ?? current.productName,
+    categoryKey: values.categoryKey ?? current.categoryKey,
+    mrp: values.mrp ?? current.mrp,
+    b2bPrice: values.b2bPrice ?? current.b2bPrice,
+    qtyPerPack: values.qtyPerPack ?? current.qtyPerPack,
+    resolvedSku: values.resolvedSku ?? current.resolvedSku,
+    suggestions: values.clearSuggestions ? null : current.suggestions,
+  };
 }
 
 export function intakeBlocksDraftApply(intake: ProductIntakeResult): boolean {

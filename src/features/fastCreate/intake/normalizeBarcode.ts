@@ -1,5 +1,5 @@
 import { checksumEan8, checksumEan13, checksumUpcA } from "./barcodeChecksum";
-import { isAllDigits, isCode128Token, stripSpacesAndDashes } from "./textTokenUtils";
+import { isAllDigits, isCode128Token, stripSpacesAndDashes, trimEdges } from "./textTokenUtils";
 
 export type BarcodeNormalization =
   | { ok: true; barcode: string; format: "ean13" | "ean8" | "upc_a" | "code128" }
@@ -10,7 +10,7 @@ export type BarcodeNormalization =
  * optional whitespace/dashes. Returns unsupported for empty or non-numeric junk.
  */
 export function normalizeBarcodeInput(raw: string): BarcodeNormalization {
-  const trimmed = raw.trim();
+  const trimmed = trimEdges(raw);
   if (!trimmed) return { ok: false, reason: "Barcode is empty." };
 
   const digits = stripSpacesAndDashes(trimmed);

@@ -44,7 +44,7 @@ function handleVoiceTranscriptChunk(
   setVoiceTranscript((previous) => appendVoiceTranscript(previous, transcript));
 }
 
-export function ProductIntakePanel({ draft, onApply }: Props) {
+export function FastCreateIntakePanel({ draft, onApply }: Props) {
   const [tab, setTab] = useState<IntakeTab>("text");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [textInput, setTextInput] = useState("");

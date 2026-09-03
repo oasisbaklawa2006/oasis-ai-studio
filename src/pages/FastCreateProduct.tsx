@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { FastCreateIntakePanel } from "@/components/FastCreateIntakePanel";
 import { PageHeader } from "@/components/PageHeader";
-import { ProductIntakePanel } from "@/components/ProductIntakePanel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -420,7 +420,7 @@ const FastCreateProduct = () => {
             )}
           </div>
 
-          <ProductIntakePanel
+          <FastCreateIntakePanel
             draft={draft}
             onApply={(next) => {
               setDraft(next);
