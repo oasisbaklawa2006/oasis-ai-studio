@@ -15,13 +15,68 @@
 
 ## Point matrix
 
-| Point | Mission Control scope | Classification | Admissible evidence on `main` | Remaining gap | Blocked by |
-| --- | --- | --- | --- | --- | --- |
-| **26** | Canonical Product Master | **INDEPENDENT IMPLEMENTATION GAP** (+ evidence-only runtime) | `src/pages/Products.tsx`, `src/pages/ProductEdit.tsx`, `src/features/productMaster/`, `src/features/productAuthority/` (46 modules), `src/features/productTruth/`, `src/features/productGovernance/`; **229** product-authority/truth unit tests; E2E `e2e/product-authoring-ux-audit.spec.ts`, `e2e/catalogue-final-acceptance.spec.ts` | Programme Point 26 delta audit still IN PROGRESS; nutrition/FSSAI/variant surfaces deferred; production write smoke not re-evidenced on this HEAD; Central dual-write remains cross-repo | Core schema for nutrition panels; not Point 29/30 |
-| **27** | Governed Fast Create | **INDEPENDENT IMPLEMENTATION GAP** (+ Core SKU RPC dep) | `src/pages/FastCreateProduct.tsx`, `src/features/fastCreate/` (6 modules, **36** unit tests); route `/products/new/fast`; session draft v2 + Full Editor handoff (`fastCreateDraft.ts`); governed save + SKU guard | Phase R3 production E2E checklist still open; live `generate_oasis_sku` RPC required in target Supabase | **Core:** `generate_oasis_sku` / `sku_code_rules`. Soft: `product-media` bucket for hero pre-upload |
-| **31** | Media workflow | **INDEPENDENT IMPLEMENTATION GAP** (+ Point 29 surface + Core bucket) | `ProductMediaUploader.tsx`, `mediaDraftBoundary.ts`, `mediaReadiness/` (**33** tests), `productMediaPersistence.ts`, `/media` library page; client-side bucket limit mirror (Phase 12) | SCREEN #41 `/media/review` not built; SCREEN #29 `/products/:id/media` route absent (tab-only); catalogue-studio media workspace (PR #84) unmerged | **Point 29** dedicated route; **Core** bucket enforcement migration in production |
-| **32** | Multilingual / localisation | **DEPENDENCY** (Core schema) + partial independent UI | `productLanguage/` (7 tests), `AliasManager.tsx`, `catalogueLanguageFields.ts` (Hindi + WhatsApp messaging), `productLanguageReadiness.ts` | No `product_language_terms` table authority; term types in localStorage only; Hinglish/extra locale columns schema-blocked; PR #82 localisation unmerged | **Core** migration for `product_language_terms`; **Point 30** aliases route surface |
-| **33** | Publication handoff | **DEPENDENCY** (Core RPC + live catalog) — client near-complete | `ProductIntelligenceKnowledge.tsx` (`/admin/product-intelligence`), `publishSubmissionState.ts`, `submitKnowledgeDraft.ts` — **65** unit tests; state machine `NOT_READY` → `HANDOFF_READY` → `SUBMITTED_TO_CORE` | No live submission artifact on this HEAD; Point 27 Phase 9 publishing pipeline unaudited; `LIVE_CENTRAL_WRITE_ENABLED = false` in blueprint | **Core:** `whatsapp_submit_intelligence_knowledge_draft` RPC + catalogue provenance |
+| Point | Mission Control scope | Classification |
+| --- | --- | --- |
+| **26** | Canonical Product Master | **INDEPENDENT IMPLEMENTATION GAP** (+ evidence-only runtime) |
+| **27** | Governed Fast Create | **INDEPENDENT IMPLEMENTATION GAP** (+ Core SKU RPC dep) |
+| **31** | Media workflow | **INDEPENDENT IMPLEMENTATION GAP** (+ Point 29 surface + Core bucket) |
+| **32** | Multilingual / localisation | **DEPENDENCY** (Core schema) + partial independent UI |
+| **33** | Publication handoff | **DEPENDENCY** (Core RPC + live catalog) — client near-complete |
+
+### Point 26 — evidence, gaps, blockers
+
+- **Evidence on `main`:** `src/pages/Products.tsx`, `src/pages/ProductEdit.tsx`,
+  `src/features/productMaster/`, `src/features/productAuthority/` (46 modules),
+  `src/features/productTruth/`, `src/features/productGovernance/`; **229**
+  product-authority/truth unit tests; E2E `e2e/product-authoring-ux-audit.spec.ts`,
+  `e2e/catalogue-final-acceptance.spec.ts`.
+- **Remaining gap:** Programme Point 26 delta audit still IN PROGRESS;
+  nutrition/FSSAI/variant surfaces deferred; production write smoke not re-evidenced
+  on this HEAD; Central dual-write remains cross-repo.
+- **Blocked by:** Core schema for nutrition panels; not Point 29/30.
+
+### Point 27 — evidence, gaps, blockers
+
+- **Evidence on `main`:** `src/pages/FastCreateProduct.tsx`, `src/features/fastCreate/`
+  (6 modules, **36** unit tests); route `/products/new/fast`; session draft v2 +
+  Full Editor handoff (`fastCreateDraft.ts`); governed save + SKU guard.
+- **Remaining gap:** Phase R3 production E2E checklist still open; live
+  `generate_oasis_sku` RPC required in target Supabase.
+- **Blocked by:** **Core:** `generate_oasis_sku` / `sku_code_rules`. Soft:
+  `product-media` bucket for hero pre-upload.
+
+### Point 31 — evidence, gaps, blockers
+
+- **Evidence on `main`:** `ProductMediaUploader.tsx`, `mediaDraftBoundary.ts`,
+  `mediaReadiness/` (**33** tests), `productMediaPersistence.ts`, `/media` library
+  page; client-side bucket limit mirror (Phase 12).
+- **Remaining gap:** SCREEN #41 `/media/review` not built; SCREEN #29
+  `/products/:id/media` route absent (tab-only); catalogue-studio media workspace
+  (PR #84) unmerged.
+- **Blocked by:** **Point 29** dedicated route; **Core** bucket enforcement
+  migration in production.
+
+### Point 32 — evidence, gaps, blockers
+
+- **Evidence on `main`:** `productLanguage/` (7 tests), `AliasManager.tsx`,
+  `catalogueLanguageFields.ts` (Hindi + WhatsApp messaging),
+  `productLanguageReadiness.ts`.
+- **Remaining gap:** No `product_language_terms` table authority; term types in
+  localStorage only; Hinglish/extra locale columns schema-blocked; PR #82
+  localisation unmerged.
+- **Blocked by:** **Core** migration for `product_language_terms`; **Point 30**
+  aliases route surface.
+
+### Point 33 — evidence, gaps, blockers
+
+- **Evidence on `main`:** `ProductIntelligenceKnowledge.tsx`
+  (`/admin/product-intelligence`), `publishSubmissionState.ts`,
+  `submitKnowledgeDraft.ts` — **65** unit tests; state machine `NOT_READY` →
+  `HANDOFF_READY` → `SUBMITTED_TO_CORE`.
+- **Remaining gap:** No live submission artifact on this HEAD; Point 27 Phase 9
+  publishing pipeline unaudited; `LIVE_CENTRAL_WRITE_ENABLED = false` in blueprint.
+- **Blocked by:** **Core:** `whatsapp_submit_intelligence_knowledge_draft` RPC +
+  catalogue provenance.
 
 ## Classification key
 
