@@ -49,7 +49,8 @@ function checksumUpcA(digits: string): boolean {
 export function normalizeBarcodeInput(raw: string): BarcodeNormalization {
   let digits = "";
   for (const ch of raw) {
-    if (ch !== " " && ch !== "-") digits += ch;
+    if (ch === " " || ch === "-" || ch === "\t" || ch === "\n" || ch === "\r") continue;
+    digits += ch;
   }
   if (!digits) return { ok: false, reason: "Barcode is empty." };
 

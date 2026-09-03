@@ -21,9 +21,21 @@ export async function intakeFromBarcode(raw: string): Promise<ProductIntakeResul
     };
   }
 
-  const hit = await lookupBarcodeInCatalog(normalized.barcode);
-  if (hit) {
-    const duplicateHit = toDuplicateHit(hit);
+  const lookup = await lookupBarcodeInCatalog(normalized.barcode);
+  if (lookup.outcome === "error") {
+    return {
+      mode: "barcode",
+      status: "lookup_failed",
+      message: `Barcode catalog lookup failed — try again before applying. (${lookup.message})`,
+      draftPatch: {},
+      suggestions: [],
+      reviewRequired: true,
+      rawInput: raw,
+    };
+  }
+
+  if (lookup.outcome === "found") {
+    const duplicateHit = toDuplicateHit(lookup.hit);
     return {
       mode: "barcode",
       status: "duplicate_barcode",
@@ -31,8 +43,13 @@ export async function intakeFromBarcode(raw: string): Promise<ProductIntakeResul
       draftPatch: {},
       suggestions: [
         intakeFieldSuggestion("barcode", normalized.barcode, "high", "barcode_scan"),
-        intakeFieldSuggestion("productName", hit.productName, "high", "catalog_lookup"),
-        intakeFieldSuggestion("sku", hit.sku, hit.sku ? "high" : "unresolved", "catalog_lookup"),
+        intakeFieldSuggestion("productName", lookup.hit.productName, "high", "catalog_lookup"),
+        intakeFieldSuggestion(
+          "sku",
+          lookup.hit.sku,
+          lookup.hit.sku ? "high" : "unresolved",
+          "catalog_lookup",
+        ),
       ],
       barcode: normalized.barcode,
       duplicateHit,
@@ -45,7 +62,7 @@ export async function intakeFromBarcode(raw: string): Promise<ProductIntakeResul
     mode: "barcode",
     status: "ok",
     message: "New barcode captured — enter the product name and review before create.",
-    draftPatch: {} satisfies Partial<FastCreateDraftSnapshot>,
+    draftPatch: { intakeBarcode: normalized.barcode } satisfies Partial<FastCreateDraftSnapshot>,
     suggestions: [intakeFieldSuggestion("barcode", normalized.barcode, "high", "barcode_scan")],
     barcode: normalized.barcode,
     duplicateHit: null,

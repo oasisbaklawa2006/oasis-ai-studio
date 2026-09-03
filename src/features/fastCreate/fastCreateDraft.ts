@@ -34,6 +34,8 @@ export type FastCreateDraftSnapshot = {
   editedDescription: string | null;
   editedAliases: string | null;
   editedWhatsappKeywords: string | null;
+  /** Scanned or parsed barcode awaiting label association on create. */
+  intakeBarcode: string | null;
 };
 
 export function emptyFastCreateDraft(): FastCreateDraftSnapshot {
@@ -53,6 +55,7 @@ export function emptyFastCreateDraft(): FastCreateDraftSnapshot {
     editedDescription: null,
     editedAliases: null,
     editedWhatsappKeywords: null,
+    intakeBarcode: null,
   };
 }
 
@@ -208,6 +211,7 @@ export function fastCreateFormPatchFromDraft(draft: FastCreateDraftSnapshot): Re
     draft.packagingLabel,
   );
   if (labelStarter) patch.pack_size = labelStarter;
+  if (draft.intakeBarcode) patch.intake_barcode = draft.intakeBarcode;
 
   return patch;
 }

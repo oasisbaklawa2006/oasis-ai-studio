@@ -57,6 +57,7 @@ import {
   FAST_CREATE_CATEGORIES,
   type FastCreateCategoryKey,
 } from "@/features/productDefaults/categoryDefaults";
+import { CATEGORY_PREFEED_DISCLAIMER } from "@/features/productDefaults/categoryPrefeed";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveSkuCodeRules, type SkuCodeRule } from "@/lib/skuCodeRules";
 

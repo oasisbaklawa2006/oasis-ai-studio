@@ -33,6 +33,7 @@ export function OcrIntakeFields({
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = readFirstSelectedFile(event);
     if (file) onImageSelected(file);
+    event.target.value = "";
   };
 
   const handleTextChange = (event: ChangeEvent<HTMLTextAreaElement>) => {

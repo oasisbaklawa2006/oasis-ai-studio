@@ -17,6 +17,7 @@ export function parsedFieldsToDraft(
   if (parsed.b2bPrice) patch.b2bPrice = parsed.b2bPrice;
   if (parsed.qtyPerPack) patch.qtyPerPack = parsed.qtyPerPack;
   if (parsed.sku) patch.resolvedSku = parsed.sku;
+  if (parsed.barcode) patch.intakeBarcode = parsed.barcode;
   return patch;
 }
 
@@ -27,6 +28,7 @@ type DraftFieldValues = {
   b2bPrice: string | null;
   qtyPerPack: string | null;
   resolvedSku: string | null;
+  intakeBarcode: string | null;
   clearSuggestions: boolean;
 };
 
@@ -38,6 +40,7 @@ function emptyDraftFieldValues(): DraftFieldValues {
     b2bPrice: null,
     qtyPerPack: null,
     resolvedSku: null,
+    intakeBarcode: null,
     clearSuggestions: false,
   };
 }
@@ -76,6 +79,9 @@ export function draftFieldValuesFromSuggestions(
     if (suggestion.field === "sku" && suggestion.value) {
       values.resolvedSku = suggestion.value;
     }
+    if (suggestion.field === "barcode" && suggestion.value) {
+      values.intakeBarcode = suggestion.value;
+    }
   }
   return values;
 }
@@ -112,6 +118,8 @@ export function applyIntakeToDraft(
   }
 
   const values = draftFieldValuesFromSuggestions(intake.suggestions);
+  const intakeBarcode =
+    values.intakeBarcode ?? intake.barcode ?? intake.draftPatch.intakeBarcode ?? null;
   return {
     ...current,
     productName: values.productName ?? current.productName,
@@ -120,10 +128,15 @@ export function applyIntakeToDraft(
     b2bPrice: values.b2bPrice ?? current.b2bPrice,
     qtyPerPack: values.qtyPerPack ?? current.qtyPerPack,
     resolvedSku: values.resolvedSku ?? current.resolvedSku,
+    intakeBarcode: intakeBarcode ?? current.intakeBarcode,
     suggestions: values.clearSuggestions ? null : current.suggestions,
   };
 }
 
 export function intakeBlocksDraftApply(intake: ProductIntakeResult): boolean {
-  return intake.status === "duplicate_barcode" || intake.status === "unsupported";
+  return (
+    intake.status === "duplicate_barcode" ||
+    intake.status === "lookup_failed" ||
+    intake.status === "unsupported"
+  );
 }

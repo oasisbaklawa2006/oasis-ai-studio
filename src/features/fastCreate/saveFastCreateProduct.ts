@@ -146,6 +146,20 @@ export async function saveFastCreateProduct(
       throw new Error(formatProductSaveError(res.error));
     }
 
+    const intakeBarcode =
+      typeof input.extraFormPatch?.intake_barcode === "string"
+        ? input.extraFormPatch.intake_barcode.trim()
+        : null;
+    if (intakeBarcode) {
+      const { error: labelError } = await supabase.from("labels").insert({
+        product_id: res.data.id,
+        barcode: intakeBarcode,
+      });
+      if (labelError) {
+        console.warn("[FastCreate] label barcode association failed:", labelError.message);
+      }
+    }
+
     await persistFastCreateAliases(
       res.data.id,
       input.suggestions.aliases,

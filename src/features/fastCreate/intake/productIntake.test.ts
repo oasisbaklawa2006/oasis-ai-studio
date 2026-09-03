@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { emptyFastCreateDraft } from "@/features/fastCreate/fastCreateDraft";
+import {
+  emptyFastCreateDraft,
+  fastCreateFormPatchFromDraft,
+} from "@/features/fastCreate/fastCreateDraft";
 import {
   applyIntakeToDraft,
   intakeBlocksDraftApply,
@@ -38,6 +41,12 @@ describe("normalizeBarcodeInput", () => {
   it("rejects empty input", () => {
     expect(normalizeBarcodeInput("  ").ok).toBe(false);
   });
+
+  it("strips scanner terminators before EAN-13 checksum validation", () => {
+    const result = normalizeBarcodeInput("5901234123450\t\n");
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toContain("checksum");
+  });
 });
 
 describe("parseProductText", () => {
@@ -46,6 +55,27 @@ describe("parseProductText", () => {
     expect(parsed.productName).toBe("Misr 15 Gift Box");
     expect(parsed.mrp).toBe("450");
     expect(parsed.qtyPerPack).toBe("6");
+  });
+
+  it("preserves comma-grouped MRP values", () => {
+    const parsed = parseProductText("Premium Box\nMRP ₹1,299");
+    expect(parsed.mrp).toBe("1299");
+  });
+
+  it("does not treat packaging product names as metadata", () => {
+    const parsed = parseProductText("Product: Packaging Ribbon");
+    expect(parsed.productName).toBe("Packaging Ribbon");
+  });
+
+  it("does not infer MRP from B2B Rs values", () => {
+    const parsed = parseProductText("Wholesale item\nB2B Rs 80");
+    expect(parsed.b2bPrice).toBe("80");
+    expect(parsed.mrp).toBeNull();
+  });
+
+  it("extracts complete labeled barcodes with separators", () => {
+    const parsed = parseProductText("Barcode: 8901 2345 6789 012");
+    expect(parsed.barcode).toBe("890123456789012");
   });
 });
 
@@ -117,10 +147,13 @@ describe("intakeFromBarcode regression", () => {
 
   it("blocks duplicate barcode with fail-safe", async () => {
     mockedLookup.mockResolvedValue({
-      productId: "prod-1",
-      productName: "Existing Box",
-      sku: "OAS-TEST-001",
-      barcode: "5901234123457",
+      outcome: "found",
+      hit: {
+        productId: "prod-1",
+        productName: "Existing Box",
+        sku: "OAS-TEST-001",
+        barcode: "5901234123457",
+      },
     });
 
     const result = await intakeFromBarcode("5901234123457");
@@ -129,10 +162,18 @@ describe("intakeFromBarcode regression", () => {
   });
 
   it("accepts new barcode as reviewable suggestion", async () => {
-    mockedLookup.mockResolvedValue(null);
+    mockedLookup.mockResolvedValue({ outcome: "not_found" });
     const result = await intakeFromBarcode("5901234123457");
     expect(result.status).toBe("ok");
     expect(result.reviewRequired).toBe(true);
+    expect(result.draftPatch.intakeBarcode).toBe("5901234123457");
+  });
+
+  it("fails closed on catalog lookup errors", async () => {
+    mockedLookup.mockResolvedValue({ outcome: "error", message: "connection refused" });
+    const result = await intakeFromBarcode("5901234123457");
+    expect(result.status).toBe("lookup_failed");
+    expect(intakeBlocksDraftApply(result)).toBe(true);
   });
 });
 
@@ -143,5 +184,13 @@ describe("applyIntakeToDraft", () => {
     const voice = applyIntakeToDraft(base, intakeFromVoiceTranscript("Dates Box MRP 300"));
     expect(text.productName).toBe("Misr 15");
     expect(voice.productName).toBeTruthy();
+  });
+
+  it("preserves scanned barcode through the canonical draft snapshot", async () => {
+    mockedLookup.mockResolvedValue({ outcome: "not_found" });
+    const intake = await intakeFromBarcode("5901234123457");
+    const draft = applyIntakeToDraft(emptyFastCreateDraft(), intake);
+    expect(draft.intakeBarcode).toBe("5901234123457");
+    expect(fastCreateFormPatchFromDraft(draft).intake_barcode).toBe("5901234123457");
   });
 });

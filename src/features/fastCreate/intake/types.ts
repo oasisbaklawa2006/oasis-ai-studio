@@ -1,4 +1,5 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
+import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 
 export type ProductIntakeMode = "barcode" | "ocr" | "voice" | "text";
 
@@ -8,6 +9,7 @@ export type ProductIntakeStatus =
   | "ok"
   | "ambiguous"
   | "duplicate_barcode"
+  | "lookup_failed"
   | "empty"
   | "unsupported";
 

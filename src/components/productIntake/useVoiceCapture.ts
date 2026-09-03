@@ -17,7 +17,7 @@ export function useVoiceCapture(onTranscript: (text: string) => void) {
 
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = "en-IN";
-    recognition.interimResults = true;
+    recognition.interimResults = false;
     recognition.continuous = false;
     recognitionRef.current = recognition;
 

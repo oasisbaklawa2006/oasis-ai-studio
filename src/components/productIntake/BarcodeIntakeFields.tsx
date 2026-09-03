@@ -17,7 +17,8 @@ export function BarcodeIntakeFields({ value, busy, onValueChange, onLookup }: Pr
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (isEnterKey(event)) onLookup();
+    if (!isEnterKey(event) || busy || !value.trim()) return;
+    onLookup();
   };
 
   return (

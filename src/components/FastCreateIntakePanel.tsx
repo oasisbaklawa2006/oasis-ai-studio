@@ -26,7 +26,7 @@ type Props = {
 };
 
 function showIntakeToast(result: ProductIntakeResult) {
-  if (result.status === "duplicate_barcode") {
+  if (result.status === "duplicate_barcode" || result.status === "lookup_failed") {
     toast.error(result.message);
     return;
   }

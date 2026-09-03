@@ -8,13 +8,18 @@ export type BarcodeCatalogHit = {
   barcode: string;
 };
 
+export type BarcodeCatalogLookupResult =
+  | { outcome: "found"; hit: BarcodeCatalogHit }
+  | { outcome: "not_found" }
+  | { outcome: "error"; message: string };
+
 /**
  * Read-only barcode lookup against governed labels + products tables.
  * Used for duplicate-barcode fail-safe during Fast Create intake.
  */
-export async function lookupBarcodeInCatalog(barcode: string): Promise<BarcodeCatalogHit | null> {
+export async function lookupBarcodeInCatalog(barcode: string): Promise<BarcodeCatalogLookupResult> {
   const normalized = barcode.trim();
-  if (!normalized) return null;
+  if (!normalized) return { outcome: "not_found" };
 
   const { data, error } = await supabase
     .from("labels")
@@ -23,20 +28,24 @@ export async function lookupBarcodeInCatalog(barcode: string): Promise<BarcodeCa
     .limit(1)
     .maybeSingle();
 
-  if (error || !data?.product_id) return null;
+  if (error) return { outcome: "error", message: error.message };
+  if (!data?.product_id) return { outcome: "not_found" };
 
   const product = data.products as {
     id: string;
     product_name: string | null;
     sku: string | null;
   } | null;
-  if (!product?.id) return null;
+  if (!product?.id) return { outcome: "not_found" };
 
   return {
-    productId: product.id,
-    productName: product.product_name ?? "Unnamed product",
-    sku: product.sku,
-    barcode: normalized,
+    outcome: "found",
+    hit: {
+      productId: product.id,
+      productName: product.product_name ?? "Unnamed product",
+      sku: product.sku,
+      barcode: normalized,
+    },
   };
 }
 

@@ -1,5 +1,6 @@
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import { FAST_CREATE_CATEGORIES } from "@/features/productDefaults/categoryDefaults";
+import { normalizeBarcodeInput } from "./barcodeChecksum";
 import {
   compactWhitespace,
   isAllDigits,
@@ -50,6 +51,9 @@ function extractNumberFromSlice(slice: string, maxLen = 24): string | null {
       digits += ch;
       continue;
     }
+    if (ch === "," && seenDigit) {
+      continue;
+    }
     if (seenDigit) break;
   }
   return digits || null;
@@ -74,7 +78,8 @@ function stripNamePrefix(line: string): string {
 
 function isMetadataLine(line: string): boolean {
   const lower = line.toLowerCase();
-  return ["mrp", "b2b", "sku", "barcode", "qty", "pack"].some((prefix) => lower.startsWith(prefix));
+  if (lower.startsWith("pack:") || lower.startsWith("pack ")) return true;
+  return ["mrp", "b2b", "sku", "barcode", "qty"].some((prefix) => lower.startsWith(prefix));
 }
 
 function isSkuToken(value: string): boolean {
@@ -119,10 +124,19 @@ function extractMrp(text: string): string | null {
   const lower = text.toLowerCase();
   const mrpIdx = lower.indexOf("mrp");
   if (mrpIdx >= 0) return extractNumberFromSlice(text.slice(mrpIdx + 3));
+  const b2bIdx = lower.indexOf("b2b");
+
   const rupeeIdx = text.indexOf("₹");
-  if (rupeeIdx >= 0) return extractNumberFromSlice(text.slice(rupeeIdx + 1));
+  if (rupeeIdx >= 0) {
+    if (b2bIdx >= 0 && rupeeIdx > b2bIdx) return null;
+    return extractNumberFromSlice(text.slice(rupeeIdx + 1));
+  }
+
   const rsIdx = lower.indexOf("rs");
-  if (rsIdx >= 0) return extractNumberFromSlice(text.slice(rsIdx + 2));
+  if (rsIdx >= 0) {
+    if (b2bIdx >= 0 && rsIdx >= b2bIdx) return null;
+    return extractNumberFromSlice(text.slice(rsIdx + 2));
+  }
   return null;
 }
 
@@ -161,13 +175,30 @@ function extractSku(text: string): string | null {
   return null;
 }
 
+function extractLabeledBarcodeValue(text: string, labelEndIdx: number): string | null {
+  const remainder = text.slice(labelEndIdx).replace(/^[:\s]+/, "");
+  if (!remainder) return null;
+
+  let raw = "";
+  for (const ch of remainder) {
+    if ((ch >= "0" && ch <= "9") || ch === " " || ch === "-" || ch === "\t") {
+      raw += ch;
+      continue;
+    }
+    if (raw.length > 0) break;
+  }
+
+  const normalized = normalizeBarcodeInput(raw);
+  return normalized.ok ? normalized.barcode : null;
+}
+
 function extractBarcode(text: string, sku: string | null): string | null {
   const lower = text.toLowerCase();
   for (const label of ["barcode", "ean", "upc"]) {
     const idx = lower.indexOf(label);
     if (idx >= 0) {
-      const digits = extractNumberFromSlice(text.slice(idx + label.length));
-      if (digits) return digits;
+      const value = extractLabeledBarcodeValue(text, idx + label.length);
+      if (value) return value;
     }
   }
 
