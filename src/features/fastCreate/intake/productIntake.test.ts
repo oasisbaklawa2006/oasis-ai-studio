@@ -102,7 +102,15 @@ describe("intakeFromOcrText", () => {
   });
 });
 
-describe("intakeFromBarcode", () => {
+describe("intakeFromVoiceTranscript", () => {
+  it("keeps voice suggestions review-required", () => {
+    const result = intakeFromVoiceTranscript("Dates chocolate box MRP 300");
+    expect(result.mode).toBe("voice");
+    expect(result.reviewRequired).toBe(true);
+  });
+});
+
+describe("intakeFromBarcode regression", () => {
   beforeEach(() => {
     mockedLookup.mockReset();
   });
@@ -118,6 +126,13 @@ describe("intakeFromBarcode", () => {
     const result = await intakeFromBarcode("5901234123457");
     expect(result.status).toBe("duplicate_barcode");
     expect(intakeBlocksDraftApply(result)).toBe(true);
+  });
+
+  it("accepts new barcode as reviewable suggestion", async () => {
+    mockedLookup.mockResolvedValue(null);
+    const result = await intakeFromBarcode("5901234123457");
+    expect(result.status).toBe("ok");
+    expect(result.reviewRequired).toBe(true);
   });
 });
 

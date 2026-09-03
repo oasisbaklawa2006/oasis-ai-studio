@@ -25,12 +25,12 @@ type Props = {
 
 type IntakeTab = "barcode" | "ocr" | "voice" | "text";
 
-const TAB_LABELS: Record<IntakeTab, string> = {
-  barcode: "Barcode",
-  ocr: "OCR / image",
-  voice: "Voice",
-  text: "Paste / text",
-};
+const TABS: Array<{ key: IntakeTab; label: string }> = [
+  { key: "barcode", label: "Barcode" },
+  { key: "ocr", label: "OCR / image" },
+  { key: "voice", label: "Voice" },
+  { key: "text", label: "Paste / text" },
+];
 
 function showIntakeToast(result: ProductIntakeResult) {
   if (result.status === "duplicate_barcode") {
@@ -38,6 +38,16 @@ function showIntakeToast(result: ProductIntakeResult) {
     return;
   }
   toast.message(result.message);
+}
+
+function transcriptFromSpeechEvent(event: SpeechRecognitionEvent): string {
+  const parts: string[] = [];
+  for (let i = event.resultIndex; i < event.results.length; i += 1) {
+    const result = event.results.item(i);
+    const alternative = result?.item(0);
+    if (alternative?.transcript) parts.push(alternative.transcript);
+  }
+  return parts.join(" ").trim();
 }
 
 export function ProductIntakePanel({ draft, onApply }: Props) {
@@ -120,17 +130,17 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
     recognitionRef.current = recognition;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const parts: string[] = [];
-      for (let i = event.resultIndex; i < event.results.length; i += 1) {
-        parts.push(event.results[i][0].transcript);
-      }
-      setVoiceTranscript((prev) => `${prev} ${parts.join(" ")}`.trim());
+      const transcript = transcriptFromSpeechEvent(event);
+      if (!transcript) return;
+      setVoiceTranscript((prev) => `${prev} ${transcript}`.trim());
     };
     recognition.onerror = () => {
       setListening(false);
       toast.error("Voice capture failed — type the transcript manually.");
     };
-    recognition.onend = () => setListening(false);
+    recognition.onend = () => {
+      setListening(false);
+    };
 
     setListening(true);
     recognition.start();
@@ -161,18 +171,20 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
       </p>
 
       <div className="flex flex-wrap gap-2">
-        {(Object.keys(TAB_LABELS) as IntakeTab[]).map((key) => (
+        {TABS.map((entry) => (
           <Button
-            key={key}
+            key={entry.key}
             size="sm"
-            variant={tab === key ? "default" : "outline"}
-            onClick={() => setTab(key)}
+            variant={tab === entry.key ? "default" : "outline"}
+            onClick={() => {
+              setTab(entry.key);
+            }}
           >
-            {key === "barcode" && <Barcode className="h-3.5 w-3.5 mr-1" />}
-            {key === "ocr" && <FileImage className="h-3.5 w-3.5 mr-1" />}
-            {key === "voice" && <Mic className="h-3.5 w-3.5 mr-1" />}
-            {key === "text" && <Type className="h-3.5 w-3.5 mr-1" />}
-            {TAB_LABELS[key]}
+            {entry.key === "barcode" && <Barcode className="h-3.5 w-3.5 mr-1" />}
+            {entry.key === "ocr" && <FileImage className="h-3.5 w-3.5 mr-1" />}
+            {entry.key === "voice" && <Mic className="h-3.5 w-3.5 mr-1" />}
+            {entry.key === "text" && <Type className="h-3.5 w-3.5 mr-1" />}
+            {entry.label}
           </Button>
         ))}
       </div>
@@ -183,13 +195,19 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
           <div className="flex gap-2">
             <Input
               value={barcodeInput}
-              onChange={(e) => setBarcodeInput(e.target.value)}
+              onChange={(e) => {
+                setBarcodeInput(e.target.value);
+              }}
               placeholder="5901234123457"
-              onKeyDown={(e) => e.key === "Enter" && void handleBarcode()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void handleBarcode();
+              }}
             />
             <Button
               type="button"
-              onClick={() => void handleBarcode()}
+              onClick={() => {
+                void handleBarcode();
+              }}
               disabled={busy || !barcodeInput.trim()}
             >
               Lookup
@@ -203,7 +221,9 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
           <Label>Paste product details</Label>
           <Textarea
             value={textInput}
-            onChange={(e) => setTextInput(e.target.value)}
+            onChange={(e) => {
+              setTextInput(e.target.value);
+            }}
             placeholder={"Misr 15 Gift Box\nMRP ₹450\n6 pcs per pack"}
             rows={4}
           />
@@ -221,13 +241,18 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
             type="file"
             accept="image/png,image/jpeg,image/webp,image/gif"
             className="hidden"
-            onChange={(e) => void onPickImage(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const file = e.target.files?.item(0) ?? null;
+              void onPickImage(file);
+            }}
           />
           <div className="flex gap-2 items-center">
             <Button
               type="button"
               variant="outline"
-              onClick={() => fileRef.current?.click()}
+              onClick={() => {
+                fileRef.current?.click();
+              }}
               disabled={busy}
             >
               {busy ? (
@@ -242,7 +267,9 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
           <Label>Extracted / corrected label text</Label>
           <Textarea
             value={ocrText}
-            onChange={(e) => setOcrText(e.target.value)}
+            onChange={(e) => {
+              setOcrText(e.target.value);
+            }}
             placeholder="Pixel OCR text appears here for review"
             rows={4}
           />
@@ -255,13 +282,22 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
       {tab === "voice" && (
         <div className="space-y-2">
           <Label>Voice transcript</Label>
-          <Button type="button" variant="outline" onClick={listening ? stopVoice : startVoice}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (listening) stopVoice();
+              else startVoice();
+            }}
+          >
             {listening ? <MicOff className="h-4 w-4 mr-1" /> : <Mic className="h-4 w-4 mr-1" />}
             {listening ? "Stop" : "Start voice"}
           </Button>
           <Textarea
             value={voiceTranscript}
-            onChange={(e) => setVoiceTranscript(e.target.value)}
+            onChange={(e) => {
+              setVoiceTranscript(e.target.value);
+            }}
             placeholder="Say or type: Cashew pyramid gift box, MRP 450, 6 pieces"
             rows={4}
           />
@@ -275,7 +311,9 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
         <IntakeReviewCard
           pending={pending}
           onApply={applyPending}
-          onDismiss={() => setPending(null)}
+          onDismiss={() => {
+            setPending(null);
+          }}
         />
       )}
     </div>
