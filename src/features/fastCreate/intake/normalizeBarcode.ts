@@ -1,25 +1,9 @@
 import { checksumEan8, checksumEan13, checksumUpcA } from "./barcodeChecksum";
-import { isAllDigits } from "./textTokenUtils";
+import { isAllDigits, isCode128Token, stripSpacesAndDashes } from "./textTokenUtils";
 
 export type BarcodeNormalization =
   | { ok: true; barcode: string; format: "ean13" | "ean8" | "upc_a" | "code128" }
   | { ok: false; reason: string };
-
-function stripBarcodeSeparators(raw: string): string {
-  return raw.replaceAll(" ", "").replaceAll("-", "");
-}
-
-function isCode128Token(value: string): boolean {
-  if (value.length < 4 || value.length > 32) return false;
-  for (const ch of value) {
-    const isDigit = ch >= "0" && ch <= "9";
-    const isUpper = ch >= "A" && ch <= "Z";
-    const isLower = ch >= "a" && ch <= "z";
-    if (isDigit || isUpper || isLower || ch === "-") continue;
-    return false;
-  }
-  return true;
-}
 
 /**
  * Normalize and validate a barcode string. Accepts typed or scanned values with
@@ -29,7 +13,7 @@ export function normalizeBarcodeInput(raw: string): BarcodeNormalization {
   const trimmed = raw.trim();
   if (!trimmed) return { ok: false, reason: "Barcode is empty." };
 
-  const digits = stripBarcodeSeparators(trimmed);
+  const digits = stripSpacesAndDashes(trimmed);
   if (!isAllDigits(digits)) {
     if (isCode128Token(trimmed)) {
       return { ok: true, barcode: trimmed.toUpperCase(), format: "code128" };

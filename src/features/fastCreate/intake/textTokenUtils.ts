@@ -58,4 +58,32 @@ function isAllDigits(value: string): boolean {
   return true;
 }
 
-export { compactWhitespace, isAllDigits, isDigitToken, splitWords, tokenize };
+function stripSpacesAndDashes(value: string): string {
+  let out = "";
+  for (const ch of value) {
+    if (ch !== " " && ch !== "-") out += ch;
+  }
+  return out;
+}
+
+function isCode128Token(value: string): boolean {
+  if (value.length < 4 || value.length > 32) return false;
+  for (const ch of value) {
+    const isDigit = ch >= "0" && ch <= "9";
+    const isUpper = ch >= "A" && ch <= "Z";
+    const isLower = ch >= "a" && ch <= "z";
+    if (isDigit || isUpper || isLower || ch === "-") continue;
+    return false;
+  }
+  return true;
+}
+
+export {
+  compactWhitespace,
+  isAllDigits,
+  isCode128Token,
+  isDigitToken,
+  splitWords,
+  stripSpacesAndDashes,
+  tokenize,
+};

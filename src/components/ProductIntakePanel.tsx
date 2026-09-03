@@ -1,5 +1,5 @@
 import { Type } from "lucide-react";
-import { useState } from "react";
+import { type Dispatch, type SetStateAction, useState } from "react";
 import { toast } from "sonner";
 import { IntakeReviewCard } from "@/components/IntakeReviewCard";
 import { BarcodeIntakeFields } from "@/components/productIntake/BarcodeIntakeFields";
@@ -37,6 +37,13 @@ function appendVoiceTranscript(previous: string, transcript: string): string {
   return `${previous} ${transcript}`.trim();
 }
 
+function handleVoiceTranscriptChunk(
+  setVoiceTranscript: Dispatch<SetStateAction<string>>,
+  transcript: string,
+): void {
+  setVoiceTranscript((previous) => appendVoiceTranscript(previous, transcript));
+}
+
 export function ProductIntakePanel({ draft, onApply }: Props) {
   const [tab, setTab] = useState<IntakeTab>("text");
   const [barcodeInput, setBarcodeInput] = useState("");
@@ -47,8 +54,28 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
   const [pending, setPending] = useState<ProductIntakeResult | null>(null);
   const [busy, setBusy] = useState(false);
   const voice = useVoiceCapture((transcript) => {
-    setVoiceTranscript((previous) => appendVoiceTranscript(previous, transcript));
+    handleVoiceTranscriptChunk(setVoiceTranscript, transcript);
   });
+
+  const selectTab = (nextTab: IntakeTab) => {
+    setTab(nextTab);
+  };
+
+  const updateBarcodeInput = (value: string) => {
+    setBarcodeInput(value);
+  };
+
+  const updateTextInput = (value: string) => {
+    setTextInput(value);
+  };
+
+  const updateOcrText = (value: string) => {
+    setOcrText(value);
+  };
+
+  const updateVoiceTranscript = (value: string) => {
+    setVoiceTranscript(value);
+  };
 
   const clearInputs = () => {
     setBarcodeInput("");
@@ -133,19 +160,23 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
         is saved until you review and create.
       </p>
 
-      <IntakeModeTabs activeTab={tab} onSelect={setTab} />
+      <IntakeModeTabs activeTab={tab} onSelect={selectTab} />
 
       {tab === "barcode" && (
         <BarcodeIntakeFields
           value={barcodeInput}
           busy={busy}
-          onValueChange={setBarcodeInput}
+          onValueChange={updateBarcodeInput}
           onLookup={runBarcodeLookup}
         />
       )}
 
       {tab === "text" && (
-        <TextIntakeFields value={textInput} onValueChange={setTextInput} onParse={runTextParse} />
+        <TextIntakeFields
+          value={textInput}
+          onValueChange={updateTextInput}
+          onParse={runTextParse}
+        />
       )}
 
       {tab === "ocr" && (
@@ -153,7 +184,7 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
           ocrText={ocrText}
           ocrFileName={ocrFileName}
           busy={busy}
-          onOcrTextChange={setOcrText}
+          onOcrTextChange={updateOcrText}
           onImageSelected={runImageOcr}
           onParse={runOcrParse}
         />
@@ -163,7 +194,7 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
         <VoiceIntakeFields
           transcript={voiceTranscript}
           listening={voice.listening}
-          onTranscriptChange={setVoiceTranscript}
+          onTranscriptChange={updateVoiceTranscript}
           onToggleListening={toggleVoiceListening}
           onParse={runVoiceParse}
         />

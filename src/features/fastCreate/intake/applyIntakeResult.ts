@@ -1,10 +1,38 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
-import type { SaleType } from "@/features/productAuthority/saleType";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import type { ProductIntakeResult } from "./types";
+import type { ProductIntakeFieldSuggestion, ProductIntakeResult } from "./types";
 
-function hasValue(value: unknown): boolean {
-  return value !== undefined && value !== null && value !== "";
+function applySuggestion(
+  next: FastCreateDraftSnapshot,
+  suggestion: ProductIntakeFieldSuggestion,
+): void {
+  const value = suggestion.value;
+  if (!value) return;
+
+  if (suggestion.field === "productName") {
+    next.productName = value;
+    next.suggestions = null;
+    return;
+  }
+  if (suggestion.field === "category") {
+    next.categoryKey = value as FastCreateCategoryKey;
+    return;
+  }
+  if (suggestion.field === "mrp") {
+    next.mrp = value;
+    return;
+  }
+  if (suggestion.field === "b2bPrice") {
+    next.b2bPrice = value;
+    return;
+  }
+  if (suggestion.field === "qtyPerPack") {
+    next.qtyPerPack = value;
+    return;
+  }
+  if (suggestion.field === "sku") {
+    next.resolvedSku = value;
+  }
 }
 
 /**
@@ -18,49 +46,10 @@ export function applyIntakeToDraft(
     return current;
   }
 
-  const {
-    productName,
-    categoryKey,
-    saleType,
-    packagingCode,
-    packagingLabel,
-    qtyPerPack,
-    mrp,
-    b2bPrice,
-    b2bEnabled,
-    heroUrl,
-    resolvedSku,
-    editedDescription,
-    editedAliases,
-    editedWhatsappKeywords,
-  } = intake.draftPatch;
-
   const next: FastCreateDraftSnapshot = { ...current };
-
-  if (hasValue(productName)) {
-    next.productName = String(productName);
-    next.suggestions = null;
+  for (const suggestion of intake.suggestions) {
+    applySuggestion(next, suggestion);
   }
-  if (hasValue(categoryKey)) {
-    next.categoryKey = categoryKey as FastCreateCategoryKey;
-  }
-  if (hasValue(saleType)) {
-    next.saleType = saleType as SaleType;
-  }
-  if (hasValue(packagingCode)) next.packagingCode = String(packagingCode);
-  if (hasValue(packagingLabel)) next.packagingLabel = String(packagingLabel);
-  if (hasValue(qtyPerPack)) next.qtyPerPack = String(qtyPerPack);
-  if (hasValue(mrp)) next.mrp = String(mrp);
-  if (hasValue(b2bPrice)) next.b2bPrice = String(b2bPrice);
-  if (hasValue(b2bEnabled)) next.b2bEnabled = Boolean(b2bEnabled);
-  if (hasValue(heroUrl)) next.heroUrl = String(heroUrl);
-  if (hasValue(resolvedSku)) next.resolvedSku = String(resolvedSku);
-  if (hasValue(editedDescription)) next.editedDescription = String(editedDescription);
-  if (hasValue(editedAliases)) next.editedAliases = String(editedAliases);
-  if (hasValue(editedWhatsappKeywords)) {
-    next.editedWhatsappKeywords = String(editedWhatsappKeywords);
-  }
-
   return next;
 }
 
