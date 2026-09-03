@@ -2,6 +2,7 @@ import { Barcode, FileImage, Loader2, Mic, MicOff, Type } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { IntakeReviewCard } from "@/components/IntakeReviewCard";
+import { useVoiceCapture } from "@/components/productIntake/useVoiceCapture";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +18,6 @@ import {
   type ProductIntakeResult,
   prepareOcrIntakeFromImage,
 } from "@/features/fastCreate/intake";
-import { transcriptFromSpeechEvent } from "@/features/fastCreate/intake/voiceTranscript";
 
 type Props = {
   draft: FastCreateDraftSnapshot;
@@ -48,11 +48,12 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
   const [ocrText, setOcrText] = useState("");
   const [ocrFileName, setOcrFileName] = useState<string | null>(null);
   const [voiceTranscript, setVoiceTranscript] = useState("");
-  const [listening, setListening] = useState(false);
   const [pending, setPending] = useState<ProductIntakeResult | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const voice = useVoiceCapture((transcript) => {
+    setVoiceTranscript((prev) => `${prev} ${transcript}`.trim());
+  });
 
   const clearInputs = () => {
     setBarcodeInput("");
@@ -62,84 +63,48 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
     setOcrFileName(null);
   };
 
-  const handleBarcode = async () => {
+  const runBarcodeLookup = () => {
     setBusy(true);
-    try {
-      const result = await intakeFromBarcode(barcodeInput);
-      setPending(result);
-      showIntakeToast(result);
-    } finally {
-      setBusy(false);
-    }
+    intakeFromBarcode(barcodeInput)
+      .then((result) => {
+        setPending(result);
+        showIntakeToast(result);
+      })
+      .finally(() => {
+        setBusy(false);
+      });
   };
 
-  const handleText = () => {
+  const runTextParse = () => {
     const result = intakeFromText(textInput);
     setPending(result);
     showIntakeToast(result);
   };
 
-  const handleVoiceParse = () => {
+  const runVoiceParse = () => {
     const result = intakeFromVoiceTranscript(voiceTranscript);
     setPending(result);
     showIntakeToast(result);
   };
 
-  const handleOcrParse = () => {
+  const runOcrParse = () => {
     const result = intakeFromOcrText(ocrText, ocrFileName ?? undefined);
     setPending(result);
     showIntakeToast(result);
   };
 
-  const onPickImage = async (file: File | null) => {
-    if (!file) return;
+  const runImageOcr = (file: File) => {
     setBusy(true);
     setOcrFileName(file.name);
-    try {
-      const result = await prepareOcrIntakeFromImage(file);
-      setOcrText(result.rawInput ?? "");
-      setPending(result);
-      showIntakeToast(result);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const startVoice = () => {
-    const SpeechRecognitionCtor = window.SpeechRecognition ?? window.webkitSpeechRecognition;
-    if (!SpeechRecognitionCtor) {
-      toast.error(
-        "Speech recognition is not supported in this browser — type the transcript instead.",
-      );
-      return;
-    }
-
-    const recognition = new SpeechRecognitionCtor();
-    recognition.lang = "en-IN";
-    recognition.interimResults = true;
-    recognition.continuous = false;
-    recognitionRef.current = recognition;
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = transcriptFromSpeechEvent(event);
-      if (!transcript) return;
-      setVoiceTranscript((prev) => `${prev} ${transcript}`.trim());
-    };
-    recognition.onerror = () => {
-      setListening(false);
-      toast.error("Voice capture failed — type the transcript manually.");
-    };
-    recognition.onend = () => {
-      setListening(false);
-    };
-
-    setListening(true);
-    recognition.start();
-  };
-
-  const stopVoice = () => {
-    recognitionRef.current?.stop();
-    setListening(false);
+    prepareOcrIntakeFromImage(file)
+      .then((result) => {
+        setOcrText(result.rawInput ?? "");
+        setPending(result);
+        showIntakeToast(result);
+      })
+      .finally(() => {
+        setBusy(false);
+      });
   };
 
   const applyPending = () => {
@@ -186,21 +151,17 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
           <div className="flex gap-2">
             <Input
               value={barcodeInput}
-              onChange={(e) => {
-                setBarcodeInput(e.target.value);
+              onChange={(event) => {
+                setBarcodeInput(event.target.value);
               }}
               placeholder="5901234123457"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  void handleBarcode();
-                }
+              onKeyDown={(event) => {
+                if (event.key === "Enter") runBarcodeLookup();
               }}
             />
             <Button
               type="button"
-              onClick={() => {
-                void handleBarcode();
-              }}
+              onClick={runBarcodeLookup}
               disabled={busy || !barcodeInput.trim()}
             >
               Lookup
@@ -214,13 +175,13 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
           <Label>Paste product details</Label>
           <Textarea
             value={textInput}
-            onChange={(e) => {
-              setTextInput(e.target.value);
+            onChange={(event) => {
+              setTextInput(event.target.value);
             }}
             placeholder={"Misr 15 Gift Box\nMRP ₹450\n6 pcs per pack"}
             rows={4}
           />
-          <Button type="button" onClick={handleText} disabled={!textInput.trim()}>
+          <Button type="button" onClick={runTextParse} disabled={!textInput.trim()}>
             Parse text
           </Button>
         </div>
@@ -234,9 +195,9 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
             type="file"
             accept="image/png,image/jpeg,image/webp,image/gif"
             className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.item(0) ?? null;
-              void onPickImage(file);
+            onChange={(event) => {
+              const file = event.target.files?.item(0);
+              if (file) runImageOcr(file);
             }}
           />
           <div className="flex gap-2 items-center">
@@ -260,13 +221,13 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
           <Label>Extracted / corrected label text</Label>
           <Textarea
             value={ocrText}
-            onChange={(e) => {
-              setOcrText(e.target.value);
+            onChange={(event) => {
+              setOcrText(event.target.value);
             }}
             placeholder="Pixel OCR text appears here for review"
             rows={4}
           />
-          <Button type="button" onClick={handleOcrParse} disabled={!ocrText.trim()}>
+          <Button type="button" onClick={runOcrParse} disabled={!ocrText.trim()}>
             Parse OCR text
           </Button>
         </div>
@@ -279,22 +240,26 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
             type="button"
             variant="outline"
             onClick={() => {
-              if (listening) stopVoice();
-              else startVoice();
+              if (voice.listening) voice.stop();
+              else voice.start();
             }}
           >
-            {listening ? <MicOff className="h-4 w-4 mr-1" /> : <Mic className="h-4 w-4 mr-1" />}
-            {listening ? "Stop" : "Start voice"}
+            {voice.listening ? (
+              <MicOff className="h-4 w-4 mr-1" />
+            ) : (
+              <Mic className="h-4 w-4 mr-1" />
+            )}
+            {voice.listening ? "Stop" : "Start voice"}
           </Button>
           <Textarea
             value={voiceTranscript}
-            onChange={(e) => {
-              setVoiceTranscript(e.target.value);
+            onChange={(event) => {
+              setVoiceTranscript(event.target.value);
             }}
             placeholder="Say or type: Cashew pyramid gift box, MRP 450, 6 pieces"
             rows={4}
           />
-          <Button type="button" onClick={handleVoiceParse} disabled={!voiceTranscript.trim()}>
+          <Button type="button" onClick={runVoiceParse} disabled={!voiceTranscript.trim()}>
             Parse transcript
           </Button>
         </div>

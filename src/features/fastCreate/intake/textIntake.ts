@@ -1,5 +1,5 @@
 import { parsedFieldsToDraft, parsedFieldsToSuggestions } from "./parsedFieldsMapping";
-import { parseProductText } from "./parseProductText";
+import { parseProductText } from "./productTextParser";
 import type { ProductIntakeFieldSuggestion, ProductIntakeResult } from "./types";
 
 function confidenceStatus(
