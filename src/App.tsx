@@ -19,6 +19,7 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DataCorrection = lazy(() => import("./pages/DataCorrection"));
 const FastCreateProduct = lazy(() => import("./pages/FastCreateProduct"));
 const Media = lazy(() => import("./pages/Media"));
+const MediaReview = lazy(() => import("./pages/MediaReview"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const OperatorInbox = lazy(() => import("./pages/OperatorInbox"));
 const PilotAliasReview = lazy(() => import("./pages/PilotAliasReview"));
@@ -107,6 +108,7 @@ const App = () => (
                       </RoleGate>
                     }
                   />
+                  <Route path="/media/review" element={<MediaReview />} />
                   <Route
                     path="/tags"
                     element={

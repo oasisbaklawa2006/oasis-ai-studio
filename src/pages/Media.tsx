@@ -11,6 +11,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Link } from "react-router-dom";
 import { Plus, Sparkles, Image as ImageIcon, Upload, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,10 +19,16 @@ import {
   buildDirectMediaPath,
   buildStagingMediaPath,
   getMediaPublicUrl,
+  IMAGE_MIME_TYPES,
   submitMediaCatalogueDraft,
   uploadMediaFileToStorage,
   useCatalogueMediaWriteMode,
+  validateMediaFile,
+  VIDEO_MIME_TYPES,
 } from "@/features/catalogueDrafts/mediaDraftBoundary";
+import {
+  mediaRowStatusLabel,
+} from "@/features/mediaWorkspace/mediaLibraryDisplay";
 import {
   formatMediaInsertError,
   formatMediaStorageError,
@@ -73,11 +80,24 @@ const Media = () => {
     return product?.sku || productId || "unassigned";
   };
 
+  const allowedMimeTypes =
+    form.type === "video" ? VIDEO_MIME_TYPES : IMAGE_MIME_TYPES;
+
   const handleFiles = async (files: FileList | null) => {
     if (!files || files.length === 0 || !canMutate) return;
     setUploading(true);
     try {
       const folder = resolveFolder(form.product_id);
+      const validFiles: File[] = [];
+      for (const file of Array.from(files)) {
+        const validationError = validateMediaFile(file, allowedMimeTypes);
+        if (validationError) {
+          toast.error(validationError);
+          continue;
+        }
+        validFiles.push(file);
+      }
+      if (validFiles.length === 0) return;
 
       if (writeMode === "draft") {
         if (!form.product_id) {
@@ -85,7 +105,7 @@ const Media = () => {
           return;
         }
         let submitted = 0;
-        for (const file of Array.from(files)) {
+        for (const file of validFiles) {
           const path = buildStagingMediaPath(folder, file.name);
           const { error: upErr } = await uploadMediaFileToStorage(path, file);
           if (upErr) {
@@ -148,7 +168,7 @@ const Media = () => {
         return;
       }
 
-      for (const file of Array.from(files)) {
+      for (const file of validFiles) {
         const path = buildDirectMediaPath(folder, file.name);
         const { error: upErr } = await uploadMediaFileToStorage(path, file);
         if (upErr) {
@@ -169,7 +189,7 @@ const Media = () => {
           continue;
         }
       }
-      toast.success(`${files.length} file(s) uploaded`);
+      toast.success(`${validFiles.length} file(s) uploaded`);
       setOpen(false);
       setForm({
         file_url: "",
@@ -280,7 +300,11 @@ const Media = () => {
         title="Media Library"
         subtitle="Raw, edited, hero, lifestyle, video, label imagery."
         actions={
-          canMutate ? (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/media/review">Media Review</Link>
+            </Button>
+            {canMutate ? (
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button disabled={uploading}>
@@ -430,7 +454,8 @@ const Media = () => {
                 </div>
               </DialogContent>
             </Dialog>
-          ) : undefined
+            ) : null}
+          </div>
         }
       />
 
@@ -463,10 +488,18 @@ const Media = () => {
               )}
             </div>
             <div className="p-3 space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="badge-soft bg-secondary text-secondary-foreground">{m.type}</span>
-                <span className="text-muted-foreground">{m.angle}</span>
+              <div className="flex items-center justify-between gap-2 text-xs">
+                <span className="badge-soft bg-secondary text-secondary-foreground">
+                  {mediaTypeLabel(m.type)}
+                </span>
+                <span
+                  className="badge-soft text-[10px] shrink-0"
+                  title={`Approval state: ${mediaRowStatusLabel(m.status)}`}
+                >
+                  {mediaRowStatusLabel(m.status)}
+                </span>
               </div>
+              <div className="text-[11px] text-muted-foreground">{m.angle}</div>
               <div className="text-xs text-muted-foreground truncate">
                 {m.products?.product_name ?? "Unlinked"}
               </div>
