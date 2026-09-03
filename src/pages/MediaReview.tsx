@@ -32,6 +32,15 @@ export default function MediaReview() {
   const [activeTab, setActiveTab] = useState<MediaReviewStatus>("pending_approval");
   const [reasons, setReasons] = useState<Record<string, string>>({});
 
+  const setReason = (itemId: string, value: string) => {
+    setReasons((prev) => ({ ...prev, [itemId]: value }));
+  };
+
+  const reasonFor = (itemId: string): string => {
+    if (!Object.hasOwn(reasons, itemId)) return "";
+    return reasons[itemId] ?? "";
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -79,7 +88,7 @@ export default function MediaReview() {
       toast.message("Open the product media tab to action direct product_media rows.");
       return;
     }
-    const reason = reasons[item.id]?.trim();
+    const reason = reasonFor(item.id).trim();
     if (!reason) {
       toast.error("Enter a rejection reason first.");
       return;
@@ -167,10 +176,8 @@ export default function MediaReview() {
                   <div className="flex-1 min-w-[200px]">
                     <Input
                       placeholder="Rejection reason (required to reject)"
-                      value={reasons[item.id] ?? ""}
-                      onChange={(e) =>
-                        setReasons((prev) => ({ ...prev, [item.id]: e.target.value }))
-                      }
+                      value={reasonFor(item.id)}
+                      onChange={(e) => setReason(item.id, e.target.value)}
                     />
                   </div>
                   <Button size="sm" onClick={() => approve(item)}>
