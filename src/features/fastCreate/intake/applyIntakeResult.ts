@@ -1,9 +1,26 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
 import type { ProductIntakeResult } from "./types";
 
+const DRAFT_PATCH_KEYS = [
+  "productName",
+  "categoryKey",
+  "saleType",
+  "packagingCode",
+  "packagingLabel",
+  "qtyPerPack",
+  "mrp",
+  "b2bPrice",
+  "b2bEnabled",
+  "heroUrl",
+  "resolvedSku",
+  "suggestions",
+  "editedDescription",
+  "editedAliases",
+  "editedWhatsappKeywords",
+] as const satisfies readonly (keyof FastCreateDraftSnapshot)[];
+
 /**
  * Merge a reviewable intake result into the canonical Fast Create draft snapshot.
- * Never overwrites with empty values; duplicate/unsupported intake is a no-op.
  */
 export function applyIntakeToDraft(
   current: FastCreateDraftSnapshot,
@@ -13,24 +30,19 @@ export function applyIntakeToDraft(
     return current;
   }
 
-  const patch = pickDefined(intake.draftPatch);
-  const next: FastCreateDraftSnapshot = { ...current, ...patch };
+  const next: FastCreateDraftSnapshot = { ...current };
+  for (const key of DRAFT_PATCH_KEYS) {
+    const value = intake.draftPatch[key];
+    if (value !== undefined && value !== null && value !== "") {
+      next[key] = value as never;
+    }
+  }
 
-  if (patch.productName) {
+  if (intake.draftPatch.productName) {
     next.suggestions = null;
   }
 
   return next;
-}
-
-function pickDefined(patch: Partial<FastCreateDraftSnapshot>): Partial<FastCreateDraftSnapshot> {
-  const out: Partial<FastCreateDraftSnapshot> = {};
-  for (const [key, value] of Object.entries(patch) as [keyof FastCreateDraftSnapshot, unknown][]) {
-    if (value !== undefined && value !== null && value !== "") {
-      (out as Record<string, unknown>)[key] = value;
-    }
-  }
-  return out;
 }
 
 export function intakeBlocksDraftApply(intake: ProductIntakeResult): boolean {

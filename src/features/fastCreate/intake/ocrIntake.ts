@@ -1,27 +1,13 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
+import { intakeFieldSuggestion } from "./intakeFieldSuggestion";
+import { extractOcrTextFromImagePixels } from "./ocrPixelExtract";
 import { intakeFromText } from "./textIntake";
 import type { ProductIntakeResult } from "./types";
 
-/**
- * Bounded OCR candidate extraction — filename and manual review text only.
- * No silent publication: operators must confirm extracted text before draft merge.
- */
-export function extractOcrCandidateText(file: File): { text: string; source: string } {
-  const base = file.name.replace(/\.[^.]+$/, "");
-  const fromName = base
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (fromName.length >= 3 && !/^(?:img|image|photo|scan|document)\d*$/i.test(fromName)) {
-    return { text: fromName, source: "filename_hint" };
-  }
-
-  return { text: "", source: "none" };
-}
+const UNSUPPORTED_IMAGE_TYPES = new Set(["application/pdf"]);
 
 /**
- * OCR intake from reviewable text (operator-confirmed extraction output).
+ * OCR intake from operator-reviewed text that originated from pixel extraction.
  */
 export function intakeFromOcrText(rawText: string, imageName?: string): ProductIntakeResult {
   const trimmed = rawText.trim();
@@ -52,15 +38,14 @@ export function intakeFromOcrText(rawText: string, imageName?: string): ProductI
 }
 
 /**
- * Prepare OCR intake from an uploaded image — always review-required.
+ * Pixel OCR from an uploaded image — always review-required; never uses filename metadata.
  */
-export function prepareOcrIntakeFromImage(file: File): ProductIntakeResult {
-  const { text, source } = extractOcrCandidateText(file);
-  if (!text) {
+export async function prepareOcrIntakeFromImage(file: File): Promise<ProductIntakeResult> {
+  if (UNSUPPORTED_IMAGE_TYPES.has(file.type)) {
     return {
       mode: "ocr",
-      status: "ambiguous",
-      message: `Image "${file.name}" uploaded — type the label text you see for review.`,
+      status: "unsupported",
+      message: "PDF OCR is not supported in this lane — upload a label image (PNG/JPG/WebP).",
       draftPatch: {},
       suggestions: [],
       reviewRequired: true,
@@ -68,13 +53,49 @@ export function prepareOcrIntakeFromImage(file: File): ProductIntakeResult {
     };
   }
 
-  const parsed = intakeFromOcrText(text, file.name);
+  let extraction: Awaited<ReturnType<typeof extractOcrTextFromImagePixels>>;
+  try {
+    extraction = await extractOcrTextFromImagePixels(file);
+  } catch {
+    return {
+      mode: "ocr",
+      status: "unsupported",
+      message: `Could not read text from "${file.name}". Correct or type the label text manually.`,
+      draftPatch: {},
+      suggestions: [],
+      reviewRequired: true,
+      rawInput: file.name,
+    };
+  }
+
+  if (!extraction.text) {
+    return {
+      mode: "ocr",
+      status: "empty",
+      message: `No readable text found in image pixels for "${file.name}". Type what you see on the label.`,
+      draftPatch: {},
+      suggestions: [
+        intakeFieldSuggestion("notes", "Pixel OCR returned no text", "unresolved", "pixel_ocr"),
+      ],
+      reviewRequired: true,
+      rawInput: file.name,
+    };
+  }
+
+  const parsed = intakeFromOcrText(extraction.text, file.name);
   return {
     ...parsed,
-    message:
-      source === "filename_hint"
-        ? `Low-confidence filename hint from "${file.name}" — correct the text and review all fields.`
-        : parsed.message,
+    message: `Pixel OCR extracted label text (confidence ${Math.round(extraction.confidence)}%) — review before applying.`,
     status: parsed.status === "ok" ? "ambiguous" : parsed.status,
+    rawInput: extraction.text,
+    suggestions: [
+      intakeFieldSuggestion(
+        "notes",
+        `Pixel OCR confidence ${Math.round(extraction.confidence)}%`,
+        "medium",
+        "pixel_ocr",
+      ),
+      ...parsed.suggestions,
+    ],
   };
 }

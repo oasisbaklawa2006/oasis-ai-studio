@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, ImagePlus, Loader2, Plus, Sparkles, Trash2, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { PageHeader } from "@/components/PageHeader";
+import { toast } from "sonner";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
+import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { PageHeader } from "@/components/PageHeader";
+import { ProductIntakePanel } from "@/components/ProductIntakePanel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,44 +15,50 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Loader2, Sparkles, Zap, ImagePlus, ArrowRight, Trash2, Plus } from "lucide-react";
-import {
-  FAST_CREATE_CATEGORIES,
-  type FastCreateCategoryKey,
-} from "@/features/productDefaults/categoryDefaults";
-import {
-  buildHeuristicSuggestions,
-  enrichSuggestionsWithAi,
-  type FastCreateSuggestions,
-} from "@/features/fastCreate/fastCreateSuggestions";
 import { sanitizeAiFragments } from "@/features/fastCreate/aiOutputSanitizer";
-import { uploadFastCreateHero } from "@/features/fastCreate/uploadFastCreateHero";
-import {
-  FAST_CREATE_SKU_BLOCK_MESSAGE,
-  requireFastCreateSku,
-  saveFastCreateProduct,
-} from "@/features/fastCreate/saveFastCreateProduct";
-import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import {
   clearFastCreateDraft,
   emptyFastCreateDraft,
+  type FastCreateDraftSnapshot,
   fastCreateFormPatchFromDraft,
   fastCreateReadinessCategories,
   fastCreateReadinessScore,
   heroPreviewFromDraft,
   loadFastCreateDraft,
   saveFastCreateDraft,
-  type FastCreateDraftSnapshot,
 } from "@/features/fastCreate/fastCreateDraft";
-import { SALE_TYPES, getSaleTypeRequirements, type SaleType } from "@/features/productAuthority/saleType";
+import {
+  buildHeuristicSuggestions,
+  enrichSuggestionsWithAi,
+  type FastCreateSuggestions,
+} from "@/features/fastCreate/fastCreateSuggestions";
+import {
+  FAST_CREATE_SKU_BLOCK_MESSAGE,
+  requireFastCreateSku,
+  saveFastCreateProduct,
+} from "@/features/fastCreate/saveFastCreateProduct";
+import { deriveShortSku } from "@/features/fastCreate/shortSku";
+import { uploadFastCreateHero } from "@/features/fastCreate/uploadFastCreateHero";
 import { getBuildMeterStatus } from "@/features/productAuthority/buildMeter";
+import {
+  MEDIA_BUCKET_OWNER_ACTION,
+  probeProductMediaBucket,
+} from "@/features/productAuthority/mediaReadiness";
+import {
+  getSaleTypeRequirements,
+  SALE_TYPES,
+  type SaleType,
+} from "@/features/productAuthority/saleType";
+import {
+  FAST_CREATE_CATEGORIES,
+  type FastCreateCategoryKey,
+} from "@/features/productDefaults/categoryDefaults";
+import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveSkuCodeRules, type SkuCodeRule } from "@/lib/skuCodeRules";
-import { probeProductMediaBucket, MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
-import { ProductIntakePanel } from "@/components/ProductIntakePanel";
 
 /** Sentinel for "the correct packaging is not in the taxonomy yet" — never a real code. */
 const PACKAGING_MISSING_SENTINEL = "__missing__";
@@ -85,15 +92,15 @@ const FastCreateProduct = () => {
     });
   }, []);
 
-  const loadPackagingOptions = async () => {
+  const loadPackagingOptions = useCallback(async () => {
     const { rules, error } = await fetchActiveSkuCodeRules();
     setPackagingRules(rules.filter((r) => r.code_type === "packaging"));
     setPackagingRulesError(error);
-  };
+  }, []);
 
   useEffect(() => {
     void loadPackagingOptions();
-  }, []);
+  }, [loadPackagingOptions]);
 
   // Restore a preserved Fast Create draft (e.g. after an accidental navigation) once on mount.
   useEffect(() => {
@@ -118,15 +125,22 @@ const FastCreateProduct = () => {
   );
 
   const readinessCategories = useMemo(() => fastCreateReadinessCategories(draft), [draft]);
-  const readinessScore = useMemo(() => fastCreateReadinessScore(readinessCategories), [readinessCategories]);
+  const readinessScore = useMemo(
+    () => fastCreateReadinessScore(readinessCategories),
+    [readinessCategories],
+  );
   const meterStatus = getBuildMeterStatus(readinessScore);
 
   const categoryLabel = useMemo(
-    () => FAST_CREATE_CATEGORIES.find((c) => c.key === draft.categoryKey)?.label ?? draft.categoryKey,
+    () =>
+      FAST_CREATE_CATEGORIES.find((c) => c.key === draft.categoryKey)?.label ?? draft.categoryKey,
     [draft.categoryKey],
   );
 
-  const shortSku = useMemo(() => (draft.resolvedSku ? deriveShortSku(draft.resolvedSku) : null), [draft.resolvedSku]);
+  const shortSku = useMemo(
+    () => (draft.resolvedSku ? deriveShortSku(draft.resolvedSku) : null),
+    [draft.resolvedSku],
+  );
 
   const packagingBlocked = requirements.requiresPackaging && !draft.packagingCode;
 
@@ -177,7 +191,11 @@ const FastCreateProduct = () => {
       return null;
     }
     try {
-      const result = await requireFastCreateSku(draft.categoryKey, draft.resolvedSku, draft.packagingCode);
+      const result = await requireFastCreateSku(
+        draft.categoryKey,
+        draft.resolvedSku,
+        draft.packagingCode,
+      );
       patchDraft({ resolvedSku: result.sku });
       return result.sku;
     } catch (e) {
@@ -223,7 +241,7 @@ const FastCreateProduct = () => {
       ...draft.suggestions,
       formPatch: { ...draft.suggestions.formPatch },
     };
-    if (draft.editedDescription != null && draft.editedDescription.trim()) {
+    if (draft.editedDescription?.trim()) {
       next.formPatch.description = draft.editedDescription.trim();
     }
     if (draft.editedAliases != null) {
@@ -236,7 +254,9 @@ const FastCreateProduct = () => {
     return next;
   };
 
-  const missingRequired = readinessCategories.filter((c) => c.state === "missing").map((c) => c.label);
+  const missingRequired = readinessCategories
+    .filter((c) => c.state === "missing")
+    .map((c) => c.label);
   const readyToCreate = missingRequired.length === 0 && !skuError && !packagingBlocked;
 
   const create = async () => {
@@ -246,11 +266,16 @@ const FastCreateProduct = () => {
     }
     setSaving(true);
     try {
-      const skuResult = await requireFastCreateSku(draft.categoryKey, draft.resolvedSku, draft.packagingCode);
+      const skuResult = await requireFastCreateSku(
+        draft.categoryKey,
+        draft.resolvedSku,
+        draft.packagingCode,
+      );
       patchDraft({ resolvedSku: skuResult.sku });
 
       const payload =
-        effectiveSuggestions() ?? buildHeuristicSuggestions(draft.productName.trim(), draft.categoryKey);
+        effectiveSuggestions() ??
+        buildHeuristicSuggestions(draft.productName.trim(), draft.categoryKey);
       const result = await saveFastCreateProduct({
         suggestions: payload,
         heroUrl: draft.heroUrl,
@@ -279,7 +304,10 @@ const FastCreateProduct = () => {
   };
 
   const addPackagingOption = async () => {
-    const code = newOptionCode.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const code = newOptionCode
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "");
     const label = newOptionLabel.trim();
     if (!code || !label) {
       toast.error("Both code and label are required.");
@@ -370,7 +398,9 @@ const FastCreateProduct = () => {
             <select
               className="w-full h-10 px-3 rounded-md border bg-background text-sm"
               value={draft.saleType}
-              onChange={(e) => patchDraft({ saleType: e.target.value as SaleType, resolvedSku: null })}
+              onChange={(e) =>
+                patchDraft({ saleType: e.target.value as SaleType, resolvedSku: null })
+              }
             >
               {SALE_TYPES.map((t) => (
                 <option key={t.key} value={t.key}>
@@ -433,13 +463,20 @@ const FastCreateProduct = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Packaging type</Label>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setAddOptionOpen(true)}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setAddOptionOpen(true)}
+                >
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add option
                 </Button>
               </div>
               <select
                 className="w-full h-10 px-3 rounded-md border bg-background text-sm"
-                value={draft.packagingCode ?? (packagingRules.length ? "" : PACKAGING_MISSING_SENTINEL)}
+                value={
+                  draft.packagingCode ?? (packagingRules.length ? "" : PACKAGING_MISSING_SENTINEL)
+                }
                 onChange={(e) => {
                   const code = e.target.value;
                   if (code === PACKAGING_MISSING_SENTINEL || !code) {
@@ -447,7 +484,11 @@ const FastCreateProduct = () => {
                     return;
                   }
                   const rule = packagingRules.find((r) => r.code === code);
-                  patchDraft({ packagingCode: code, packagingLabel: rule?.label ?? code, resolvedSku: null });
+                  patchDraft({
+                    packagingCode: code,
+                    packagingLabel: rule?.label ?? code,
+                    resolvedSku: null,
+                  });
                 }}
               >
                 <option value="">Select packaging…</option>
@@ -456,7 +497,9 @@ const FastCreateProduct = () => {
                     {r.label} ({r.code})
                   </option>
                 ))}
-                <option value={PACKAGING_MISSING_SENTINEL}>Packaging option missing — needs taxonomy update</option>
+                <option value={PACKAGING_MISSING_SENTINEL}>
+                  Packaging option missing — needs taxonomy update
+                </option>
               </select>
               {packagingRulesError && (
                 <p className="text-[11px] text-amber-700 dark:text-amber-400">
@@ -465,8 +508,8 @@ const FastCreateProduct = () => {
               )}
               {packagingBlocked && (
                 <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  No packaging selected — SKU generation and create are blocked until packaging is chosen or a
-                  missing option is added to the taxonomy.
+                  No packaging selected — SKU generation and create are blocked until packaging is
+                  chosen or a missing option is added to the taxonomy.
                 </p>
               )}
             </div>
@@ -515,8 +558,8 @@ const FastCreateProduct = () => {
           )}
           {(requirements.requiresMrp || requirements.requiresB2bPrice) && (
             <p className="text-[10px] text-muted-foreground">
-              Prices entered here carry into Full Editor and readiness checks — final channel pricing approval
-              still happens in Sales Pricing Rules.
+              Prices entered here carry into Full Editor and readiness checks — final channel
+              pricing approval still happens in Sales Pricing Rules.
             </p>
           )}
 
@@ -544,8 +587,8 @@ const FastCreateProduct = () => {
 
           {requirements.requiresExportFields && (
             <p className="text-[11px] text-muted-foreground rounded-md border border-dashed p-2">
-              Export details (export price, carton dimensions, CBM, country labels) — complete in Full Editor
-              after creating the draft.
+              Export details (export price, carton dimensions, CBM, country labels) — complete in
+              Full Editor after creating the draft.
             </p>
           )}
 
@@ -582,7 +625,9 @@ const FastCreateProduct = () => {
                 SKU invalid — fix packaging/category before approval.
               </p>
             ) : (
-              <p className="text-xs text-muted-foreground">Generate suggestions or click Refresh to resolve via RPC.</p>
+              <p className="text-xs text-muted-foreground">
+                Generate suggestions or click Refresh to resolve via RPC.
+              </p>
             )}
           </div>
 
@@ -595,7 +640,11 @@ const FastCreateProduct = () => {
               disabled={generating || !draft.productName.trim()}
               onClick={generate}
             >
-              {generating ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Sparkles className="h-4 w-4 mr-1" />}
+              {generating ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-1" />
+              )}
               Generate suggestions
             </Button>
             <Button
@@ -604,13 +653,18 @@ const FastCreateProduct = () => {
               onClick={create}
               title={readyToCreate ? undefined : `Missing: ${missingRequired.join(", ")}`}
             >
-              {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ArrowRight className="h-4 w-4 mr-1" />}
+              {saving ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <ArrowRight className="h-4 w-4 mr-1" />
+              )}
               Create Product Draft
             </Button>
           </div>
           {!readyToCreate && missingRequired.length > 0 && (
             <p className="text-[11px] text-muted-foreground">
-              Complete to create: {missingRequired.join(", ")}. Your input is kept as a session draft meanwhile.
+              Complete to create: {missingRequired.join(", ")}. Your input is kept as a session
+              draft meanwhile.
             </p>
           )}
         </div>
@@ -619,13 +673,16 @@ const FastCreateProduct = () => {
           <h2 className="font-display text-xl">System suggestions (editable)</h2>
           {!suggestions ? (
             <p className="text-sm text-muted-foreground">
-              Pick a category to preview defaults, then click <strong>Generate suggestions</strong> for
-              descriptions, aliases, WhatsApp keywords, and compliance fields — all editable before create.
+              Pick a category to preview defaults, then click <strong>Generate suggestions</strong>{" "}
+              for descriptions, aliases, WhatsApp keywords, and compliance fields — all editable
+              before create.
             </p>
           ) : (
             <div className="space-y-4 text-sm">
               <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Description</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                  Description
+                </div>
                 <Textarea
                   rows={3}
                   className="text-xs"
@@ -641,11 +698,15 @@ const FastCreateProduct = () => {
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">GST</div>
-                  <div className="font-medium">{String(suggestions.formPatch.gst_rate ?? "—")}%</div>
+                  <div className="font-medium">
+                    {String(suggestions.formPatch.gst_rate ?? "—")}%
+                  </div>
                 </div>
                 <div>
                   <div className="text-xs text-muted-foreground">Shelf life</div>
-                  <div className="font-medium">{String(suggestions.formPatch.shelf_life_days ?? "—")} days</div>
+                  <div className="font-medium">
+                    {String(suggestions.formPatch.shelf_life_days ?? "—")} days
+                  </div>
                 </div>
               </div>
               <p className="text-[10px] text-amber-700 dark:text-amber-400">
@@ -677,7 +738,9 @@ const FastCreateProduct = () => {
               </div>
 
               <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">Label starter</div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground mb-1">
+                  Label starter
+                </div>
                 <p className="text-muted-foreground">
                   {draft.qtyPerPack && Number(draft.qtyPerPack) > 0
                     ? `${draft.qtyPerPack} pcs ${String(suggestions.formPatch.primary_uom ?? "box")}${draft.packagingLabel ? ` · ${draft.packagingLabel}` : ""}`
@@ -691,17 +754,25 @@ const FastCreateProduct = () => {
             <div className="rounded-md border p-3 text-sm bg-muted/30 space-y-2">
               <div className="font-medium">Category preview: {categoryLabel}</div>
               <div className="grid grid-cols-3 gap-2 text-xs">
-                {(["hsn_code", "gst_rate", "shelf_life_days", "primary_uom", "main_department"] as const).map(
-                  (k) => {
-                    const d = FAST_CREATE_CATEGORIES.find((c) => c.key === draft.categoryKey)?.defaults;
-                    return (
-                      <div key={k}>
-                        <span className="text-muted-foreground">{k}: </span>
-                        <span>{String((d as Record<string, unknown>)?.[k] ?? "—")}</span>
-                      </div>
-                    );
-                  },
-                )}
+                {(
+                  [
+                    "hsn_code",
+                    "gst_rate",
+                    "shelf_life_days",
+                    "primary_uom",
+                    "main_department",
+                  ] as const
+                ).map((k) => {
+                  const d = FAST_CREATE_CATEGORIES.find(
+                    (c) => c.key === draft.categoryKey,
+                  )?.defaults;
+                  return (
+                    <div key={k}>
+                      <span className="text-muted-foreground">{k}: </span>
+                      <span>{String((d as Record<string, unknown>)?.[k] ?? "—")}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -713,8 +784,8 @@ const FastCreateProduct = () => {
           <DialogHeader>
             <DialogTitle>Save draft and continue?</DialogTitle>
             <DialogDescription>
-              You have unsaved Fast Create input. Save it as a draft for this session before leaving? Saved
-              drafts also pre-fill the Full Editor.
+              You have unsaved Fast Create input. Save it as a draft for this session before
+              leaving? Saved drafts also pre-fill the Full Editor.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
@@ -755,8 +826,8 @@ const FastCreateProduct = () => {
           <DialogHeader>
             <DialogTitle>Clear this draft?</DialogTitle>
             <DialogDescription>
-              This clears the product name, category, packaging, prices, image, and generated suggestions from
-              this session. This cannot be undone.
+              This clears the product name, category, packaging, prices, image, and generated
+              suggestions from this session. This cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -775,8 +846,8 @@ const FastCreateProduct = () => {
           <DialogHeader>
             <DialogTitle>Add packaging option</DialogTitle>
             <DialogDescription>
-              Adds a new packaging option to the shared SKU taxonomy (sku_code_rules). Options used by existing
-              products are never deleted — they can only be disabled later.
+              Adds a new packaging option to the shared SKU taxonomy (sku_code_rules). Options used
+              by existing products are never deleted — they can only be disabled later.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">

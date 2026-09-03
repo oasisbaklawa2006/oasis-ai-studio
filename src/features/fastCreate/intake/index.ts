@@ -1,8 +1,10 @@
-export type { ProductIntakeMode, ProductIntakeResult, ProductIntakeFieldSuggestion } from "./types";
-export { normalizeBarcodeInput } from "./normalizeBarcode";
-export { parseProductText } from "./parseProductText";
-export { lookupBarcodeInCatalog, toDuplicateHit } from "./barcodeLookup";
-export { intakeFromBarcode } from "./barcodeIntake";
-export { intakeFromText, intakeFromVoiceTranscript } from "./textIntake";
-export { extractOcrCandidateText, intakeFromOcrText, prepareOcrIntakeFromImage } from "./ocrIntake";
 export { applyIntakeToDraft, intakeBlocksDraftApply } from "./applyIntakeResult";
+export { intakeFromBarcode } from "./barcodeIntake";
+export { lookupBarcodeInCatalog, toDuplicateHit } from "./barcodeLookup";
+export { suggestionListKey } from "./intakeFieldSuggestion";
+export { normalizeBarcodeInput } from "./normalizeBarcode";
+export { intakeFromOcrText, prepareOcrIntakeFromImage } from "./ocrIntake";
+export { extractOcrTextFromImagePixels, setOcrPixelExtractorForTests } from "./ocrPixelExtract";
+export { parseProductText } from "./parseProductText";
+export { intakeFromText, intakeFromVoiceTranscript } from "./textIntake";
+export type { ProductIntakeFieldSuggestion, ProductIntakeMode, ProductIntakeResult } from "./types";

@@ -50,15 +50,18 @@ export function normalizeBarcodeInput(raw: string): BarcodeNormalization {
   }
 
   if (EAN13.test(digits)) {
-    if (!checksumEan13(digits)) return { ok: false, reason: "EAN-13 checksum failed — verify the scan." };
+    if (!checksumEan13(digits))
+      return { ok: false, reason: "EAN-13 checksum failed — verify the scan." };
     return { ok: true, barcode: digits, format: "ean13" };
   }
   if (EAN8.test(digits)) {
-    if (!checksumEan8(digits)) return { ok: false, reason: "EAN-8 checksum failed — verify the scan." };
+    if (!checksumEan8(digits))
+      return { ok: false, reason: "EAN-8 checksum failed — verify the scan." };
     return { ok: true, barcode: digits, format: "ean8" };
   }
   if (UPC_A.test(digits)) {
-    if (!checksumUpcA(digits)) return { ok: false, reason: "UPC-A checksum failed — verify the scan." };
+    if (!checksumUpcA(digits))
+      return { ok: false, reason: "UPC-A checksum failed — verify the scan." };
     return { ok: true, barcode: digits, format: "upc_a" };
   }
 

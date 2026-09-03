@@ -25,7 +25,11 @@ export async function lookupBarcodeInCatalog(barcode: string): Promise<BarcodeCa
 
   if (error || !data?.product_id) return null;
 
-  const product = data.products as { id: string; product_name: string | null; sku: string | null } | null;
+  const product = data.products as {
+    id: string;
+    product_name: string | null;
+    sku: string | null;
+  } | null;
   if (!product?.id) return null;
 
   return {
