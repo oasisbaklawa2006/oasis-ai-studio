@@ -4,9 +4,10 @@
 
 - Point: 26
 - Title: Audit and stabilise AI Studio's current repository state
-- Status: IN PROGRESS
-- Baseline: current `main` after PR #110
-- Baseline commit before this ledger: `69a284d73401f23c870a744414727bb90ff9d4ca`
+- Status: IN PROGRESS (closure-lane census refreshed 2026-09-03)
+- Baseline: current `main` after PR #133 (Point 28 similar-product detection)
+- Baseline commit: `8556bdd43fba43423f54f7dd11daed0c417f0548`
+- Parallel closure matrix: `docs/programme/CLOSURE_LANE_POINTS_26_27_31_33_MATRIX.md`
 
 ## Duplication decision
 
@@ -43,8 +44,8 @@ This Point is therefore a delta audit only.
 - Repository: `oasisbaklawa2006/oasis-ai-studio`
 - Default branch: `main`
 - Open pull requests: none at audit start
-- Baseline head: `69a284d73401f23c870a744414727bb90ff9d4ca`
-- Vercel status on baseline head: success
+- Baseline head: `8556bdd43fba43423f54f7dd11daed0c417f0548`
+- Local CI on baseline head: typecheck PASS, boundaries PASS (0 violations), 758/758 tests PASS
 - Latest merged work before this ledger was archive/documentation formatting, not application behaviour
 
 ## Remaining Point 26 audit scope
