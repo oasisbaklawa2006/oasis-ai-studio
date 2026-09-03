@@ -1,5 +1,10 @@
 import { checksumEan8, checksumEan13, checksumUpcA } from "./barcodeChecksum";
-import { isAllDigits, isCode128Token, stripSpacesAndDashes } from "./textTokenUtils";
+import {
+  compactWhitespace,
+  isAllDigits,
+  isCode128Token,
+  stripSpacesAndDashes,
+} from "./textTokenUtils";
 
 export type BarcodeNormalization =
   | { ok: true; barcode: string; format: "ean13" | "ean8" | "upc_a" | "code128" }
@@ -10,25 +15,13 @@ export type BarcodeNormalization =
  * optional whitespace/dashes. Returns unsupported for empty or non-numeric junk.
  */
 export function normalizeBarcodeInput(raw: string): BarcodeNormalization {
-  let started = false;
-  const trimmedChars: string[] = [];
-  for (const ch of raw) {
-    if (!started && (ch === " " || ch === "\t" || ch === "\n" || ch === "\r")) continue;
-    started = true;
-    trimmedChars.push(ch);
-  }
-  while (trimmedChars.length > 0) {
-    const last = trimmedChars[trimmedChars.length - 1];
-    if (last !== " " && last !== "\t" && last !== "\n" && last !== "\r") break;
-    trimmedChars.pop();
-  }
-  const trimmed = trimmedChars.join("");
-  if (!trimmed) return { ok: false, reason: "Barcode is empty." };
+  const digits = stripSpacesAndDashes(raw);
+  if (!digits) return { ok: false, reason: "Barcode is empty." };
 
-  const digits = stripSpacesAndDashes(trimmed);
   if (!isAllDigits(digits)) {
-    if (isCode128Token(trimmed)) {
-      return { ok: true, barcode: trimmed.toUpperCase(), format: "code128" };
+    const token = compactWhitespace(raw);
+    if (isCode128Token(token)) {
+      return { ok: true, barcode: token.toUpperCase(), format: "code128" };
     }
     return { ok: false, reason: "Barcode must be numeric (EAN/UPC) or a short alphanumeric code." };
   }
