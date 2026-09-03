@@ -27,31 +27,34 @@ function emptyDraftFieldValues(): DraftFieldValues {
 function collectDraftFieldValues(suggestions: ProductIntakeFieldSuggestion[]): DraftFieldValues {
   const values = emptyDraftFieldValues();
   for (const suggestion of suggestions) {
-    const value = suggestion.value;
-    if (!value) continue;
     if (suggestion.field === "productName") {
-      values.productName = value;
+      if (!suggestion.value) continue;
+      values.productName = suggestion.value;
       values.clearSuggestions = true;
       continue;
     }
     if (suggestion.field === "category") {
-      values.categoryKey = value as FastCreateCategoryKey;
+      if (!suggestion.value) continue;
+      values.categoryKey = suggestion.value as FastCreateCategoryKey;
       continue;
     }
     if (suggestion.field === "mrp") {
-      values.mrp = value;
+      if (!suggestion.value) continue;
+      values.mrp = suggestion.value;
       continue;
     }
     if (suggestion.field === "b2bPrice") {
-      values.b2bPrice = value;
+      if (!suggestion.value) continue;
+      values.b2bPrice = suggestion.value;
       continue;
     }
     if (suggestion.field === "qtyPerPack") {
-      values.qtyPerPack = value;
+      if (!suggestion.value) continue;
+      values.qtyPerPack = suggestion.value;
       continue;
     }
-    if (suggestion.field === "sku") {
-      values.resolvedSku = value;
+    if (suggestion.field === "sku" && suggestion.value) {
+      values.resolvedSku = suggestion.value;
     }
   }
   return values;
