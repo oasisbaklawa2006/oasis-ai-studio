@@ -51,7 +51,7 @@ import { SALE_TYPES, getSaleTypeRequirements, type SaleType } from "@/features/p
 import { getBuildMeterStatus } from "@/features/productAuthority/buildMeter";
 import { fetchActiveSkuCodeRules, type SkuCodeRule } from "@/lib/skuCodeRules";
 import { probeProductMediaBucket, MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
-import { CATEGORY_PREFEED_DISCLAIMER } from "@/features/productDefaults/categoryPrefeed";
+import { ProductIntakePanel } from "@/components/ProductIntakePanel";
 
 /** Sentinel for "the correct packaging is not in the taxonomy yet" — never a real code. */
 const PACKAGING_MISSING_SENTINEL = "__missing__";
@@ -389,6 +389,14 @@ const FastCreateProduct = () => {
               </label>
             )}
           </div>
+
+          <ProductIntakePanel
+            draft={draft}
+            onApply={(next) => {
+              setDraft(next);
+              setRestoredFromDraft(false);
+            }}
+          />
 
           <div className="space-y-2">
             <Label>Product name</Label>
