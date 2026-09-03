@@ -2,6 +2,7 @@ import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import {
   formatProductSaveError,
   formToDbProductPayload,
+  type ProductsInsert,
   productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -143,9 +144,9 @@ export async function saveFastCreateProduct(
       throw new Error(skuGuard.reason);
     }
 
-    const res = await (supabase as any)
+    const res = await supabase
       .from("products")
-      .insert(productRow)
+      .insert(productRow as ProductsInsert)
       .select("id, sku")
       .single();
     if (res.error) {
