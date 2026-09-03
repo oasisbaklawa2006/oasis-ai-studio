@@ -91,6 +91,7 @@ export function filterMediaReviewQueue(
 }
 
 export async function approveMediaSubmission(draftId: string): Promise<string | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- governed RPC not in generated types
   const { error } = await (supabase as any).rpc("approve_catalogue_media_submission", {
     draft_id: draftId,
   });
@@ -101,9 +102,10 @@ export async function rejectMediaSubmission(
   draftId: string,
   reason: string,
 ): Promise<string | null> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- governed RPC not in generated types
   const { error } = await (supabase as any).rpc("reject_catalogue_media_submission", {
     draft_id: draftId,
-    rejection_reason: reason,
+    reason,
   });
   return error?.message ?? null;
 }

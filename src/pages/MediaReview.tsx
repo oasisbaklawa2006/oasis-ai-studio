@@ -4,15 +4,15 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { productMediaDeepLink } from "@/features/productAuthority/productEditDeepLinks";
 import {
   approveMediaSubmission,
   fetchMediaReviewQueue,
   filterMediaReviewQueue,
-  rejectMediaSubmission,
   type MediaReviewQueueItem,
   type MediaReviewStatus,
+  rejectMediaSubmission,
 } from "@/features/mediaReadiness/mediaReviewQueue";
+import { productMediaDeepLink } from "@/features/productAuthority/productEditDeepLinks";
 import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
 
 const TABS: { key: MediaReviewStatus; label: string }[] = [
@@ -41,6 +41,7 @@ export default function MediaReview() {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount only; load() identity is stable in intent
   useEffect(() => {
     (async () => {
       const ok = await isCatalogueReviewer();
@@ -136,7 +137,9 @@ export default function MediaReview() {
       {loading ? (
         <p className="text-sm text-muted-foreground">Loading media review queue…</p>
       ) : grouped[activeTab].length === 0 ? (
-        <p className="text-sm text-muted-foreground">No {activeTab.replace(/_/g, " ")} media items.</p>
+        <p className="text-sm text-muted-foreground">
+          No {activeTab.replace(/_/g, " ")} media items.
+        </p>
       ) : (
         <div className="space-y-3">
           {grouped[activeTab].map((item) => (
@@ -145,7 +148,9 @@ export default function MediaReview() {
                 <div>
                   <p className="font-medium">{queueItemLabel(item)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {item.source === "catalogue_submission" ? "Catalogue submission" : "Product media row"}
+                    {item.source === "catalogue_submission"
+                      ? "Catalogue submission"
+                      : "Product media row"}
                     {item.mediaType ? ` · ${item.mediaType}` : ""}
                     {item.productSku ? ` · ${item.productSku}` : ""}
                   </p>
