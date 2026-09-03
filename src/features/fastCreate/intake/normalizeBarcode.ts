@@ -1,3 +1,5 @@
+import { checksumEan8, checksumEan13, checksumUpcA } from "./barcodeChecksum";
+
 const EAN13 = /^\d{13}$/;
 const EAN8 = /^\d{8}$/;
 const UPC_A = /^\d{12}$/;
@@ -6,35 +8,12 @@ export type BarcodeNormalization =
   | { ok: true; barcode: string; format: "ean13" | "ean8" | "upc_a" | "code128" }
   | { ok: false; reason: string };
 
-function digitAt(value: string, index: number): number {
-  return Number(value.charAt(index));
-}
-
-function checksumEan13(digits: string): boolean {
-  if (digits.length !== 13) return false;
-  let sum = 0;
-  for (let i = 0; i < 12; i += 1) {
-    const n = digitAt(digits, i);
-    sum += i % 2 === 0 ? n : n * 3;
+function stripBarcodeSeparators(raw: string): string {
+  let out = "";
+  for (const ch of raw) {
+    if (ch !== " " && ch !== "-") out += ch;
   }
-  const check = (10 - (sum % 10)) % 10;
-  return check === digitAt(digits, 12);
-}
-
-function checksumEan8(digits: string): boolean {
-  if (digits.length !== 8) return false;
-  let sum = 0;
-  for (let i = 0; i < 7; i += 1) {
-    const n = digitAt(digits, i);
-    sum += i % 2 === 0 ? n * 3 : n;
-  }
-  const check = (10 - (sum % 10)) % 10;
-  return check === digitAt(digits, 7);
-}
-
-function checksumUpcA(digits: string): boolean {
-  if (digits.length !== 12) return false;
-  return checksumEan13(`0${digits}`);
+  return out;
 }
 
 /**
@@ -45,7 +24,7 @@ export function normalizeBarcodeInput(raw: string): BarcodeNormalization {
   const trimmed = raw.trim();
   if (!trimmed) return { ok: false, reason: "Barcode is empty." };
 
-  const digits = trimmed.replace(/[\s-]/g, "");
+  const digits = stripBarcodeSeparators(trimmed);
   if (!/^\d+$/.test(digits)) {
     if (/^[A-Za-z0-9-]{4,32}$/.test(trimmed)) {
       return { ok: true, barcode: trimmed.toUpperCase(), format: "code128" };

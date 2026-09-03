@@ -16,30 +16,44 @@ export function applyIntakeToDraft(
     return current;
   }
 
-  const patch = intake.draftPatch;
+  const {
+    productName,
+    categoryKey,
+    saleType,
+    packagingCode,
+    packagingLabel,
+    qtyPerPack,
+    mrp,
+    b2bPrice,
+    b2bEnabled,
+    heroUrl,
+    resolvedSku,
+    editedDescription,
+    editedAliases,
+    editedWhatsappKeywords,
+  } = intake.draftPatch;
+
   const next: FastCreateDraftSnapshot = { ...current };
 
-  if (hasValue(patch.productName)) {
-    next.productName = patch.productName as string;
+  if (hasValue(productName)) {
+    next.productName = productName as string;
     next.suggestions = null;
   }
-  if (hasValue(patch.categoryKey))
-    next.categoryKey = patch.categoryKey as FastCreateDraftSnapshot["categoryKey"];
-  if (hasValue(patch.saleType))
-    next.saleType = patch.saleType as FastCreateDraftSnapshot["saleType"];
-  if (hasValue(patch.packagingCode)) next.packagingCode = patch.packagingCode as string;
-  if (hasValue(patch.packagingLabel)) next.packagingLabel = patch.packagingLabel as string;
-  if (hasValue(patch.qtyPerPack)) next.qtyPerPack = patch.qtyPerPack as string;
-  if (hasValue(patch.mrp)) next.mrp = patch.mrp as string;
-  if (hasValue(patch.b2bPrice)) next.b2bPrice = patch.b2bPrice as string;
-  if (hasValue(patch.b2bEnabled)) next.b2bEnabled = patch.b2bEnabled as boolean;
-  if (hasValue(patch.heroUrl)) next.heroUrl = patch.heroUrl as string;
-  if (hasValue(patch.resolvedSku)) next.resolvedSku = patch.resolvedSku as string;
-  if (hasValue(patch.editedDescription)) next.editedDescription = patch.editedDescription as string;
-  if (hasValue(patch.editedAliases)) next.editedAliases = patch.editedAliases as string;
-  if (hasValue(patch.editedWhatsappKeywords)) {
-    next.editedWhatsappKeywords = patch.editedWhatsappKeywords as string;
-  }
+  if (hasValue(categoryKey))
+    next.categoryKey = categoryKey as FastCreateDraftSnapshot["categoryKey"];
+  if (hasValue(saleType)) next.saleType = saleType as FastCreateDraftSnapshot["saleType"];
+  if (hasValue(packagingCode)) next.packagingCode = packagingCode as string;
+  if (hasValue(packagingLabel)) next.packagingLabel = packagingLabel as string;
+  if (hasValue(qtyPerPack)) next.qtyPerPack = qtyPerPack as string;
+  if (hasValue(mrp)) next.mrp = mrp as string;
+  if (hasValue(b2bPrice)) next.b2bPrice = b2bPrice as string;
+  if (hasValue(b2bEnabled)) next.b2bEnabled = b2bEnabled as boolean;
+  if (hasValue(heroUrl)) next.heroUrl = heroUrl as string;
+  if (hasValue(resolvedSku)) next.resolvedSku = resolvedSku as string;
+  if (hasValue(editedDescription)) next.editedDescription = editedDescription as string;
+  if (hasValue(editedAliases)) next.editedAliases = editedAliases as string;
+  if (hasValue(editedWhatsappKeywords))
+    next.editedWhatsappKeywords = editedWhatsappKeywords as string;
 
   return next;
 }

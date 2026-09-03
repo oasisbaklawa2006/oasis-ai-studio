@@ -1,5 +1,12 @@
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import { FAST_CREATE_CATEGORIES } from "@/features/productDefaults/categoryDefaults";
+import {
+  compactWhitespace,
+  isAllDigits,
+  isDigitToken,
+  splitWords,
+  tokenize,
+} from "./textTokenUtils";
 import type { ParsedProductTextFields } from "./types";
 
 const EMPTY_PARSED: ParsedProductTextFields = {
@@ -24,13 +31,6 @@ const CATEGORY_KEYWORDS: Array<{ key: FastCreateCategoryKey; words: string[] }> 
   { key: "packaging", words: ["packaging", "ribbon"] },
   { key: "bakery", words: ["bakery", "cookie"] },
 ];
-
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((token) => token.length > 0);
-}
 
 function includesPhrase(text: string, phrase: string): boolean {
   return text.toLowerCase().includes(phrase);
@@ -82,8 +82,8 @@ function isSkuToken(value: string): boolean {
 }
 
 function isBarcodeToken(value: string): boolean {
-  const compact = value.replace(/\s/g, "");
-  if (!/^\d+$/.test(compact)) return false;
+  const compact = compactWhitespace(value);
+  if (!isAllDigits(compact)) return false;
   return compact.length === 8 || compact.length === 12 || compact.length === 13;
 }
 
@@ -138,13 +138,15 @@ function extractQtyPerPack(text: string): string | null {
   const qtyIdx = lower.indexOf("qty");
   if (qtyIdx >= 0) return extractNumberFromSlice(text.slice(qtyIdx + 3));
 
-  const tokens = tokenize(text);
-  for (let i = 0; i < tokens.length; i += 1) {
-    const token = tokens[i];
-    if (token === "pc" || token === "pcs" || token === "piece" || token === "pieces") {
-      const prev = tokens[i - 1];
-      if (prev && /^\d{1,4}$/.test(prev)) return prev;
+  let previous = "";
+  for (const token of tokenize(text)) {
+    if (
+      (token === "pc" || token === "pcs" || token === "piece" || token === "pieces") &&
+      isDigitToken(previous)
+    ) {
+      return previous;
     }
+    previous = token;
   }
 
   const packIdx = lower.indexOf("pack");
@@ -153,8 +155,7 @@ function extractQtyPerPack(text: string): string | null {
 }
 
 function extractSku(text: string): string | null {
-  const tokens = text.split(/\s+/);
-  for (const token of tokens) {
+  for (const token of splitWords(text)) {
     if (isSkuToken(token)) return token.toUpperCase();
   }
   return null;
@@ -171,10 +172,9 @@ function extractBarcode(text: string, sku: string | null): string | null {
   }
 
   if (sku) return null;
-  const tokens = text.split(/\s+/);
-  for (const token of tokens) {
-    const digits = token.replace(/\s/g, "");
-    if (isBarcodeToken(digits)) return digits;
+  for (const token of splitWords(text)) {
+    const compact = compactWhitespace(token);
+    if (isBarcodeToken(compact)) return compact;
   }
   return null;
 }
@@ -200,12 +200,21 @@ export function parseProductText(raw: string): ParsedProductTextFields {
   const text = raw.trim();
   if (!text) return { ...EMPTY_PARSED };
 
-  const lines = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const joined = lines.join(" ");
+  const lines: string[] = [];
+  let current = "";
+  for (const ch of text) {
+    if (ch === "\n" || ch === "\r") {
+      const trimmed = current.trim();
+      if (trimmed) lines.push(trimmed);
+      current = "";
+      continue;
+    }
+    current += ch;
+  }
+  const tail = current.trim();
+  if (tail) lines.push(tail);
 
+  const joined = lines.join(" ");
   const productName = extractProductName(lines);
   const sku = extractSku(joined);
   const barcode = extractBarcode(joined, sku);

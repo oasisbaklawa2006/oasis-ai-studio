@@ -17,6 +17,7 @@ import {
   type ProductIntakeResult,
   prepareOcrIntakeFromImage,
 } from "@/features/fastCreate/intake";
+import { transcriptFromSpeechEvent } from "@/features/fastCreate/intake/voiceTranscript";
 
 type Props = {
   draft: FastCreateDraftSnapshot;
@@ -38,16 +39,6 @@ function showIntakeToast(result: ProductIntakeResult) {
     return;
   }
   toast.message(result.message);
-}
-
-function transcriptFromSpeechEvent(event: SpeechRecognitionEvent): string {
-  const parts: string[] = [];
-  for (let i = event.resultIndex; i < event.results.length; i += 1) {
-    const result = event.results.item(i);
-    const alternative = result?.item(0);
-    if (alternative?.transcript) parts.push(alternative.transcript);
-  }
-  return parts.join(" ").trim();
 }
 
 export function ProductIntakePanel({ draft, onApply }: Props) {
@@ -200,7 +191,9 @@ export function ProductIntakePanel({ draft, onApply }: Props) {
               }}
               placeholder="5901234123457"
               onKeyDown={(e) => {
-                if (e.key === "Enter") void handleBarcode();
+                if (e.key === "Enter") {
+                  void handleBarcode();
+                }
               }}
             />
             <Button
