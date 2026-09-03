@@ -1,5 +1,5 @@
-import type { ChangeEvent } from "react";
 import { Mic, MicOff } from "lucide-react";
+import type { ChangeEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";

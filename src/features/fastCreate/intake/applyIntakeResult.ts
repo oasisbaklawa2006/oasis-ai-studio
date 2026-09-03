@@ -1,4 +1,6 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
+import type { SaleType } from "@/features/productAuthority/saleType";
+import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import type { ProductIntakeResult } from "./types";
 
 function hasValue(value: unknown): boolean {
@@ -40,10 +42,10 @@ export function applyIntakeToDraft(
     next.suggestions = null;
   }
   if (hasValue(categoryKey)) {
-    next.categoryKey = categoryKey as FastCreateDraftSnapshot["categoryKey"];
+    next.categoryKey = categoryKey as FastCreateCategoryKey;
   }
   if (hasValue(saleType)) {
-    next.saleType = saleType as FastCreateDraftSnapshot["saleType"];
+    next.saleType = saleType as SaleType;
   }
   if (hasValue(packagingCode)) next.packagingCode = String(packagingCode);
   if (hasValue(packagingLabel)) next.packagingLabel = String(packagingLabel);
