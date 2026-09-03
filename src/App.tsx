@@ -19,11 +19,18 @@ const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DataCorrection = lazy(() => import("./pages/DataCorrection"));
 const FastCreateProduct = lazy(() => import("./pages/FastCreateProduct"));
 const Media = lazy(() => import("./pages/Media"));
+const MediaReview = lazy(() => import("./pages/MediaReview"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const OperatorInbox = lazy(() => import("./pages/OperatorInbox"));
 const PilotAliasReview = lazy(() => import("./pages/PilotAliasReview"));
 const PilotReadinessDashboard = lazy(() => import("./pages/PilotReadinessDashboard"));
 const ProductEdit = lazy(() => import("./pages/ProductEdit"));
+const ProductMediaDeepLink = lazy(() =>
+  import("./pages/ProductEditDeepLinks").then((m) => ({ default: m.ProductMediaDeepLink })),
+);
+const ProductAliasesDeepLink = lazy(() =>
+  import("./pages/ProductEditDeepLinks").then((m) => ({ default: m.ProductAliasesDeepLink })),
+);
 const Products = lazy(() => import("./pages/Products"));
 const ProductIntelligenceKnowledge = lazy(() => import("./pages/ProductIntelligenceKnowledge"));
 const ResolverPreview = lazy(() => import("./pages/ResolverPreview"));
@@ -92,6 +99,22 @@ const App = () => (
                     }
                   />
                   <Route
+                    path="/products/:id/media"
+                    element={
+                      <RoleGate page="products">
+                        <ProductMediaDeepLink />
+                      </RoleGate>
+                    }
+                  />
+                  <Route
+                    path="/products/:id/aliases"
+                    element={
+                      <RoleGate page="products">
+                        <ProductAliasesDeepLink />
+                      </RoleGate>
+                    }
+                  />
+                  <Route
                     path="/products/:id"
                     element={
                       <RoleGate page="products">
@@ -104,6 +127,14 @@ const App = () => (
                     element={
                       <RoleGate page="media">
                         <Media />
+                      </RoleGate>
+                    }
+                  />
+                  <Route
+                    path="/media/review"
+                    element={
+                      <RoleGate page="media">
+                        <MediaReview />
                       </RoleGate>
                     }
                   />

@@ -695,6 +695,14 @@ const ProductEdit = () => {
     appliedLocationKeyRef.current = location.key;
   }, [location.key, deepLinkTab]);
 
+  useEffect(() => {
+    if (tab !== "identity" || location.hash !== "#product-language-terms") return;
+    document.getElementById("product-language-terms")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [tab, location.hash]);
+
   const [loadedId, setLoadedId] = useState<string | null>(null);
   const [productMediaRows, setProductMediaRows] = useState<ProductMediaRow[]>([]);
   const [pricingRuleRows, setPricingRuleRows] = useState<PricingRuleRow[]>([]);
