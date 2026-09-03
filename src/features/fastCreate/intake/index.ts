@@ -1,7 +1,7 @@
+export { type BarcodeNormalization, normalizeBarcodeInput } from "./barcodeChecksum";
 export { intakeFromBarcode } from "./barcodeIntake";
 export { lookupBarcodeInCatalog, toDuplicateHit } from "./barcodeLookup";
 export { suggestionListKey } from "./intakeFieldSuggestion";
-export { normalizeBarcodeInput } from "./normalizeBarcode";
 export { intakeFromOcrText, prepareOcrIntakeFromImage } from "./ocrIntake";
 export { extractOcrTextFromImagePixels, setOcrPixelExtractorForTests } from "./ocrPixelExtract";
 export {

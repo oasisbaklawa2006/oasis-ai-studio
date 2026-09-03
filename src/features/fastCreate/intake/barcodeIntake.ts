@@ -1,7 +1,7 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
+import { normalizeBarcodeInput } from "./barcodeChecksum";
 import { lookupBarcodeInCatalog, toDuplicateHit } from "./barcodeLookup";
 import { intakeFieldSuggestion } from "./intakeFieldSuggestion";
-import { normalizeBarcodeInput } from "./normalizeBarcode";
 import type { ProductIntakeResult } from "./types";
 
 /**
