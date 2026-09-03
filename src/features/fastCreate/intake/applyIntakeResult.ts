@@ -16,31 +16,47 @@ export function applyIntakeToDraft(
     return current;
   }
 
-  const patch = intake.draftPatch;
+  const {
+    productName,
+    categoryKey,
+    saleType,
+    packagingCode,
+    packagingLabel,
+    qtyPerPack,
+    mrp,
+    b2bPrice,
+    b2bEnabled,
+    heroUrl,
+    resolvedSku,
+    editedDescription,
+    editedAliases,
+    editedWhatsappKeywords,
+  } = intake.draftPatch;
+
   const next: FastCreateDraftSnapshot = { ...current };
 
-  if (hasValue(patch.productName)) {
-    next.productName = String(patch.productName);
+  if (hasValue(productName)) {
+    next.productName = String(productName);
     next.suggestions = null;
   }
-  if (hasValue(patch.categoryKey)) {
-    next.categoryKey = patch.categoryKey as FastCreateDraftSnapshot["categoryKey"];
+  if (hasValue(categoryKey)) {
+    next.categoryKey = categoryKey as FastCreateDraftSnapshot["categoryKey"];
   }
-  if (hasValue(patch.saleType)) {
-    next.saleType = patch.saleType as FastCreateDraftSnapshot["saleType"];
+  if (hasValue(saleType)) {
+    next.saleType = saleType as FastCreateDraftSnapshot["saleType"];
   }
-  if (hasValue(patch.packagingCode)) next.packagingCode = String(patch.packagingCode);
-  if (hasValue(patch.packagingLabel)) next.packagingLabel = String(patch.packagingLabel);
-  if (hasValue(patch.qtyPerPack)) next.qtyPerPack = String(patch.qtyPerPack);
-  if (hasValue(patch.mrp)) next.mrp = String(patch.mrp);
-  if (hasValue(patch.b2bPrice)) next.b2bPrice = String(patch.b2bPrice);
-  if (hasValue(patch.b2bEnabled)) next.b2bEnabled = Boolean(patch.b2bEnabled);
-  if (hasValue(patch.heroUrl)) next.heroUrl = String(patch.heroUrl);
-  if (hasValue(patch.resolvedSku)) next.resolvedSku = String(patch.resolvedSku);
-  if (hasValue(patch.editedDescription)) next.editedDescription = String(patch.editedDescription);
-  if (hasValue(patch.editedAliases)) next.editedAliases = String(patch.editedAliases);
-  if (hasValue(patch.editedWhatsappKeywords)) {
-    next.editedWhatsappKeywords = String(patch.editedWhatsappKeywords);
+  if (hasValue(packagingCode)) next.packagingCode = String(packagingCode);
+  if (hasValue(packagingLabel)) next.packagingLabel = String(packagingLabel);
+  if (hasValue(qtyPerPack)) next.qtyPerPack = String(qtyPerPack);
+  if (hasValue(mrp)) next.mrp = String(mrp);
+  if (hasValue(b2bPrice)) next.b2bPrice = String(b2bPrice);
+  if (hasValue(b2bEnabled)) next.b2bEnabled = Boolean(b2bEnabled);
+  if (hasValue(heroUrl)) next.heroUrl = String(heroUrl);
+  if (hasValue(resolvedSku)) next.resolvedSku = String(resolvedSku);
+  if (hasValue(editedDescription)) next.editedDescription = String(editedDescription);
+  if (hasValue(editedAliases)) next.editedAliases = String(editedAliases);
+  if (hasValue(editedWhatsappKeywords)) {
+    next.editedWhatsappKeywords = String(editedWhatsappKeywords);
   }
 
   return next;

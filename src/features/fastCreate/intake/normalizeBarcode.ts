@@ -6,11 +6,10 @@ export type BarcodeNormalization =
   | { ok: false; reason: string };
 
 function stripBarcodeSeparators(raw: string): string {
-  let out = "";
-  for (const ch of raw) {
-    if (ch !== " " && ch !== "-") out += ch;
-  }
-  return out;
+  return raw
+    .split("")
+    .filter((character) => character !== " " && character !== "-")
+    .join("");
 }
 
 function isCode128Token(value: string): boolean {
