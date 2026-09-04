@@ -91,3 +91,28 @@ export function isDisplayableMediaUrl(url: string | null | undefined): boolean {
   if (!url?.trim()) return false;
   return /^https?:\/\//i.test(url.trim());
 }
+
+/** Returns url only when it passes isDisplayableMediaUrl — fail-closed for DOM href/src binding. */
+export function safeDisplayableMediaUrl(url: string | null | undefined): string | null {
+  if (!isDisplayableMediaUrl(url)) return null;
+  return url.trim();
+}
+
+export function formatSubmissionAge(dateStr?: string | null): string {
+  if (!dateStr) return "Submitted recently";
+  const ms = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.max(1, Math.floor(ms / 60000));
+  if (minutes < 60) return `Submitted ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Submitted ${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `Submitted ${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+export function formatSubmitterDisplay(opts: {
+  submitter_name?: string | null;
+  submitter_email?: string | null;
+  submitted_by?: string | null;
+}): string {
+  return opts.submitter_name || opts.submitter_email || opts.submitted_by || "Unknown";
+}

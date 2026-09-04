@@ -5,8 +5,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  isDisplayableMediaUrl,
+  formatSubmissionAge,
+  formatSubmitterDisplay,
   mediaSubmissionStatusLabel,
+  safeDisplayableMediaUrl,
   summarizeMediaSubmissionPayload,
 } from "@/features/mediaWorkspace/mediaLibraryDisplay";
 import {
@@ -23,20 +25,6 @@ const TABS: { key: MediaSubmissionStatus; label: string }[] = [
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
 ];
-
-const formatAge = (dateStr?: string | null) => {
-  if (!dateStr) return "Submitted recently";
-  const ms = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.max(1, Math.floor(ms / 60000));
-  if (minutes < 60) return `Submitted ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `Submitted ${hours} hour${hours === 1 ? "" : "s"} ago`;
-  const days = Math.floor(hours / 24);
-  return `Submitted ${days} day${days === 1 ? "" : "s"} ago`;
-};
-
-const getSubmittedBy = (row: MediaSubmissionRow) =>
-  row.submitter_name || row.submitter_email || row.submitted_by || "Unknown";
 
 const MediaReview = () => {
   const [allowed, setAllowed] = useState(false);
@@ -157,7 +145,7 @@ const MediaReview = () => {
             const summary = summarizeMediaSubmissionPayload(row.payload);
             const isPending = row.status === "pending_approval";
             const isRejected = row.status === "rejected";
-            const showPreview = isDisplayableMediaUrl(summary.fileUrl);
+            const previewUrl = safeDisplayableMediaUrl(summary.fileUrl);
 
             return (
               <div key={row.id} className="luxe-panel space-y-3">
@@ -169,8 +157,12 @@ const MediaReview = () => {
                     <div className="text-muted-foreground">
                       Product: {summary.productId ?? row.target_record_id ?? "(unlinked)"}
                     </div>
-                    <div className="text-muted-foreground">{formatAge(row.submitted_at)}</div>
-                    <div className="text-muted-foreground">Submitted by: {getSubmittedBy(row)}</div>
+                    <div className="text-muted-foreground">
+                      {formatSubmissionAge(row.submitted_at)}
+                    </div>
+                    <div className="text-muted-foreground">
+                      Submitted by: {formatSubmitterDisplay(row)}
+                    </div>
                   </div>
                   <span className="badge-soft catalogue-status-review">
                     {mediaSubmissionStatusLabel(row.status)}
@@ -178,11 +170,11 @@ const MediaReview = () => {
                 </div>
 
                 <div className="grid sm:grid-cols-[minmax(0,1fr)_minmax(0,2fr)] gap-4">
-                  {showPreview ? (
+                  {previewUrl ? (
                     <div className="aspect-square max-w-[200px] rounded-lg border bg-muted overflow-hidden">
-                      {summary.fileUrl?.includes(".mp4") || summary.fileUrl?.includes(".webm") ? (
+                      {previewUrl.includes(".mp4") || previewUrl.includes(".webm") ? (
                         <a
-                          href={summary.fileUrl}
+                          href={previewUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-center h-full min-h-[120px] text-xs text-muted-foreground p-4 text-center underline-offset-4 hover:underline"
@@ -191,7 +183,7 @@ const MediaReview = () => {
                         </a>
                       ) : (
                         <img
-                          src={summary.fileUrl}
+                          src={previewUrl}
                           alt={summary.altText !== "—" ? summary.altText : "Media preview"}
                           className="w-full h-full object-cover"
                         />
@@ -220,7 +212,7 @@ const MediaReview = () => {
                     )}
                     {isRejected && (
                       <div className="text-destructive font-medium pt-1">
-                        Reason: {row.rejection_reason || "No reason provided"}
+                        Reason: {row.rejection_reason || row.review_notes || "No reason provided"}
                       </div>
                     )}
                   </div>

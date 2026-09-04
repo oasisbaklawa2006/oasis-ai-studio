@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  isDisplayableMediaUrl,
+  formatSubmissionAge,
   mediaRowApprovalState,
   mediaRowStatusLabel,
+  safeDisplayableMediaUrl,
   summarizeMediaSubmissionPayload,
 } from "./mediaLibraryDisplay";
 
@@ -56,10 +57,22 @@ describe("summarizeMediaSubmissionPayload", () => {
   });
 });
 
-describe("isDisplayableMediaUrl", () => {
-  it("accepts http(s) URLs only", () => {
-    expect(isDisplayableMediaUrl("https://cdn.example/a.jpg")).toBe(true);
-    expect(isDisplayableMediaUrl("ftp://cdn.example/a.jpg")).toBe(false);
-    expect(isDisplayableMediaUrl("")).toBe(false);
+describe("safeDisplayableMediaUrl", () => {
+  it("returns trimmed https URL when displayable", () => {
+    expect(safeDisplayableMediaUrl("  https://cdn.example/a.jpg  ")).toBe(
+      "https://cdn.example/a.jpg",
+    );
+  });
+
+  it("returns null for non-http(s) URLs", () => {
+    expect(safeDisplayableMediaUrl("javascript:alert(1)")).toBeNull();
+    expect(safeDisplayableMediaUrl(null)).toBeNull();
+  });
+});
+
+describe("formatSubmissionAge", () => {
+  it("returns a human-readable age string", () => {
+    const recent = new Date(Date.now() - 5 * 60_000).toISOString();
+    expect(formatSubmissionAge(recent)).toMatch(/Submitted 5 minutes ago/);
   });
 });

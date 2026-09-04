@@ -25,7 +25,11 @@ import {
   VIDEO_MIME_TYPES,
   validateMediaFile,
 } from "@/features/catalogueDrafts/mediaDraftBoundary";
-import { mediaRowStatusLabel } from "@/features/mediaWorkspace/mediaLibraryDisplay";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import {
+  mediaRowStatusLabel,
+  safeDisplayableMediaUrl,
+} from "@/features/mediaWorkspace/mediaLibraryDisplay";
 import {
   formatMediaStorageError,
   insertProductMediaRow,
@@ -37,11 +41,18 @@ import type { Role } from "@/lib/permissions";
 const MEDIA_DRAFT_SUCCESS =
   "Media change submitted for approval. Approved media will appear here after review.";
 
+type MediaLibraryProduct = { id: string; product_name: string; sku: string | null };
+
+type MediaLibraryRow = ProductMediaRow & {
+  id: string;
+  products?: { product_name: string; sku: string | null } | null;
+};
+
 const Media = () => {
   const { roles } = useAuth();
   const { writeMode, canMutate } = useCatalogueMediaWriteMode(roles as Role[]);
-  const [media, setMedia] = useState<any[]>([]);
-  const [products, setProducts] = useState<any[]>([]);
+  const [media, setMedia] = useState<MediaLibraryRow[]>([]);
+  const [products, setProducts] = useState<MediaLibraryProduct[]>([]);
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pendingNotices, setPendingNotices] = useState<string[]>([]);
@@ -196,8 +207,8 @@ const Media = () => {
         status: "raw",
       });
       load();
-    } catch (e: any) {
-      toast.error(e.message || "Upload failed");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
       if (galleryRef.current) galleryRef.current.value = "";
@@ -475,52 +486,57 @@ const Media = () => {
       )}
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {media.map((m) => (
-          <div key={m.id} className="card-elevated overflow-hidden">
-            <div className="aspect-square bg-muted flex items-center justify-center">
-              {m.type === "video" ? (
-                <a
-                  href={m.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center h-full w-full text-xs text-muted-foreground p-4 text-center underline-offset-4 hover:underline"
-                >
-                  View video
-                </a>
-              ) : (
-                <img
-                  src={m.file_url}
-                  alt={m.alt_text || "media"}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
-                  }}
-                />
-              )}
+        {media.map((m) => {
+          const previewUrl = safeDisplayableMediaUrl(m.file_url);
+          return (
+            <div key={m.id} className="card-elevated overflow-hidden">
+              <div className="aspect-square bg-muted flex items-center justify-center">
+                {m.type === "video" && previewUrl ? (
+                  <a
+                    href={previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center h-full w-full text-xs text-muted-foreground p-4 text-center underline-offset-4 hover:underline"
+                  >
+                    View video
+                  </a>
+                ) : previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt={m.alt_text || "media"}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <span className="text-xs text-muted-foreground p-4 text-center">No preview</span>
+                )}
+              </div>
+              <div className="p-3 space-y-1">
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="badge-soft bg-secondary text-secondary-foreground">
+                    {mediaTypeLabel(m.type)}
+                  </span>
+                  <span
+                    className="badge-soft text-[10px] shrink-0"
+                    title={`Approval state: ${mediaRowStatusLabel(m.status)}`}
+                  >
+                    {mediaRowStatusLabel(m.status)}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">{m.angle}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {m.products?.product_name ?? "Unlinked"}
+                </div>
+                <div className="flex items-center gap-1 text-[11px] text-accent-foreground/80 bg-accent-soft px-2 py-1 rounded">
+                  <Sparkles className="h-3 w-3" />
+                  Future AI: enhance · BG remove · multi-angle · reel · identify
+                </div>
+              </div>
             </div>
-            <div className="p-3 space-y-1">
-              <div className="flex items-center justify-between gap-2 text-xs">
-                <span className="badge-soft bg-secondary text-secondary-foreground">
-                  {mediaTypeLabel(m.type)}
-                </span>
-                <span
-                  className="badge-soft text-[10px] shrink-0"
-                  title={`Approval state: ${mediaRowStatusLabel(m.status)}`}
-                >
-                  {mediaRowStatusLabel(m.status)}
-                </span>
-              </div>
-              <div className="text-[11px] text-muted-foreground">{m.angle}</div>
-              <div className="text-xs text-muted-foreground truncate">
-                {m.products?.product_name ?? "Unlinked"}
-              </div>
-              <div className="flex items-center gap-1 text-[11px] text-accent-foreground/80 bg-accent-soft px-2 py-1 rounded">
-                <Sparkles className="h-3 w-3" />
-                Future AI: enhance · BG remove · multi-angle · reel · identify
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         {media.length === 0 && (
           <div className="col-span-full text-sm text-muted-foreground text-center py-12">
             <ImageIcon className="h-10 w-10 mx-auto mb-2 opacity-30" />

@@ -44,7 +44,7 @@
 
 ## Remaining gates (not broadened)
 
-- **Live storage UAT:** bucket reachability, camera capture on physical device, production RPC smoke.
+- **Live storage UAT:** see `docs/programme/POINT41_MEDIA_LIVE_STORAGE_UAT_CHECKLIST.md` — bucket reachability, camera capture on physical device, production RPC smoke. **Not evidenced on software HEAD.**
 - **Point 29:** dedicated `/products/:id/media` deep route (separate work item).
 - **Core:** bucket enforcement migration in production Supabase.
 
