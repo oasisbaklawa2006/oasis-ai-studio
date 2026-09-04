@@ -1,3 +1,4 @@
+import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
 import { AI_COMPLIANCE_LEGAL_DISCLAIMER } from "@/shared/ai/complianceConstants";
 import {
   type AiComplianceResponse,
@@ -102,6 +103,53 @@ function suggestionsFromPayload(
   return out;
 }
 
+function governedSuggestionsToRecord(
+  suggestions: GovernedAiFieldSuggestion[],
+): Partial<Record<ComplianceSensitiveField, string>> {
+  const record: Partial<Record<ComplianceSensitiveField, string>> = {};
+  for (const suggestion of suggestions) {
+    switch (suggestion.field) {
+      case "hsn_code":
+        record.hsn_code = suggestion.value;
+        break;
+      case "gst_rate":
+        record.gst_rate = suggestion.value;
+        break;
+      case "shelf_life_days":
+        record.shelf_life_days = suggestion.value;
+        break;
+      case "ingredients":
+        record.ingredients = suggestion.value;
+        break;
+      case "allergen_warnings":
+        record.allergen_warnings = suggestion.value;
+        break;
+      case "nutritional_info":
+        record.nutritional_info = suggestion.value;
+        break;
+      case "nutrition_facts":
+        record.nutrition_facts = suggestion.value;
+        break;
+      case "storage_instructions":
+        record.storage_instructions = suggestion.value;
+        break;
+      case "country_of_origin":
+        record.country_of_origin = suggestion.value;
+        break;
+      case "legal_claims":
+        record.legal_claims = suggestion.value;
+        break;
+      case "export_compliance_notes":
+        record.export_compliance_notes = suggestion.value;
+        break;
+      case "health_claims":
+        record.health_claims = suggestion.value;
+        break;
+    }
+  }
+  return record;
+}
+
 function buildProvenance(input: {
   service: GovernedAiService;
   provider_status: GovernedAiProviderStatus;
@@ -175,9 +223,7 @@ function buildGovernedExtractionFromResponse(
   const suggestions = suggestionsFromPayload(response.suggestions, status.service, confidence);
   const provenance = buildProvenance(status);
 
-  const suggestionRecord = Object.fromEntries(
-    suggestions.map((s) => [s.field, s.value]),
-  ) as Partial<Record<ComplianceSensitiveField, string>>;
+  const suggestionRecord = governedSuggestionsToRecord(suggestions);
 
   const { complianceFieldMeta } = mergeGovernedComplianceSuggestions({
     currentForm: {},
@@ -205,9 +251,7 @@ export function applyGovernedComplianceToForm(
   preservedFields: ComplianceSensitiveField[];
   complianceFieldMeta: GovernedComplianceExtraction["complianceFieldMeta"];
 } {
-  const suggestionRecord = Object.fromEntries(
-    extraction.suggestions.map((s) => [s.field, s.value]),
-  ) as Partial<Record<ComplianceSensitiveField, string>>;
+  const suggestionRecord = governedSuggestionsToRecord(extraction.suggestions);
 
   const { merged, appliedFields, preservedFields, complianceFieldMeta } =
     mergeGovernedComplianceSuggestions({
