@@ -11,12 +11,18 @@ import {
   isStaleComplianceFormRevision,
 } from "@/features/compliance/complianceAiStaleGuard";
 import {
+  applyAppliedComplianceFields,
+  approveComplianceFieldInMap,
+  manualComplianceFieldMetaPatch,
+  readComplianceFieldMeta,
+  readComplianceFormField,
+} from "@/features/compliance/complianceFieldLiterals";
+import {
   applyGovernedComplianceToForm,
   extractGovernedCompliance,
 } from "@/features/governedAiExtraction";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  approveComplianceFieldMeta,
   type ComplianceFieldMetaMap,
   canApproveComplianceFields,
 } from "@/shared/ai/complianceApproval";
@@ -48,51 +54,6 @@ const FIELD_LABELS: Record<string, string> = {
   storage_instructions: "Storage instructions",
 };
 
-function applyMergedComplianceField(
-  field: ComplianceSensitiveField,
-  mergedForm: Record<string, unknown>,
-  set: Props["set"],
-): void {
-  switch (field) {
-    case "hsn_code":
-      set("hsn_code", mergedForm.hsn_code);
-      return;
-    case "gst_rate":
-      set("gst_rate", mergedForm.gst_rate);
-      return;
-    case "shelf_life_days":
-      set("shelf_life_days", mergedForm.shelf_life_days);
-      return;
-    case "ingredients":
-      set("ingredients", mergedForm.ingredients);
-      return;
-    case "allergen_warnings":
-      set("allergen_warnings", mergedForm.allergen_warnings);
-      return;
-    case "nutritional_info":
-      set("nutritional_info", mergedForm.nutritional_info);
-      return;
-    case "nutrition_facts":
-      set("nutrition_facts", mergedForm.nutrition_facts);
-      return;
-    case "storage_instructions":
-      set("storage_instructions", mergedForm.storage_instructions);
-      return;
-    case "country_of_origin":
-      set("country_of_origin", mergedForm.country_of_origin);
-      return;
-    case "legal_claims":
-      set("legal_claims", mergedForm.legal_claims);
-      return;
-    case "export_compliance_notes":
-      set("export_compliance_notes", mergedForm.export_compliance_notes);
-      return;
-    case "health_claims":
-      set("health_claims", mergedForm.health_claims);
-      return;
-  }
-}
-
 export function ComplianceAiPanel({
   form,
   set,
@@ -116,9 +77,7 @@ export function ComplianceAiPanel({
 
     setMetaMap((prev) => ({ ...prev, ...complianceFieldMeta }));
 
-    for (const field of appliedFields) {
-      applyMergedComplianceField(field, mergedForm, set);
-    }
+    applyAppliedComplianceFields(appliedFields, mergedForm, set);
 
     if (preservedFields.length > 0) {
       toast.message(
@@ -202,10 +161,7 @@ export function ComplianceAiPanel({
       toast.error("Only owner, admin, or product manager can approve compliance fields.");
       return;
     }
-    setMetaMap((prev) => ({
-      ...prev,
-      [field]: approveComplianceFieldMeta(prev[field], roles[0] ?? "admin"),
-    }));
+    setMetaMap((prev) => approveComplianceFieldInMap(prev, field, roles[0] ?? "admin"));
     toast.success(`${FIELD_LABELS[field] ?? field} approved for save.`);
   };
 
@@ -218,10 +174,10 @@ export function ComplianceAiPanel({
     ...UI_ONLY_COMPLIANCE_FIELDS,
   ] as const;
 
-  const authorityStatus = (field: string) => {
-    const value = form[field];
+  const authorityStatus = (field: ComplianceSensitiveField) => {
+    const value = readComplianceFormField(form, field);
     const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
-    const meta = metaMap[field as ComplianceSensitiveField];
+    const meta = readComplianceFieldMeta(metaMap, field);
     if (!hasValue) return { label: "Missing", className: "text-destructive" };
     if (meta?.source === "ai_suggestion" && !meta.approved) {
       return { label: "AI pending approval", className: "text-warning" };
@@ -319,8 +275,5 @@ export function trackManualComplianceEdit(
 ) {
   bumpComplianceManualEditGeneration();
   onManualEdit(field);
-  setMetaMap((prev) => ({
-    ...prev,
-    [field]: { source: "manual", approved: false, suggestion_only: false },
-  }));
+  setMetaMap((prev) => manualComplianceFieldMetaPatch(prev, field));
 }

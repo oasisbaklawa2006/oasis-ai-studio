@@ -1,4 +1,3 @@
-import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
 import { AI_COMPLIANCE_LEGAL_DISCLAIMER } from "@/shared/ai/complianceConstants";
 import {
   type AiComplianceResponse,
@@ -28,25 +27,77 @@ function suggestionsFromPayload(
   confidence: GovernedAiConfidence,
 ): GovernedAiFieldSuggestion[] {
   const out: GovernedAiFieldSuggestion[] = [];
-  const push = (field: ComplianceSensitiveField, value: string | number | null | undefined) => {
-    if (value == null || String(value).trim() === "") return;
+
+  if (payload.hsn_code != null && String(payload.hsn_code).trim() !== "") {
     out.push({
-      field,
-      value: String(value),
+      field: "hsn_code",
+      value: String(payload.hsn_code),
       confidence,
       source: service,
       suggestion_only: true,
       approved: false,
     });
-  };
-
-  push("hsn_code", payload.hsn_code);
-  push("gst_rate", payload.gst_rate);
-  push("shelf_life_days", payload.shelf_life_days);
-  push("ingredients", payload.ingredients);
-  push("allergen_warnings", payload.allergen_warnings);
-  push("nutritional_info", payload.nutritional_info);
-  push("storage_instructions", payload.storage_instructions);
+  }
+  if (payload.gst_rate != null && String(payload.gst_rate).trim() !== "") {
+    out.push({
+      field: "gst_rate",
+      value: String(payload.gst_rate),
+      confidence,
+      source: service,
+      suggestion_only: true,
+      approved: false,
+    });
+  }
+  if (payload.shelf_life_days != null && String(payload.shelf_life_days).trim() !== "") {
+    out.push({
+      field: "shelf_life_days",
+      value: String(payload.shelf_life_days),
+      confidence,
+      source: service,
+      suggestion_only: true,
+      approved: false,
+    });
+  }
+  if (payload.ingredients != null && String(payload.ingredients).trim() !== "") {
+    out.push({
+      field: "ingredients",
+      value: String(payload.ingredients),
+      confidence,
+      source: service,
+      suggestion_only: true,
+      approved: false,
+    });
+  }
+  if (payload.allergen_warnings != null && String(payload.allergen_warnings).trim() !== "") {
+    out.push({
+      field: "allergen_warnings",
+      value: String(payload.allergen_warnings),
+      confidence,
+      source: service,
+      suggestion_only: true,
+      approved: false,
+    });
+  }
+  if (payload.nutritional_info != null && String(payload.nutritional_info).trim() !== "") {
+    out.push({
+      field: "nutritional_info",
+      value: String(payload.nutritional_info),
+      confidence,
+      source: service,
+      suggestion_only: true,
+      approved: false,
+    });
+  }
+  if (payload.storage_instructions != null && String(payload.storage_instructions).trim() !== "") {
+    out.push({
+      field: "storage_instructions",
+      value: String(payload.storage_instructions),
+      confidence,
+      source: service,
+      suggestion_only: true,
+      approved: false,
+    });
+  }
 
   return out;
 }
