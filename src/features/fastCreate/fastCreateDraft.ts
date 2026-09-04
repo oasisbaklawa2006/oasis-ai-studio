@@ -8,11 +8,15 @@
  * price fields are read-model-only for this app (pricing write authority remains the
  * governed Sales Pricing Rules flow).
  */
-import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import type { SaleType } from "@/features/productAuthority/saleType";
-import { getSaleTypeRequirements, productClassForSaleType } from "@/features/productAuthority/saleType";
-import { labelStarterFromPack } from "@/features/productAuthority/packLogic";
+
 import type { ReadinessCategoryLike } from "@/features/productAuthority/buildMeter";
+import { labelStarterFromPack } from "@/features/productAuthority/packLogic";
+import type { SaleType } from "@/features/productAuthority/saleType";
+import {
+  getSaleTypeRequirements,
+  productClassForSaleType,
+} from "@/features/productAuthority/saleType";
+import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import type { FastCreateSuggestions } from "./fastCreateSuggestions";
 
 export const FAST_CREATE_DRAFT_STORAGE_KEY = "oasis-fast-create-draft-v2";
@@ -34,6 +38,8 @@ export type FastCreateDraftSnapshot = {
   editedDescription: string | null;
   editedAliases: string | null;
   editedWhatsappKeywords: string | null;
+  /** Scanned or parsed barcode awaiting label association on create. */
+  intakeBarcode: string | null;
 };
 
 export function emptyFastCreateDraft(): FastCreateDraftSnapshot {
@@ -53,6 +59,7 @@ export function emptyFastCreateDraft(): FastCreateDraftSnapshot {
     editedDescription: null,
     editedAliases: null,
     editedWhatsappKeywords: null,
+    intakeBarcode: null,
   };
 }
 
@@ -95,7 +102,9 @@ export function heroPreviewFromDraft(draft: FastCreateDraftSnapshot): string | n
 }
 
 /** Fast Create build-meter categories — required set adapts to the selected sale type. */
-export function fastCreateReadinessCategories(draft: FastCreateDraftSnapshot): ReadinessCategoryLike[] {
+export function fastCreateReadinessCategories(
+  draft: FastCreateDraftSnapshot,
+): ReadinessCategoryLike[] {
   const req = getSaleTypeRequirements(draft.saleType, { b2bEnabled: draft.b2bEnabled });
   const categories: ReadinessCategoryLike[] = [];
 
@@ -184,7 +193,9 @@ export function fastCreateReadinessScore(categories: ReadinessCategoryLike[]): n
  * Full Editor form patch from a Fast Create draft — the handoff that stops the same
  * data being asked twice. Only fields the form already understands are emitted.
  */
-export function fastCreateFormPatchFromDraft(draft: FastCreateDraftSnapshot): Record<string, unknown> {
+export function fastCreateFormPatchFromDraft(
+  draft: FastCreateDraftSnapshot,
+): Record<string, unknown> {
   const patch: Record<string, unknown> = {
     ...(draft.suggestions?.formPatch ?? {}),
     product_name: draft.productName.trim(),
@@ -198,7 +209,7 @@ export function fastCreateFormPatchFromDraft(draft: FastCreateDraftSnapshot): Re
   if (draft.qtyPerPack && Number(draft.qtyPerPack) > 0) patch.pcs_per_pack = draft.qtyPerPack;
   if (draft.mrp && Number(draft.mrp) > 0) patch.mrp = draft.mrp;
   if (draft.b2bPrice && Number(draft.b2bPrice) > 0) patch.b2b_price = draft.b2bPrice;
-  if (draft.editedDescription != null && draft.editedDescription.trim()) {
+  if (draft.editedDescription?.trim()) {
     patch.description = draft.editedDescription.trim();
   }
 
@@ -208,6 +219,7 @@ export function fastCreateFormPatchFromDraft(draft: FastCreateDraftSnapshot): Re
     draft.packagingLabel,
   );
   if (labelStarter) patch.pack_size = labelStarter;
+  if (draft.intakeBarcode) patch.intake_barcode = draft.intakeBarcode;
 
   return patch;
 }

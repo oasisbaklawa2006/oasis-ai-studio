@@ -2,10 +2,8 @@
  * Canonical products-table column allowlist (Studio schema + documented Central compat).
  * Source: src/integrations/supabase/types.ts products Insert + live Central compat columns.
  */
-import type { Database } from "@/integrations/supabase/types";
-import {
-  isProductsPricingOrBasisField,
-} from "@/features/productAuthority/channelPricingMapper";
+
+import { isProductsPricingOrBasisField } from "@/features/productAuthority/channelPricingMapper";
 import {
   CENTRAL_COMPAT_PRODUCT_COLUMNS,
   isLiveProductsBlockedColumn,
@@ -14,16 +12,9 @@ import {
   LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
   LIVE_PRODUCTS_PRICING_FORM_KEYS,
 } from "@/features/productAuthority/liveProductsSchema";
+import type { Database } from "@/integrations/supabase/types";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 
-export {
-  CENTRAL_COMPAT_PRODUCT_COLUMNS,
-  LIVE_PRODUCTS_EXCLUDED_COLUMNS,
-  LIVE_PRODUCTS_PRICING_BASIS_FORM_KEYS,
-  LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
-  LIVE_PRODUCTS_PRICING_FORM_KEYS,
-  isLiveProductsBlockedColumn,
-};
 export {
   CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   CHANNEL_PRICING_FORM_FIELD_KEYS,
@@ -32,6 +23,14 @@ export {
   isPriceBasisFormField,
   isProductsPricingOrBasisField,
 } from "@/features/productAuthority/channelPricingMapper";
+export {
+  CENTRAL_COMPAT_PRODUCT_COLUMNS,
+  isLiveProductsBlockedColumn,
+  LIVE_PRODUCTS_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_BASIS_FORM_KEYS,
+  LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
+  LIVE_PRODUCTS_PRICING_FORM_KEYS,
+};
 
 export type ProductsInsert = Database["public"]["Tables"]["products"]["Insert"];
 export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
@@ -84,6 +83,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     is_sample: true,
     label_status: true,
     legacy_sku: true,
+    barcode_sku: true,
     main_department: true,
     master_carton_qty: true,
     master_carton_uom: true,
@@ -261,9 +261,10 @@ function isPricingLeakKey(key: string): boolean {
 }
 
 /** Strict allowlist sanitizer — only confirmed live products columns survive. */
-export function sanitizeLiveProductsPayload(
-  payload: Record<string, unknown>,
-): { payload: Record<string, unknown>; stripped: string[] } {
+export function sanitizeLiveProductsPayload(payload: Record<string, unknown>): {
+  payload: Record<string, unknown>;
+  stripped: string[];
+} {
   const stripped: string[] = [];
   const out: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(payload)) {
@@ -277,9 +278,10 @@ export function sanitizeLiveProductsPayload(
 }
 
 /** Strip keys not in live products write allowlist. */
-export function stripUnknownProductFields(
-  payload: Record<string, unknown>,
-): { payload: Record<string, unknown>; stripped: string[] } {
+export function stripUnknownProductFields(payload: Record<string, unknown>): {
+  payload: Record<string, unknown>;
+  stripped: string[];
+} {
   return sanitizeLiveProductsPayload(payload);
 }
 
@@ -301,17 +303,18 @@ export function validateProductSavePayload(
   if (mode === "create") {
     if (!payload.sku || !String(payload.sku).trim()) missing.push("sku");
   }
-  if (
-    payload.main_department === "ready_goods_store" &&
-    !payload.production_department
-  ) {
+  if (payload.main_department === "ready_goods_store" && !payload.production_department) {
     missing.push("production_department");
   }
   return { ok: missing.length === 0, missing, stripped: [] };
 }
 
 export function productSaveValidationMessage(validation: ProductSaveValidation): string {
-  if (!validation.ok && validation.missing.length === 1 && validation.missing[0] === "product_name") {
+  if (
+    !validation.ok &&
+    validation.missing.length === 1 &&
+    validation.missing[0] === "product_name"
+  ) {
     return "Product name is required.";
   }
   if (!validation.ok) {
@@ -365,6 +368,10 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     sku_locked: toBool(form.sku_locked, true),
     sku_generated_at: form.sku_generated_at ?? null,
     legacy_sku: form.legacy_sku ?? null,
+    // barcode_sku must only be set by callers that already invoked Core claim authority
+    // (Fast Create direct path). Never promote intake_barcode here — Full Editor and other
+    // save paths must not bypass catalogue_claim_intake_barcode.
+    barcode_sku: form.barcode_sku ?? null,
     division_code: form.division_code ?? null,
     category_code: form.category_code ?? null,
     subcategory_code: form.subcategory_code ?? null,
@@ -372,7 +379,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     serial_no: toNum(form.serial_no),
     main_department: form.main_department ?? null,
     production_department:
-      form.main_department === "ready_goods_store" ? form.production_department ?? null : null,
+      form.main_department === "ready_goods_store" ? (form.production_department ?? null) : null,
     primary_uom: form.primary_uom || form.b2b_uom || form.retail_uom || null,
     b2b_uom: form.b2b_uom ?? form.primary_uom ?? null,
     retail_uom: form.retail_uom ?? form.primary_uom ?? null,

@@ -1,21 +1,31 @@
 import { describe, expect, it } from "vitest";
 import {
+  emptyFastCreateDraft,
+  fastCreateFormPatchFromDraft,
+} from "@/features/fastCreate/fastCreateDraft";
+import { FAST_CREATE_SKU_BLOCK_MESSAGE } from "@/features/fastCreate/saveFastCreateProduct";
+import { PILOT_COLLISION_HINTS } from "@/features/productAuthority/pilotCollisionHints";
+import {
   CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   extractChannelPricingFromForm,
-  formToDbProductPayload,
-  formatProductSaveError,
   findPricingLeaksInProductPayload,
+  formatProductSaveError,
+  formToDbProductPayload,
   productSaveValidationMessage,
   resolveCentralLegacyProductName,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
-import { assertStructuredSkuForSave, isDraftSku } from "@/features/productAuthority/skuGuard";
-import { FAST_CREATE_SKU_BLOCK_MESSAGE } from "@/features/fastCreate/saveFastCreateProduct";
+import {
+  assertStructuredSkuForSave,
+  isDraftSku,
+  PILOT_SKUS,
+} from "@/features/productAuthority/skuGuard";
+import {
+  applyPrefeedSuggestions,
+  buildCategoryPrefeed,
+} from "@/features/productDefaults/categoryPrefeed";
 import { heroUrlWritePayload } from "@/lib/productImage";
-import { applyPrefeedSuggestions, buildCategoryPrefeed } from "@/features/productDefaults/categoryPrefeed";
-import { PILOT_COLLISION_HINTS } from "@/features/productAuthority/pilotCollisionHints";
-import { PILOT_SKUS } from "@/features/productAuthority/skuGuard";
 
 describe("productSchemaAdapter", () => {
   it("maps form to Studio columns (not Central legacy names)", () => {
@@ -77,6 +87,36 @@ describe("productSchemaAdapter", () => {
     });
     expect(payload.b2b_price).toBeUndefined();
     expect(findPricingLeaksInProductPayload(payload)).toEqual([]);
+  });
+
+  it("does not map intake_barcode to barcode_sku without Core claim authority", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Scanned Product",
+      sku: "OAS-AS-BKL-0001-0001",
+      intake_barcode: "5901234123457",
+    });
+    expect(payload.barcode_sku).toBeNull();
+  });
+
+  it("Full Editor handoff cannot bypass Core barcode claim from draft intake_barcode", () => {
+    const draft = emptyFastCreateDraft();
+    draft.intakeBarcode = "5901234123457";
+
+    const editorForm = fastCreateFormPatchFromDraft(draft);
+    expect(editorForm.intake_barcode).toBe("5901234123457");
+    expect(editorForm.barcode_sku).toBeUndefined();
+
+    const payload = formToDbProductPayload(editorForm);
+    expect(payload.barcode_sku).toBeNull();
+  });
+
+  it("persists barcode_sku only when caller already set it after Core claim", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Claimed Product",
+      sku: "OAS-AS-BKL-0001-0001",
+      barcode_sku: "5901234123457",
+    });
+    expect(payload.barcode_sku).toBe("5901234123457");
   });
 
   it("strips all channel pricing fields from products payload", () => {
