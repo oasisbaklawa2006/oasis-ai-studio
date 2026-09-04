@@ -176,6 +176,7 @@ const Media = () => {
         return;
       }
 
+      let uploaded = 0;
       for (const file of validFiles) {
         const path = buildDirectMediaPath(folder, file.name);
         const { error: upErr } = await uploadMediaFileToStorage(path, file);
@@ -194,9 +195,15 @@ const Media = () => {
         });
         if (!insertRes.ok) {
           toast.error(insertRes.message);
+          continue;
         }
+        uploaded += 1;
       }
-      toast.success(`${validFiles.length} file(s) uploaded`);
+      if (uploaded === 0) {
+        load();
+        return;
+      }
+      toast.success(`${uploaded} file(s) uploaded`);
       setOpen(false);
       setForm({
         file_url: "",

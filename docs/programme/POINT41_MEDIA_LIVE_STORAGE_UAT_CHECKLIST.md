@@ -27,9 +27,9 @@
 
 | # | Step | Expected result | Evidence to capture |
 | --- | --- | --- | --- |
-| B1 | Select product, choose **From gallery**, pick JPEG ≤50MB | File passes client validation; upload succeeds or draft submitted | Toast success; row in library or pending notice |
-| B2 | Attempt disallowed type (e.g. `.js` renamed to `.jpg` if browser allows) | **Rejected before storage** with validation toast | No storage object created |
-| B3 | Attempt oversize file (>50MB) | **Rejected before storage** | No storage object created |
+| B1 | Select product, choose **From gallery**, pick JPEG ≤50 MiB | File passes client validation; upload succeeds or draft submitted | Toast success; row in library or pending notice |
+| B2 | With **Type** set to image, attempt `.txt` file or `.mp4` video (genuinely disallowed MIME for image-only validation) | **Rejected before storage** with validation toast | No storage object created |
+| B3 | Attempt oversize file (>50 MiB / 52,428,800 bytes) | **Rejected before storage** | No storage object created |
 | B4 | Reload `/media` | Uploaded asset persists with correct approval-state badge | Screenshot of card with status badge |
 
 ## C. Physical camera capture (`/media`)
@@ -50,9 +50,9 @@
 | D1 | As contributor, submit media in draft mode | `catalogue_media_submissions` row `pending_approval` | Row visible in review desk |
 | D2 | As reviewer, open `/media/review` | Payload preview (image link or safe URL) and metadata match submission | Screenshot |
 | D3 | Reject with reason | Row moves to Rejected; `review_notes` / rejection visible | Screenshot |
-| D4 | Approve (separate submission) | RPC succeeds or surfaces Core mapping error verbatim | Toast + row status |
+| D4 | Confirm **Approve** is hidden/disabled in `/media/review` and Approval Inbox for media until Core mapping ships | UI shows blocked notice; reject still works | Screenshot of notice (no Approve button) |
 
-**Known Core constraint:** `approve_catalogue_media_submission` may raise *Approval mapping not finalized* until Core finalizes mapping — record verbatim error; do not mutate production schema from AI Studio.
+**Known Core constraint:** `approve_catalogue_media_submission` remains fail-closed (*Approval mapping not finalized*) until Core finalizes mapping — AI Studio UI must not expose a nonfunctional Approve action.
 
 ## E. Post-upload persistence
 

@@ -5,10 +5,16 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  isMediaCatalogueApprovalAvailable,
+  MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE,
+} from "@/features/mediaWorkspace/mediaCatalogueApprovalPolicy";
+import {
   formatSubmissionAge,
   formatSubmitterDisplay,
+  mediaSubmissionProductLabel,
   mediaSubmissionStatusLabel,
   safeDisplayableMediaUrl,
+  shouldShowMediaReviewEmptyState,
   summarizeMediaSubmissionPayload,
 } from "@/features/mediaWorkspace/mediaLibraryDisplay";
 import {
@@ -32,14 +38,19 @@ const MediaReview = () => {
   const [items, setItems] = useState<MediaSubmissionRow[]>([]);
   const [activeTab, setActiveTab] = useState<MediaSubmissionStatus>("pending_approval");
   const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const mediaApprovalAvailable = isMediaCatalogueApprovalAvailable();
 
   const load = async () => {
     setLoading(true);
     try {
       const rows = await fetchMediaSubmissions(["pending_approval", "approved", "rejected"]);
       setItems(rows);
+      setLoadError(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load media submissions");
+      const message = e instanceof Error ? e.message : "Failed to load media submissions";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -134,11 +145,22 @@ const MediaReview = () => {
           <div className="text-sm text-muted-foreground py-8 text-center">Loading submissions…</div>
         )}
 
-        {!loading && currentItems.length === 0 && (
-          <div className="catalogue-empty py-10">
-            <p className="catalogue-empty-text">No media submissions in this section.</p>
+        {!loading && loadError && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
+            Failed to load media submissions: {loadError}
           </div>
         )}
+
+        {!loading &&
+          shouldShowMediaReviewEmptyState({
+            loading,
+            loadError,
+            itemCount: currentItems.length,
+          }) && (
+            <div className="catalogue-empty py-10">
+              <p className="catalogue-empty-text">No media submissions in this section.</p>
+            </div>
+          )}
 
         {!loading &&
           currentItems.map((row) => {
@@ -155,7 +177,7 @@ const MediaReview = () => {
                       {summary.typeLabel} · {summary.operationIntent}
                     </div>
                     <div className="text-muted-foreground">
-                      Product: {summary.productId ?? row.target_record_id ?? "(unlinked)"}
+                      Product: {mediaSubmissionProductLabel(summary.productId)}
                     </div>
                     <div className="text-muted-foreground">
                       {formatSubmissionAge(row.submitted_at)}
@@ -219,28 +241,37 @@ const MediaReview = () => {
                 </div>
 
                 {isPending && (
-                  <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                    <Input
-                      className="flex-1"
-                      placeholder="Rejection reason (required)"
-                      value={reasons[row.id] ?? ""}
-                      onChange={(e) =>
-                        setReasons((prev) => ({ ...prev, [row.id]: e.target.value }))
-                      }
-                      aria-label="Rejection reason"
-                    />
-                    <div className="flex gap-2 shrink-0">
-                      <Button
-                        variant="outline"
-                        className="rounded-full"
-                        onClick={() => reject(row)}
-                        disabled={!(reasons[row.id] ?? "").trim()}
-                      >
-                        Reject
-                      </Button>
-                      <Button className="rounded-full" onClick={() => approve(row)}>
-                        Approve
-                      </Button>
+                  <div className="flex flex-col gap-2 pt-1">
+                    {!mediaApprovalAvailable && (
+                      <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                        {MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE}
+                      </div>
+                    )}
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        className="flex-1"
+                        placeholder="Rejection reason (required)"
+                        value={reasons[row.id] ?? ""}
+                        onChange={(e) =>
+                          setReasons((prev) => ({ ...prev, [row.id]: e.target.value }))
+                        }
+                        aria-label="Rejection reason"
+                      />
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          variant="outline"
+                          className="rounded-full"
+                          onClick={() => reject(row)}
+                          disabled={!(reasons[row.id] ?? "").trim()}
+                        >
+                          Reject
+                        </Button>
+                        {mediaApprovalAvailable && (
+                          <Button className="rounded-full" onClick={() => approve(row)}>
+                            Approve
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  countCompletedMediaUploads,
   formatSubmissionAge,
   mediaRowApprovalState,
   mediaRowStatusLabel,
+  mediaSubmissionProductLabel,
   safeDisplayableMediaUrl,
+  shouldShowMediaReviewEmptyState,
   summarizeMediaSubmissionPayload,
 } from "./mediaLibraryDisplay";
 
@@ -74,5 +77,52 @@ describe("formatSubmissionAge", () => {
   it("returns a human-readable age string", () => {
     const recent = new Date(Date.now() - 5 * 60_000).toISOString();
     expect(formatSubmissionAge(recent)).toMatch(/Submitted 5 minutes ago/);
+  });
+});
+
+describe("mediaSubmissionProductLabel", () => {
+  it("uses payload product id only and never invents identity", () => {
+    expect(mediaSubmissionProductLabel("prod-abc")).toBe("prod-abc");
+    expect(mediaSubmissionProductLabel(null)).toBe("(unlinked)");
+    expect(mediaSubmissionProductLabel("")).toBe("(unlinked)");
+  });
+});
+
+describe("shouldShowMediaReviewEmptyState", () => {
+  it("suppresses empty state while loading or after load error", () => {
+    expect(shouldShowMediaReviewEmptyState({ loading: true, loadError: null, itemCount: 0 })).toBe(
+      false,
+    );
+    expect(
+      shouldShowMediaReviewEmptyState({ loading: false, loadError: "network", itemCount: 0 }),
+    ).toBe(false);
+    expect(shouldShowMediaReviewEmptyState({ loading: false, loadError: null, itemCount: 0 })).toBe(
+      true,
+    );
+    expect(shouldShowMediaReviewEmptyState({ loading: false, loadError: null, itemCount: 2 })).toBe(
+      false,
+    );
+  });
+});
+
+describe("countCompletedMediaUploads", () => {
+  it("counts only outcomes where storage and insert both succeeded", () => {
+    expect(
+      countCompletedMediaUploads([
+        { storageOk: true, insertOk: true },
+        { storageOk: true, insertOk: false },
+        { storageOk: false, insertOk: false },
+        { storageOk: true, insertOk: true },
+      ]),
+    ).toBe(2);
+  });
+
+  it("returns zero when every upload failed", () => {
+    expect(
+      countCompletedMediaUploads([
+        { storageOk: false, insertOk: false },
+        { storageOk: true, insertOk: false },
+      ]),
+    ).toBe(0);
   });
 });

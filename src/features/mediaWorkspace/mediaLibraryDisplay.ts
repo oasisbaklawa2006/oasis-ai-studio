@@ -116,3 +116,25 @@ export function formatSubmitterDisplay(opts: {
 }): string {
   return opts.submitter_name || opts.submitter_email || opts.submitted_by || "Unknown";
 }
+
+/** Payload-only product identity for review surfaces — never fall back to target_record_id. */
+export function mediaSubmissionProductLabel(productId: string | null | undefined): string {
+  const id = productId?.trim();
+  return id ? id : "(unlinked)";
+}
+
+export function shouldShowMediaReviewEmptyState(opts: {
+  loading: boolean;
+  loadError: string | null;
+  itemCount: number;
+}): boolean {
+  if (opts.loading || opts.loadError) return false;
+  return opts.itemCount === 0;
+}
+
+/** Count uploads where both storage and DB insert succeeded (direct-write path). */
+export function countCompletedMediaUploads(
+  outcomes: ReadonlyArray<{ storageOk: boolean; insertOk: boolean }>,
+): number {
+  return outcomes.filter((o) => o.storageOk && o.insertOk).length;
+}
