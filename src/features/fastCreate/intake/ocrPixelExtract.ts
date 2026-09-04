@@ -1,4 +1,8 @@
 import { createWorker } from "tesseract.js";
+import {
+  assertTesseractRuntimeAvailable,
+  pinnedTesseractWorkerOptions,
+} from "./ocrTesseractRuntime";
 
 export type OcrPixelExtraction = {
   text: string;
@@ -9,7 +13,8 @@ export type OcrPixelExtraction = {
 export type OcrPixelExtractor = (file: File) => Promise<OcrPixelExtraction>;
 
 async function defaultPixelExtract(file: File): Promise<OcrPixelExtraction> {
-  const worker = await createWorker("eng");
+  await assertTesseractRuntimeAvailable();
+  const worker = await createWorker("eng", undefined, pinnedTesseractWorkerOptions());
   try {
     const { data } = await worker.recognize(file);
     return {
