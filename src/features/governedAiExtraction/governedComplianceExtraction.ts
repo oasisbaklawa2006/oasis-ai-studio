@@ -6,6 +6,7 @@ import {
   buildHeuristicComplianceSuggestions,
   parseAiComplianceResponse,
 } from "@/shared/ai/complianceSuggestions";
+import { readAiSuggestionPayloadValue } from "./complianceFieldAccess";
 import { mergeGovernedComplianceSuggestions } from "./governedFieldMerge";
 import type {
   GovernedAiConfidence,
@@ -39,7 +40,7 @@ function suggestionsFromPayload(
 ): GovernedAiFieldSuggestion[] {
   const out: GovernedAiFieldSuggestion[] = [];
   for (const field of COMPLIANCE_FIELD_KEYS) {
-    const value = payload[field];
+    const value = readAiSuggestionPayloadValue(payload, field);
     if (value == null || String(value).trim() === "") continue;
     out.push({
       field,

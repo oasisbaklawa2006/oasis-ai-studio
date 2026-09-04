@@ -3,7 +3,17 @@ import {
   type ComplianceFieldMetaMap,
   createAiSuggestionFieldMeta,
 } from "@/shared/ai/complianceApproval";
-import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
+import {
+  COMPLIANCE_SENSITIVE_FIELDS,
+  type ComplianceSensitiveField,
+} from "@/shared/ai/complianceConstants";
+import {
+  readComplianceFieldMeta,
+  readComplianceFormValue,
+  readGovernedSuggestionValue,
+  writeComplianceFieldMeta,
+  writeComplianceFormValue,
+} from "./complianceFieldAccess";
 
 function hasCanonicalValue(value: unknown): boolean {
   if (value === null || value === undefined) return false;
@@ -15,7 +25,7 @@ function isLockedCanonicalField(
   currentValue: unknown,
   metaMap: ComplianceFieldMetaMap | undefined,
 ): boolean {
-  const meta = metaMap?.[field];
+  const meta = readComplianceFieldMeta(metaMap, field);
   if (meta?.approved) return true;
   if (meta?.source === "manual") return true;
   if (!meta && hasCanonicalValue(currentValue)) return true;
@@ -45,18 +55,17 @@ export function mergeGovernedComplianceSuggestions(options: MergeGovernedComplia
   const appliedFields: ComplianceSensitiveField[] = [];
   const preservedFields: ComplianceSensitiveField[] = [];
 
-  for (const [field, rawValue] of Object.entries(suggestions) as Array<
-    [ComplianceSensitiveField, string | null | undefined]
-  >) {
+  for (const field of COMPLIANCE_SENSITIVE_FIELDS) {
+    const rawValue = readGovernedSuggestionValue(suggestions, field);
     if (rawValue == null || String(rawValue).trim() === "") continue;
 
-    if (isLockedCanonicalField(field, currentForm[field], metaMap)) {
+    if (isLockedCanonicalField(field, readComplianceFormValue(currentForm, field), metaMap)) {
       preservedFields.push(field);
       continue;
     }
 
-    merged[field] = String(rawValue);
-    nextMeta[field] = createAiSuggestionFieldMeta();
+    writeComplianceFormValue(merged, field, String(rawValue));
+    writeComplianceFieldMeta(nextMeta, field, createAiSuggestionFieldMeta());
     appliedFields.push(field);
   }
 
