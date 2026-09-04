@@ -5,8 +5,8 @@ import { extractGovernedAliases } from "./governedAliasExtraction";
 import {
   applyGovernedComplianceToForm,
   extractGovernedCompliance,
-} from "./governedComplianceExtraction";
-import { mergeComplianceMetaMaps } from "./governedFieldMerge";
+} from "./governedComplianceAiExtraction";
+import { mergeComplianceMetaMaps } from "./governedComplianceFieldMerge";
 import type { GovernedAiProvenance } from "./types";
 
 export const FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS = 15_000;

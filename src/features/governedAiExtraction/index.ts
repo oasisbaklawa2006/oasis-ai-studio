@@ -10,13 +10,13 @@ export {
   applyGovernedComplianceToForm,
   extractGovernedCompliance,
   type GovernedComplianceExtractionInput,
-} from "./governedComplianceExtraction";
+} from "./governedComplianceAiExtraction";
 export {
   fieldMetaRequiresApproval,
   type MergeGovernedComplianceOptions,
   mergeComplianceMetaMaps,
   mergeGovernedComplianceSuggestions,
-} from "./governedFieldMerge";
+} from "./governedComplianceFieldMerge";
 export type {
   GovernedAiConfidence,
   GovernedAiFieldSuggestion,

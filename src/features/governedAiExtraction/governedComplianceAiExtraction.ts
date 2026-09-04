@@ -6,7 +6,7 @@ import {
   buildHeuristicComplianceSuggestions,
   parseAiComplianceResponse,
 } from "@/shared/ai/complianceSuggestions";
-import { mergeGovernedComplianceSuggestions } from "./governedFieldMerge";
+import { mergeGovernedComplianceSuggestions } from "./governedComplianceFieldMerge";
 import type {
   GovernedAiConfidence,
   GovernedAiFieldSuggestion,

@@ -59,7 +59,7 @@ function buildBaseSuggestions(): FastCreateSuggestions {
   };
 }
 
-describe("governedFieldMerge", () => {
+describe("governedComplianceFieldMerge", () => {
   it("does not overwrite approved canonical compliance fields", () => {
     const result = mergeGovernedComplianceSuggestions({
       currentForm: { hsn_code: "12345678", gst_rate: "18" },
