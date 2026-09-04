@@ -287,6 +287,18 @@ export type CatalogueAuthorityTableDefinitions = {
 export type CoreKnowledgeSnapshotRow =
   CatalogueAuthorityTableDefinitions["whatsapp_intelligence_knowledge_snapshots"]["Row"];
 
+/** In-repo contract: scripts/supabase/PR06B_draft_approval_migration.sql */
+export type CatalogueDraftApprovalRpc = {
+  approve_catalogue_media_submission: {
+    Args: { draft_id: string };
+    Returns: undefined;
+  };
+  reject_catalogue_media_submission: {
+    Args: { draft_id: string; reason: string };
+    Returns: undefined;
+  };
+};
+
 export type ProductGovernanceRpc = {
   assess_product_delete_eligibility: {
     Args: { _product_id: string };
@@ -357,7 +369,7 @@ export type ProductGovernanceRpc = {
 export type ExtendedDatabase = Database & {
   public: Database["public"] & {
     Tables: Database["public"]["Tables"] & CatalogueAuthorityTableDefinitions;
-    Functions: Database["public"]["Functions"] & ProductGovernanceRpc;
+    Functions: Database["public"]["Functions"] & ProductGovernanceRpc & CatalogueDraftApprovalRpc;
   };
 };
 

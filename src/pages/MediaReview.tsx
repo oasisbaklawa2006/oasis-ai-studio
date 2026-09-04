@@ -12,9 +12,9 @@ import {
 import {
   approveMediaSubmission,
   fetchMediaSubmissions,
-  rejectMediaSubmission,
   type MediaSubmissionRow,
   type MediaSubmissionStatus,
+  rejectMediaSubmission,
 } from "@/features/mediaWorkspace/mediaReviewDesk";
 import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
 
@@ -57,6 +57,7 @@ const MediaReview = () => {
     }
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount only; load() identity is stable in intent
   useEffect(() => {
     (async () => {
       const ok = await isCatalogueReviewer();
@@ -180,7 +181,14 @@ const MediaReview = () => {
                   {showPreview ? (
                     <div className="aspect-square max-w-[200px] rounded-lg border bg-muted overflow-hidden">
                       {summary.fileUrl?.includes(".mp4") || summary.fileUrl?.includes(".webm") ? (
-                        <video src={summary.fileUrl} className="w-full h-full object-cover" controls />
+                        <a
+                          href={summary.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-center h-full min-h-[120px] text-xs text-muted-foreground p-4 text-center underline-offset-4 hover:underline"
+                        >
+                          Open video preview
+                        </a>
                       ) : (
                         <img
                           src={summary.fileUrl}
@@ -224,7 +232,9 @@ const MediaReview = () => {
                       className="flex-1"
                       placeholder="Rejection reason (required)"
                       value={reasons[row.id] ?? ""}
-                      onChange={(e) => setReasons((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                      onChange={(e) =>
+                        setReasons((prev) => ({ ...prev, [row.id]: e.target.value }))
+                      }
                       aria-label="Rejection reason"
                     />
                     <div className="flex gap-2 shrink-0">
