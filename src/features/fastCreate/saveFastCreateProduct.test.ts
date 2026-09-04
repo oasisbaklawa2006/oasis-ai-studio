@@ -1,15 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastCreateSuggestions } from "./fastCreateSuggestions";
 
-const rpcMock = vi.fn(async (_fn: string, args: Record<string, unknown>) => ({
-  data: `OAS-${args._division_code}-${args._category_code}-${args._subcategory_code}-${args._packaging_code}-0001`,
-  error: null,
-}));
+const rpcMock = vi.fn(async (fn: string, args: Record<string, unknown>) => {
+  if (fn === "catalogue_claim_intake_barcode") {
+    return { data: String(args.p_barcode), error: null };
+  }
+  if (fn === "submit_catalogue_product_draft_v1") {
+    return { data: [{ draft_id: "draft-1", already_pending: false }], error: null };
+  }
+  return {
+    data: `OAS-${args._division_code}-${args._category_code}-${args._subcategory_code}-${args._packaging_code}-0001`,
+    error: null,
+  };
+});
 
 vi.mock("@/integrations/supabase/client", () => {
   const insertChain: Record<string, unknown> = {};
   insertChain.select = () => insertChain;
-  insertChain.single = () => Promise.resolve({ data: { id: "prod-1", sku: "OAS-AS-BKL-ASS-LOOSE-0001" }, error: null });
+  insertChain.single = () =>
+    Promise.resolve({ data: { id: "prod-1", sku: "OAS-AS-BKL-ASS-LOOSE-0001" }, error: null });
   return {
     supabase: {
       rpc: (fn: string, args: Record<string, unknown>) => rpcMock(fn, args),
@@ -28,9 +37,11 @@ vi.mock("@/lib/aliasSchemaAdapter", () => ({
   insertProductAliases: async () => ({ error: null }),
 }));
 
-const { requireFastCreateSku, saveFastCreateProduct, FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX } = await import(
-  "./saveFastCreateProduct"
-);
+const {
+  requireFastCreateSku,
+  saveFastCreateProduct,
+  FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX,
+} = await import("./saveFastCreateProduct");
 const minimalSuggestions: FastCreateSuggestions = {
   formPatch: {
     product_name: "Test Product",
@@ -40,7 +51,12 @@ const minimalSuggestions: FastCreateSuggestions = {
   aliases: [],
   whatsappKeywords: [],
   searchKeywords: [],
-  labelStarter: { product_name: "Test Product", ingredients_hint: "", allergen_hint: "", net_weight_hint: "" },
+  labelStarter: {
+    product_name: "Test Product",
+    ingredients_hint: "",
+    allergen_hint: "",
+    net_weight_hint: "",
+  },
   productTruthStarters: { piecesPerKg: null, traysPerMasterCarton: null, primaryPackSummary: null },
   sources: { defaults: true, heuristicAliases: false, aiCompliance: false, aiAliases: false },
 };
@@ -65,8 +81,6 @@ describe("requireFastCreateSku — packaging authority (Defect 1 regression)", (
   });
 
   it("does NOT let a stale preset overwrite a changed packaging selection (regression for Defect 1)", async () => {
-    // Existing SKU was generated for RBOX, but the operator has since changed the packaging
-    // dropdown to PAPERBOX — the stale SKU must be regenerated, not reused with RBOX codes.
     const staleExisting = "OAS-AS-BKL-ASS-RBOX-0042";
     const result = await requireFastCreateSku("ready_packs", staleExisting, "PAPERBOX");
     expect(result.sku).not.toBe(staleExisting);
@@ -81,7 +95,11 @@ describe("requireFastCreateSku — packaging authority (Defect 1 regression)", (
     const reused = await requireFastCreateSku("ready_packs", "OAS-AS-BKL-ASS-RBOX-0001", "RBOX");
     expect(skuPackagingOf(reused.sku)).toBe(reused.codes.packaging_code);
 
-    const regenerated = await requireFastCreateSku("ready_packs", "OAS-AS-BKL-ASS-RBOX-0001", "TIN");
+    const regenerated = await requireFastCreateSku(
+      "ready_packs",
+      "OAS-AS-BKL-ASS-RBOX-0001",
+      "TIN",
+    );
     expect(skuPackagingOf(regenerated.sku)).toBe(regenerated.codes.packaging_code);
   });
 });
@@ -100,19 +118,15 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
       saveFastCreateProduct({
         suggestions: minimalSuggestions,
         heroUrl: null,
-        roles: ["owner"], // direct-write role
+        roles: ["owner"],
         categoryKey: "other",
         saleType: "internal_bom",
       }),
     ).rejects.toThrow(FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX);
-    // Guard must fire before any SKU RPC call — no product should be generated at all.
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
   it("blocks internal_bom even when heuristic category defaults already set product_class (Bugbot regression)", async () => {
-    // buildHeuristicSuggestions' applyCategoryDefaults always sets a product_class,
-    // independent of the chosen sale type — the guard must not rely on product_class
-    // being empty, or this exact case (the real Fast Create flow) bypasses it entirely.
     await expect(
       saveFastCreateProduct({
         suggestions: {
@@ -147,5 +161,20 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
       categoryKey: "other",
     });
     expect("id" in result).toBe(true);
+  });
+
+  it("claims intake barcode through Core authority before direct product insert", async () => {
+    const result = await saveFastCreateProduct({
+      suggestions: minimalSuggestions,
+      heroUrl: null,
+      roles: ["owner"],
+      categoryKey: "other",
+      extraFormPatch: { intake_barcode: "5901234123457" },
+    });
+    expect("id" in result).toBe(true);
+    expect(rpcMock).toHaveBeenCalledWith(
+      "catalogue_claim_intake_barcode",
+      expect.objectContaining({ p_barcode: "5901234123457" }),
+    );
   });
 });

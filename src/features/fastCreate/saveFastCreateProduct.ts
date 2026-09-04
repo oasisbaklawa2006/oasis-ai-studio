@@ -1,4 +1,9 @@
-import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
+import {
+  claimReviewedIntakeBarcode,
+  readIntakeBarcode,
+  submitFastCreateProductDraft,
+  withReviewedIntakeBarcode,
+} from "@/features/fastCreate/fastCreateIntakeBarcode";
 import {
   formatProductSaveError,
   formToDbProductPayload,
@@ -131,6 +136,11 @@ export async function saveFastCreateProduct(
     form.sku_locked = true;
     form.sku_generated_at = new Date().toISOString();
 
+    const intakeBarcode = readIntakeBarcode(input.extraFormPatch);
+    if (intakeBarcode) {
+      form.barcode_sku = await claimReviewedIntakeBarcode(intakeBarcode);
+    }
+
     const safePayload = stripUnapprovedComplianceFields(form, input.roles, {}, {});
     const productRow = formToDbProductPayload(safePayload);
 
@@ -153,20 +163,6 @@ export async function saveFastCreateProduct(
       throw new Error(formatProductSaveError(res.error));
     }
 
-    const intakeBarcode =
-      typeof input.extraFormPatch?.intake_barcode === "string"
-        ? input.extraFormPatch.intake_barcode.trim()
-        : null;
-    if (intakeBarcode) {
-      const { error: labelError } = await supabase.from("labels").insert({
-        product_id: res.data.id,
-        barcode: intakeBarcode,
-      });
-      if (labelError) {
-        console.warn("[FastCreate] label barcode association failed:", labelError.message);
-      }
-    }
-
     await persistFastCreateAliases(
       res.data.id,
       input.suggestions.aliases,
@@ -178,47 +174,52 @@ export async function saveFastCreateProduct(
   }
 
   if (contributor) {
-    const groupedPayload = {
-      identity: {
-        product_name: form.product_name,
-        product_class: form.product_class,
-        product_type: form.product_type,
-        category: form.category,
-        subcategory: form.subcategory,
-        description: form.description,
-        short_description: form.short_description,
-        main_department: form.main_department,
-        production_department: form.production_department,
+    const intakeBarcode = readIntakeBarcode(input.extraFormPatch);
+    const groupedPayload = withReviewedIntakeBarcode(
+      {
+        identity: {
+          product_name: form.product_name,
+          product_class: form.product_class,
+          product_type: form.product_type,
+          category: form.category,
+          subcategory: form.subcategory,
+          description: form.description,
+          short_description: form.short_description,
+          main_department: form.main_department,
+          production_department: form.production_department,
+        },
+        compliance: {
+          hsn_code: form.hsn_code,
+          gst_rate: form.gst_rate,
+          shelf_life_days: form.shelf_life_days,
+          ingredients: form.ingredients,
+          allergen_warnings: form.allergen_warnings,
+          storage_instructions: form.storage_instructions,
+        },
+        media: {
+          hero_image_url: input.heroUrl,
+        },
+        search: {
+          suggested_aliases: input.suggestions.aliases.map((a) => a.alias),
+          whatsapp_keywords: input.suggestions.whatsappKeywords,
+          search_keywords: input.suggestions.searchKeywords,
+        },
+        sku_draft: {
+          note: "SKU must be finalized via generate_oasis_sku during admin approval — DRAFT-* blocked.",
+        },
       },
-      compliance: {
-        hsn_code: form.hsn_code,
-        gst_rate: form.gst_rate,
-        shelf_life_days: form.shelf_life_days,
-        ingredients: form.ingredients,
-        allergen_warnings: form.allergen_warnings,
-        storage_instructions: form.storage_instructions,
-      },
-      media: {
-        hero_image_url: input.heroUrl,
-      },
-      search: {
-        suggested_aliases: input.suggestions.aliases.map((a) => a.alias),
-        whatsapp_keywords: input.suggestions.whatsappKeywords,
-        search_keywords: input.suggestions.searchKeywords,
-      },
-      sku_draft: {
-        note: "SKU must be finalized via generate_oasis_sku during admin approval — DRAFT-* blocked.",
-      },
-    };
+      intakeBarcode,
+    );
 
-    const draftRes = await submitCatalogueDraft({
-      draftType: "product",
-      operation: "create",
-      payload: groupedPayload,
-      targetRecordId: null,
-    });
-    if (!draftRes.ok) throw new Error(draftRes.message);
-    return { draft: true };
+    try {
+      const draftRes = await submitFastCreateProductDraft(groupedPayload, "create", null);
+      if (draftRes.alreadyPending) {
+        return { draft: true };
+      }
+      return { draft: true };
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Product draft submit failed");
+    }
   }
 
   throw new Error("You do not have permission to create products. Contact an administrator.");
