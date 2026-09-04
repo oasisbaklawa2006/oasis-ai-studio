@@ -246,20 +246,55 @@ describe("enrichFastCreateWithGovernedAi", () => {
   it("records degraded provenance when alias fetch times out", async () => {
     const base = buildBaseSuggestions();
     invokeMock.mockResolvedValue({ data: null, error: { message: "offline" } });
-    fetchMock.mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
+    const controller = new AbortController();
+    const timeoutDescriptor = Object.getOwnPropertyDescriptor(AbortSignal, "timeout");
+    Object.defineProperty(AbortSignal, "timeout", {
+      configurable: true,
+      value: vi.fn().mockReturnValue(controller.signal),
+    });
+    fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
+      return new Promise((_resolve, reject) => {
+        const signal = init?.signal;
+        if (!signal) {
+          reject(new DOMException("The operation timed out.", "TimeoutError"));
+          return;
+        }
+        const onAbort = () => {
+          reject(new DOMException("The operation timed out.", "TimeoutError"));
+        };
+        if (signal.aborted) {
+          onAbort();
+          return;
+        }
+        signal.addEventListener("abort", onAbort, { once: true });
+      });
+    });
 
-    const { provenance } = await enrichFastCreateWithGovernedAi(base, "Pyramid Baklawa", "baklawa");
+    try {
+      const enrichmentPromise = enrichFastCreateWithGovernedAi(base, "Pyramid Baklawa", "baklawa");
+      await Promise.resolve();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
+      controller.abort();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(provenance.some((entry) => entry.service === "oasis-ai-chat")).toBe(true);
-    expect(
-      provenance.some(
-        (entry) =>
-          entry.service === "oasis-ai-chat" &&
-          entry.provider_status === "degraded" &&
-          entry.fail_closed === true,
-      ),
-    ).toBe(true);
+      const { provenance } = await enrichmentPromise;
+
+      expect(provenance.some((entry) => entry.service === "oasis-ai-chat")).toBe(true);
+      expect(
+        provenance.some(
+          (entry) =>
+            entry.service === "oasis-ai-chat" &&
+            entry.provider_status === "degraded" &&
+            entry.fail_closed === true,
+        ),
+      ).toBe(true);
+    } finally {
+      if (timeoutDescriptor) {
+        Object.defineProperty(AbortSignal, "timeout", timeoutDescriptor);
+      } else {
+        Reflect.deleteProperty(AbortSignal, "timeout");
+      }
+    }
   });
 
   it("keeps AI aliases pending instead of merging them into persistable aliases", async () => {

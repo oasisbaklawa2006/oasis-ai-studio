@@ -32,4 +32,34 @@ describe("complianceAiStaleGuard", () => {
       }),
     ).toBe(false);
   });
+
+  it("discards AI responses when product_name or category changes during the request", () => {
+    const fingerprintAtStart = complianceFormRevisionFingerprint({
+      product_name: "Pyramid Baklawa",
+      category: "baklawa",
+      ingredients: "Manual recipe",
+    });
+
+    expect(
+      isStaleComplianceFormRevision(fingerprintAtStart, {
+        product_name: "Cashew Pyramid",
+        category: "baklawa",
+        ingredients: "Manual recipe",
+      }),
+    ).toBe(true);
+    expect(
+      isStaleComplianceFormRevision(fingerprintAtStart, {
+        product_name: "Pyramid Baklawa",
+        category: "sweets",
+        ingredients: "Manual recipe",
+      }),
+    ).toBe(true);
+    expect(
+      isStaleComplianceFormRevision(fingerprintAtStart, {
+        product_name: "Pyramid Baklawa",
+        category: "baklawa",
+        ingredients: "Manual recipe",
+      }),
+    ).toBe(false);
+  });
 });

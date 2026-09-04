@@ -1,5 +1,5 @@
 import { CheckCircle2, ShieldAlert, Sparkles } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,10 @@ export function ComplianceAiPanel({
   const [loading, setLoading] = useState(false);
   const canApprove = canApproveComplianceFields(roles);
   const formRef = useRef(form);
-  formRef.current = form;
+
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
 
   const applyGovernedExtraction = (extraction: ReturnType<typeof extractGovernedCompliance>) => {
     const {
@@ -161,6 +164,7 @@ export function ComplianceAiPanel({
       toast.error("Only owner, admin, or product manager can approve compliance fields.");
       return;
     }
+    bumpComplianceManualEditGeneration();
     setMetaMap((prev) => approveComplianceFieldInMap(prev, field, roles[0] ?? "admin"));
     toast.success(`${FIELD_LABELS[field] ?? field} approved for save.`);
   };
