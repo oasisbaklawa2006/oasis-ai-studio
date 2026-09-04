@@ -3,23 +3,29 @@ import {
   emptyFastCreateDraft,
   fastCreateFormPatchFromDraft,
 } from "@/features/fastCreate/fastCreateDraft";
+import { FAST_CREATE_SKU_BLOCK_MESSAGE } from "@/features/fastCreate/saveFastCreateProduct";
+import { PILOT_COLLISION_HINTS } from "@/features/productAuthority/pilotCollisionHints";
 import {
   CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   extractChannelPricingFromForm,
-  formToDbProductPayload,
-  formatProductSaveError,
   findPricingLeaksInProductPayload,
+  formatProductSaveError,
+  formToDbProductPayload,
   productSaveValidationMessage,
   resolveCentralLegacyProductName,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
-import { assertStructuredSkuForSave, isDraftSku } from "@/features/productAuthority/skuGuard";
-import { FAST_CREATE_SKU_BLOCK_MESSAGE } from "@/features/fastCreate/saveFastCreateProduct";
+import {
+  assertStructuredSkuForSave,
+  isDraftSku,
+  PILOT_SKUS,
+} from "@/features/productAuthority/skuGuard";
+import {
+  applyPrefeedSuggestions,
+  buildCategoryPrefeed,
+} from "@/features/productDefaults/categoryPrefeed";
 import { heroUrlWritePayload } from "@/lib/productImage";
-import { applyPrefeedSuggestions, buildCategoryPrefeed } from "@/features/productDefaults/categoryPrefeed";
-import { PILOT_COLLISION_HINTS } from "@/features/productAuthority/pilotCollisionHints";
-import { PILOT_SKUS } from "@/features/productAuthority/skuGuard";
 
 describe("productSchemaAdapter", () => {
   it("maps form to Studio columns (not Central legacy names)", () => {

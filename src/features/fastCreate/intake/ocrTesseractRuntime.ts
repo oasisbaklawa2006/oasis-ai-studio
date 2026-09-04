@@ -30,11 +30,7 @@ export function pinnedTesseractWorkerOptions() {
     langPath: TESSERACT_RUNTIME_PATHS.langPath,
     gzip: true,
   };
-  assertNoRemoteTesseractRuntimeUrls([
-    options.workerPath,
-    options.corePath,
-    options.langPath,
-  ]);
+  assertNoRemoteTesseractRuntimeUrls([options.workerPath, options.corePath, options.langPath]);
   return options;
 }
 
@@ -51,9 +47,7 @@ export async function assertTesseractRuntimeAvailable(): Promise<void> {
   for (const assetUrl of requiredAssets) {
     const response = await fetch(assetUrl, { method: "HEAD" });
     if (!response.ok) {
-      throw new Error(
-        `Tesseract runtime asset unavailable (${response.status}): ${assetUrl}`,
-      );
+      throw new Error(`Tesseract runtime asset unavailable (${response.status}): ${assetUrl}`);
     }
   }
 }
