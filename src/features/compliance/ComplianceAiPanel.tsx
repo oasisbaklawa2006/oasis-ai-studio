@@ -13,6 +13,7 @@ import {
 import {
   applyAppliedComplianceFields,
   approveComplianceFieldInMap,
+  complianceFieldDisplayLabel,
   manualComplianceFieldMetaPatch,
   readComplianceFieldMeta,
   readComplianceFormField,
@@ -42,16 +43,6 @@ type Props = {
   metaMap: ComplianceFieldMetaMap;
   setMetaMap: React.Dispatch<React.SetStateAction<ComplianceFieldMetaMap>>;
   onManualEdit: (field: ComplianceSensitiveField) => void;
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  hsn_code: "HSN",
-  gst_rate: "GST %",
-  shelf_life_days: "Shelf life (days)",
-  ingredients: "Ingredients",
-  allergen_warnings: "Allergen warnings",
-  nutritional_info: "Nutritional information",
-  storage_instructions: "Storage instructions",
 };
 
 export function ComplianceAiPanel({
@@ -166,7 +157,7 @@ export function ComplianceAiPanel({
     }
     bumpComplianceManualEditGeneration();
     setMetaMap((prev) => approveComplianceFieldInMap(prev, field, roles[0] ?? "admin"));
-    toast.success(`${FIELD_LABELS[field] ?? field} approved for save.`);
+    toast.success(`${complianceFieldDisplayLabel(field)} approved for save.`);
   };
 
   const pendingFields = Object.entries(metaMap).filter(
@@ -212,7 +203,7 @@ export function ComplianceAiPanel({
             const status = authorityStatus(field);
             return (
               <li key={field} className="flex items-center justify-between gap-2">
-                <span>{FIELD_LABELS[field] ?? field}</span>
+                <span>{complianceFieldDisplayLabel(field as ComplianceSensitiveField)}</span>
                 <span className={status.className}>{status.label}</span>
               </li>
             );
@@ -244,7 +235,7 @@ export function ComplianceAiPanel({
           <ul className="space-y-1">
             {pendingFields.map(([field]) => (
               <li key={field} className="flex items-center justify-between gap-2 text-sm">
-                <span>{FIELD_LABELS[field] ?? field}</span>
+                <span>{complianceFieldDisplayLabel(field as ComplianceSensitiveField)}</span>
                 {canApprove ? (
                   <Button
                     type="button"

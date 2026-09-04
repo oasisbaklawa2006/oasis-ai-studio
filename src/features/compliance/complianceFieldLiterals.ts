@@ -4,6 +4,35 @@ import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
 
 type FormSetter = (key: string, value: unknown) => void;
 
+export function complianceFieldDisplayLabel(field: ComplianceSensitiveField): string {
+  switch (field) {
+    case "hsn_code":
+      return "HSN";
+    case "gst_rate":
+      return "GST %";
+    case "shelf_life_days":
+      return "Shelf life (days)";
+    case "ingredients":
+      return "Ingredients";
+    case "allergen_warnings":
+      return "Allergen warnings";
+    case "nutritional_info":
+      return "Nutritional information";
+    case "storage_instructions":
+      return "Storage instructions";
+    case "nutrition_facts":
+      return "Nutrition facts";
+    case "country_of_origin":
+      return "Country of origin";
+    case "legal_claims":
+      return "Legal claims";
+    case "export_compliance_notes":
+      return "Export compliance notes";
+    case "health_claims":
+      return "Health claims";
+  }
+}
+
 export function applyAppliedComplianceFields(
   appliedFields: ComplianceSensitiveField[],
   mergedForm: Record<string, unknown>,
