@@ -1,6 +1,5 @@
 import type { FastCreateSuggestions } from "@/features/fastCreate/fastCreateSuggestions";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
-import { whatsappKeywordsFromAliases } from "@/features/productLanguage/aliasSeedRules";
 import { supabase } from "@/integrations/supabase/client";
 import { extractGovernedAliases } from "./governedAliasExtraction";
 import {
@@ -10,14 +9,62 @@ import {
 import { mergeComplianceMetaMaps } from "./governedFieldMerge";
 import type { GovernedAiProvenance } from "./types";
 
+export const FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS = 15_000;
+
+function createAliasFetchAbortSignal(): AbortSignal | undefined {
+  if (typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") {
+    return undefined;
+  }
+  return AbortSignal.timeout(FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS);
+}
+
 export type GovernedFastCreateEnrichment = {
   suggestions: FastCreateSuggestions;
   provenance: GovernedAiProvenance[];
 };
 
-function searchKeywordsFromForm(name: string, category: string, aliases: AliasSeed[]): string[] {
-  const base = [name, category, ...aliases.map((a) => a.alias)];
-  return [...new Set(base.map((s) => s.trim()).filter((s) => s.length > 1))].slice(0, 10);
+function cloneFastCreateSuggestions(base: FastCreateSuggestions): FastCreateSuggestions {
+  return {
+    ...base,
+    formPatch: { ...base.formPatch },
+    aliases: [...base.aliases],
+    whatsappKeywords: [...base.whatsappKeywords],
+    searchKeywords: [...base.searchKeywords],
+    labelStarter: { ...base.labelStarter },
+    productTruthStarters: { ...base.productTruthStarters },
+    sources: { ...base.sources },
+    complianceFieldMeta: { ...(base.complianceFieldMeta ?? {}) },
+    extractionProvenance: [...(base.extractionProvenance ?? [])],
+    pendingAiAliases: base.pendingAiAliases ? [...base.pendingAiAliases] : undefined,
+  };
+}
+
+export type PersistableFastCreateAliasPayload = {
+  aliases: AliasSeed[];
+  whatsappKeywords: string[];
+  searchKeywords: string[];
+};
+
+/**
+ * Returns only aliases/keywords that are approved for canonical persistence.
+ * AI-derived aliases remain in `pendingAiAliases` until explicitly approved.
+ */
+export function getPersistableFastCreateAliases(
+  suggestions: FastCreateSuggestions,
+): PersistableFastCreateAliasPayload {
+  const pendingKeys = new Set(
+    (suggestions.pendingAiAliases ?? []).map((alias) => alias.alias.trim().toLowerCase()),
+  );
+  const aliases = suggestions.aliases.filter(
+    (alias) => !pendingKeys.has(alias.alias.trim().toLowerCase()),
+  );
+  const filterKeyword = (keyword: string) => !pendingKeys.has(keyword.trim().toLowerCase());
+
+  return {
+    aliases,
+    whatsappKeywords: suggestions.whatsappKeywords.filter(filterKeyword),
+    searchKeywords: suggestions.searchKeywords.filter(filterKeyword),
+  };
 }
 
 /**
@@ -29,13 +76,7 @@ export async function enrichFastCreateWithGovernedAi(
   productName: string,
   category: string,
 ): Promise<GovernedFastCreateEnrichment> {
-  const next: FastCreateSuggestions = {
-    ...base,
-    formPatch: { ...base.formPatch },
-    sources: { ...base.sources },
-    complianceFieldMeta: { ...(base.complianceFieldMeta ?? {}) },
-    extractionProvenance: [...(base.extractionProvenance ?? [])],
-  };
+  const next = cloneFastCreateSuggestions(base);
   const provenance: GovernedAiProvenance[] = [];
 
   try {
@@ -96,12 +137,14 @@ export async function enrichFastCreateWithGovernedAi(
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
     if (supabaseUrl && anonKey) {
+      const abortSignal = createAliasFetchAbortSignal();
       const resp = await fetch(`${supabaseUrl}/functions/v1/oasis-ai-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${anonKey}`,
         },
+        ...(abortSignal ? { signal: abortSignal } : {}),
         body: JSON.stringify({
           messages: [
             {
@@ -119,17 +162,10 @@ export async function enrichFastCreateWithGovernedAi(
         provenance.push(aliasExtraction.provenance);
 
         if (aliasExtraction.aliases.length > 0) {
-          const merged = [...next.aliases];
-          const seen = new Set(merged.map((a) => a.alias.toLowerCase()));
-          for (const alias of aliasExtraction.aliases) {
-            if (!seen.has(alias.toLowerCase())) {
-              merged.push({ alias, alias_type: "search_term" });
-              seen.add(alias.toLowerCase());
-            }
-          }
-          next.aliases = merged.slice(0, 12);
-          next.whatsappKeywords = whatsappKeywordsFromAliases(next.aliases);
-          next.searchKeywords = searchKeywordsFromForm(productName, category, next.aliases);
+          next.pendingAiAliases = aliasExtraction.aliases.map((alias) => ({
+            alias,
+            alias_type: "search_term",
+          }));
           next.sources.aiAliases = aliasExtraction.provenance.provider_status === "ok";
         }
       } else {

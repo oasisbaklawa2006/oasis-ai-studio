@@ -1,6 +1,9 @@
 export {
   enrichFastCreateWithGovernedAi,
+  FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS,
   type GovernedFastCreateEnrichment,
+  getPersistableFastCreateAliases,
+  type PersistableFastCreateAliasPayload,
 } from "./fastCreateEnrichment";
 export { extractGovernedAliases, type GovernedAliasExtraction } from "./governedAliasExtraction";
 export {

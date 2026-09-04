@@ -33,8 +33,10 @@ vi.mock("@/shared/auth/centralPermissions", () => ({
   isCatalogueContributor: async () => false,
 }));
 
+const insertProductAliasesMock = vi.hoisted(() => vi.fn(async () => ({ error: null })));
+
 vi.mock("@/lib/aliasSchemaAdapter", () => ({
-  insertProductAliases: async () => ({ error: null }),
+  insertProductAliases: insertProductAliasesMock,
 }));
 
 const {
@@ -107,6 +109,43 @@ describe("requireFastCreateSku — packaging authority (Defect 1 regression)", (
 function skuPackagingOf(sku: string): string {
   return sku.split("-")[4];
 }
+
+describe("saveFastCreateProduct — unapproved AI aliases are not persisted", () => {
+  beforeEach(() => {
+    rpcMock.mockClear();
+    insertProductAliasesMock.mockClear();
+  });
+
+  it("persists only approved/heuristic aliases and excludes pending AI suggestions", async () => {
+    const result = await saveFastCreateProduct({
+      suggestions: {
+        ...minimalSuggestions,
+        aliases: [
+          { alias: "heuristic alias", alias_type: "search_term" },
+          { alias: "ai alias one", alias_type: "search_term" },
+        ],
+        pendingAiAliases: [{ alias: "ai alias one", alias_type: "search_term" }],
+        whatsappKeywords: ["heuristic", "ai alias one"],
+        searchKeywords: ["heuristic alias", "ai alias one"],
+        sources: {
+          defaults: true,
+          heuristicAliases: true,
+          aiCompliance: false,
+          aiAliases: true,
+        },
+      },
+      heroUrl: null,
+      roles: ["owner"],
+      categoryKey: "other",
+    });
+
+    expect("id" in result).toBe(true);
+    expect(insertProductAliasesMock).toHaveBeenCalledTimes(1);
+    const rows = insertProductAliasesMock.mock.calls[0]?.[1] as Array<{ alias: string }>;
+    expect(rows.some((row) => row.alias === "ai alias one")).toBe(false);
+    expect(rows.some((row) => row.alias === "heuristic alias")).toBe(true);
+  });
+});
 
 describe("saveFastCreateProduct — internal sale type never becomes sellable (Defect 2 regression)", () => {
   beforeEach(() => {

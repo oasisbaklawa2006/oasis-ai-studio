@@ -1,8 +1,15 @@
 import { CheckCircle2, ShieldAlert, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import {
+  bumpComplianceManualEditGeneration,
+  captureComplianceAiRequestGuard,
+  complianceFormRevisionFingerprint,
+  isStaleComplianceAiRequest,
+  isStaleComplianceFormRevision,
+} from "@/features/compliance/complianceAiStaleGuard";
 import {
   applyGovernedComplianceToForm,
   extractGovernedCompliance,
@@ -41,9 +48,18 @@ const FIELD_LABELS: Record<string, string> = {
   storage_instructions: "Storage instructions",
 };
 
-export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onManualEdit }: Props) {
+export function ComplianceAiPanel({
+  form,
+  set,
+  roles,
+  metaMap,
+  setMetaMap,
+  onManualEdit: _onManualEdit,
+}: Props) {
   const [loading, setLoading] = useState(false);
   const canApprove = canApproveComplianceFields(roles);
+  const formRef = useRef(form);
+  formRef.current = form;
 
   const applyGovernedExtraction = (extraction: ReturnType<typeof extractGovernedCompliance>) => {
     const {
@@ -73,6 +89,8 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
 
   const generateSuggestions = async () => {
     setLoading(true);
+    const guardAtStart = captureComplianceAiRequestGuard();
+    const formFingerprintAtStart = complianceFormRevisionFingerprint(formRef.current);
     try {
       const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
         body: {
@@ -80,6 +98,14 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
           category: form.category,
         },
       });
+
+      if (
+        isStaleComplianceAiRequest(guardAtStart) ||
+        isStaleComplianceFormRevision(formFingerprintAtStart, formRef.current)
+      ) {
+        toast.message("Discarded stale AI compliance suggestions after manual edits.");
+        return;
+      }
 
       const extraction = extractGovernedCompliance({
         product_name: String(form.product_name ?? ""),
@@ -102,6 +128,14 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
           : "AI suggestions applied to form — not approved for save until authorized user approves.",
       );
     } catch (e) {
+      if (
+        isStaleComplianceAiRequest(guardAtStart) ||
+        isStaleComplianceFormRevision(formFingerprintAtStart, formRef.current)
+      ) {
+        toast.message("Discarded stale AI compliance suggestions after manual edits.");
+        return;
+      }
+
       const extraction = extractGovernedCompliance({
         product_name: String(form.product_name ?? ""),
         category: String(form.category ?? ""),
@@ -238,6 +272,7 @@ export function trackManualComplianceEdit(
   setMetaMap: React.Dispatch<React.SetStateAction<ComplianceFieldMetaMap>>,
   onManualEdit: (field: ComplianceSensitiveField) => void,
 ) {
+  bumpComplianceManualEditGeneration();
   onManualEdit(field);
   setMetaMap((prev) => ({
     ...prev,

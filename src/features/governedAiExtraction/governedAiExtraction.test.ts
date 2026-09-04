@@ -1,11 +1,63 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { FastCreateSuggestions } from "@/features/fastCreate/fastCreateSuggestions";
 import { createAiSuggestionFieldMeta, createManualFieldMeta } from "@/shared/ai/complianceApproval";
 import {
   applyGovernedComplianceToForm,
+  enrichFastCreateWithGovernedAi,
   extractGovernedAliases,
   extractGovernedCompliance,
+  getPersistableFastCreateAliases,
   mergeGovernedComplianceSuggestions,
 } from "./index";
+
+const invokeMock = vi.fn();
+const fetchMock = vi.fn();
+
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    functions: {
+      invoke: (...args: unknown[]) => invokeMock(...args),
+    },
+  },
+}));
+
+beforeEach(() => {
+  invokeMock.mockReset();
+  fetchMock.mockReset();
+  globalThis.fetch = fetchMock as typeof fetch;
+  import.meta.env.VITE_SUPABASE_URL = "https://test-project.supabase.co";
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY = "test-publishable-key";
+});
+
+afterEach(() => {
+  fetchMock.mockReset();
+});
+
+function buildBaseSuggestions(): FastCreateSuggestions {
+  return {
+    formPatch: { ingredients: "", allergen_warnings: "" },
+    aliases: [{ alias: "heuristic alias", alias_type: "search_term" }],
+    whatsappKeywords: ["heuristic"],
+    searchKeywords: ["heuristic alias"],
+    labelStarter: {
+      product_name: "Pyramid Baklawa",
+      ingredients_hint: "base ingredients",
+      allergen_hint: "base allergens",
+      net_weight_hint: "500g",
+    },
+    productTruthStarters: {
+      piecesPerKg: null,
+      traysPerMasterCarton: null,
+      primaryPackSummary: null,
+    },
+    sources: {
+      defaults: true,
+      heuristicAliases: true,
+      aiCompliance: false,
+      aiAliases: false,
+    },
+  };
+}
 
 describe("governedFieldMerge", () => {
   it("does not overwrite approved canonical compliance fields", () => {
@@ -46,6 +98,20 @@ describe("governedFieldMerge", () => {
     expect(result.merged.ingredients).toBe("new ai text");
     expect(result.appliedFields).toEqual(["hsn_code", "ingredients"]);
     expect(result.complianceFieldMeta.hsn_code?.source).toBe("ai_suggestion");
+  });
+
+  it("preserves unapproved manual compliance fields from AI overwrite", () => {
+    const result = mergeGovernedComplianceSuggestions({
+      currentForm: { ingredients: "Operator typed recipe" },
+      suggestions: { ingredients: "AI draft ingredients" },
+      metaMap: {
+        ingredients: { source: "manual", approved: false, suggestion_only: false },
+      },
+    });
+
+    expect(result.merged.ingredients).toBe("Operator typed recipe");
+    expect(result.preservedFields).toEqual(["ingredients"]);
+    expect(result.appliedFields).toEqual([]);
   });
 });
 
@@ -145,5 +211,108 @@ describe("extractGovernedAliases", () => {
     expect(result.aliases).toEqual(["pyramid baklawa", "cashew pyramid"]);
     expect(result.provenance.provider_status).toBe("ok");
     expect(result.provenance.fail_closed).toBe(false);
+  });
+});
+
+describe("enrichFastCreateWithGovernedAi", () => {
+  it("does not mutate caller-owned labelStarter on enrichment", async () => {
+    const base = buildBaseSuggestions();
+    invokeMock.mockResolvedValue({
+      data: {
+        suggestion_only: true,
+        approved: false,
+        disclaimer: "AI suggestion only.",
+        suggestions: { ingredients: "AI ingredients", allergen_warnings: "AI allergens" },
+      },
+      error: null,
+    });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: async () => "pyramid baklawa, cashew pyramid",
+    });
+
+    const { suggestions } = await enrichFastCreateWithGovernedAi(
+      base,
+      "Pyramid Baklawa",
+      "baklawa",
+    );
+
+    expect(base.labelStarter.ingredients_hint).toBe("base ingredients");
+    expect(base.labelStarter.allergen_hint).toBe("base allergens");
+    expect(suggestions.labelStarter.ingredients_hint).toBe("AI ingredients");
+    expect(suggestions.labelStarter.allergen_hint).toBe("AI allergens");
+  });
+
+  it("records degraded provenance when alias fetch times out", async () => {
+    const base = buildBaseSuggestions();
+    invokeMock.mockResolvedValue({ data: null, error: { message: "offline" } });
+    fetchMock.mockRejectedValue(new DOMException("The operation timed out.", "TimeoutError"));
+
+    const { provenance } = await enrichFastCreateWithGovernedAi(base, "Pyramid Baklawa", "baklawa");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(provenance.some((entry) => entry.service === "oasis-ai-chat")).toBe(true);
+    expect(
+      provenance.some(
+        (entry) =>
+          entry.service === "oasis-ai-chat" &&
+          entry.provider_status === "degraded" &&
+          entry.fail_closed === true,
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps AI aliases pending instead of merging them into persistable aliases", async () => {
+    const base = buildBaseSuggestions();
+    invokeMock.mockResolvedValue({ data: null, error: { message: "offline" } });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      text: async () => "pyramid baklawa, cashew pyramid",
+    });
+
+    const { suggestions, provenance } = await enrichFastCreateWithGovernedAi(
+      base,
+      "Pyramid Baklawa",
+      "baklawa",
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(
+      provenance.some(
+        (entry) => entry.service === "oasis-ai-chat" && entry.provider_status === "ok",
+      ),
+    ).toBe(true);
+    expect(suggestions.pendingAiAliases?.map((alias) => alias.alias)).toEqual([
+      "pyramid baklawa",
+      "cashew pyramid",
+    ]);
+    expect(suggestions.aliases).toEqual(base.aliases);
+    expect(suggestions.whatsappKeywords).toEqual(base.whatsappKeywords);
+    expect(suggestions.searchKeywords).toEqual(base.searchKeywords);
+  });
+});
+
+describe("getPersistableFastCreateAliases", () => {
+  it("excludes pending AI aliases and derived keywords from persistence", () => {
+    const payload = getPersistableFastCreateAliases({
+      ...buildBaseSuggestions(),
+      aliases: [
+        { alias: "heuristic alias", alias_type: "search_term" },
+        { alias: "ai alias one", alias_type: "search_term" },
+      ],
+      pendingAiAliases: [{ alias: "ai alias one", alias_type: "search_term" }],
+      whatsappKeywords: ["heuristic", "ai alias one"],
+      searchKeywords: ["heuristic alias", "ai alias one"],
+      sources: {
+        defaults: true,
+        heuristicAliases: true,
+        aiCompliance: false,
+        aiAliases: true,
+      },
+    });
+
+    expect(payload.aliases.map((alias) => alias.alias)).toEqual(["heuristic alias"]);
+    expect(payload.whatsappKeywords).toEqual(["heuristic"]);
+    expect(payload.searchKeywords).toEqual(["heuristic alias"]);
   });
 });

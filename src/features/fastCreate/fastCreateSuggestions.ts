@@ -37,6 +37,8 @@ export type FastCreateSuggestions = {
   complianceFieldMeta?: ComplianceFieldMetaMap;
   /** Provider/runtime provenance for governed enrichment rounds. */
   extractionProvenance?: GovernedAiProvenance[];
+  /** Review-only AI alias suggestions — never persisted until explicitly approved. */
+  pendingAiAliases?: AliasSeed[];
 };
 
 function buildDescription(name: string, category: string, productType: string): string {

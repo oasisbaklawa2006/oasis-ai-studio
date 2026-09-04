@@ -17,7 +17,7 @@ function isLockedCanonicalField(
 ): boolean {
   const meta = metaMap?.[field];
   if (meta?.approved) return true;
-  if (meta?.source === "manual" && meta.approved !== false) return true;
+  if (meta?.source === "manual") return true;
   if (!meta && hasCanonicalValue(currentValue)) return true;
   return false;
 }
