@@ -58,7 +58,7 @@ const MediaReview = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount only; load() identity is stable in intent
   useEffect(() => {
-    (async () => {
+    void (async () => {
       const ok = await isCatalogueReviewer();
       setAllowed(ok);
       if (ok) await load();
@@ -75,7 +75,19 @@ const MediaReview = () => {
     [items],
   );
 
-  const currentItems = groupedByStatus[activeTab];
+  const currentItems = useMemo(() => {
+    switch (activeTab) {
+      case "pending_approval":
+        return groupedByStatus.pending_approval;
+      case "approved":
+        return groupedByStatus.approved;
+      case "rejected":
+        return groupedByStatus.rejected;
+    }
+  }, [activeTab, groupedByStatus]);
+
+  const rejectionReasonFor = (submissionId: string): string =>
+    submissionId in reasons ? reasons[submissionId] : "";
 
   const approve = async (row: MediaSubmissionRow) => {
     const res = await approveMediaSubmission(row.id);
@@ -89,7 +101,7 @@ const MediaReview = () => {
   };
 
   const reject = async (row: MediaSubmissionRow) => {
-    const reason = reasons[row.id] ?? "";
+    const reason = rejectionReasonFor(row.id);
     const res = await rejectMediaSubmission(row.id, reason);
     if (!res.ok) {
       toast.error(res.message);
@@ -133,7 +145,9 @@ const MediaReview = () => {
                 key={tab.key}
                 variant={isActive ? "default" : "outline"}
                 className="rounded-full"
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => {
+                  setActiveTab(tab.key);
+                }}
               >
                 {tab.label} ({count})
               </Button>
@@ -251,10 +265,10 @@ const MediaReview = () => {
                       <Input
                         className="flex-1"
                         placeholder="Rejection reason (required)"
-                        value={reasons[row.id] ?? ""}
-                        onChange={(e) =>
-                          setReasons((prev) => ({ ...prev, [row.id]: e.target.value }))
-                        }
+                        value={rejectionReasonFor(row.id)}
+                        onChange={(e) => {
+                          setReasons((prev) => ({ ...prev, [row.id]: e.target.value }));
+                        }}
                         aria-label="Rejection reason"
                       />
                       <div className="flex gap-2 shrink-0">
@@ -262,7 +276,7 @@ const MediaReview = () => {
                           variant="outline"
                           className="rounded-full"
                           onClick={() => reject(row)}
-                          disabled={!(reasons[row.id] ?? "").trim()}
+                          disabled={!rejectionReasonFor(row.id).trim()}
                         >
                           Reject
                         </Button>
