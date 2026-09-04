@@ -37,7 +37,7 @@ const nestedRead = (payload: Record<string, unknown> | null | undefined, path: s
   return path.split(".").reduce<unknown>((acc, key) => {
     if (acc == null || typeof acc !== "object") return undefined;
     if (!Object.hasOwn(acc, key)) return undefined;
-    return (acc as Record<string, unknown>)[key];
+    return Reflect.get(acc, key);
   }, payload);
 };
 

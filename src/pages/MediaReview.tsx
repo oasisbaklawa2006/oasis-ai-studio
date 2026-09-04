@@ -37,7 +37,7 @@ const MediaReview = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<MediaSubmissionRow[]>([]);
   const [activeTab, setActiveTab] = useState<MediaSubmissionStatus>("pending_approval");
-  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [reasons, setReasons] = useState<Map<string, string>>(() => new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
   const mediaApprovalAvailable = isMediaCatalogueApprovalAvailable();
 
@@ -86,8 +86,7 @@ const MediaReview = () => {
     }
   }, [activeTab, groupedByStatus]);
 
-  const rejectionReasonFor = (submissionId: string): string =>
-    submissionId in reasons ? reasons[submissionId] : "";
+  const rejectionReasonFor = (submissionId: string): string => reasons.get(submissionId) ?? "";
 
   const approve = async (row: MediaSubmissionRow) => {
     const res = await approveMediaSubmission(row.id);
@@ -108,7 +107,11 @@ const MediaReview = () => {
       return;
     }
     toast.success("Media rejected");
-    setReasons((prev) => ({ ...prev, [row.id]: "" }));
+    setReasons((prev) => {
+      const next = new Map(prev);
+      next.set(row.id, "");
+      return next;
+    });
     await load();
   };
 
@@ -267,7 +270,12 @@ const MediaReview = () => {
                         placeholder="Rejection reason (required)"
                         value={rejectionReasonFor(row.id)}
                         onChange={(e) => {
-                          setReasons((prev) => ({ ...prev, [row.id]: e.target.value }));
+                          const value = e.target.value;
+                          setReasons((prev) => {
+                            const next = new Map(prev);
+                            next.set(row.id, value);
+                            return next;
+                          });
                         }}
                         aria-label="Rejection reason"
                       />
