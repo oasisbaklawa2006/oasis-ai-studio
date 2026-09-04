@@ -48,6 +48,51 @@ const FIELD_LABELS: Record<string, string> = {
   storage_instructions: "Storage instructions",
 };
 
+function applyMergedComplianceField(
+  field: ComplianceSensitiveField,
+  mergedForm: Record<string, unknown>,
+  set: Props["set"],
+): void {
+  switch (field) {
+    case "hsn_code":
+      set("hsn_code", mergedForm.hsn_code);
+      return;
+    case "gst_rate":
+      set("gst_rate", mergedForm.gst_rate);
+      return;
+    case "shelf_life_days":
+      set("shelf_life_days", mergedForm.shelf_life_days);
+      return;
+    case "ingredients":
+      set("ingredients", mergedForm.ingredients);
+      return;
+    case "allergen_warnings":
+      set("allergen_warnings", mergedForm.allergen_warnings);
+      return;
+    case "nutritional_info":
+      set("nutritional_info", mergedForm.nutritional_info);
+      return;
+    case "nutrition_facts":
+      set("nutrition_facts", mergedForm.nutrition_facts);
+      return;
+    case "storage_instructions":
+      set("storage_instructions", mergedForm.storage_instructions);
+      return;
+    case "country_of_origin":
+      set("country_of_origin", mergedForm.country_of_origin);
+      return;
+    case "legal_claims":
+      set("legal_claims", mergedForm.legal_claims);
+      return;
+    case "export_compliance_notes":
+      set("export_compliance_notes", mergedForm.export_compliance_notes);
+      return;
+    case "health_claims":
+      set("health_claims", mergedForm.health_claims);
+      return;
+  }
+}
+
 export function ComplianceAiPanel({
   form,
   set,
@@ -72,7 +117,7 @@ export function ComplianceAiPanel({
     setMetaMap((prev) => ({ ...prev, ...complianceFieldMeta }));
 
     for (const field of appliedFields) {
-      set(field, mergedForm[field]);
+      applyMergedComplianceField(field, mergedForm, set);
     }
 
     if (preservedFields.length > 0) {

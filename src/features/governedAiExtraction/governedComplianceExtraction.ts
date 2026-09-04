@@ -6,7 +6,6 @@ import {
   buildHeuristicComplianceSuggestions,
   parseAiComplianceResponse,
 } from "@/shared/ai/complianceSuggestions";
-import { readAiSuggestionPayloadValue } from "./complianceFieldAccess";
 import { mergeGovernedComplianceSuggestions } from "./governedFieldMerge";
 import type {
   GovernedAiConfidence,
@@ -16,16 +15,6 @@ import type {
   GovernedAiService,
   GovernedComplianceExtraction,
 } from "./types";
-
-const COMPLIANCE_FIELD_KEYS: ComplianceSensitiveField[] = [
-  "hsn_code",
-  "gst_rate",
-  "shelf_life_days",
-  "ingredients",
-  "allergen_warnings",
-  "nutritional_info",
-  "storage_instructions",
-];
 
 function confidenceForStatus(status: GovernedAiProviderStatus): GovernedAiConfidence {
   if (status === "ok") return "medium";
@@ -39,9 +28,8 @@ function suggestionsFromPayload(
   confidence: GovernedAiConfidence,
 ): GovernedAiFieldSuggestion[] {
   const out: GovernedAiFieldSuggestion[] = [];
-  for (const field of COMPLIANCE_FIELD_KEYS) {
-    const value = readAiSuggestionPayloadValue(payload, field);
-    if (value == null || String(value).trim() === "") continue;
+  const push = (field: ComplianceSensitiveField, value: string | number | null | undefined) => {
+    if (value == null || String(value).trim() === "") return;
     out.push({
       field,
       value: String(value),
@@ -50,7 +38,16 @@ function suggestionsFromPayload(
       suggestion_only: true,
       approved: false,
     });
-  }
+  };
+
+  push("hsn_code", payload.hsn_code);
+  push("gst_rate", payload.gst_rate);
+  push("shelf_life_days", payload.shelf_life_days);
+  push("ingredients", payload.ingredients);
+  push("allergen_warnings", payload.allergen_warnings);
+  push("nutritional_info", payload.nutritional_info);
+  push("storage_instructions", payload.storage_instructions);
+
   return out;
 }
 
