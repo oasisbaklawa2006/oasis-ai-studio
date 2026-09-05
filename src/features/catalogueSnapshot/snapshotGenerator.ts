@@ -13,6 +13,7 @@ import {
   type ProductMediaRow,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
+import { serializePackagingHierarchyForSnapshot } from "@/features/productTruth/packagingHierarchyCanonical";
 import type {
   GstClassificationStatus,
   CatalogueSnapshotJson,
@@ -93,23 +94,14 @@ export function generateCatalogueSnapshot(
   const approvedImages = selectApprovedImageUrlsForCentral(mediaAssets);
   const hero = approvedImages[0] ?? str(input.form.hero_image_url);
 
-  const primaryPack = {
-    type: input.form.primary_pack_type,
-    uom: input.form.primary_pack_uom,
-    qty_per_pack: input.form.qty_per_pack,
-    qty_content_uom: input.form.qty_content_uom,
-    pack_label: input.form.pack_label,
-  };
-
-  const masterCarton = {
-    qty: input.form.master_carton_qty,
-    uom: input.form.master_carton_uom,
-    weight_kg: input.form.master_carton_weight_kg,
-  };
+  const packagingHierarchy = serializePackagingHierarchyForSnapshot(input.form);
+  const primaryPack = packagingHierarchy.primary_pack;
+  const masterCarton = packagingHierarchy.master_carton;
 
   const fulfillmentTransform = {
     primary_pack: primaryPack,
     master_carton: masterCarton,
+    case_carton: packagingHierarchy.case_carton,
     pieces_per_kg: input.form.pieces_per_kg,
     approximate_piece_weight_g: input.form.approximate_piece_weight_g,
     conversion_rules: conversionRules,
@@ -151,10 +143,7 @@ export function generateCatalogueSnapshot(
       b2b_uom: str(input.form.b2b_uom),
       rules: conversionRules,
     },
-    packaging_hierarchy: {
-      primary_pack: primaryPack,
-      master_carton: masterCarton,
-    },
+    packaging_hierarchy: packagingHierarchy,
     channel_rules: input.moqRules ?? [],
     pricing_rules: input.prices ?? [],
     media: {
