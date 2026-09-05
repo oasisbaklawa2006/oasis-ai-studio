@@ -3,7 +3,6 @@
  * Source: src/integrations/supabase/types.ts products Insert + live Central compat columns.
  */
 
-import { isProductsPricingOrBasisField } from "@/features/productAuthority/channelPricingMapper";
 import {
   CENTRAL_COMPAT_PRODUCT_COLUMNS,
   isLiveProductsBlockedColumn,
@@ -12,6 +11,7 @@ import {
   LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
   LIVE_PRODUCTS_PRICING_FORM_KEYS,
 } from "@/features/productAuthority/liveProductsSchema";
+import { enrichPackFormFromDbRow } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { Database } from "@/integrations/supabase/types";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 
@@ -443,7 +443,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     if (raw[k] === "") raw[k] = null;
   });
 
-  const { payload, stripped } = sanitizeLiveProductsPayload(raw);
+  const { payload } = sanitizeLiveProductsPayload(raw);
   return payload;
 }
 
@@ -459,6 +459,7 @@ export function dbRowToProductForm(
   return {
     ...empty,
     ...data,
+    ...enrichPackFormFromDbRow(data),
     product_name: toBlank(data.product_name ?? data.name),
     short_name: toBlank(data.short_name),
     category: toBlank(data.category),

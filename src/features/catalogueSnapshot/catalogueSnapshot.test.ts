@@ -13,18 +13,24 @@ vi.mock("@/integrations/supabase/client", () => {
   return { supabase: { from: () => chain } };
 });
 
-import { generateCatalogueSnapshot } from "./snapshotGenerator";
-import { validateSnapshotGate } from "./snapshotValidation";
+import {
+  evaluateProductReadiness,
+  productTruthInputFromForm,
+} from "@/features/productTruth/productReadiness";
+import type {
+  ChannelMoqRule,
+  ChannelPriceRecord,
+  ProductTruthInput,
+} from "@/features/productTruth/types";
+import { isImmutableVersion, updateCatalogueVersionSnapshot } from "./catalogueVersionStore";
 import {
   buildCentralSyncPreviewBundle,
   isStaleCatalogueVersion,
   LIVE_CENTRAL_WRITE_ENABLED,
   validateApprovedCatalogueProductSnapshot,
 } from "./centralSyncPayload";
-import { evaluateProductReadiness } from "@/features/productTruth/productReadiness";
-import { productTruthInputFromForm } from "@/features/productTruth/productReadiness";
-import { isImmutableVersion, updateCatalogueVersionSnapshot } from "./catalogueVersionStore";
-import type { ChannelMoqRule, ChannelPriceRecord, ProductTruthInput } from "@/features/productTruth/types";
+import { generateCatalogueSnapshot } from "./snapshotGenerator";
+import { validateSnapshotGate } from "./snapshotValidation";
 
 const baseForm: Record<string, unknown> = {
   id: "prod-11111111-1111-1111-1111-111111111111",
@@ -107,7 +113,9 @@ describe("catalogueSnapshot", () => {
       moqRules,
     });
     expect(snap.uom_conversion_rules.primary_uom).toBe("kg");
+    expect(snap.packaging_hierarchy.schema).toBe("point33_v1");
     expect(snap.packaging_hierarchy.primary_pack).toBeTruthy();
+    expect(snap.packaging_hierarchy.case_carton).toBeTruthy();
     expect(snap.channel_rules).toHaveLength(1);
     expect(snap.pricing_rules).toHaveLength(1);
     expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);
@@ -124,7 +132,12 @@ describe("catalogueSnapshot", () => {
       prices: approvedPrices,
       moqRules,
       languageAliasRows: [
-        { id: "a1", alias: "Pista Midya", product_id: String(baseForm.id), alias_type: "search_keyword" },
+        {
+          id: "a1",
+          alias: "Pista Midya",
+          product_id: String(baseForm.id),
+          alias_type: "search_keyword",
+        },
         { id: "a2", alias: "Midya", product_id: String(baseForm.id), alias_type: "official_alias" },
       ],
     });
@@ -242,10 +255,7 @@ describe("catalogueSnapshot", () => {
       updated_at: new Date().toISOString(),
     };
 
-    localStorage.setItem(
-      `oasis_catalogue_versions_${productId}`,
-      JSON.stringify([row]),
-    );
+    localStorage.setItem(`oasis_catalogue_versions_${productId}`, JSON.stringify([row]));
 
     const result = await updateCatalogueVersionSnapshot({
       productId,
@@ -290,12 +300,16 @@ describe("centralSyncPayload MRP channel consumption (pricing-authority fix)", (
   }
 
   it("consumes the approved mrp-channel rule as MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" }]);
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" },
+    ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
   });
 
   it("does not silently redefine a retail-channel selling price as MRP — retail only feeds base_price", () => {
-    const bundle = buildBundle([{ channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" }]);
+    const bundle = buildBundle([
+      { channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" },
+    ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
     expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(1000);
   });
@@ -336,28 +350,42 @@ describe("centralSyncPayload restricts the approved snapshot to approved-only pr
   const FAR_PAST = "2000-01-01T00:00:00Z";
 
   it("an approved mrp-channel rule populates MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" }]);
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR" },
+    ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
   });
 
   it("a pending mrp-channel rule does not populate MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "pending_approval", mrp: 750, currency: "INR" }]);
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "pending_approval", mrp: 750, currency: "INR" },
+    ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
   });
 
   it("a draft mrp-channel rule does not populate MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "draft", mrp: 750, currency: "INR" }]);
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "draft", mrp: 750, currency: "INR" },
+    ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
   });
 
   it("an archived mrp-channel rule does not populate MRP", () => {
-    const bundle = buildBundle([{ channel: "mrp", priceStatus: "archived", mrp: 750, currency: "INR" }]);
+    const bundle = buildBundle([
+      { channel: "mrp", priceStatus: "archived", mrp: 750, currency: "INR" },
+    ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
   });
 
   it("a future approved MRP rule does not populate MRP before its effectiveFrom", () => {
     const bundle = buildBundle([
-      { channel: "mrp", priceStatus: "approved", mrp: 750, currency: "INR", effectiveFrom: FAR_FUTURE },
+      {
+        channel: "mrp",
+        priceStatus: "approved",
+        mrp: 750,
+        currency: "INR",
+        effectiveFrom: FAR_FUTURE,
+      },
     ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
   });
@@ -378,16 +406,22 @@ describe("centralSyncPayload restricts the approved snapshot to approved-only pr
   });
 
   it("an approved retail rule populates base_price but never MRP", () => {
-    const bundle = buildBundle([{ channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" }]);
+    const bundle = buildBundle([
+      { channel: "retail", priceStatus: "approved", sellingPrice: 1000, currency: "INR" },
+    ]);
     expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(1000);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBeNull();
   });
 
   it("a pending/draft retail rule does not populate base_price", () => {
-    const pending = buildBundle([{ channel: "retail", priceStatus: "pending_approval", sellingPrice: 1000, currency: "INR" }]);
+    const pending = buildBundle([
+      { channel: "retail", priceStatus: "pending_approval", sellingPrice: 1000, currency: "INR" },
+    ]);
     expect(pending.approved_catalogue_product_snapshot.base_price).toBeNull();
 
-    const draft = buildBundle([{ channel: "retail", priceStatus: "draft", sellingPrice: 1000, currency: "INR" }]);
+    const draft = buildBundle([
+      { channel: "retail", priceStatus: "draft", sellingPrice: 1000, currency: "INR" },
+    ]);
     expect(draft.approved_catalogue_product_snapshot.base_price).toBeNull();
   });
 
