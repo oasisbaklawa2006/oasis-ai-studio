@@ -340,6 +340,11 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
   );
   const derivedCbm = deriveCbmFromCm(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm);
   const hasCompleteStructured = derivedCbm != null;
+  const hasStructuredDimension = [
+    form.dimension_l_cm,
+    form.dimension_w_cm,
+    form.dimension_h_cm,
+  ].some(hasTextValue);
 
   const productDims = hasCompleteStructured ? structuredText : resolveProductDimensionsCmText(form);
 
@@ -355,7 +360,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
         ? structuredText
         : null;
 
-  const cbm = hasCompleteStructured ? derivedCbm : toNum(form.cbm);
+  const cbm = hasStructuredDimension ? derivedCbm : toNum(form.cbm);
 
   const centralLegacyName = resolveCentralLegacyProductName({
     product_name: form.product_name,

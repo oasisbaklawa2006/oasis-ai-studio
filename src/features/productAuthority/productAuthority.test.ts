@@ -360,6 +360,18 @@ describe("productSchemaAdapter", () => {
     expect(payload.cbm).toBeNull();
   });
 
+  it("clears stale hydrated CBM when one structured dimension is removed", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "100",
+      dimension_w_cm: "100",
+      dimension_h_cm: "",
+      cbm: 1,
+    });
+    expect(payload.cbm).toBeNull();
+  });
+
   it("strips gross_weight_kg via live allowlist sanitizer", () => {
     const { payload } = sanitizeLiveProductsPayload({
       product_name: "Gift Box",
