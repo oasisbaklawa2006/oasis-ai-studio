@@ -216,6 +216,13 @@ function hasTextValue(v: unknown): boolean {
   return v != null && String(v).trim().length > 0;
 }
 
+/** True when structured L/W/H controls were hydrated or edited (including cleared to ""). */
+function isStructuredDimensionTouched(...fields: unknown[]): boolean {
+  return fields.some(
+    (v) => v === "" || hasTextValue(v) || (typeof v === "number" && Number.isFinite(v)),
+  );
+}
+
 function toNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);
@@ -340,13 +347,13 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
   );
   const derivedCbm = deriveCbmFromCm(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm);
   const hasCompleteStructured = derivedCbm != null;
-  const hasStructuredDimension = [
+  const structuredTouched = isStructuredDimensionTouched(
     form.dimension_l_cm,
     form.dimension_w_cm,
     form.dimension_h_cm,
-  ].some(hasTextValue);
+  );
 
-  const productDims = hasCompleteStructured ? structuredText : resolveProductDimensionsCmText(form);
+  const productDims = structuredTouched ? structuredText : resolveProductDimensionsCmText(form);
 
   const cartonDims = hasCompleteStructured
     ? toBool(form.fixed_carton_required, false)
@@ -354,13 +361,19 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
       : hasTextValue(form.carton_dimensions_cm)
         ? String(form.carton_dimensions_cm)
         : null
-    : hasTextValue(form.carton_dimensions_cm)
-      ? String(form.carton_dimensions_cm)
-      : toBool(form.fixed_carton_required, false)
-        ? structuredText
-        : null;
+    : structuredTouched
+      ? hasTextValue(form.carton_dimensions_cm)
+        ? String(form.carton_dimensions_cm)
+        : toBool(form.fixed_carton_required, false)
+          ? structuredText
+          : null
+      : hasTextValue(form.carton_dimensions_cm)
+        ? String(form.carton_dimensions_cm)
+        : toBool(form.fixed_carton_required, false)
+          ? structuredText
+          : null;
 
-  const cbm = hasStructuredDimension ? derivedCbm : toNum(form.cbm);
+  const cbm = structuredTouched ? derivedCbm : toNum(form.cbm);
 
   const centralLegacyName = resolveCentralLegacyProductName({
     product_name: form.product_name,

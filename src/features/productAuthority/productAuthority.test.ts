@@ -372,6 +372,32 @@ describe("productSchemaAdapter", () => {
     expect(payload.cbm).toBeNull();
   });
 
+  it("clears stale hydrated dims and CBM when all structured dimensions are cleared", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "",
+      dimension_w_cm: "",
+      dimension_h_cm: "",
+      product_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      cbm: 0.001,
+    });
+    expect(payload.product_dimensions_cm).toBeNull();
+    expect(payload.cbm).toBeNull();
+  });
+
+  it("uses partial structured text instead of stale hydrated product_dimensions_cm", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "22",
+      dimension_w_cm: "",
+      dimension_h_cm: "6",
+      product_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+    });
+    expect(payload.product_dimensions_cm).toBe("L 22 cm × H 6 cm");
+  });
+
   it("strips gross_weight_kg via live allowlist sanitizer", () => {
     const { payload } = sanitizeLiveProductsPayload({
       product_name: "Gift Box",
