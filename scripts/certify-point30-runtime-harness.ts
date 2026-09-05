@@ -2,12 +2,7 @@
  * Runtime harness invoked by scripts/certify-point30-governed-ai.mjs.
  * Reads JSON payloads from env vars set by the parent script.
  */
-import {
-  applyGovernedComplianceToForm,
-  extractGovernedCompliance,
-} from "@/features/governedAiExtraction/governedComplianceAiExtraction";
-import { extractGovernedAliases } from "@/features/governedAiExtraction/governedAliasExtraction";
-import { parseChatCompletionStreamText } from "@/shared/ai/chatCompletionStream";
+
 import {
   bumpComplianceManualEditGeneration,
   captureComplianceAiRequestGuard,
@@ -15,6 +10,12 @@ import {
   isStaleComplianceAiRequest,
   isStaleComplianceFormRevision,
 } from "@/features/compliance/complianceAiStaleGuard";
+import { extractGovernedAliases } from "@/features/governedAiExtraction/governedAliasExtraction";
+import {
+  applyGovernedComplianceToForm,
+  extractGovernedCompliance,
+} from "@/features/governedAiExtraction/governedComplianceAiExtraction";
+import { parseChatCompletionStreamText } from "@/shared/ai/chatCompletionStream";
 import { createManualFieldMeta } from "@/shared/ai/complianceApproval";
 
 const compliancePayload = process.env.CERT_COMPLIANCE_PAYLOAD
@@ -56,8 +57,7 @@ const manualPreserve = applyGovernedComplianceToForm(
     edgeData: {
       suggestion_only: true,
       approved: false,
-      disclaimer:
-        "AI suggestion only. Final GST/HSN must be approved manually by authorized user.",
+      disclaimer: "AI suggestion only. Final GST/HSN must be approved manually by authorized user.",
       suggestions: { hsn_code: "99999999", ingredients: "AI draft" },
     },
     edgeError: null,
@@ -69,9 +69,7 @@ const manualPreserve = applyGovernedComplianceToForm(
 );
 
 const assembled = parseChatCompletionStreamText(aliasText);
-const rawFragments = assembled
-  .split(/[,\n]/)
-  .map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
+const rawFragments = assembled.split(/[,\n]/).map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
 const aliasExtraction = extractGovernedAliases(rawFragments);
 
 const baseSuggestions = {

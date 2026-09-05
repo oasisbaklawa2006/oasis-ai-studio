@@ -13,7 +13,8 @@ import { spawnSync } from "node:child_process";
 const baseUrl = (
   process.env.CERT_SUPABASE_URL ?? "https://tcxvcatsqqertcnycuop.supabase.co"
 ).replace(/\/$/, "");
-const publishableKey = process.env.CERT_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const publishableKey =
+  process.env.CERT_PUBLISHABLE_KEY ?? process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const SYNTHETIC = {
   product_name: "Synthetic Pyramid Baklawa (Cert)",
@@ -88,21 +89,17 @@ function runUnitHarness() {
 }
 
 function runRuntimeHarness(compliancePayload, aliasText) {
-  const proc = spawnSync(
-    "npx",
-    ["vite-node", "scripts/certify-point30-runtime-harness.ts"],
-    {
-      encoding: "utf8",
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        VITE_SUPABASE_URL: baseUrl,
-        VITE_SUPABASE_PUBLISHABLE_KEY: publishableKey ?? "cert-placeholder-key",
-        CERT_COMPLIANCE_PAYLOAD: JSON.stringify(compliancePayload),
-        CERT_ALIAS_TEXT: aliasText,
-      },
+  const proc = spawnSync("npx", ["vite-node", "scripts/certify-point30-runtime-harness.ts"], {
+    encoding: "utf8",
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      VITE_SUPABASE_URL: baseUrl,
+      VITE_SUPABASE_PUBLISHABLE_KEY: publishableKey ?? "cert-placeholder-key",
+      CERT_COMPLIANCE_PAYLOAD: JSON.stringify(compliancePayload),
+      CERT_ALIAS_TEXT: aliasText,
     },
-  );
+  });
   return proc;
 }
 
@@ -122,11 +119,7 @@ async function main() {
   );
 
   const alias = await fetchAliasEdge();
-  record(
-    "runtime: oasis-ai-chat reachable",
-    alias.status === 200,
-    `HTTP ${alias.status}`,
-  );
+  record("runtime: oasis-ai-chat reachable", alias.status === 200, `HTTP ${alias.status}`);
 
   const proc = runRuntimeHarness(compliance.payload, alias.text);
 

@@ -89,7 +89,9 @@ export function parseAiComplianceResponse(data: unknown): AiComplianceResponse |
  * (gst_percentage, nutrition_facts) without the governed wrapper. Normalize to the
  * same review-only contract without weakening approval semantics.
  */
-function parseLegacyCentralComplianceResponse(row: Record<string, unknown>): AiComplianceResponse | null {
+function parseLegacyCentralComplianceResponse(
+  row: Record<string, unknown>,
+): AiComplianceResponse | null {
   const legacy: AiComplianceSuggestionPayload = {};
   if (row.hsn_code != null) legacy.hsn_code = String(row.hsn_code);
   if (row.gst_rate != null) legacy.gst_rate = row.gst_rate as string | number;
@@ -99,7 +101,8 @@ function parseLegacyCentralComplianceResponse(row: Record<string, unknown>): AiC
   if (row.allergen_warnings != null) legacy.allergen_warnings = String(row.allergen_warnings);
   if (row.nutritional_info != null) legacy.nutritional_info = String(row.nutritional_info);
   if (row.nutrition_facts != null) legacy.nutritional_info = String(row.nutrition_facts);
-  if (row.storage_instructions != null) legacy.storage_instructions = String(row.storage_instructions);
+  if (row.storage_instructions != null)
+    legacy.storage_instructions = String(row.storage_instructions);
 
   if (Object.keys(legacy).length === 0) return null;
   if (row.approved === true) return null;
