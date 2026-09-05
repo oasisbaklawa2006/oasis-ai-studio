@@ -62,7 +62,6 @@ import {
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { resolveProductEditTab } from "@/features/productAuthority/productEditTabs";
 import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
-import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import {
   buildDimensionsText,
   dbRowToProductForm,
@@ -72,6 +71,7 @@ import {
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
+import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
@@ -639,6 +639,7 @@ const ProductEdit = () => {
   const location = useLocation();
   const duplicateFrom = searchParams.get("duplicateFrom");
   const isNew = !id || id === "new";
+  const savedProductId = id ?? "";
   const nav = useNavigate();
   const { roles } = useAuth();
 
@@ -807,7 +808,7 @@ const ProductEdit = () => {
   useEffect(() => {
     if (!isNew || duplicateFrom) return;
     const fastDraft = loadFastCreateDraft();
-    if (!fastDraft || !fastDraft.productName.trim()) return;
+    if (!fastDraft?.productName.trim()) return;
     const patch = fastCreateFormPatchFromDraft(fastDraft);
     setForm((prev: Record<string, unknown>) => ({ ...prev, ...patch }));
     setDirty(true);
@@ -1933,7 +1934,7 @@ const ProductEdit = () => {
               {!isNew && (
                 <AliasManager
                   id="product-language-terms"
-                  productId={id!}
+                  productId={savedProductId}
                   productName={form.product_name ?? ""}
                   onAliasesChange={() => setLanguageTermsRefreshKey((n) => n + 1)}
                 />
@@ -2273,7 +2274,7 @@ const ProductEdit = () => {
             {!isNew && (
               <TabsContent value="media" className="space-y-6">
                 <ProductMediaUploader
-                  productId={id!}
+                  productId={savedProductId}
                   productSku={form.sku}
                   variant={isTestingMediaGovernance() ? "hero-only" : "full"}
                   currentHero={resolveProductHeroUrl({
@@ -2551,7 +2552,7 @@ const ProductEdit = () => {
                   </div>
                 ) : (
                   <BomBuilder
-                    parentId={id!}
+                    parentId={savedProductId}
                     productClass={form.product_class}
                     bomRequired={isPackingAssembly || !!form.bom_required}
                   />
@@ -2562,14 +2563,14 @@ const ProductEdit = () => {
             {!isNew && (
               <TabsContent value="channels" className="space-y-6">
                 <ChannelMoqRules
-                  productId={id!}
+                  productId={savedProductId}
                   product={form}
                   onRulesChange={() => {
                     if (id) void loadChannelAuthority(id);
                   }}
                 />
                 <ChannelPricingRules
-                  productId={id!}
+                  productId={savedProductId}
                   product={form}
                   onRulesChange={() => {
                     if (id) void loadChannelAuthority(id);
@@ -2873,7 +2874,7 @@ const ProductEdit = () => {
 
           {!isNew && isTestingMediaGovernance() && (
             <ProductMediaUploader
-              productId={id!}
+              productId={savedProductId}
               productSku={form.sku}
               variant="hero-only"
               currentHero={resolveProductHeroUrl({

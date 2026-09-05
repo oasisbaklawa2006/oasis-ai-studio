@@ -19,11 +19,7 @@ export function formatDimensionsCmText(
   const w = positiveNum(widthCm);
   const h = positiveNum(heightCm);
   if (!l && !w && !h) return null;
-  return [
-    l ? `L ${l} cm` : null,
-    w ? `W ${w} cm` : null,
-    h ? `H ${h} cm` : null,
-  ]
+  return [l ? `L ${l} cm` : null, w ? `W ${w} cm` : null, h ? `H ${h} cm` : null]
     .filter(Boolean)
     .join(" × ");
 }

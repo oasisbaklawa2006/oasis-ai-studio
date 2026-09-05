@@ -439,7 +439,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     if (raw[k] === "") raw[k] = null;
   });
 
-  const { payload, stripped } = sanitizeLiveProductsPayload(raw);
+  const { payload } = sanitizeLiveProductsPayload(raw);
   return payload;
 }
 
