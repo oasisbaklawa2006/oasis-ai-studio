@@ -107,7 +107,9 @@ describe("catalogueSnapshot", () => {
       moqRules,
     });
     expect(snap.uom_conversion_rules.primary_uom).toBe("kg");
+    expect(snap.packaging_hierarchy.schema).toBe("point33_v1");
     expect(snap.packaging_hierarchy.primary_pack).toBeTruthy();
+    expect(snap.packaging_hierarchy.case_carton).toBeTruthy();
     expect(snap.channel_rules).toHaveLength(1);
     expect(snap.pricing_rules).toHaveLength(1);
     expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);
