@@ -29,6 +29,7 @@
     "test:full-app-audit": "playwright test --config playwright.full-app-audit.config.ts",
     "test:catalogue-final-acceptance": "playwright test --config playwright.catalogue-acceptance.config.ts",
     "smoke:catalogue-ai": "node scripts/smoke-catalogue-ai.mjs",
+    "certify:point30-governed-ai": "node scripts/certify-point30-governed-ai.mjs",
     "check:boundaries": "bash scripts/check-repo-boundaries.sh"
   },
   "dependencies": {

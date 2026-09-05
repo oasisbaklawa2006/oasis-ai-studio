@@ -88,33 +88,7 @@ export function buildCatalogueContentPrompt(
   ].join("\n");
 }
 
-/**
- * Extracts assembled text from an oasis-ai-chat response. Handles the real streamed-chunk shape
- * (one `data: {...}` JSON object per line, terminated by `data: [DONE]`) and falls back to treating
- * the raw text as already-assembled content if no such lines are found — never throws.
- */
-export function parseChatCompletionStreamText(raw: string): string {
-  const lines = raw
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const dataLines = lines.filter((l) => l.startsWith("data:"));
-  if (dataLines.length === 0) return raw.trim();
-
-  let assembled = "";
-  for (const line of dataLines) {
-    const payload = line.slice("data:".length).trim();
-    if (!payload || payload === "[DONE]") continue;
-    try {
-      const parsed = JSON.parse(payload);
-      const delta = parsed?.choices?.[0]?.delta?.content;
-      if (typeof delta === "string") assembled += delta;
-    } catch {
-      // Malformed chunk — skip it rather than let a parse error abort the whole response.
-    }
-  }
-  return assembled.trim();
-}
+export { parseChatCompletionStreamText } from "@/shared/ai/chatCompletionStream";
 
 /** Strips markdown code fences and extracts the first top-level JSON object, if any. */
 export function extractJsonObject(text: string): unknown | null {

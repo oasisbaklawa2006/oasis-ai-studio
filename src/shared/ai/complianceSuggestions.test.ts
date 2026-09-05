@@ -33,6 +33,21 @@ describe("complianceSuggestions", () => {
     expect(parsed?.suggestions.hsn_code).toBe("18069090");
   });
 
+  it("parseAiComplianceResponse accepts live Central flat payload", () => {
+    const parsed = parseAiComplianceResponse({
+      hsn_code: "19059090",
+      gst_percentage: 18,
+      ingredients: "Synthetic ingredients",
+      allergen_warnings: "Synthetic allergens",
+      nutrition_facts: "Per 100g synthetic",
+    });
+    expect(parsed?.approved).toBe(false);
+    expect(parsed?.suggestion_only).toBe(true);
+    expect(parsed?.suggestions.hsn_code).toBe("19059090");
+    expect(parsed?.suggestions.gst_rate).toBe(18);
+    expect(parsed?.suggestions.nutritional_info).toBe("Per 100g synthetic");
+  });
+
   it("resolveAiComplianceResponse falls back to heuristic on invalid payload", () => {
     const { response, usedHeuristic } = resolveAiComplianceResponse(
       { ok: false, message: "down" },
