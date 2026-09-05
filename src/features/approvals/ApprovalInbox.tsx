@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   isMediaCatalogueApprovalAvailable,
+  isMediaDraftApprovalUiBlocked,
   MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE,
 } from "@/features/mediaWorkspace/mediaCatalogueApprovalPolicy";
 import {
@@ -261,7 +262,7 @@ export default function ApprovalInbox() {
       toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
       return;
     }
-    if (r.draftType === "media" && !isMediaCatalogueApprovalAvailable()) {
+    if (isMediaDraftApprovalUiBlocked(r.draftType)) {
       toast.warning(MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE);
       return;
     }
@@ -351,8 +352,7 @@ export default function ApprovalInbox() {
             const isRejected = r.status === "rejected";
             const reviewFlags = getDisplayReviewFlags(r.payload);
             const flagsFromPayload = getReviewFlags(r.payload).length > 0;
-            const mediaApprovalBlocked =
-              r.draftType === "media" && !isMediaCatalogueApprovalAvailable();
+            const mediaApprovalBlocked = isMediaDraftApprovalUiBlocked(r.draftType);
 
             return (
               <div key={`${r.draftType}-${r.id}`} className="luxe-panel space-y-3">

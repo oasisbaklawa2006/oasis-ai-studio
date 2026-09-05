@@ -2,7 +2,7 @@
 
 **Work item:** Central #459 Point 41 (Media workspace)  
 **Repository:** `oasis-ai-studio` (AI/knowledge plane only)  
-**Baseline:** `main` @ work start (2026-09-03)  
+**Baseline:** `main` @ `cdf90149` (Point 29 #135 + Point 30 #138 merged); branch rebased before physical UAT  
 **Branch:** `cursor/point41-media-workspace-closure-0890`  
 **Out of scope:** Point 29 PR #135 (`/products/:id/media` route), Point 30 PR #138 (aliases authority), Core migrations, production deploy
 
@@ -13,7 +13,7 @@
 | Media Library (`/media`) | **IN PROCESS → closure delta** | Upload/edit/review paths exist; this PR hardens fail-closed validation and approval badges |
 | Media Review (`/media/review`) | **GAP CLOSED (client)** | SCREEN #41 governance desk added |
 | Product media tab (`ProductEdit` → media) | **Evidence on main** | `ProductMediaUploader.tsx` — not modified in this PR |
-| Approval Inbox (`/approvals`) | **Evidence on main** | Generic draft desk includes media — unchanged |
+| Approval Inbox (`/approvals`) | **Evidence on main + media gate** | Generic draft desk includes media; media Approve hidden via `isMediaDraftApprovalUiBlocked` |
 | Storage authority | **Core dependency** | Bucket `product-media`; client mirrors limits in `mediaDraftBoundary.ts` |
 | Live storage UAT | **Remaining gate** | Physical camera / live bucket probe not evidenced on this HEAD |
 

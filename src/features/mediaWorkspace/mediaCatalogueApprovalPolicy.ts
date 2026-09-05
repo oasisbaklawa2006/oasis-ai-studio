@@ -8,3 +8,8 @@ export const MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE =
 export function isMediaCatalogueApprovalAvailable(): boolean {
   return false;
 }
+
+/** True when Approval Inbox / Media Review must hide the Approve action for a media draft. */
+export function isMediaDraftApprovalUiBlocked(draftType: string): boolean {
+  return draftType === "media" && !isMediaCatalogueApprovalAvailable();
+}
