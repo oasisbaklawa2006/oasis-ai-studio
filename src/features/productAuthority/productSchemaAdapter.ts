@@ -13,6 +13,7 @@ import {
 } from "@/features/productAuthority/liveProductsSchema";
 import {
   deriveCbmFromCm,
+  formatDimensionsCmText,
   resolveDimensionsCmText,
 } from "@/features/productAuthority/shippingDimensions";
 import type { Database } from "@/integrations/supabase/types";
@@ -329,6 +330,12 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
   const hero = (form.hero_image_url as string) ?? null;
   const dims = resolveDimensionsCmText(form);
   const derivedCbm = deriveCbmFromCm(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm);
+  const cartonDims =
+    form.carton_dimensions_cm != null && String(form.carton_dimensions_cm).trim()
+      ? String(form.carton_dimensions_cm)
+      : toBool(form.fixed_carton_required, false)
+        ? formatDimensionsCmText(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm)
+        : null;
 
   const centralLegacyName = resolveCentralLegacyProductName({
     product_name: form.product_name,
@@ -394,7 +401,8 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     dimension_w_cm: toNum(form.dimension_w_cm),
     dimension_h_cm: toNum(form.dimension_h_cm),
     product_dimensions_cm: dims,
-    cbm: derivedCbm,
+    carton_dimensions_cm: cartonDims,
+    cbm: toNum(form.cbm) ?? derivedCbm,
     grams_per_piece: toNum(form.approximate_piece_weight_g),
     pcs_per_kg:
       toNum(form.pieces_per_kg) ??
@@ -494,6 +502,7 @@ export function dbRowToProductForm(
     dimension_l_cm: toBlank(data.dimension_l_cm),
     dimension_w_cm: toBlank(data.dimension_w_cm),
     dimension_h_cm: toBlank(data.dimension_h_cm),
+    carton_dimensions_cm: toBlank(data.carton_dimensions_cm),
     cbm: toBlank(data.cbm),
     // UI-only compliance text (not persisted on products row)
     ingredients: toBlank(data.ingredients),

@@ -2476,8 +2476,8 @@ const ProductEdit = () => {
                         <span className="text-muted-foreground">Derived volume (CBM): </span>
                         <span className="font-mono font-medium">{derivedCbmPreview} m³</span>
                         <p className="text-[10px] text-muted-foreground mt-1">
-                          Calculated from L × W × H (cm). Persisted CBM requires Core schema on
-                          shared products.
+                          Calculated from L × W × H (cm). Saved on product save when all three
+                          dimensions are set.
                         </p>
                       </div>
                     )}
