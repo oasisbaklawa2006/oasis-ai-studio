@@ -79,4 +79,15 @@ describe("packaging dimension — pack-based selling", () => {
     expect(packaging?.complete).toBe(false);
     expect(packaging?.note).toContain("zero");
   });
+
+  it("blocks packaging readiness on negative hierarchy quantities", () => {
+    const input = productTruthInputFromForm({
+      ...MISR15_FORM,
+      pcs_per_carton: -24,
+    });
+    const result = evaluateProductReadiness(input);
+    const packaging = result.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(false);
+    expect(packaging?.note).toContain("pcs_per_carton");
+  });
 });

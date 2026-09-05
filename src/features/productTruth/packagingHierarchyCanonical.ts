@@ -61,18 +61,46 @@ function isExplicitZero(v: unknown): boolean {
   return Number.isFinite(n) && n === 0;
 }
 
+function isExplicitNegative(v: unknown): boolean {
+  if (v === "" || v == null) return false;
+  const n = Number(v);
+  return Number.isFinite(n) && n < 0;
+}
+
 function str(v: unknown): string | null {
   if (v == null || v === "") return null;
   const s = String(v).trim();
   return s || null;
 }
 
-function sellablePackQty(form: Record<string, unknown>): number | null {
+function effectiveQtyContentUom(form: Record<string, unknown>): string | null {
+  return str(form.qty_content_uom) ?? str(form.primary_uom) ?? str(form.primary_pack_uom);
+}
+
+function isPieceContentUom(uom: string | null): boolean {
+  if (!uom) return false;
+  const normalized = uom.toLowerCase().trim();
   return (
-    positiveNum(form.qty_per_pack) ??
-    positiveNum(form.pcs_per_pack) ??
-    positiveNum(form.net_weight_g)
+    normalized === "pcs" || normalized === "pc" || normalized === "piece" || normalized === "pieces"
   );
+}
+
+/** Piece-count pack qty — never derived from weight fields. */
+function piecePackQty(form: Record<string, unknown>): number | null {
+  const explicit = positiveNum(form.pcs_per_pack);
+  if (explicit != null) return explicit;
+  if (isPieceContentUom(effectiveQtyContentUom(form))) {
+    return positiveNum(form.qty_per_pack);
+  }
+  return null;
+}
+
+function sellablePackQty(form: Record<string, unknown>): number | null {
+  const pieceQty = piecePackQty(form);
+  if (pieceQty != null) return pieceQty;
+  const qtyPerPack = positiveNum(form.qty_per_pack);
+  if (qtyPerPack != null) return qtyPerPack;
+  return positiveNum(form.net_weight_g);
 }
 
 function sellablePackUom(form: Record<string, unknown>): string | null {
@@ -86,22 +114,19 @@ function caseCartonQty(
   packsPerCarton: number | null,
 ): number | null {
   const pcsPerCarton = positiveNum(form.pcs_per_carton);
-  const pcsPerPack = sellablePackQty(form);
+  const pcsPerPack = piecePackQty(form);
   if (pcsPerCarton && pcsPerPack) {
     return Number((pcsPerCarton / pcsPerPack).toFixed(4));
   }
   return positiveNum(form.carton_qty) ?? packsPerCarton;
 }
 
-function masterCartonChildQty(
-  form: Record<string, unknown>,
-  caseQty: number | null,
-): number | null {
+function masterCartonChildQty(form: Record<string, unknown>): number | null {
   const masterQty = positiveNum(form.master_carton_qty);
   if (!masterQty) return null;
   const masterUom = String(form.master_carton_uom ?? "").toLowerCase();
   if (masterUom.includes("carton") || masterUom === "case") {
-    return caseQty != null ? Number((masterQty / caseQty).toFixed(4)) : masterQty;
+    return masterQty;
   }
   return masterQty;
 }
@@ -111,11 +136,13 @@ export function enrichPackFormFromDbRow(data: Record<string, unknown>): Record<s
   const patch: Record<string, unknown> = {};
   const pcsPerPack = positiveNum(data.pcs_per_pack);
   const primaryUom = str(data.primary_uom) ?? str(data.retail_uom) ?? str(data.b2b_uom);
+  const contentUom = str(data.qty_content_uom) ?? primaryUom;
+  const pieceContent = isPieceContentUom(contentUom);
 
-  if (!data.qty_per_pack && pcsPerPack) {
+  if (!data.qty_per_pack && pcsPerPack && pieceContent) {
     patch.qty_per_pack = pcsPerPack;
   }
-  if (!data.pcs_per_pack && data.qty_per_pack) {
+  if (!data.pcs_per_pack && data.qty_per_pack && pieceContent) {
     patch.pcs_per_pack = data.qty_per_pack;
   }
   if (!data.primary_pack_uom && primaryUom) {
@@ -130,9 +157,8 @@ export function enrichPackFormFromDbRow(data: Record<string, unknown>): Record<s
       patch.primary_pack_type = fromPackSize;
     }
   }
-  if (!data.qty_content_uom) {
-    const contentUom = str(data.primary_uom) ?? (pcsPerPack ? "pcs" : null);
-    if (contentUom) patch.qty_content_uom = contentUom;
+  if (!data.qty_content_uom && contentUom) {
+    patch.qty_content_uom = contentUom;
   }
   return patch;
 }
@@ -148,7 +174,7 @@ export function buildCanonicalPackagingHierarchy(
   const caseUom = str(form.carton_uom) ?? "carton";
   const masterQty = positiveNum(form.master_carton_qty);
   const masterUom = str(form.master_carton_uom) ?? "master_carton";
-  const masterChildQty = masterCartonChildQty(form, caseQty);
+  const masterChildQty = masterCartonChildQty(form);
 
   const nodes: PackagingHierarchyNode[] = [
     {
@@ -207,6 +233,20 @@ export function buildCanonicalPackagingHierarchy(
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  const hierarchyQtyFields: Array<[string, unknown]> = [
+    ["pcs_per_carton", form.pcs_per_carton],
+    ["carton_qty", form.carton_qty],
+    ["master_carton_qty", form.master_carton_qty],
+    ["qty_per_pack", form.qty_per_pack],
+    ["pcs_per_pack", form.pcs_per_pack],
+    ["net_weight_g", form.net_weight_g],
+  ];
+  for (const [field, value] of hierarchyQtyFields) {
+    if (isExplicitNegative(value)) {
+      errors.push(`${field} must be greater than zero`);
+    }
+  }
+
   if (isExplicitZero(form.pcs_per_carton)) {
     errors.push("pcs_per_carton must be greater than zero");
   }
@@ -221,8 +261,15 @@ export function buildCanonicalPackagingHierarchy(
   }
 
   const pcsPerCarton = positiveNum(form.pcs_per_carton);
-  if (pcsPerCarton && sellableQty && packsPerCarton != null) {
-    const implied = Number((pcsPerCarton / sellableQty).toFixed(4));
+  const pcsPerPack = piecePackQty(form);
+  if (pcsPerCarton && pcsPerPack && !engine.allowPartialPack && pcsPerCarton % pcsPerPack !== 0) {
+    errors.push(
+      "pcs_per_carton must be evenly divisible by pcs_per_pack when partial packs are disabled",
+    );
+  }
+
+  if (pcsPerCarton && pcsPerPack && packsPerCarton != null) {
+    const implied = Number((pcsPerCarton / pcsPerPack).toFixed(4));
     const cartonQty = positiveNum(form.carton_qty);
     if (cartonQty != null && Math.abs(implied - cartonQty) > 0.01) {
       warnings.push(
@@ -353,9 +400,9 @@ export function persistedPackFieldsFromHierarchy(
   const canonical = buildCanonicalPackagingHierarchy(form);
   const out: Record<string, unknown> = {};
 
-  const sellable = canonical.nodes.find((n) => n.level === "sellable_pack");
-  if (sellable?.qtyPerParent) {
-    out.pcs_per_pack = sellable.qtyPerParent;
+  const pieceQty = piecePackQty(form);
+  if (pieceQty != null) {
+    out.pcs_per_pack = pieceQty;
   }
 
   const caseNode = canonical.nodes.find((n) => n.level === "case_carton");

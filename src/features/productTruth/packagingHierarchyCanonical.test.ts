@@ -15,6 +15,7 @@ const packProductForm: Record<string, unknown> = {
   primary_pack_uom: "box",
   qty_per_pack: 6,
   pcs_per_pack: 6,
+  qty_content_uom: "pcs",
   pcs_per_carton: 24,
   carton_qty: 4,
   carton_uom: "carton",
@@ -51,6 +52,46 @@ describe("packagingHierarchyCanonical", () => {
     });
     expect(h.validation.valid).toBe(false);
     expect(h.validation.errors.some((e) => e.includes("zero"))).toBe(true);
+  });
+
+  it("rejects negative hierarchy quantities", () => {
+    const h = buildCanonicalPackagingHierarchy({
+      ...packProductForm,
+      pcs_per_carton: -24,
+    });
+    expect(h.validation.valid).toBe(false);
+    expect(h.validation.errors.some((e) => e.includes("pcs_per_carton"))).toBe(true);
+  });
+
+  it("does not persist weight content as pcs_per_pack", () => {
+    const persisted = persistedPackFieldsFromHierarchy({
+      net_weight_g: 500,
+      primary_uom: "g",
+      qty_content_uom: "g",
+    });
+    expect(persisted).not.toHaveProperty("pcs_per_pack");
+  });
+
+  it("rejects fractional packs per carton when partial packs are disabled", () => {
+    const h = buildCanonicalPackagingHierarchy({
+      ...packProductForm,
+      pcs_per_carton: 20,
+      pcs_per_pack: 6,
+      carton_qty: undefined,
+    });
+    expect(h.validation.valid).toBe(false);
+    expect(h.validation.errors.some((e) => e.includes("evenly divisible"))).toBe(true);
+  });
+
+  it("keeps master_carton_qty in carton child UOM without dividing by case qty", () => {
+    const h = buildCanonicalPackagingHierarchy({
+      ...packProductForm,
+      master_carton_qty: 8,
+      master_carton_uom: "carton",
+      carton_qty: 4,
+      pcs_per_carton: 24,
+    });
+    expect(h.nodes[3].qtyPerParent).toBe(8);
   });
 
   it("warns on inconsistent carton nesting", () => {
@@ -110,12 +151,22 @@ describe("packagingHierarchyCanonical", () => {
   it("enriches UI pack fields from DB row without shadow columns", () => {
     const patch = enrichPackFormFromDbRow({
       pcs_per_pack: 12,
-      primary_uom: "box",
+      primary_uom: "pcs",
+      qty_content_uom: "pcs",
       packaging_code: "RBOX",
     });
     expect(patch.qty_per_pack).toBe(12);
-    expect(patch.primary_pack_uom).toBe("box");
+    expect(patch.primary_pack_uom).toBe("pcs");
     expect(patch.primary_pack_type).toBe("RBOX");
+  });
+
+  it("does not mirror qty_per_pack into pcs_per_pack for non-piece content UOM", () => {
+    const patch = enrichPackFormFromDbRow({
+      qty_per_pack: 500,
+      primary_uom: "g",
+      qty_content_uom: "g",
+    });
+    expect(patch).not.toHaveProperty("pcs_per_pack");
   });
 
   it("serializes snapshot schema point33_v1 with validation block", () => {
