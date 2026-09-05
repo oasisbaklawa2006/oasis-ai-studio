@@ -11,14 +11,11 @@ import {
   LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
   LIVE_PRODUCTS_PRICING_FORM_KEYS,
 } from "@/features/productAuthority/liveProductsSchema";
-<<<<<<< HEAD
-import { enrichPackFormFromDbRow } from "@/features/productTruth/packagingHierarchyCanonical";
-=======
 import {
   deriveCbmFromCm,
   resolveDimensionsCmText,
 } from "@/features/productAuthority/shippingDimensions";
->>>>>>> 38913f9 (feat(point35): dimensions/weight/CBM audit + live-safe closure delta)
+import { enrichPackFormFromDbRow } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { Database } from "@/integrations/supabase/types";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 

@@ -1,55 +1,82 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import {
-  Search,
-  Loader2,
-  AlertTriangle,
-  Image as ImageIcon,
-  CheckCircle2,
   AlertCircle,
-  XCircle,
+  AlertTriangle,
+  Ban,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Clock,
   Copy,
   FileText,
-  Save,
   History,
-  ShieldCheck,
-  Ban,
-  Wand2,
-  UserRound,
+  Image as ImageIcon,
   Info,
+  Languages,
+  Loader2,
   PencilLine,
   RefreshCw,
-  Languages,
+  Save,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  UserRound,
+  Wand2,
+  XCircle,
 } from "lucide-react";
-import { PageHeader } from "@/components/PageHeader";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
+import { PageHeader } from "@/components/PageHeader";
 import { ProductMediaUploader } from "@/components/ProductMediaUploader";
-import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
 import {
-  computeCatalogueProductReadiness,
-  type ReadinessCategory,
-  type ReadinessResult,
-  type ReadinessState,
-} from "@/features/catalogueAiStudio/catalogueProductReadiness";
+  CATALOGUE_AI_TONES,
+  type CatalogueAiSourceFacts,
+  type CatalogueAiTone,
+  generateCatalogueContentDraft,
+} from "@/features/catalogueAiStudio/catalogueAiGateway";
 import {
-  DRAFT_BLOCK_META,
-  IMAGE_PROMPT_BLOCK_META,
+  type AiFieldTracking,
+  advanceAiFieldTracking,
+  buildAiGenerationProvenance,
+  isAiGenerationBlockedByIdentity,
+  mergeAiGeneratedContent,
+  readPersistedAiGenerationProvenance,
+  restoreAiGenerationState,
+} from "@/features/catalogueAiStudio/catalogueAiGenerationMerge";
+import {
   buildExportBundlePreview,
   composeCatalogueImagePrompt,
+  DRAFT_BLOCK_META,
+  type DraftProductInput,
   generateCatalogueDraftContent,
   generateCatalogueImagePrompts,
-  type DraftProductInput,
+  IMAGE_PROMPT_BLOCK_META,
 } from "@/features/catalogueAiStudio/catalogueContentGenerators";
+import {
+  approveDraft,
+  fetchDraftAuditLog,
+  fetchLatestDraft,
+  fetchLatestDraftStatuses,
+  rejectDraft,
+  saveDraft,
+  submitDraftForReview,
+} from "@/features/catalogueAiStudio/catalogueDraftRepository";
 import type {
   CatalogueDraftAuditRow,
   CatalogueDraftContent,
@@ -60,40 +87,42 @@ import type {
   CatalogueDraftStatus,
 } from "@/features/catalogueAiStudio/catalogueDraftTypes";
 import {
-  approveDraft,
-  fetchDraftAuditLog,
-  fetchLatestDraft,
-  fetchLatestDraftStatuses,
-  rejectDraft,
-  saveDraft,
-  submitDraftForReview,
-} from "@/features/catalogueAiStudio/catalogueDraftRepository";
-import {
-  STATUS_LABEL,
   canApprove,
   canReject,
   canSubmitForReview,
   isExportBundleDistributable,
+  STATUS_LABEL,
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
-import { fetchActorLabels } from "@/features/catalogueAiStudio/catalogueActorDisplay";
-import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
-import { fullEditorDeepLink, fullEditorTabForCategory } from "@/features/catalogueAiStudio/catalogueStudioNavigation";
 import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
-import { summarizeCatalogueMedia, type CatalogueMediaRow } from "@/features/catalogueAiStudio/catalogueMediaSummary";
-import {
-  getCachedProductMediaAuthority,
-  subscribeToProductMediaAuthority,
-} from "@/features/productAuthority/productMediaMutationAuthority";
-import { deriveShortSku } from "@/features/fastCreate/shortSku";
-import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
+import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
 import {
   INITIAL_MEDIA_LOAD_STATE,
+  type MediaLoadState,
   mediaLoadFailed,
   mediaLoadStarted,
   mediaLoadSucceeded,
-  type MediaLoadState,
 } from "@/features/catalogueAiStudio/catalogueMediaLoadState";
-import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
+import {
+  type CatalogueMediaRow,
+  summarizeCatalogueMedia,
+} from "@/features/catalogueAiStudio/catalogueMediaSummary";
+import {
+  computeCatalogueProductReadiness,
+  type ReadinessCategory,
+  type ReadinessResult,
+  type ReadinessState,
+} from "@/features/catalogueAiStudio/catalogueProductReadiness";
+import {
+  lastOpenedProduct,
+  parseRecentProductEntries,
+  type RecentProductEntry,
+  recordRecentProduct,
+} from "@/features/catalogueAiStudio/catalogueRecentProducts";
+import { saleTypeLabelFromForm } from "@/features/catalogueAiStudio/catalogueSaleTypeLabel";
+import {
+  fullEditorDeepLink,
+  fullEditorTabForCategory,
+} from "@/features/catalogueAiStudio/catalogueStudioNavigation";
 import {
   isInvalidCatalogueStudioTab,
   resolveCatalogueStudioTab,
@@ -106,29 +135,14 @@ import {
   WORK_QUEUE_STATUSES,
   type WorkQueueStatus,
 } from "@/features/catalogueAiStudio/catalogueWorkQueueStatus";
+import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
+import { deriveShortSku } from "@/features/fastCreate/shortSku";
+import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import {
-  CATALOGUE_AI_TONES,
-  generateCatalogueContentDraft,
-  type CatalogueAiSourceFacts,
-  type CatalogueAiTone,
-} from "@/features/catalogueAiStudio/catalogueAiGateway";
-import {
-  advanceAiFieldTracking,
-  buildAiGenerationProvenance,
-  isAiGenerationBlockedByIdentity,
-  mergeAiGeneratedContent,
-  readPersistedAiGenerationProvenance,
-  restoreAiGenerationState,
-  type AiFieldTracking,
-} from "@/features/catalogueAiStudio/catalogueAiGenerationMerge";
-import { Sparkles } from "lucide-react";
-import {
-  lastOpenedProduct,
-  parseRecentProductEntries,
-  recordRecentProduct,
-  type RecentProductEntry,
-} from "@/features/catalogueAiStudio/catalogueRecentProducts";
-import { ChevronDown, ChevronUp, Clock } from "lucide-react";
+  getCachedProductMediaAuthority,
+  subscribeToProductMediaAuthority,
+} from "@/features/productAuthority/productMediaMutationAuthority";
+import { supabase } from "@/integrations/supabase/client";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
   id: string;
@@ -155,18 +169,49 @@ type CatalogueProductStudioProduct = DraftProductInput & {
 // string lets Supabase's generated types statically reject any column absent from types.ts, and
 // that check has no way to know types.ts itself is stale.
 const PRODUCT_SELECT = [
-  "id", "product_name", "sku", "category", "subcategory", "description", "short_description",
-  "hero_image_url", "media_status", "mrp", "price_b2b", "b2b_uom", "pack_size", "net_weight_g",
-  "carton_qty", "master_carton_qty", "pcs_per_carton", "moq_text", "moq_value", "moq_uom",
-  "dimension_l_cm", "dimension_w_cm", "dimension_h_cm", "product_dimensions_cm",
-  "shelf_life_days", "storage_instructions", "temperature_requirement", "hsn_code", "gst_rate",
-  "is_active", "is_catalogue_ready", "product_class", "main_department", "packaging_code",
+  "id",
+  "product_name",
+  "sku",
+  "category",
+  "subcategory",
+  "description",
+  "short_description",
+  "hero_image_url",
+  "media_status",
+  "mrp",
+  "price_b2b",
+  "b2b_uom",
+  "pack_size",
+  "net_weight_g",
+  "carton_qty",
+  "master_carton_qty",
+  "pcs_per_carton",
+  "moq_text",
+  "moq_value",
+  "moq_uom",
+  "dimension_l_cm",
+  "dimension_w_cm",
+  "dimension_h_cm",
+  "product_dimensions_cm",
+  "shelf_life_days",
+  "storage_instructions",
+  "temperature_requirement",
+  "hsn_code",
+  "gst_rate",
+  "is_active",
+  "is_catalogue_ready",
+  "product_class",
+  "main_department",
+  "packaging_code",
 ].join(", ");
 
 /** Maps the raw price_b2b column onto the shared b2b_price field name every readiness/draft-generator consumer expects. */
 function mapRowFromSupabase(row: Record<string, unknown>): CatalogueProductStudioProduct {
   const { price_b2b, ...rest } = row;
-  return { ...rest, b2b_price: (price_b2b as number | null) ?? null } as CatalogueProductStudioProduct;
+  return {
+    ...rest,
+    b2b_price: (price_b2b as number | null) ?? null,
+  } as CatalogueProductStudioProduct;
 }
 
 interface EditorState {
@@ -183,7 +228,10 @@ function generateEditorState(product: CatalogueProductStudioProduct): EditorStat
   };
 }
 
-function mapRowToEditor(row: CatalogueDraftRow): { content: CatalogueDraftContent; prompts: CatalogueDraftPrompts } {
+function mapRowToEditor(row: CatalogueDraftRow): {
+  content: CatalogueDraftContent;
+  prompts: CatalogueDraftPrompts;
+} {
   return {
     content: {
       catalogue_title: row.catalogue_title,
@@ -236,9 +284,18 @@ function resolveAiGenerationProvenance(
   tone: CatalogueAiTone | null,
   previouslyPersistedSourceSnapshot: unknown,
 ): Record<string, unknown> | null {
-  if (aiGeneratedBaseline && aiGeneratedBaseline.productId === editor.productId && aiFieldTracking) {
+  if (
+    aiGeneratedBaseline &&
+    aiGeneratedBaseline.productId === editor.productId &&
+    aiFieldTracking
+  ) {
     return {
-      ...buildAiGenerationProvenance(editor.content, aiGeneratedBaseline.content, aiFieldTracking, tone),
+      ...buildAiGenerationProvenance(
+        editor.content,
+        aiGeneratedBaseline.content,
+        aiFieldTracking,
+        tone,
+      ),
     };
   }
   const persisted = readPersistedAiGenerationProvenance(previouslyPersistedSourceSnapshot);
@@ -307,7 +364,11 @@ const OVERALL_BADGE_CLASS: Record<ReadinessResult["overallLabel"], string> = {
   "Not ready": STATE_BADGE_CLASS.missing,
 };
 
-function ReadinessRow({ category, productId, onGoToFullEditor }: {
+function ReadinessRow({
+  category,
+  productId,
+  onGoToFullEditor,
+}: {
   category: ReadinessCategory;
   productId?: string;
   onGoToFullEditor?: (categoryKey: string) => void;
@@ -319,7 +380,10 @@ function ReadinessRow({ category, productId, onGoToFullEditor }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-semibold text-foreground">{category.label}</span>
-          <Badge variant="outline" className={`text-[9px] uppercase ${STATE_BADGE_CLASS[category.state]}`}>
+          <Badge
+            variant="outline"
+            className={`text-[9px] uppercase ${STATE_BADGE_CLASS[category.state]}`}
+          >
             {STATE_LABEL[category.state]}
           </Badge>
         </div>
@@ -364,7 +428,9 @@ export default function CatalogueProductStudio() {
   const [recentProducts, setRecentProducts] = useState<RecentProductEntry[]>([]);
   useEffect(() => {
     try {
-      setRecentProducts(parseRecentProductEntries(localStorage.getItem(RECENT_PRODUCTS_STORAGE_KEY)));
+      setRecentProducts(
+        parseRecentProductEntries(localStorage.getItem(RECENT_PRODUCTS_STORAGE_KEY)),
+      );
     } catch {
       setRecentProducts([]);
     }
@@ -413,8 +479,7 @@ export default function CatalogueProductStudio() {
     if (isInvalidCatalogueStudioTab(rawStudioTab)) {
       setSearchParams((prev) => withStudioTab(prev, "content"), { replace: true });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rawStudioTab]);
+  }, [rawStudioTab, setSearchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -493,7 +558,10 @@ export default function CatalogueProductStudio() {
         .from("product_media")
         .select("id, product_id, type, file_url, status, created_at")
         .eq("type", "hero_image")
-        .in("product_id", products.map((p) => p.id)),
+        .in(
+          "product_id",
+          products.map((p) => p.id),
+        ),
     )
       .then(({ data, error }) => {
         if (cancelled) return;
@@ -533,7 +601,10 @@ export default function CatalogueProductStudio() {
     return map;
   }, [products, draftStatuses, bulkHeroMedia]);
 
-  const recentProductIds = useMemo(() => new Set(recentProducts.map((r) => r.productId)), [recentProducts]);
+  const recentProductIds = useMemo(
+    () => new Set(recentProducts.map((r) => r.productId)),
+    [recentProducts],
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -552,7 +623,10 @@ export default function CatalogueProductStudio() {
     );
   }, [products, search, statusFilter, recentProductIds, productWorkQueueInfo]);
 
-  const selected = useMemo(() => products.find((p) => p.id === selectedId) || null, [products, selectedId]);
+  const selected = useMemo(
+    () => products.find((p) => p.id === selectedId) || null,
+    [products, selectedId],
+  );
   // readiness/packagingCategories are computed further down, once mediaSummary (below) is
   // available — the hero-image readiness check must agree with the same media authority the
   // anchor and Media tab use (Bugbot-caught: computeCatalogueProductReadiness() previously only
@@ -578,7 +652,10 @@ export default function CatalogueProductStudio() {
     [selected],
   );
 
-  const shortSku = useMemo(() => (selected?.sku ? deriveShortSku(selected.sku) : null), [selected?.sku]);
+  const shortSku = useMemo(
+    () => (selected?.sku ? deriveShortSku(selected.sku) : null),
+    [selected?.sku],
+  );
   // Bugbot-caught: this used to render saleTypeFromForm()'s raw internal slug (e.g. "b2b_horeca")
   // directly — always resolve it to a human label instead (see catalogueSaleTypeLabel.ts).
   const saleTypeLabel = useMemo(
@@ -620,7 +697,10 @@ export default function CatalogueProductStudio() {
   // A4: ephemeral per-slot operator instruction for prompt composition — never persisted on its
   // own (only the composed text it produces is saved, into the same existing prompt column), so no
   // schema change. Reset on product switch so an instruction never leaks onto a different product.
-  const [promptInstructions, setPromptInstructions] = useState<Partial<Record<CatalogueDraftPromptKey, string>>>({});
+  const [promptInstructions, setPromptInstructions] = useState<
+    Partial<Record<CatalogueDraftPromptKey, string>>
+  >({});
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset per-slot instructions when product changes
   useEffect(() => {
     setPromptInstructions({});
   }, [selected?.id]);
@@ -668,6 +748,7 @@ export default function CatalogueProductStudio() {
   // One product-switch effect owns the entire transition: clears the previous product's persisted
   // draft/audit/reject state and seeds a fresh generated draft immediately, then hydrates the real
   // saved draft (if any). No separate effect is left that could apply stale state out of order.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: patchDraftStatus is stable; selected drives product switch
   useEffect(() => {
     let cancelled = false;
     if (!selected) {
@@ -700,7 +781,12 @@ export default function CatalogueProductStudio() {
           // Bugbot-caught: without this, reopening a previously AI-generated draft showed every
           // AI-filled field as falsely "Edited" (compared against the raw template instead of what
           // was actually loaded) and the next save would silently erase the saved provenance.
-          const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
+          const restored = restoreAiGenerationState(
+            productId,
+            mapped.content,
+            mapped.prompts,
+            row.source_snapshot,
+          );
           setAiGeneratedBaseline(restored?.baseline ?? null);
           setAiFieldTracking(restored?.tracking ?? null);
           setAiGeneratedTone(restored?.tone ?? null);
@@ -787,9 +873,12 @@ export default function CatalogueProductStudio() {
     // previous product's override can never leak across a switch.
     const cachedAuthority = selected ? getCachedProductMediaAuthority(selected.id) : null;
     setPublishedHeroOverride(
-      cachedAuthority ? { productId: cachedAuthority.productId, heroUrl: cachedAuthority.heroUrl } : null,
+      cachedAuthority
+        ? { productId: cachedAuthority.productId, heroUrl: cachedAuthority.heroUrl }
+        : null,
     );
   }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mediaRetryToken intentionally retriggers fetch
   useEffect(() => {
     const productId = selected?.id ?? null;
     // Reset immediately on every switch/retry (not just when no product is selected) — otherwise
@@ -803,23 +892,29 @@ export default function CatalogueProductStudio() {
     // Supabase's query builder returns a PromiseLike, not a full Promise (no .finally) — wrap it
     // so the state resolves on both the success and error paths without duplicating the guard.
     Promise.resolve(
-      supabase.from("product_media").select("id, type, file_url, status, created_at").eq("product_id", productId),
-    ).then(({ data, error: mediaError }) => {
-      if (cancelled || selectedIdRef.current !== productId) return;
-      if (mediaError) {
-        // Never expose the raw backend error to the operator — log it for diagnosis only.
-        if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", mediaError.message);
-        setMediaLoadState(mediaLoadFailed());
-      } else {
-        // Bugbot-caught: this fetch previously applied its own result unconditionally — if a
-        // mutation completed elsewhere (Full Editor in another tab, or this page's own uploader)
-        // while this fetch was still in flight, productMediaMutationAuthority would have already
-        // published a newer snapshot, and this stale read would silently overwrite it. Re-check the
-        // cache and prefer it, same pattern ProductMediaUploader's own passive fetch already uses.
-        const cached = getCachedProductMediaAuthority(productId);
-        setMediaLoadState(mediaLoadSucceeded(cached ? cached.rows : (data as CatalogueMediaRow[]) ?? []));
-      }
-    })
+      supabase
+        .from("product_media")
+        .select("id, type, file_url, status, created_at")
+        .eq("product_id", productId),
+    )
+      .then(({ data, error: mediaError }) => {
+        if (cancelled || selectedIdRef.current !== productId) return;
+        if (mediaError) {
+          // Never expose the raw backend error to the operator — log it for diagnosis only.
+          if (import.meta.env.DEV) console.warn("[catalogue-studio-media]", mediaError.message);
+          setMediaLoadState(mediaLoadFailed());
+        } else {
+          // Bugbot-caught: this fetch previously applied its own result unconditionally — if a
+          // mutation completed elsewhere (Full Editor in another tab, or this page's own uploader)
+          // while this fetch was still in flight, productMediaMutationAuthority would have already
+          // published a newer snapshot, and this stale read would silently overwrite it. Re-check the
+          // cache and prefer it, same pattern ProductMediaUploader's own passive fetch already uses.
+          const cached = getCachedProductMediaAuthority(productId);
+          setMediaLoadState(
+            mediaLoadSucceeded(cached ? cached.rows : ((data as CatalogueMediaRow[]) ?? [])),
+          );
+        }
+      })
       // Bugbot-caught: the Supabase `{ error }` branch above only covers a resolved response —
       // an actual promise rejection (network abort, unexpected runtime failure) left mediaLoadState
       // stuck on "loading" forever with no error panel or retry path.
@@ -862,7 +957,10 @@ export default function CatalogueProductStudio() {
   // and reveal no approved hero — contradicting the Media tab's own loading/error state. Hero is
   // only ever resolved (fallback included) once a load has genuinely completed.
   const mediaSummary = useMemo(() => {
-    const base = summarizeCatalogueMedia(mediaLoadState.status === "loaded" ? selected : null, mediaRows);
+    const base = summarizeCatalogueMedia(
+      mediaLoadState.status === "loaded" ? selected : null,
+      mediaRows,
+    );
     // Bugbot-caught: apply the latest published heroUrl (e.g. an explicit "Remove as hero" clear)
     // over the rows-derived value whenever it's for the currently selected product — see
     // publishedHeroOverride's declaration above for why rows alone can't be trusted for this.
@@ -872,7 +970,6 @@ export default function CatalogueProductStudio() {
     }
     return base;
   }, [selected, mediaRows, mediaLoadState.status, publishedHeroOverride]);
-
 
   // computeCatalogueProductReadiness()'s own hero check (buildHeroImage) is intentionally
   // untouched — it just needs an accurate hero_image_url to check. mediaSummary.heroUrl (the same
@@ -914,7 +1011,9 @@ export default function CatalogueProductStudio() {
   const [aiGeneratedBaseline, setAiGeneratedBaseline] = useState<EditorState | null>(null);
   const [aiFieldTracking, setAiFieldTracking] = useState<AiFieldTracking | null>(null);
   const [aiGeneratedTone, setAiGeneratedTone] = useState<CatalogueAiTone | null>(null);
-  const [aiGenerationState, setAiGenerationState] = useState<"idle" | "generating" | "success" | "error">("idle");
+  const [aiGenerationState, setAiGenerationState] = useState<
+    "idle" | "generating" | "success" | "error"
+  >("idle");
   const [aiGenerationError, setAiGenerationError] = useState<string | null>(null);
   const [aiTone, setAiTone] = useState<CatalogueAiTone>("Informational");
   // Bugbot-caught: resetFromProduct cleared the AI baseline state, but an in-flight
@@ -931,6 +1030,7 @@ export default function CatalogueProductStudio() {
     setAiGenerationState("idle");
     setAiGenerationError(null);
   };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: clear AI state when selected product changes
   useEffect(() => {
     clearAiGeneration();
   }, [selected?.id]);
@@ -957,7 +1057,8 @@ export default function CatalogueProductStudio() {
       shelfLifeDays: selected.shelf_life_days,
     };
     const result = await generateCatalogueContentDraft(facts, aiTone);
-    if (selectedIdRef.current !== productId || aiGenerationRequestIdRef.current !== requestId) return;
+    if (selectedIdRef.current !== productId || aiGenerationRequestIdRef.current !== requestId)
+      return;
     if (result.ok === false) {
       setAiGenerationState("error");
       setAiGenerationError(result.reason);
@@ -984,7 +1085,12 @@ export default function CatalogueProductStudio() {
     let mergedState: EditorState | null = null;
     setEditorState((prev) => {
       if (!prev || prev.productId !== productId) return prev;
-      const merge = mergeAiGeneratedContent(prev.content, result.content, activeBaseline?.content ?? null, lockedFields);
+      const merge = mergeAiGeneratedContent(
+        prev.content,
+        result.content,
+        activeBaseline?.content ?? null,
+        lockedFields,
+      );
       appliedFields = merge.appliedFields;
       preservedCount = merge.preservedCount;
       mergedState = { productId, content: merge.content, prompts: prev.prompts };
@@ -1010,7 +1116,9 @@ export default function CatalogueProductStudio() {
     setAiGeneratedTone(aiTone);
     setAiGenerationState("success");
     if (preservedCount > 0) {
-      toast.info(`AI draft applied — ${preservedCount} field(s) you'd already edited were left unchanged.`);
+      toast.info(
+        `AI draft applied — ${preservedCount} field(s) you'd already edited were left unchanged.`,
+      );
     } else {
       toast.success("AI draft generated. Review before saving.");
     }
@@ -1032,7 +1140,9 @@ export default function CatalogueProductStudio() {
   // agree on the same product id. Any mismatch (a stale fetch mid-switch, a race on the ref) collapses
   // this to null, which disables every workflow action rather than risk acting on the wrong draft.
   const currentPersistedDraft: CatalogueDraftRow | null =
-    persistedDraft && selected && editor &&
+    persistedDraft &&
+    selected &&
+    editor &&
     persistedDraft.product_id === selected.id &&
     editor.productId === selected.id
       ? persistedDraft
@@ -1060,7 +1170,8 @@ export default function CatalogueProductStudio() {
   // Reset must never fire while a save/submit/approve/reject is in flight, while the saved draft is
   // still loading, while the draft is UNDER_REVIEW (locked), or with no product selected — same
   // guards as every other draft-mutating action on this page.
-  const canResetDraft = !draftLoading && !workflowDisabled && !textLocked && !draftBusy && !!selected;
+  const canResetDraft =
+    !draftLoading && !workflowDisabled && !textLocked && !draftBusy && !!selected;
 
   // True when the editor's current content/prompts differ from the last saved draft — the operator
   // has no other way to tell whether "Save Draft" would actually change anything right now. Only
@@ -1104,9 +1215,12 @@ export default function CatalogueProductStudio() {
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
       await refreshAuditLog(row.id, productId);
-      toast.success(`Draft saved — v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`);
+      toast.success(
+        `Draft saved — v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`,
+      );
     } catch (err) {
-      if (selectedIdRef.current === productId) toast.error(err instanceof Error ? err.message : "Could not save draft.");
+      if (selectedIdRef.current === productId)
+        toast.error(err instanceof Error ? err.message : "Could not save draft.");
     } finally {
       setDraftBusy(false);
     }
@@ -1127,14 +1241,22 @@ export default function CatalogueProductStudio() {
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       const mapped = mapRowToEditor(row);
       setEditorState({ productId, ...mapped });
-      const restored = restoreAiGenerationState(productId, mapped.content, mapped.prompts, row.source_snapshot);
+      const restored = restoreAiGenerationState(
+        productId,
+        mapped.content,
+        mapped.prompts,
+        row.source_snapshot,
+      );
       setAiGeneratedBaseline(restored?.baseline ?? null);
       setAiFieldTracking(restored?.tracking ?? null);
       setAiGeneratedTone(restored?.tone ?? null);
       await refreshAuditLog(row.id, productId);
-      toast.success(`Loaded v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`);
+      toast.success(
+        `Loaded v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`,
+      );
     } catch (err) {
-      if (selectedIdRef.current === productId) toast.error(err instanceof Error ? err.message : "Could not load draft.");
+      if (selectedIdRef.current === productId)
+        toast.error(err instanceof Error ? err.message : "Could not load draft.");
     } finally {
       setDraftBusy(false);
     }
@@ -1180,7 +1302,8 @@ export default function CatalogueProductStudio() {
       await refreshAuditLog(row.id, productId);
       toast.success("Submitted for review.");
     } catch (err) {
-      if (selectedIdRef.current === productId) toast.error(err instanceof Error ? err.message : "Could not submit for review.");
+      if (selectedIdRef.current === productId)
+        toast.error(err instanceof Error ? err.message : "Could not submit for review.");
     } finally {
       setDraftBusy(false);
     }
@@ -1204,7 +1327,8 @@ export default function CatalogueProductStudio() {
       await refreshAuditLog(row.id, productId);
       toast.success("Draft approved.");
     } catch (err) {
-      if (selectedIdRef.current === productId) toast.error(err instanceof Error ? err.message : "Could not approve draft.");
+      if (selectedIdRef.current === productId)
+        toast.error(err instanceof Error ? err.message : "Could not approve draft.");
     } finally {
       setDraftBusy(false);
     }
@@ -1230,7 +1354,8 @@ export default function CatalogueProductStudio() {
       setRejectReason("");
       toast.success("Draft rejected.");
     } catch (err) {
-      if (selectedIdRef.current === productId) toast.error(err instanceof Error ? err.message : "Could not reject draft.");
+      if (selectedIdRef.current === productId)
+        toast.error(err instanceof Error ? err.message : "Could not reject draft.");
     } finally {
       setDraftBusy(false);
     }
@@ -1264,14 +1389,23 @@ export default function CatalogueProductStudio() {
           <Info size={14} className="shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <p className="text-foreground font-semibold">How this fits together</p>
-            <p>1. This app creates and governs the draft (save → submit → approve/reject) shown below.</p>
+            <p>
+              1. This app creates and governs the draft (save → submit → approve/reject) shown
+              below.
+            </p>
             <p>2. oasis-supabase-core owns the draft/audit schema this app reads and writes.</p>
-            <p>3. Oasis-Baklawa-Central is meant to consume only an <em>approved, final</em> snapshot — never a raw in-progress draft.</p>
-            <p>4. oasis-trace should only ever receive final product identity via Central's product master, never directly from this app.</p>
+            <p>
+              3. Oasis-Baklawa-Central is meant to consume only an <em>approved, final</em> snapshot
+              — never a raw in-progress draft.
+            </p>
+            <p>
+              4. oasis-trace should only ever receive final product identity via Central's product
+              master, never directly from this app.
+            </p>
             <p className="text-foreground">
-              Note: steps 3 and 4 describe the intended design. There is currently no automated connector
-              publishing an approved draft from here into Central — an approved draft stays a governed
-              record in this app until that connector exists.
+              Note: steps 3 and 4 describe the intended design. There is currently no automated
+              connector publishing an approved draft from here into Central — an approved draft
+              stays a governed record in this app until that connector exists.
             </p>
           </div>
         </div>
@@ -1281,10 +1415,22 @@ export default function CatalogueProductStudio() {
         {selected && !queueExpanded ? (
           <Card>
             <CardContent className="pt-6 space-y-2">
-              <p className="text-[10px] font-semibold uppercase text-muted-foreground">Working on</p>
-              <p className="text-xs font-semibold text-foreground truncate">{selected.product_name || "Untitled product"}</p>
-              <p className="text-[10px] text-muted-foreground truncate">{selected.sku || "No SKU"}</p>
-              <Button type="button" size="sm" variant="outline" className="w-full" onClick={() => setQueueExpanded(true)}>
+              <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+                Working on
+              </p>
+              <p className="text-xs font-semibold text-foreground truncate">
+                {selected.product_name || "Untitled product"}
+              </p>
+              <p className="text-[10px] text-muted-foreground truncate">
+                {selected.sku || "No SKU"}
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="w-full"
+                onClick={() => setQueueExpanded(true)}
+              >
                 Change product
               </Button>
             </CardContent>
@@ -1342,26 +1488,36 @@ export default function CatalogueProductStudio() {
                 </div>
               ) : filtered.length === 0 ? (
                 <p className="text-xs text-muted-foreground py-4 text-center">
-                  {products.length === 0 ? "No products in the catalogue yet." : "No products match this filter/search."}
+                  {products.length === 0
+                    ? "No products in the catalogue yet."
+                    : "No products match this filter/search."}
                 </p>
               ) : (
                 <div className="max-h-[60vh] overflow-y-auto space-y-1">
                   {filtered.map((p) => {
                     const info = productWorkQueueInfo.get(p.id);
-                    const blockerCount = info?.readiness.categories.filter((c) => c.state !== "pass").length ?? 0;
+                    const blockerCount =
+                      info?.readiness.categories.filter((c) => c.state !== "pass").length ?? 0;
                     return (
                       <button
                         key={p.id}
                         type="button"
                         onClick={() => selectProduct(p.id)}
                         className={`w-full text-left px-3 py-2 rounded-lg border text-xs transition-colors ${
-                          selectedId === p.id ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                          selectedId === p.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:bg-muted/50"
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <div className="font-semibold text-foreground truncate">{p.product_name || "Untitled product"}</div>
+                          <div className="font-semibold text-foreground truncate">
+                            {p.product_name || "Untitled product"}
+                          </div>
                           {info && (
-                            <Badge variant="outline" className={`shrink-0 text-[8px] uppercase ${WORK_QUEUE_STATUS_BADGE_CLASS[info.status]}`}>
+                            <Badge
+                              variant="outline"
+                              className={`shrink-0 text-[8px] uppercase ${WORK_QUEUE_STATUS_BADGE_CLASS[info.status]}`}
+                            >
                               {WORK_QUEUE_STATUS_LABEL[info.status]}
                             </Badge>
                           )}
@@ -1372,7 +1528,11 @@ export default function CatalogueProductStudio() {
                         {info && (
                           <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
                             <span>{info.readiness.score}% complete</span>
-                            {blockerCount > 0 && <span>· {blockerCount} blocker{blockerCount === 1 ? "" : "s"}</span>}
+                            {blockerCount > 0 && (
+                              <span>
+                                · {blockerCount} blocker{blockerCount === 1 ? "" : "s"}
+                              </span>
+                            )}
                           </div>
                         )}
                       </button>
@@ -1416,23 +1576,35 @@ export default function CatalogueProductStudio() {
                           <span className="text-sm font-semibold text-foreground truncate">
                             {selected.product_name || "Untitled product"}
                           </span>
-                          {shortSku && <span className="text-[10px] text-muted-foreground">{shortSku}</span>}
+                          {shortSku && (
+                            <span className="text-[10px] text-muted-foreground">{shortSku}</span>
+                          )}
                           {hasUnsavedChanges && (
-                            <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40">
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40"
+                            >
                               <PencilLine size={10} className="mr-1" /> Unsaved
                             </Badge>
                           )}
                           {currentPersistedDraft && (
-                            <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
-                              {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} · v{currentPersistedDraft.version_number}
+                            <Badge
+                              variant="outline"
+                              className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}
+                            >
+                              {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} ·
+                              v{currentPersistedDraft.version_number}
                             </Badge>
                           )}
                           {readiness && (
-                            <Badge className={OVERALL_BADGE_CLASS[readiness.overallLabel]}>{readiness.score}% complete</Badge>
+                            <Badge className={OVERALL_BADGE_CLASS[readiness.overallLabel]}>
+                              {readiness.score}% complete
+                            </Badge>
                           )}
                         </div>
                         <p className="text-[10px] text-muted-foreground truncate">
-                          {selected.packaging_code || "No packaging"} · {saleTypeLabel ?? "No sale type"}
+                          {selected.packaging_code || "No packaging"} ·{" "}
+                          {saleTypeLabel ?? "No sale type"}
                         </p>
                         {nextActionText && (
                           <p className="text-[11px] text-foreground mt-0.5 truncate">
@@ -1446,9 +1618,15 @@ export default function CatalogueProductStudio() {
                         size="sm"
                         variant="ghost"
                         onClick={() => setAnchorDetailsExpanded((v) => !v)}
-                        aria-label={anchorDetailsExpanded ? "Hide product details" : "Show product details"}
+                        aria-label={
+                          anchorDetailsExpanded ? "Hide product details" : "Show product details"
+                        }
                       >
-                        {anchorDetailsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        {anchorDetailsExpanded ? (
+                          <ChevronUp size={14} />
+                        ) : (
+                          <ChevronDown size={14} />
+                        )}
                       </Button>
                     </div>
                   </CardContent>
@@ -1456,73 +1634,112 @@ export default function CatalogueProductStudio() {
               </div>
 
               {anchorDetailsExpanded && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Product details</CardTitle>
-                  <CardDescription className="text-[11px]">
-                    Product summary is read-only here. Make master data changes in Products.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">SKU</p>
-                      <p className="font-medium text-foreground">{selected.sku || "—"}</p>
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm">Product details</CardTitle>
+                    <CardDescription className="text-[11px]">
+                      Product summary is read-only here. Make master data changes in Products.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          SKU
+                        </p>
+                        <p className="font-medium text-foreground">{selected.sku || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Short SKU
+                        </p>
+                        <p className="font-medium text-foreground">{shortSku || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Sale Type
+                        </p>
+                        <p className="font-medium text-foreground">{saleTypeLabel ?? "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Category
+                        </p>
+                        <p className="font-medium text-foreground">{selected.category || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Packaging
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {selected.packaging_code || "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Pack Size
+                        </p>
+                        <p className="font-medium text-foreground">{selected.pack_size || "—"}</p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Hero Image
+                        </p>
+                        <p className="font-medium text-foreground flex items-center gap-1">
+                          <ImageIcon
+                            size={12}
+                            className={
+                              mediaSummary.heroUrl ? "text-emerald-600" : "text-muted-foreground/40"
+                            }
+                          />
+                          {mediaSummary.heroUrl ? "Present" : "Not set"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          MRP
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {selected.mrp ? `₹${selected.mrp}` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          B2B Price
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {selected.b2b_price ? `₹${selected.b2b_price}` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Active
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {(selected.is_active ?? true) ? "Yes" : "No"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-semibold text-muted-foreground uppercase">
+                          Catalogue Ready
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {selected.is_catalogue_ready ? "Yes" : "No"}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Short SKU</p>
-                      <p className="font-medium text-foreground">{shortSku || "—"}</p>
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => nav(`/products/${selected.id}`)}
+                      >
+                        Edit master data in Full Editor
+                      </Button>
                     </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Sale Type</p>
-                      <p className="font-medium text-foreground">{saleTypeLabel ?? "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Category</p>
-                      <p className="font-medium text-foreground">{selected.category || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Packaging</p>
-                      <p className="font-medium text-foreground">{selected.packaging_code || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Pack Size</p>
-                      <p className="font-medium text-foreground">{selected.pack_size || "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Hero Image</p>
-                      <p className="font-medium text-foreground flex items-center gap-1">
-                        <ImageIcon
-                          size={12}
-                          className={mediaSummary.heroUrl ? "text-emerald-600" : "text-muted-foreground/40"}
-                        />
-                        {mediaSummary.heroUrl ? "Present" : "Not set"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">MRP</p>
-                      <p className="font-medium text-foreground">{selected.mrp ? `₹${selected.mrp}` : "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">B2B Price</p>
-                      <p className="font-medium text-foreground">{selected.b2b_price ? `₹${selected.b2b_price}` : "—"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Active</p>
-                      <p className="font-medium text-foreground">{(selected.is_active ?? true) ? "Yes" : "No"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[9px] font-semibold text-muted-foreground uppercase">Catalogue Ready</p>
-                      <p className="font-medium text-foreground">{selected.is_catalogue_ready ? "Yes" : "No"}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Button type="button" size="sm" variant="outline" onClick={() => nav(`/products/${selected.id}`)}>
-                      Edit master data in Full Editor
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
               )}
 
               {readiness && (
@@ -1543,7 +1760,8 @@ export default function CatalogueProductStudio() {
                       </Badge>
                     </div>
                     <CardDescription className="text-[11px]">
-                      Calculated only from the fields shown on this page — no AI review, no approval decision.
+                      Calculated only from the fields shown on this page — no AI review, no approval
+                      decision.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
@@ -1552,7 +1770,9 @@ export default function CatalogueProductStudio() {
                         key={c.key}
                         category={c}
                         productId={selected.id}
-                        onGoToFullEditor={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
+                        onGoToFullEditor={(categoryKey) =>
+                          nav(fullEditorDeepLink(selected.id, categoryKey))
+                        }
                       />
                     ))}
                   </CardContent>
@@ -1568,62 +1788,117 @@ export default function CatalogueProductStudio() {
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         {hasUnsavedChanges && (
-                          <Badge variant="outline" className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] uppercase bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40"
+                          >
                             <PencilLine size={10} className="mr-1" /> Unsaved changes
                           </Badge>
                         )}
                         {currentPersistedDraft && (
-                          <Badge variant="outline" className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}>
-                            {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} · v{currentPersistedDraft.version_number}
+                          <Badge
+                            variant="outline"
+                            className={`text-[9px] uppercase ${DRAFT_STATUS_BADGE_CLASS[currentPersistedDraft.status as CatalogueDraftStatus]}`}
+                          >
+                            {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} · v
+                            {currentPersistedDraft.version_number}
                           </Badge>
                         )}
                       </div>
                     </div>
                     <CardDescription className="text-[11px]">
-                      Workflow actions always act on the currently displayed saved draft for this product.
+                      Workflow actions always act on the currently displayed saved draft for this
+                      product.
                     </CardDescription>
 
-                    {currentPersistedDraft && (currentPersistedDraft.status === "APPROVED" || currentPersistedDraft.status === "REJECTED") && currentPersistedDraft.reviewed_at && (
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                        <UserRound size={12} />
-                        {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} by{" "}
-                        {currentPersistedDraft.reviewed_by ? (actorLabels[currentPersistedDraft.reviewed_by] ?? "…") : "unknown"} on{" "}
-                        {new Date(currentPersistedDraft.reviewed_at).toLocaleString()}
-                      </p>
-                    )}
+                    {currentPersistedDraft &&
+                      (currentPersistedDraft.status === "APPROVED" ||
+                        currentPersistedDraft.status === "REJECTED") &&
+                      currentPersistedDraft.reviewed_at && (
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                          <UserRound size={12} />
+                          {STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]} by{" "}
+                          {currentPersistedDraft.reviewed_by
+                            ? (actorLabels[currentPersistedDraft.reviewed_by] ?? "…")
+                            : "unknown"}{" "}
+                          on {new Date(currentPersistedDraft.reviewed_at).toLocaleString()}
+                        </p>
+                      )}
 
-                    {currentPersistedDraft?.status === "REJECTED" && currentPersistedDraft.rejection_reason && (
-                      <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2.5 text-[11px] text-foreground">
-                        <span className="font-semibold text-destructive">Rejection reason: </span>
-                        {currentPersistedDraft.rejection_reason}
-                      </div>
-                    )}
+                    {currentPersistedDraft?.status === "REJECTED" &&
+                      currentPersistedDraft.rejection_reason && (
+                        <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2.5 text-[11px] text-foreground">
+                          <span className="font-semibold text-destructive">Rejection reason: </span>
+                          {currentPersistedDraft.rejection_reason}
+                        </div>
+                      )}
 
                     <div className="mt-3 flex flex-wrap items-center gap-2">
-                      <Button type="button" size="sm" disabled={workflowDisabled || textLocked} onClick={handleSaveDraft}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={workflowDisabled || textLocked}
+                        onClick={handleSaveDraft}
+                      >
                         <Save size={12} className="mr-1.5" /> Save Draft
                       </Button>
-                      <Button type="button" size="sm" variant="outline" disabled={workflowDisabled} onClick={handleLoadLatestDraft}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={workflowDisabled}
+                        onClick={handleLoadLatestDraft}
+                      >
                         <History size={12} className="mr-1.5" /> Load Latest Draft
                       </Button>
-                      <Button type="button" size="sm" variant="outline" disabled={!canResetDraft} onClick={resetFromProduct}>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={!canResetDraft}
+                        onClick={resetFromProduct}
+                      >
                         Reset draft from product data
                       </Button>
-                      {currentPersistedDraft && canSubmitForReview(currentPersistedDraft.status as CatalogueDraftStatus) && (
-                        <Button type="button" size="sm" variant="outline" disabled={workflowDisabled} onClick={handleSubmitForReview}>
-                          Submit for Review
-                        </Button>
-                      )}
-                      {currentPersistedDraft && canApprove(currentPersistedDraft.status as CatalogueDraftStatus) && (
-                        <Button type="button" size="sm" variant="outline" disabled={workflowDisabled} onClick={handleApprove}>
-                          <ShieldCheck size={12} className="mr-1.5" /> Approve
-                        </Button>
-                      )}
-                      {currentPersistedDraft && canReject(currentPersistedDraft.status as CatalogueDraftStatus) && !rejectReasonOpen && (
-                        <Button type="button" size="sm" variant="outline" disabled={workflowDisabled} onClick={() => setRejectReasonOpen(true)}>
-                          <Ban size={12} className="mr-1.5" /> Reject
-                        </Button>
-                      )}
+                      {currentPersistedDraft &&
+                        canSubmitForReview(
+                          currentPersistedDraft.status as CatalogueDraftStatus,
+                        ) && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={workflowDisabled}
+                            onClick={handleSubmitForReview}
+                          >
+                            Submit for Review
+                          </Button>
+                        )}
+                      {currentPersistedDraft &&
+                        canApprove(currentPersistedDraft.status as CatalogueDraftStatus) && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={workflowDisabled}
+                            onClick={handleApprove}
+                          >
+                            <ShieldCheck size={12} className="mr-1.5" /> Approve
+                          </Button>
+                        )}
+                      {currentPersistedDraft &&
+                        canReject(currentPersistedDraft.status as CatalogueDraftStatus) &&
+                        !rejectReasonOpen && (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={workflowDisabled}
+                            onClick={() => setRejectReasonOpen(true)}
+                          >
+                            <Ban size={12} className="mr-1.5" /> Reject
+                          </Button>
+                        )}
                       {draftLoading && (
                         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
                           <Loader2 size={12} className="animate-spin" /> Loading saved draft…
@@ -1633,8 +1908,14 @@ export default function CatalogueProductStudio() {
 
                     {rejectReasonOpen && (
                       <div className="mt-2 space-y-2 rounded-lg border border-destructive/40 bg-destructive/5 p-3">
-                        <label className="text-[11px] font-semibold text-foreground">Rejection reason</label>
+                        <label
+                          htmlFor="catalogue-reject-reason"
+                          className="text-[11px] font-semibold text-foreground"
+                        >
+                          Rejection reason
+                        </label>
                         <Textarea
+                          id="catalogue-reject-reason"
                           value={rejectReason}
                           onChange={(e) => setRejectReason(e.target.value)}
                           rows={2}
@@ -1642,10 +1923,25 @@ export default function CatalogueProductStudio() {
                           placeholder="Explain what needs to change before resubmission…"
                         />
                         <div className="flex items-center gap-2">
-                          <Button type="button" size="sm" variant="destructive" disabled={workflowDisabled || !rejectReason.trim()} onClick={handleReject}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            disabled={workflowDisabled || !rejectReason.trim()}
+                            onClick={handleReject}
+                          >
                             Confirm Reject
                           </Button>
-                          <Button type="button" size="sm" variant="ghost" disabled={workflowDisabled} onClick={() => { setRejectReasonOpen(false); setRejectReason(""); }}>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={workflowDisabled}
+                            onClick={() => {
+                              setRejectReasonOpen(false);
+                              setRejectReason("");
+                            }}
+                          >
                             Cancel
                           </Button>
                         </div>
@@ -1676,38 +1972,53 @@ export default function CatalogueProductStudio() {
                         {auditExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
                       {auditExpanded && (
-                      <>
-                      <p className="text-[10px] text-muted-foreground mb-2">
-                        Scoped to this version only. Reasons from a prior rejected version, if any, carry forward
-                        into the "CREATE_NEW_VERSION" entry below.
-                      </p>
-                      {auditLog.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-2">No actions recorded yet.</p>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {auditLog.map((entry) => {
-                            const reason =
-                              auditMetadataString(entry, "rejection_reason") ??
-                              auditMetadataString(entry, "previous_version_rejection_reason");
-                            return (
-                              <div key={entry.id} className="rounded-lg border border-border px-3 py-2 text-[11px] space-y-1">
-                                <div className="flex flex-wrap items-center justify-between gap-2">
-                                  <span className="font-semibold text-foreground">{entry.action}</span>
-                                  <span className="text-muted-foreground">
-                                    {entry.from_status ?? "—"} → {entry.to_status ?? "—"}
-                                  </span>
-                                  <span className="text-muted-foreground">{new Date(entry.created_at).toLocaleString()}</span>
-                                </div>
-                                <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
-                                  <span>{entry.actor_id ? (actorLabels[entry.actor_id] ?? "…") : "—"}</span>
-                                  {reason && <span className="text-foreground">Reason: {reason}</span>}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      </>
+                        <>
+                          <p className="text-[10px] text-muted-foreground mb-2">
+                            Scoped to this version only. Reasons from a prior rejected version, if
+                            any, carry forward into the "CREATE_NEW_VERSION" entry below.
+                          </p>
+                          {auditLog.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-2">
+                              No actions recorded yet.
+                            </p>
+                          ) : (
+                            <div className="space-y-1.5">
+                              {auditLog.map((entry) => {
+                                const reason =
+                                  auditMetadataString(entry, "rejection_reason") ??
+                                  auditMetadataString(entry, "previous_version_rejection_reason");
+                                return (
+                                  <div
+                                    key={entry.id}
+                                    className="rounded-lg border border-border px-3 py-2 text-[11px] space-y-1"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <span className="font-semibold text-foreground">
+                                        {entry.action}
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        {entry.from_status ?? "—"} → {entry.to_status ?? "—"}
+                                      </span>
+                                      <span className="text-muted-foreground">
+                                        {new Date(entry.created_at).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
+                                      <span>
+                                        {entry.actor_id
+                                          ? (actorLabels[entry.actor_id] ?? "…")
+                                          : "—"}
+                                      </span>
+                                      {reason && (
+                                        <span className="text-foreground">Reason: {reason}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
                       )}
                     </CardContent>
                   )}
@@ -1735,11 +2046,12 @@ export default function CatalogueProductStudio() {
                         <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <p className="text-[11px] text-muted-foreground">
-                              Content below starts as a local template generated from this product's current
-                              fields. "Generate Complete Catalogue Draft" instead drafts every content and
-                              language field in one governed call to the AI service, based strictly on this
-                              product's saved facts — it never invents price, ingredients, allergens, nutrition,
-                              or compliance claims, and never overwrites fields you've already edited.
+                              Content below starts as a local template generated from this product's
+                              current fields. "Generate Complete Catalogue Draft" instead drafts
+                              every content and language field in one governed call to the AI
+                              service, based strictly on this product's saved facts — it never
+                              invents price, ingredients, allergens, nutrition, or compliance
+                              claims, and never overwrites fields you've already edited.
                             </p>
                             {/* Bugbot-caught (authenticated mobile smoke test): this row was a non-wrapping
                                 flex container holding a fixed-width Select plus a long-label Button (Button's
@@ -1770,7 +2082,12 @@ export default function CatalogueProductStudio() {
                                 type="button"
                                 size="sm"
                                 className="w-full sm:w-auto"
-                                disabled={aiGenerationBlocked || aiGenerationState === "generating" || textLocked || draftLoading}
+                                disabled={
+                                  aiGenerationBlocked ||
+                                  aiGenerationState === "generating" ||
+                                  textLocked ||
+                                  draftLoading
+                                }
                                 onClick={handleGenerateAiDraft}
                               >
                                 {aiGenerationState === "generating" ? (
@@ -1784,7 +2101,8 @@ export default function CatalogueProductStudio() {
                           </div>
                           {aiGenerationBlocked && (
                             <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                              Complete Step 1 (Complete Truth) first — core product identity is missing.
+                              Complete Step 1 (Complete Truth) first — core product identity is
+                              missing.
                             </p>
                           )}
                           {aiGenerationState === "error" && aiGenerationError && (
@@ -1798,24 +2116,34 @@ export default function CatalogueProductStudio() {
                             </p>
                           )}
                         </div>
-                        {DRAFT_BLOCK_META.filter((block) => !isLanguageMessagingField(block.key)).map((block) => {
-                          const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
+                        {DRAFT_BLOCK_META.filter(
+                          (block) => !isLanguageMessagingField(block.key),
+                        ).map((block) => {
+                          const blockIsMissing = isMissingFieldOnlyMessage(
+                            editor.content[block.key],
+                          );
                           const blockIsEdited =
                             !blockIsMissing &&
                             !!activeBaseline &&
-                            isFieldEdited(editor.content[block.key], activeBaseline.content[block.key]);
+                            isFieldEdited(
+                              editor.content[block.key],
+                              activeBaseline.content[block.key],
+                            );
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                                     {block.label}
                                     {blockIsEdited && (
-                                      <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40"
+                                      >
                                         Edited
                                       </Badge>
                                     )}
-                                  </label>
+                                  </span>
                                   <p className="text-[10px] text-muted-foreground">
                                     {block.key === "whatsapp_product_message"
                                       ? "Draft message text only — approval workflow not active, this studio never sends WhatsApp messages."
@@ -1848,14 +2176,18 @@ export default function CatalogueProductStudio() {
 
                       <TabsContent value="language" className="space-y-4 pt-4">
                         <p className="text-[11px] text-muted-foreground">
-                          Language content here (Hindi description, WhatsApp draft message) is informational only —
-                          it never blocks catalogue readiness or Central Sync. WhatsApp approval workflow is not
-                          active; this studio never sends WhatsApp messages. "Generate Complete Catalogue Draft" on
-                          the Content step also fills these fields — the Hindi description is a genuine translation
-                          drafted by the AI service, not a machine transliteration; review it before saving.
+                          Language content here (Hindi description, WhatsApp draft message) is
+                          informational only — it never blocks catalogue readiness or Central Sync.
+                          WhatsApp approval workflow is not active; this studio never sends WhatsApp
+                          messages. "Generate Complete Catalogue Draft" on the Content step also
+                          fills these fields — the Hindi description is a genuine translation
+                          drafted by the AI service, not a machine transliteration; review it before
+                          saving.
                         </p>
                         {(() => {
-                          const languageBlocks = DRAFT_BLOCK_META.filter((block) => isLanguageMessagingField(block.key));
+                          const languageBlocks = DRAFT_BLOCK_META.filter((block) =>
+                            isLanguageMessagingField(block.key),
+                          );
                           if (languageBlocks.length === 0) {
                             return (
                               <p className="text-xs text-muted-foreground py-2">
@@ -1864,23 +2196,31 @@ export default function CatalogueProductStudio() {
                             );
                           }
                           return languageBlocks.map((block) => {
-                            const blockIsMissing = isMissingFieldOnlyMessage(editor.content[block.key]);
+                            const blockIsMissing = isMissingFieldOnlyMessage(
+                              editor.content[block.key],
+                            );
                             const blockIsEdited =
                               !blockIsMissing &&
                               !!activeBaseline &&
-                              isFieldEdited(editor.content[block.key], activeBaseline.content[block.key]);
+                              isFieldEdited(
+                                editor.content[block.key],
+                                activeBaseline.content[block.key],
+                              );
                             return (
                               <div key={block.key} className="space-y-1.5">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                   <div>
-                                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                    <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                                       {block.label}
                                       {blockIsEdited && (
-                                        <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                        <Badge
+                                          variant="outline"
+                                          className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40"
+                                        >
                                           Edited
                                         </Badge>
                                       )}
-                                    </label>
+                                    </span>
                                     <p className="text-[10px] text-muted-foreground">
                                       {block.key === "whatsapp_product_message"
                                         ? "Draft message text only — approval workflow not active, this studio never sends WhatsApp messages."
@@ -1893,7 +2233,9 @@ export default function CatalogueProductStudio() {
                                       size="sm"
                                       variant="ghost"
                                       disabled={draftLoading}
-                                      onClick={() => copyText(editor.content[block.key], block.label)}
+                                      onClick={() =>
+                                        copyText(editor.content[block.key], block.label)
+                                      }
                                     >
                                       <Copy size={12} className="mr-1.5" /> Copy
                                     </Button>
@@ -1916,10 +2258,16 @@ export default function CatalogueProductStudio() {
                         {mediaLoadState.status === "error" && (
                           <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 space-y-2">
                             <p className="text-[11px] text-destructive">
-                              {mediaLoadState.errorMessage} Readiness/Build Meter may be showing stale media status
-                              until this is retried — the uploader below still reflects live data.
+                              {mediaLoadState.errorMessage} Readiness/Build Meter may be showing
+                              stale media status until this is retried — the uploader below still
+                              reflects live data.
                             </p>
-                            <Button type="button" size="sm" variant="outline" onClick={retryMediaLoad}>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={retryMediaLoad}
+                            >
                               <RefreshCw size={12} className="mr-1.5" /> Retry
                             </Button>
                           </div>
@@ -1958,32 +2306,41 @@ export default function CatalogueProductStudio() {
                         )}
 
                         <div className="rounded-lg border border-border bg-muted/30 p-2.5 text-[11px] text-muted-foreground">
-                          AI image generation, enhancement, background removal, and vision-based product
-                          analysis are not available in this studio — no such service is configured or wired
-                          up (confirmed by inspection, not assumed). The prompts below are composed locally
-                          from this product's own facts plus your optional instruction — text only, for use
-                          with an external tool or a future governed generation connector; nothing here
-                          generates, enhances, or auto-approves an image.
+                          AI image generation, enhancement, background removal, and vision-based
+                          product analysis are not available in this studio — no such service is
+                          configured or wired up (confirmed by inspection, not assumed). The prompts
+                          below are composed locally from this product's own facts plus your
+                          optional instruction — text only, for use with an external tool or a
+                          future governed generation connector; nothing here generates, enhances, or
+                          auto-approves an image.
                         </div>
 
                         {IMAGE_PROMPT_BLOCK_META.map((block) => {
-                          const blockIsMissing = isMissingFieldOnlyMessage(editor.prompts[block.key]);
+                          const blockIsMissing = isMissingFieldOnlyMessage(
+                            editor.prompts[block.key],
+                          );
                           const blockIsEdited =
                             !blockIsMissing &&
                             !!generatedBaseline &&
-                            isFieldEdited(editor.prompts[block.key], generatedBaseline.prompts[block.key]);
+                            isFieldEdited(
+                              editor.prompts[block.key],
+                              generatedBaseline.prompts[block.key],
+                            );
                           return (
                             <div key={block.key} className="space-y-1.5">
                               <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div>
-                                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                                  <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                                     {block.label}
                                     {blockIsEdited && (
-                                      <Badge variant="outline" className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40">
+                                      <Badge
+                                        variant="outline"
+                                        className="text-[9px] uppercase bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-400/40"
+                                      >
                                         Edited
                                       </Badge>
                                     )}
-                                  </label>
+                                  </span>
                                   <p className="text-[10px] text-muted-foreground">{block.hint}</p>
                                 </div>
                                 {!blockIsMissing && (
@@ -2009,7 +2366,10 @@ export default function CatalogueProductStudio() {
                                 <Input
                                   value={promptInstructions[block.key] ?? ""}
                                   onChange={(e) =>
-                                    setPromptInstructions((prev) => ({ ...prev, [block.key]: e.target.value }))
+                                    setPromptInstructions((prev) => ({
+                                      ...prev,
+                                      [block.key]: e.target.value,
+                                    }))
                                   }
                                   placeholder={'Optional instruction, e.g. "darker background"'}
                                   className="h-7 text-[11px] flex-1 min-w-[160px]"
@@ -2033,17 +2393,22 @@ export default function CatalogueProductStudio() {
 
                       <TabsContent value="packaging" className="space-y-2 pt-4">
                         <p className="text-[11px] text-muted-foreground">
-                          Read-only checklist derived from product fields — nothing here is editable or saved.
+                          Read-only checklist derived from product fields — nothing here is editable
+                          or saved.
                         </p>
                         {packagingCategories.length === 0 ? (
-                          <p className="text-xs text-muted-foreground py-2">No packaging data available.</p>
+                          <p className="text-xs text-muted-foreground py-2">
+                            No packaging data available.
+                          </p>
                         ) : (
                           packagingCategories.map((c) => (
                             <ReadinessRow
                               key={c.key}
                               category={c}
                               productId={selected.id}
-                              onGoToFullEditor={(categoryKey) => nav(fullEditorDeepLink(selected.id, categoryKey))}
+                              onGoToFullEditor={(categoryKey) =>
+                                nav(fullEditorDeepLink(selected.id, categoryKey))
+                              }
                             />
                           ))
                         )}
@@ -2077,15 +2442,17 @@ export default function CatalogueProductStudio() {
                           <div className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-[11px] text-destructive">
                             <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                             <span>
-                              <strong>Internal review only — do not use externally.</strong> This draft is{" "}
+                              <strong>Internal review only — do not use externally.</strong> This
+                              draft is{" "}
                               {currentPersistedDraft
                                 ? STATUS_LABEL[currentPersistedDraft.status as CatalogueDraftStatus]
                                 : "not yet saved"}
-                              , not Approved, and/or still has a missing-field placeholder in one of its blocks
-                              (e.g. "Add missing field first: ..."). Copy is disabled until the draft is Approved
-                              and every block is complete. If a field shown here as missing has since been set on
-                              the product, this saved draft won't reflect it automatically — reset or regenerate
-                              the draft to refresh it; historical rejected/approved content is never silently
+                              , not Approved, and/or still has a missing-field placeholder in one of
+                              its blocks (e.g. "Add missing field first: ..."). Copy is disabled
+                              until the draft is Approved and every block is complete. If a field
+                              shown here as missing has since been set on the product, this saved
+                              draft won't reflect it automatically — reset or regenerate the draft
+                              to refresh it; historical rejected/approved content is never silently
                               rewritten.
                             </span>
                           </div>
