@@ -1,30 +1,28 @@
 import {
-  evaluateProductReadiness,
-  productTruthInputFromForm,
-} from "@/features/productTruth/productReadiness";
-import type { ConversionRule, PackagingHierarchy } from "@/features/productTruth/types";
+  mediaAssetsFromSources,
+  productMediaContextFromForm,
+} from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   evaluateMediaReadiness,
   selectApprovedImageUrlsForCentral,
 } from "@/features/mediaReadiness/mediaReadinessEngine";
-import {
-  mediaAssetsFromSources,
-  productMediaContextFromForm,
-  type ProductMediaRow,
-} from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
 import { serializePackagingHierarchyForSnapshot } from "@/features/productTruth/packagingHierarchyCanonical";
+import {
+  evaluateProductReadiness,
+  productTruthInputFromForm,
+} from "@/features/productTruth/productReadiness";
+import type { ConversionRule, PackagingHierarchy } from "@/features/productTruth/types";
 import type {
-  GstClassificationStatus,
   CatalogueSnapshotJson,
+  GstClassificationStatus,
   SnapshotGeneratorInput,
 } from "./types";
 
 function conversionRulesFromHierarchy(hierarchy: PackagingHierarchy): ConversionRule[] {
   const rules: ConversionRule[] = [];
   const piecesPerKg =
-    hierarchy.piecesPerKg ??
-    (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
+    hierarchy.piecesPerKg ?? (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
   if (piecesPerKg) {
     rules.push({ fromUom: "pcs", toUom: "kg", factor: 1 / piecesPerKg });
     rules.push({ fromUom: "kg", toUom: "pcs", factor: piecesPerKg });
@@ -60,18 +58,14 @@ function complianceFields(input: SnapshotGeneratorInput): CatalogueSnapshotJson[
     status: manuallyApproved ? "approved" : "manual_review_required",
     gst_classification_status: gstStatus,
     gst_hsn: manuallyApproved ? str(input.form.hsn_code) : null,
-    gst_rate: manuallyApproved
-      ? (input.form.gst_rate as string | number | null) ?? null
-      : null,
+    gst_rate: manuallyApproved ? ((input.form.gst_rate as string | number | null) ?? null) : null,
     ingredients: str(input.form.ingredients),
     allergen_warnings: str(input.form.allergen_information ?? input.form.allergen_warnings),
     manually_approved: manuallyApproved,
   };
 }
 
-export function generateCatalogueSnapshot(
-  input: SnapshotGeneratorInput,
-): CatalogueSnapshotJson {
+export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): CatalogueSnapshotJson {
   const truthInput = productTruthInputFromForm(input.form, {
     complianceApproved: input.complianceApproved,
     complianceMetaPending: input.complianceMetaPending,
@@ -118,7 +112,9 @@ export function generateCatalogueSnapshot(
         source: (row as { source?: string }).source ?? null,
       };
     })
-    .filter((row): row is { alias: string; alias_type: string | null; source: string | null } => !!row);
+    .filter(
+      (row): row is { alias: string; alias_type: string | null; source: string | null } => !!row,
+    );
 
   return {
     generated_at: new Date().toISOString(),
