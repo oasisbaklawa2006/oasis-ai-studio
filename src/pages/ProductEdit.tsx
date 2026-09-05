@@ -62,6 +62,7 @@ import {
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { resolveProductEditTab } from "@/features/productAuthority/productEditTabs";
 import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
+import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import {
   buildDimensionsText,
   dbRowToProductForm,
@@ -1284,6 +1285,10 @@ const ProductEdit = () => {
   const showCustomization =
     !!profile.showCustomization || cls === "gift_hamper" || cls === "service_or_customization";
   const showDimensions = cls === "packaging_decoration_material" || form.fixed_carton_required;
+  const derivedCbmPreview = useMemo(
+    () => deriveCbmFromCm(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm),
+    [form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm],
+  );
   const showFrozen = cls === "semi_prepared_frozen";
   const canManageBom =
     roles.includes("owner") || roles.includes("admin") || roles.includes("product_manager");
@@ -2465,6 +2470,16 @@ const ProductEdit = () => {
                         />
                       </Field>
                     </div>
+                    {derivedCbmPreview != null && (
+                      <div className="sm:col-span-3 rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs">
+                        <span className="text-muted-foreground">Derived volume (CBM): </span>
+                        <span className="font-mono font-medium">{derivedCbmPreview} m³</span>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Calculated from L × W × H (cm). Persisted CBM requires Core schema on
+                          shared products.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
