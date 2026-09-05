@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   emptyFastCreateDraft,
+  FAST_CREATE_DRAFT_STORAGE_KEY,
+  type FastCreateDraftSnapshot,
   fastCreateFormPatchFromDraft,
   fastCreateReadinessCategories,
   fastCreateReadinessScore,
-  FAST_CREATE_DRAFT_STORAGE_KEY,
   heroPreviewFromDraft,
   loadFastCreateDraft,
-  type FastCreateDraftSnapshot,
 } from "./fastCreateDraft";
 
 function misr15Draft(): FastCreateDraftSnapshot {
@@ -34,21 +34,27 @@ describe("fastCreateReadinessCategories — adaptive required fields", () => {
   });
 
   it("adds B2B price requirement when B2B is enabled", () => {
-    const keys = fastCreateReadinessCategories({ ...misr15Draft(), b2bEnabled: true }).map((c) => c.key);
+    const keys = fastCreateReadinessCategories({ ...misr15Draft(), b2bEnabled: true }).map(
+      (c) => c.key,
+    );
     expect(keys).toContain("b2b_price");
   });
 
   it("internal/BOM products require neither price, packaging, nor image", () => {
-    const keys = fastCreateReadinessCategories({ ...emptyFastCreateDraft(), saleType: "internal_bom" }).map(
-      (c) => c.key,
-    );
+    const keys = fastCreateReadinessCategories({
+      ...emptyFastCreateDraft(),
+      saleType: "internal_bom",
+    }).map((c) => c.key);
     expect(keys).not.toContain("mrp");
     expect(keys).not.toContain("packaging");
     expect(keys).not.toContain("hero");
   });
 
   it("export drafts flag export details as complete-in-Full-Editor, not blocking", () => {
-    const categories = fastCreateReadinessCategories({ ...emptyFastCreateDraft(), saleType: "export" });
+    const categories = fastCreateReadinessCategories({
+      ...emptyFastCreateDraft(),
+      saleType: "export",
+    });
     const exportCat = categories.find((c) => c.key === "export_fields");
     expect(exportCat?.state).toBe("warn");
   });
@@ -83,7 +89,10 @@ describe("fastCreateFormPatchFromDraft — Full Editor handoff", () => {
   });
 
   it("operator-edited description overrides the generated one", () => {
-    const patch = fastCreateFormPatchFromDraft({ ...misr15Draft(), editedDescription: "My own words." });
+    const patch = fastCreateFormPatchFromDraft({
+      ...misr15Draft(),
+      editedDescription: "My own words.",
+    });
     expect(patch.description).toBe("My own words.");
   });
 
