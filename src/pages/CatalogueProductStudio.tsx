@@ -1717,7 +1717,11 @@ export default function CatalogueProductStudio() {
                           Active
                         </p>
                         <p className="font-medium text-foreground">
-                          {(selected.is_active ?? true) ? "Yes" : "No"}
+                          {selected.is_active === true
+                            ? "Yes"
+                            : selected.is_active === false
+                              ? "No"
+                              : "—"}
                         </p>
                       </div>
                       <div>

@@ -14,7 +14,7 @@ import {
 import {
   deriveCbmFromCm,
   formatDimensionsCmText,
-  resolveDimensionsCmText,
+  resolveProductDimensionsCmText,
 } from "@/features/productAuthority/shippingDimensions";
 import { enrichPackFormFromDbRow } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { Database } from "@/integrations/supabase/types";
@@ -212,6 +212,10 @@ function toBlank(v: unknown): string {
   return v == null ? "" : String(v);
 }
 
+function hasTextValue(v: unknown): boolean {
+  return v != null && String(v).trim().length > 0;
+}
+
 function toNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);
@@ -247,9 +251,9 @@ export function resolveCentralLegacyProductName(fields: {
   return "Untitled Product";
 }
 
-/** @deprecated Use resolveDimensionsCmText from shippingDimensions.ts */
+/** @deprecated Use resolveProductDimensionsCmText from shippingDimensions.ts */
 export function buildDimensionsText(form: Record<string, unknown>): string | null {
-  return resolveDimensionsCmText(form);
+  return resolveProductDimensionsCmText(form);
 }
 
 function isPricingLeakKey(key: string): boolean {
@@ -329,14 +333,29 @@ export function formatProductSaveError(error: unknown): string {
  */
 export function formToDbProductPayload(form: Record<string, unknown>): Record<string, unknown> {
   const hero = (form.hero_image_url as string) ?? null;
-  const dims = resolveDimensionsCmText(form);
+  const structuredText = formatDimensionsCmText(
+    form.dimension_l_cm,
+    form.dimension_w_cm,
+    form.dimension_h_cm,
+  );
   const derivedCbm = deriveCbmFromCm(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm);
-  const cartonDims =
-    form.carton_dimensions_cm != null && String(form.carton_dimensions_cm).trim()
+  const hasCompleteStructured = derivedCbm != null;
+
+  const productDims = hasCompleteStructured ? structuredText : resolveProductDimensionsCmText(form);
+
+  const cartonDims = hasCompleteStructured
+    ? toBool(form.fixed_carton_required, false)
+      ? structuredText
+      : hasTextValue(form.carton_dimensions_cm)
+        ? String(form.carton_dimensions_cm)
+        : null
+    : hasTextValue(form.carton_dimensions_cm)
       ? String(form.carton_dimensions_cm)
       : toBool(form.fixed_carton_required, false)
-        ? formatDimensionsCmText(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm)
+        ? structuredText
         : null;
+
+  const cbm = hasCompleteStructured ? derivedCbm : toNum(form.cbm);
 
   const centralLegacyName = resolveCentralLegacyProductName({
     product_name: form.product_name,
@@ -401,9 +420,9 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     dimension_l_cm: toNum(form.dimension_l_cm),
     dimension_w_cm: toNum(form.dimension_w_cm),
     dimension_h_cm: toNum(form.dimension_h_cm),
-    product_dimensions_cm: dims,
+    product_dimensions_cm: productDims,
     carton_dimensions_cm: cartonDims,
-    cbm: toNum(form.cbm) ?? derivedCbm,
+    cbm,
     grams_per_piece: toNum(form.approximate_piece_weight_g),
     pcs_per_kg:
       toNum(form.pieces_per_kg) ??

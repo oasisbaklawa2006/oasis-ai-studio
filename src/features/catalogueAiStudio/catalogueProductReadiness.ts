@@ -268,8 +268,8 @@ function buildCartonPackaging(p: ReadinessProductInput): ReadinessCategory {
     hasText(p.product_dimensions_cm) ||
     (hasNumber(p.dimension_l_cm) && hasNumber(p.dimension_w_cm) && hasNumber(p.dimension_h_cm));
   const dimsLabel =
-    p.carton_dimensions_cm ??
-    p.product_dimensions_cm ??
+    (hasText(p.carton_dimensions_cm) ? p.carton_dimensions_cm : null) ??
+    (hasText(p.product_dimensions_cm) ? p.product_dimensions_cm : null) ??
     (hasDims ? `${p.dimension_l_cm}×${p.dimension_w_cm}×${p.dimension_h_cm} cm` : null);
   if (!hasCartonQty && !hasDims) {
     return {

@@ -9,6 +9,10 @@ function positiveNum(v: unknown): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+function hasTextValue(v: unknown): boolean {
+  return v != null && String(v).trim().length > 0;
+}
+
 /** Human-readable L×W×H text from cm inputs (e.g. "L 22 cm × W 18 cm × H 6 cm"). */
 export function formatDimensionsCmText(
   lengthCm: unknown,
@@ -41,10 +45,14 @@ export function deriveCbmFromCm(
   return Number.isFinite(cbm) ? Number(cbm.toFixed(6)) : null;
 }
 
-/** Prefer explicit text, else derive from structured L/W/H cm fields. */
-export function resolveDimensionsCmText(form: Record<string, unknown>): string | null {
-  if (form.product_dimensions_cm) return String(form.product_dimensions_cm);
-  if (form.carton_dimensions_cm) return String(form.carton_dimensions_cm);
-  if (form.dimensions) return String(form.dimensions);
+/** Product-pack dimensions only — never falls back to carton dimensions. */
+export function resolveProductDimensionsCmText(form: Record<string, unknown>): string | null {
+  if (hasTextValue(form.product_dimensions_cm)) return String(form.product_dimensions_cm);
+  if (hasTextValue(form.dimensions)) return String(form.dimensions);
   return formatDimensionsCmText(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm);
+}
+
+/** @deprecated Use resolveProductDimensionsCmText — carton dimensions are persisted separately. */
+export function resolveDimensionsCmText(form: Record<string, unknown>): string | null {
+  return resolveProductDimensionsCmText(form);
 }

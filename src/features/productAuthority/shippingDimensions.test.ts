@@ -3,6 +3,7 @@ import {
   deriveCbmFromCm,
   formatDimensionsCmText,
   resolveDimensionsCmText,
+  resolveProductDimensionsCmText,
 } from "@/features/productAuthority/shippingDimensions";
 
 describe("shippingDimensions", () => {
@@ -28,7 +29,7 @@ describe("shippingDimensions", () => {
 
   it("prefers explicit product_dimensions_cm text", () => {
     expect(
-      resolveDimensionsCmText({
+      resolveProductDimensionsCmText({
         product_dimensions_cm: "Custom dims",
         dimension_l_cm: 10,
         dimension_w_cm: 10,
@@ -37,13 +38,26 @@ describe("shippingDimensions", () => {
     ).toBe("Custom dims");
   });
 
-  it("falls back to structured L/W/H when no text field", () => {
+  it("falls back to structured L/W/H when no product text field", () => {
     expect(
-      resolveDimensionsCmText({
+      resolveProductDimensionsCmText({
         dimension_l_cm: 10,
         dimension_w_cm: 20,
         dimension_h_cm: 30,
       }),
     ).toBe("L 10 cm × W 20 cm × H 30 cm");
+  });
+
+  it("does not use carton_dimensions_cm for product_dimensions_cm", () => {
+    expect(
+      resolveProductDimensionsCmText({
+        carton_dimensions_cm: "L 40 cm × W 30 cm × H 20 cm",
+      }),
+    ).toBeNull();
+  });
+
+  it("resolveDimensionsCmText alias matches product resolver", () => {
+    const form = { carton_dimensions_cm: "L 40 cm × W 30 cm × H 20 cm" };
+    expect(resolveDimensionsCmText(form)).toBe(resolveProductDimensionsCmText(form));
   });
 });

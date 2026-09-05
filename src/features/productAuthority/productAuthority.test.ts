@@ -13,6 +13,7 @@ import {
   formToDbProductPayload,
   productSaveValidationMessage,
   resolveCentralLegacyProductName,
+  sanitizeLiveProductsPayload,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -329,6 +330,24 @@ describe("productSchemaAdapter", () => {
       carton_dimensions_cm: "L 40 cm × W 30 cm × H 20 cm",
     });
     expect(payload.carton_dimensions_cm).toBe("L 40 cm × W 30 cm × H 20 cm");
+    expect(payload.product_dimensions_cm).toBeNull();
+  });
+
+  it("recomputes derived fields when structured dimensions change on edit", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "50",
+      dimension_w_cm: "40",
+      dimension_h_cm: "30",
+      product_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      carton_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      cbm: 0.001,
+      fixed_carton_required: true,
+    });
+    expect(payload.product_dimensions_cm).toBe("L 50 cm × W 40 cm × H 30 cm");
+    expect(payload.carton_dimensions_cm).toBe("L 50 cm × W 40 cm × H 30 cm");
+    expect(payload.cbm).toBe(0.06);
   });
 
   it("does not fabricate CBM when dimensions are incomplete", () => {
@@ -341,13 +360,15 @@ describe("productSchemaAdapter", () => {
     expect(payload.cbm).toBeNull();
   });
 
-  it("still blocks gross_weight_kg on live save", () => {
-    const payload = formToDbProductPayload({
+  it("strips gross_weight_kg via live allowlist sanitizer", () => {
+    const { payload } = sanitizeLiveProductsPayload({
       product_name: "Gift Box",
       sku: "OAS-AS-BKL-0001-0001",
-      gross_weight_kg: "2.5",
+      gross_weight_kg: 2.5,
+      net_weight_g: 500,
     });
     expect(payload.gross_weight_kg).toBeUndefined();
+    expect(payload.net_weight_g).toBe(500);
   });
 
   it("formats PGRST204 schema mismatch with actionable message", () => {

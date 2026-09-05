@@ -816,7 +816,8 @@ const ProductEdit = () => {
   useEffect(() => {
     if (!isNew || duplicateFrom) return;
     const fastDraft = loadFastCreateDraft();
-    if (!fastDraft?.productName.trim()) return;
+    const draftName = fastDraft?.productName;
+    if (typeof draftName !== "string" || !draftName.trim()) return;
     const patch = fastCreateFormPatchFromDraft(fastDraft);
     setForm((prev: Record<string, unknown>) => ({ ...prev, ...patch }));
     setDirty(true);

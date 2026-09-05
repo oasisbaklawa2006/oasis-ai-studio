@@ -4,7 +4,9 @@ import {
   fastCreateFormPatchFromDraft,
   fastCreateReadinessCategories,
   fastCreateReadinessScore,
+  FAST_CREATE_DRAFT_STORAGE_KEY,
   heroPreviewFromDraft,
+  loadFastCreateDraft,
   type FastCreateDraftSnapshot,
 } from "./fastCreateDraft";
 
@@ -89,6 +91,17 @@ describe("fastCreateFormPatchFromDraft — Full Editor handoff", () => {
     const patch = fastCreateFormPatchFromDraft({ ...misr15Draft(), mrp: "", b2bPrice: "0" });
     expect(patch).not.toHaveProperty("mrp");
     expect(patch).not.toHaveProperty("b2b_price");
+  });
+});
+
+describe("loadFastCreateDraft — malformed session payloads", () => {
+  it("coerces non-string productName to empty string", () => {
+    sessionStorage.setItem(
+      FAST_CREATE_DRAFT_STORAGE_KEY,
+      JSON.stringify({ productName: null, categoryKey: "baklawa" }),
+    );
+    expect(loadFastCreateDraft()?.productName).toBe("");
+    sessionStorage.removeItem(FAST_CREATE_DRAFT_STORAGE_KEY);
   });
 });
 
