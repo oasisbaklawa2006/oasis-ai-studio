@@ -2,7 +2,7 @@
 
 **ASM:** AI Studio Product Master representation and governed editing  
 **Mission Control authority:** Central #459 — Point 33 = pack/carton/pallet hierarchy  
-**Starting SHA:** `c010b26` (`POINT30: runtime certification remediation`)  
+**Starting SHA:** `c010b26` (original census) · **Rebased onto main:** `33f61f2` (#140 merged)  
 **Boundary:** No Core migration while Point 20 #201 is active  
 
 ## Authority / gap matrix
@@ -48,6 +48,8 @@
 | `src/features/catalogueSnapshot/snapshotGenerator.ts` | `point33_v1` packaging_hierarchy |
 | `src/features/catalogueSnapshot/types.ts` | Typed snapshot packaging block |
 | `src/features/productAuthority/productSchemaAdapter.ts` | `enrichPackFormFromDbRow` on load |
+| `src/features/productTruth/productReadiness.ts` | Point 33 validation gates packaging readiness |
+| `src/features/productTruth/productReadinessFalseBlockers.test.ts` | Zero-qty hierarchy regression |
 
 ## Core dependency (exact)
 
@@ -67,13 +69,13 @@ No shadow table or local-only canonical truth was created. Point 20 #201 remains
 | **37** | Central sync snapshot now carries full `point33_v1` hierarchy for preview |
 | **54–56** | Export/fulfilment transforms can read `case_carton` + chain; pallet blocked until Core |
 
-## Test matrix (pre-PR)
+## Test matrix (rebased head)
 
 | Check | Command | Result |
 | --- | --- | --- |
 | Typecheck | `npm run typecheck` | PASS |
-| Unit tests | `npm test` | PASS — 820/820 (+ Point 33 + readiness) |
+| Unit tests | `npm test` | PASS — **824/824** (includes #140 baseline + Point 33) |
 | Build | `npm run build` | PASS |
 | Boundaries | `npm run check:boundaries` | PASS (0 violations) |
-| Biome changed | `QUALITY_BASE_REF=c010b26 npm run lint:biome:changed` | PASS |
+| Biome changed | `QUALITY_BASE_REF=33f61f2 npm run lint:biome:changed` | PASS |
 | Point 33 focused | `npx vitest run src/features/productTruth/packagingHierarchyCanonical.test.ts` | PASS — 11 tests |

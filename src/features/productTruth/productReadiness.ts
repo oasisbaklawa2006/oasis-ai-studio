@@ -17,12 +17,7 @@ import { resolveProductHeroUrl } from "@/lib/productImage";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { buildCanonicalPackagingHierarchy } from "./packagingHierarchyCanonical";
 import { packagingHierarchyFromForm } from "./packagingHierarchyFromForm";
-import type {
-  DimensionStatus,
-  ProductTruthInput,
-  ReadinessBadge,
-  ReadinessDimension,
-} from "./types";
+import type { DimensionStatus, ProductTruthInput, ReadinessBadge } from "./types";
 import { READINESS_DIMENSIONS } from "./types";
 import { validateConversionRuleChain } from "./uomPackagingEngine";
 
