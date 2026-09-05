@@ -24,6 +24,12 @@ const OperatorInbox = lazy(() => import("./pages/OperatorInbox"));
 const PilotAliasReview = lazy(() => import("./pages/PilotAliasReview"));
 const PilotReadinessDashboard = lazy(() => import("./pages/PilotReadinessDashboard"));
 const ProductEdit = lazy(() => import("./pages/ProductEdit"));
+const ProductMediaDeepLink = lazy(() =>
+  import("./pages/ProductEditDeepLinks").then((m) => ({ default: m.ProductMediaDeepLink })),
+);
+const ProductAliasesDeepLink = lazy(() =>
+  import("./pages/ProductEditDeepLinks").then((m) => ({ default: m.ProductAliasesDeepLink })),
+);
 const Products = lazy(() => import("./pages/Products"));
 const ProductIntelligenceKnowledge = lazy(() => import("./pages/ProductIntelligenceKnowledge"));
 const ResolverPreview = lazy(() => import("./pages/ResolverPreview"));
@@ -88,6 +94,22 @@ const App = () => (
                     element={
                       <RoleGate page="products">
                         <FastCreateProduct />
+                      </RoleGate>
+                    }
+                  />
+                  <Route
+                    path="/products/:id/media"
+                    element={
+                      <RoleGate page="products">
+                        <ProductMediaDeepLink />
+                      </RoleGate>
+                    }
+                  />
+                  <Route
+                    path="/products/:id/aliases"
+                    element={
+                      <RoleGate page="products">
+                        <ProductAliasesDeepLink />
                       </RoleGate>
                     }
                   />
