@@ -1,5 +1,6 @@
-import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
+import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
+import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type {
   ChannelMoqRule,
   ChannelPriceRecord,
@@ -62,10 +63,7 @@ export type CatalogueSnapshotJson = {
     manually_approved: boolean;
   };
   uom_conversion_rules: PackagingHierarchy & Record<string, unknown>;
-  packaging_hierarchy: {
-    primary_pack: Record<string, unknown>;
-    master_carton: Record<string, unknown>;
-  };
+  packaging_hierarchy: SnapshotPackagingHierarchy;
   channel_rules: ChannelMoqRule[];
   pricing_rules: ChannelPriceRecord[];
   media: {

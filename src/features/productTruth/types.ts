@@ -46,15 +46,7 @@ export type DimensionStatus = {
   note?: string;
 };
 
-export type UomCode =
-  | "pcs"
-  | "kg"
-  | "grams"
-  | "tray"
-  | "carton"
-  | "master_carton"
-  | "pack"
-  | "box";
+export type UomCode = "pcs" | "kg" | "grams" | "tray" | "carton" | "master_carton" | "pack" | "box";
 
 export type RoundingRule = "ceil" | "floor" | "nearest" | "none";
 
@@ -83,7 +75,18 @@ export type ChannelPriceRecord = {
    *  required for deterministic selection in getChannelPrice(). */
   id?: string | null;
   channel: ProductTruthChannel | string;
-  priceType?: "mrp" | "selling" | "b2b_base" | "horeca" | "wholesale" | "franchise" | "export_exw" | "export_fob" | "corporate" | "wedding" | string;
+  priceType?:
+    | "mrp"
+    | "selling"
+    | "b2b_base"
+    | "horeca"
+    | "wholesale"
+    | "franchise"
+    | "export_exw"
+    | "export_fob"
+    | "corporate"
+    | "wedding"
+    | string;
   mrp?: number | null;
   sellingPrice?: number | null;
   currency?: string;
@@ -131,4 +134,10 @@ export type ProductTruthInput = {
   fallbackPrices?: { mrp: number | null; b2bPrice: number | null; exportPrice: number | null };
   /** True when the product sells by pack/box (pcs_per_pack set or pack UOM) — pieces/kg not applicable. */
   packBasedSelling?: boolean;
+  /** Point 33 canonical hierarchy validation (errors block packaging readiness). */
+  packagingHierarchyValidation?: {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  };
 };
