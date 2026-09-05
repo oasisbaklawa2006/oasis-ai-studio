@@ -15,4 +15,8 @@ describe("productEditDeepLinks", () => {
       `/products/prod-1?tab=identity#${PRODUCT_ALIASES_SECTION_ID}`,
     );
   });
+
+  it("encodes unsafe path segments", () => {
+    expect(productMediaDeepLink("id/with/slash")).toBe("/products/id%2Fwith%2Fslash?tab=media");
+  });
 });

@@ -2,9 +2,9 @@
 export const PRODUCT_ALIASES_SECTION_ID = "product-language-terms";
 
 export function productMediaDeepLink(productId: string): string {
-  return `/products/${productId}?tab=media`;
+  return `/products/${encodeURIComponent(productId)}?tab=media`;
 }
 
 export function productAliasesDeepLink(productId: string): string {
-  return `/products/${productId}?tab=identity#${PRODUCT_ALIASES_SECTION_ID}`;
+  return `/products/${encodeURIComponent(productId)}?tab=identity#${PRODUCT_ALIASES_SECTION_ID}`;
 }

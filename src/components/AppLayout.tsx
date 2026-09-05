@@ -43,7 +43,6 @@ const nav: NavItem[] = [
   { to: "/products", label: "Products", icon: Package, page: "products" },
   { to: "/admin/import/category-1", label: "Cat 1 Import", icon: Upload, page: "category1_import" },
   { to: "/media", label: "Media Library", icon: Image, page: "media" },
-  { to: "/media/review", label: "Media Review", icon: ShieldCheck, page: "media" },
   { to: "/tags", label: "Tags", icon: Tags, page: "tags" },
   { to: "/catalogues", label: "Catalogues", icon: BookOpen, page: "catalogues" },
   {
@@ -89,7 +88,7 @@ export const AppLayout = () => {
   const rolesReady = !loading && !rolesLoading;
   const items = rolesReady
     ? nav.filter((n) => {
-        if (n.to === "/approvals" || n.to === "/media/review") return isAdmin || isReviewer;
+        if (n.to === "/approvals") return isAdmin || isReviewer;
         if (!canAccessPage(roles, n.page)) return false;
         if (!n.featureKey) return true; // core pages always visible
         if (flagsLoading) return isAdmin; // don't hide gated items for admin while loading
