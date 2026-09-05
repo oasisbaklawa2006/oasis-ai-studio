@@ -11,17 +11,14 @@ import {
 
 /**
  * Studio-only columns confirmed absent on live shared products table.
- * Point 35: `carton_dimensions_cm`, `cbm`, `gross_weight_kg` are in Studio migrations
- * (20260506164807) but not yet on shared Central `products` — see CatalogueProductStudio
- * PRODUCT_SELECT comment and docs/programme/POINT_35_DIMENSIONS_WEIGHT_CBM_AUDIT.md.
+ * Point 35: `gross_weight_kg` remains Studio-only — grams (`gross_weight_g`) stay canonical in UI.
+ * Core #199 (release #139) landed `carton_dimensions_cm` + `cbm` on shared `products`.
  */
 export const LIVE_PRODUCTS_STUDIO_ONLY_COLUMNS: ReadonlySet<string> = new Set([
   "approximate_piece_weight_g",
   "pieces_per_kg",
   "sku_generated_at",
   "archived_at",
-  "carton_dimensions_cm",
-  "cbm",
   "gross_weight_kg",
 ]);
 

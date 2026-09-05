@@ -155,9 +155,8 @@ type CatalogueProductStudioProduct = DraftProductInput & {
   packaging_code?: string | null;
 };
 
-// carton_dimensions_cm is not present on production's products table (schema drift from the
-// AI-Studio reference implementation) and is optional everywhere it's consumed, so it's safely
-// omitted from the select. b2b_price is NOT a real column either (see PR #77-79's pricing-authority
+// Core #199 (release #139): `carton_dimensions_cm` and `cbm` are live on shared products.
+// b2b_price is NOT a real column (see PR #77-79 pricing-authority findings) — the real column
 // findings) — the real column is price_b2b, selected below and mapped onto the b2b_price field
 // name at the query boundary only (mapRowsFromSupabase), so every downstream consumer of
 // DraftProductInput/ReadinessProductInput keeps using the one field name they already expect.
@@ -193,6 +192,8 @@ const PRODUCT_SELECT = [
   "dimension_w_cm",
   "dimension_h_cm",
   "product_dimensions_cm",
+  "carton_dimensions_cm",
+  "cbm",
   "shelf_life_days",
   "storage_instructions",
   "temperature_requirement",

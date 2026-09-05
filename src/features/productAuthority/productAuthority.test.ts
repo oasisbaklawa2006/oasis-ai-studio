@@ -308,25 +308,46 @@ describe("productSchemaAdapter", () => {
     expect(payload.gross_weight_g).toBe(550);
   });
 
-  it("does not persist derived CBM until Core schema lands on shared products", () => {
+  it("persists derived CBM and carton dimensions on live save after Core #199", () => {
     const payload = formToDbProductPayload({
       product_name: "Gift Box",
       sku: "OAS-AS-BKL-0001-0001",
       dimension_l_cm: "100",
       dimension_w_cm: "100",
       dimension_h_cm: "100",
+      fixed_carton_required: true,
     });
-    expect(payload.cbm).toBeUndefined();
+    expect(payload.cbm).toBe(1);
+    expect(payload.carton_dimensions_cm).toBe("L 100 cm × W 100 cm × H 100 cm");
     expect(payload.dimension_l_cm).toBe(100);
   });
 
-  it("does not persist Studio-only carton_dimensions_cm on live save", () => {
+  it("persists explicit carton_dimensions_cm text on live save", () => {
     const payload = formToDbProductPayload({
       product_name: "Gift Box",
       sku: "OAS-AS-BKL-0001-0001",
       carton_dimensions_cm: "L 40 cm × W 30 cm × H 20 cm",
     });
-    expect(payload.carton_dimensions_cm).toBeUndefined();
+    expect(payload.carton_dimensions_cm).toBe("L 40 cm × W 30 cm × H 20 cm");
+  });
+
+  it("does not fabricate CBM when dimensions are incomplete", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "100",
+      dimension_w_cm: "100",
+    });
+    expect(payload.cbm).toBeNull();
+  });
+
+  it("still blocks gross_weight_kg on live save", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      gross_weight_kg: "2.5",
+    });
+    expect(payload.gross_weight_kg).toBeUndefined();
   });
 
   it("formats PGRST204 schema mismatch with actionable message", () => {
