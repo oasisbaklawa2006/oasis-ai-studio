@@ -1,6 +1,7 @@
 import type { FastCreateSuggestions } from "@/features/fastCreate/fastCreateSuggestions";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import { supabase } from "@/integrations/supabase/client";
+import { parseChatCompletionStreamText } from "@/shared/ai/chatCompletionStream";
 import { extractGovernedAliases } from "./governedAliasExtraction";
 import {
   applyGovernedComplianceToForm,
@@ -157,7 +158,10 @@ export async function enrichFastCreateWithGovernedAi(
 
       if (resp.ok) {
         const text = await resp.text();
-        const rawFragments = text.split(/[,\n]/).map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
+        const assembled = parseChatCompletionStreamText(text);
+        const rawFragments = assembled
+          .split(/[,\n]/)
+          .map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
         const aliasExtraction = extractGovernedAliases(rawFragments);
         provenance.push(aliasExtraction.provenance);
 

@@ -67,20 +67,47 @@ export function parseAiComplianceResponse(data: unknown): AiComplianceResponse |
   const row = data as Record<string, unknown>;
   if (row.ok === false) return null;
 
-  const suggestions = normalizeSuggestionPayload(row.suggestions);
-  if (!suggestions) return null;
+  const governedSuggestions = normalizeSuggestionPayload(row.suggestions);
+  if (governedSuggestions) {
+    const suggestionOnly = row.suggestion_only !== false;
+    const approved = row.approved === true;
+    if (!suggestionOnly || approved) return null;
 
-  const suggestionOnly = row.suggestion_only !== false;
-  const approved = row.approved === true;
+    return {
+      suggestion_only: true,
+      approved: false,
+      disclaimer: String(row.disclaimer ?? AI_COMPLIANCE_LEGAL_DISCLAIMER),
+      suggestions: governedSuggestions,
+    };
+  }
 
-  if (!suggestionOnly || approved) return null;
+  return parseLegacyCentralComplianceResponse(row);
+}
 
-  return {
-    suggestion_only: true,
-    approved: false,
-    disclaimer: String(row.disclaimer ?? AI_COMPLIANCE_LEGAL_DISCLAIMER),
-    suggestions,
-  };
+/**
+ * Live Central `generate-product-attributes` returns flat allergen/HSN/GST fields
+ * (gst_percentage, nutrition_facts) without the governed wrapper. Normalize to the
+ * same review-only contract without weakening approval semantics.
+ */
+function parseLegacyCentralComplianceResponse(
+  row: Record<string, unknown>,
+): AiComplianceResponse | null {
+  const legacy: AiComplianceSuggestionPayload = {};
+  if (row.hsn_code != null) legacy.hsn_code = String(row.hsn_code);
+  if (row.gst_rate != null) legacy.gst_rate = row.gst_rate as string | number;
+  if (row.gst_percentage != null) legacy.gst_rate = row.gst_percentage as string | number;
+  if (row.shelf_life_days != null) legacy.shelf_life_days = row.shelf_life_days as string | number;
+  if (row.ingredients != null) legacy.ingredients = String(row.ingredients);
+  if (row.allergen_warnings != null) legacy.allergen_warnings = String(row.allergen_warnings);
+  if (row.nutritional_info != null) legacy.nutritional_info = String(row.nutritional_info);
+  if (row.nutrition_facts != null) legacy.nutritional_info = String(row.nutrition_facts);
+  if (row.storage_instructions != null)
+    legacy.storage_instructions = String(row.storage_instructions);
+
+  if (Object.keys(legacy).length === 0) return null;
+  if (row.approved === true) return null;
+
+  return buildAiComplianceResponse(legacy);
 }
 
 /**

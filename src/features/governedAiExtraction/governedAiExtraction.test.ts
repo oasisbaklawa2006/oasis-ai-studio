@@ -165,6 +165,30 @@ describe("extractGovernedCompliance", () => {
     expect(result.provenance.provider_status).toBe("failed");
     expect(result.provenance.fail_closed).toBe(true);
   });
+
+  it("accepts live Central flat generate-product-attributes shape as review-only suggestions", () => {
+    const result = extractGovernedCompliance({
+      product_name: "Synthetic Pyramid Baklawa",
+      category: "baklawa",
+      edgeData: {
+        hsn_code: "19059090",
+        gst_percentage: 18,
+        ingredients: "Synthetic test ingredients",
+        allergen_warnings: "Synthetic test allergens",
+        nutrition_facts: "Per 100g synthetic values",
+      },
+      edgeError: null,
+    });
+
+    expect(result.provenance.provider_status).toBe("ok");
+    expect(result.provenance.fail_closed).toBe(false);
+    expect(result.suggestion_only).toBe(true);
+    expect(result.approved).toBe(false);
+    expect(result.suggestions.some((s) => s.field === "hsn_code" && s.value === "19059090")).toBe(
+      true,
+    );
+    expect(result.suggestions.some((s) => s.field === "gst_rate" && s.value === "18")).toBe(true);
+  });
 });
 
 describe("applyGovernedComplianceToForm", () => {
@@ -228,7 +252,12 @@ describe("enrichFastCreateWithGovernedAi", () => {
     });
     fetchMock.mockResolvedValue({
       ok: true,
-      text: async () => "pyramid baklawa, cashew pyramid",
+      text: async () =>
+        [
+          'data: {"choices":[{"delta":{"content":"pyramid baklawa, "}}]}',
+          'data: {"choices":[{"delta":{"content":"cashew pyramid"}}]}',
+          "data: [DONE]",
+        ].join("\n"),
     });
 
     const { suggestions } = await enrichFastCreateWithGovernedAi(
@@ -302,7 +331,12 @@ describe("enrichFastCreateWithGovernedAi", () => {
     invokeMock.mockResolvedValue({ data: null, error: { message: "offline" } });
     fetchMock.mockResolvedValue({
       ok: true,
-      text: async () => "pyramid baklawa, cashew pyramid",
+      text: async () =>
+        [
+          'data: {"choices":[{"delta":{"content":"pyramid baklawa, "}}]}',
+          'data: {"choices":[{"delta":{"content":"cashew pyramid"}}]}',
+          "data: [DONE]",
+        ].join("\n"),
     });
 
     const { suggestions, provenance } = await enrichFastCreateWithGovernedAi(
