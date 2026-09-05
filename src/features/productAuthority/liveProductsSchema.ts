@@ -9,12 +9,17 @@ import {
   isProductsPricingOrBasisField,
 } from "@/features/productAuthority/channelPricingMapper";
 
-/** Studio-only columns confirmed absent on live shared products table. */
+/**
+ * Studio-only columns confirmed absent on live shared products table.
+ * Point 35: `gross_weight_kg` remains Studio-only — grams (`gross_weight_g`) stay canonical in UI.
+ * Core #199 (release #139) landed `carton_dimensions_cm` + `cbm` on shared `products`.
+ */
 export const LIVE_PRODUCTS_STUDIO_ONLY_COLUMNS: ReadonlySet<string> = new Set([
   "approximate_piece_weight_g",
   "pieces_per_kg",
   "sku_generated_at",
   "archived_at",
+  "gross_weight_kg",
 ]);
 
 /** Studio pricing columns absent on live shared products — never write. */

@@ -71,6 +71,7 @@ import {
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
+import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
@@ -638,6 +639,7 @@ const ProductEdit = () => {
   const location = useLocation();
   const duplicateFrom = searchParams.get("duplicateFrom");
   const isNew = !id || id === "new";
+  const savedProductId = id ?? "";
   const nav = useNavigate();
   const { roles } = useAuth();
 
@@ -806,7 +808,7 @@ const ProductEdit = () => {
   useEffect(() => {
     if (!isNew || duplicateFrom) return;
     const fastDraft = loadFastCreateDraft();
-    if (!fastDraft || !fastDraft.productName.trim()) return;
+    if (!fastDraft?.productName.trim()) return;
     const patch = fastCreateFormPatchFromDraft(fastDraft);
     setForm((prev: Record<string, unknown>) => ({ ...prev, ...patch }));
     setDirty(true);
@@ -1284,6 +1286,10 @@ const ProductEdit = () => {
   const showCustomization =
     !!profile.showCustomization || cls === "gift_hamper" || cls === "service_or_customization";
   const showDimensions = cls === "packaging_decoration_material" || form.fixed_carton_required;
+  const derivedCbmPreview = useMemo(
+    () => deriveCbmFromCm(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm),
+    [form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm],
+  );
   const showFrozen = cls === "semi_prepared_frozen";
   const canManageBom =
     roles.includes("owner") || roles.includes("admin") || roles.includes("product_manager");
@@ -1928,7 +1934,7 @@ const ProductEdit = () => {
               {!isNew && (
                 <AliasManager
                   id="product-language-terms"
-                  productId={id!}
+                  productId={savedProductId}
                   productName={form.product_name ?? ""}
                   onAliasesChange={() => setLanguageTermsRefreshKey((n) => n + 1)}
                 />
@@ -2268,7 +2274,7 @@ const ProductEdit = () => {
             {!isNew && (
               <TabsContent value="media" className="space-y-6">
                 <ProductMediaUploader
-                  productId={id!}
+                  productId={savedProductId}
                   productSku={form.sku}
                   variant={isTestingMediaGovernance() ? "hero-only" : "full"}
                   currentHero={resolveProductHeroUrl({
@@ -2465,6 +2471,16 @@ const ProductEdit = () => {
                         />
                       </Field>
                     </div>
+                    {derivedCbmPreview != null && (
+                      <div className="sm:col-span-3 rounded-md border border-dashed bg-muted/30 px-3 py-2 text-xs">
+                        <span className="text-muted-foreground">Derived volume (CBM): </span>
+                        <span className="font-mono font-medium">{derivedCbmPreview} m³</span>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Calculated from L × W × H (cm). Saved on product save when all three
+                          dimensions are set.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </TabsContent>
@@ -2536,7 +2552,7 @@ const ProductEdit = () => {
                   </div>
                 ) : (
                   <BomBuilder
-                    parentId={id!}
+                    parentId={savedProductId}
                     productClass={form.product_class}
                     bomRequired={isPackingAssembly || !!form.bom_required}
                   />
@@ -2547,14 +2563,14 @@ const ProductEdit = () => {
             {!isNew && (
               <TabsContent value="channels" className="space-y-6">
                 <ChannelMoqRules
-                  productId={id!}
+                  productId={savedProductId}
                   product={form}
                   onRulesChange={() => {
                     if (id) void loadChannelAuthority(id);
                   }}
                 />
                 <ChannelPricingRules
-                  productId={id!}
+                  productId={savedProductId}
                   product={form}
                   onRulesChange={() => {
                     if (id) void loadChannelAuthority(id);
@@ -2858,7 +2874,7 @@ const ProductEdit = () => {
 
           {!isNew && isTestingMediaGovernance() && (
             <ProductMediaUploader
-              productId={id!}
+              productId={savedProductId}
               productSku={form.sku}
               variant="hero-only"
               currentHero={resolveProductHeroUrl({
