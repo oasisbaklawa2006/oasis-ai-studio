@@ -24,8 +24,8 @@ export function PackagingHierarchyPanel({ form, truthInput }: Props) {
     <div className="card-elevated p-4 space-y-3">
       <h4 className="font-medium">Packaging hierarchy (Point 33)</h4>
       <p className="text-xs text-muted-foreground">
-        Product SKU → sellable pack → case/carton → master carton → pallet (optional). Dimensions/CBM
-        remain Point 35 authority.
+        Product SKU → sellable pack → case/carton → master carton → pallet (optional).
+        Dimensions/CBM remain Point 35 authority.
       </p>
 
       <ol className="space-y-2 text-sm">

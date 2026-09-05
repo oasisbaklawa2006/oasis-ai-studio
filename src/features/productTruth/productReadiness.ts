@@ -1,14 +1,7 @@
-import type {
-  DimensionStatus,
-  ProductTruthInput,
-  ReadinessBadge,
-  ReadinessDimension,
-} from "./types";
-import { READINESS_DIMENSIONS } from "./types";
-import { priceBlocksPublish } from "./channelPricingMoqEngine";
-import { packagingHierarchyFromForm } from "./packagingHierarchyFromForm";
-import { validateConversionRuleChain } from "./uomPackagingEngine";
-import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
+import {
+  type ProductMediaRow,
+  productMediaContextFromForm,
+} from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   authoritativeMediaAssets,
   deriveMediaStatusFromRows,
@@ -17,13 +10,21 @@ import {
   mediaMissingBlockerLabel,
   mediaMissingNote,
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
-import { resolveProductHeroUrl } from "@/lib/productImage";
-import { isPackBasedSelling } from "@/features/productAuthority/packLogic";
-import {
-  productMediaContextFromForm,
-  type ProductMediaRow,
-} from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
+import { isPackBasedSelling } from "@/features/productAuthority/packLogic";
+import { resolveProductHeroUrl } from "@/lib/productImage";
+import { priceBlocksPublish } from "./channelPricingMoqEngine";
+import { buildCanonicalPackagingHierarchy } from "./packagingHierarchyCanonical";
+import { packagingHierarchyFromForm } from "./packagingHierarchyFromForm";
+import type {
+  DimensionStatus,
+  ProductTruthInput,
+  ReadinessBadge,
+  ReadinessDimension,
+} from "./types";
+import { READINESS_DIMENSIONS } from "./types";
+import { validateConversionRuleChain } from "./uomPackagingEngine";
 
 export type ProductReadinessResult = {
   score: number;
@@ -39,7 +40,13 @@ export type ProductReadinessResult = {
 
 function badgeFor(
   complete: boolean,
-  opts: { approved?: boolean; pending?: boolean; ai?: boolean; legacy?: boolean; rejected?: boolean },
+  opts: {
+    approved?: boolean;
+    pending?: boolean;
+    ai?: boolean;
+    legacy?: boolean;
+    rejected?: boolean;
+  },
 ): ReadinessBadge {
   if (opts.legacy && !complete) return "legacy_incomplete";
   if (opts.rejected) return "rejected";
@@ -77,9 +84,13 @@ function evalMedia(input: ProductTruthInput): DimensionStatus {
     const complete = mr.canPublishMedia;
     return {
       dimension: "media_status",
-      badge: badgeFor(complete, { pending, approved: complete, legacy: input.isLegacy && !complete }),
+      badge: badgeFor(complete, {
+        pending,
+        approved: complete,
+        legacy: input.isLegacy && !complete,
+      }),
       complete,
-      note: complete ? undefined : mr.blockers[0] ?? mediaMissingNote(),
+      note: complete ? undefined : (mr.blockers[0] ?? mediaMissingNote()),
     };
   }
 
@@ -105,7 +116,11 @@ function evalPricing(input: ProductTruthInput): DimensionStatus {
   const complete = channelComplete || fallbackComplete;
   return {
     dimension: "pricing_status",
-    badge: badgeFor(complete, { approved: channelComplete, pending, legacy: input.isLegacy && !hasAny }),
+    badge: badgeFor(complete, {
+      approved: channelComplete,
+      pending,
+      legacy: input.isLegacy && !hasAny,
+    }),
     complete,
     note: complete ? undefined : "Approved channel price or product MRP/B2B price required",
   };
@@ -122,6 +137,16 @@ function evalUom(input: ProductTruthInput): DimensionStatus {
 }
 
 function evalPackaging(input: ProductTruthInput): DimensionStatus {
+  const hierarchyValidation = input.packagingHierarchyValidation;
+  if (hierarchyValidation && !hierarchyValidation.valid) {
+    return {
+      dimension: "packaging_status",
+      badge: badgeFor(false, { legacy: input.isLegacy }),
+      complete: false,
+      note: hierarchyValidation.errors[0] ?? "Packaging hierarchy invalid",
+    };
+  }
+
   const chain = validateConversionRuleChain(input.packaging ?? {});
   // Pack-based products (ready packs, boxes, jars) complete via pack contents —
   // the chain's pcs ↔ kg requirement only applies to loose / weight-based selling.
@@ -136,8 +161,8 @@ function evalPackaging(input: ProductTruthInput): DimensionStatus {
     note: complete
       ? undefined
       : input.packBasedSelling
-        ? packChainMessages[0] ?? "Qty per pack missing"
-        : chain.messages[0] ?? "Packaging conversion rules incomplete",
+        ? (packChainMessages[0] ?? "Qty per pack missing")
+        : (chain.messages[0] ?? "Packaging conversion rules incomplete"),
   };
 }
 
@@ -167,8 +192,7 @@ function evalProductionMapping(input: ProductTruthInput): DimensionStatus {
   const needsMapping =
     input.mainDepartment === "ready_goods_store" || input.mainDepartment === "packing_assembly";
   const complete =
-    !needsMapping ||
-    !!(input.productionDepartment || input.mainDepartment === "packing_assembly");
+    !needsMapping || !!(input.productionDepartment || input.mainDepartment === "packing_assembly");
   return {
     dimension: "production_mapping_status",
     badge: badgeFor(complete, { legacy: input.isLegacy }),
@@ -177,10 +201,7 @@ function evalProductionMapping(input: ProductTruthInput): DimensionStatus {
   };
 }
 
-function evalCentralSync(
-  input: ProductTruthInput,
-  blockers: string[],
-): DimensionStatus {
+function evalCentralSync(input: ProductTruthInput, blockers: string[]): DimensionStatus {
   const ready = blockers.length === 0;
   return {
     dimension: "central_sync_status",
@@ -235,11 +256,11 @@ export function evaluateProductReadiness(input: ProductTruthInput): ProductReadi
 
   let nextAction = "Review and approve compliance-sensitive fields";
   if (blockers.includes(mediaMissingBlockerLabel())) {
-    nextAction = mediaMissingBlockerLabel() === "Needs hero image"
-      ? "Upload hero image"
-      : "Upload hero image or approve media";
-  }
-  else if (blockers.includes("UOM missing")) nextAction = "Configure primary UOM on UOM tab";
+    nextAction =
+      mediaMissingBlockerLabel() === "Needs hero image"
+        ? "Upload hero image"
+        : "Upload hero image or approve media";
+  } else if (blockers.includes("UOM missing")) nextAction = "Configure primary UOM on UOM tab";
   else if (blockers.includes("Packaging conversion rules missing")) {
     nextAction = "Complete packaging hierarchy (pcs/kg/tray/carton)";
   } else if (blockers.includes("Pricing missing or pending approval")) {
@@ -276,12 +297,10 @@ export function productTruthInputFromForm(
   },
 ): ProductTruthInput {
   const mediaRows = opts?.productMediaRows ?? [];
-  const mediaAssets =
-    opts?.mediaAssets ?? authoritativeMediaAssets(mediaRows, form);
+  const mediaAssets = opts?.mediaAssets ?? authoritativeMediaAssets(mediaRows, form);
   const fallbackHeroUrl = resolveProductHeroUrl(form);
   const derivedStatus =
-    opts?.derivedMediaStatus ??
-    deriveMediaStatusFromRows(mediaRows, { fallbackHeroUrl });
+    opts?.derivedMediaStatus ?? deriveMediaStatusFromRows(mediaRows, { fallbackHeroUrl });
   const mediaContext = productMediaContextFromForm(form);
 
   return {
@@ -317,6 +336,7 @@ export function productTruthInputFromForm(
     packBasedSelling: isPackBasedSelling(
       (form.primary_uom as string) ?? (form.retail_uom as string) ?? null,
     ),
+    packagingHierarchyValidation: buildCanonicalPackagingHierarchy(form).validation,
   };
 }
 

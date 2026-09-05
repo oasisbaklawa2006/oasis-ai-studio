@@ -69,10 +69,11 @@ No shadow table or local-only canonical truth was created. Point 20 #201 remains
 
 ## Test matrix (pre-PR)
 
-| Check | Command |
-| --- | --- |
-| Typecheck | `npm run typecheck` |
-| Unit tests | `npm test` |
-| Build | `npm run build` |
-| Boundaries | `npm run check:boundaries` |
-| Point 33 focused | `npx vitest run src/features/productTruth/packagingHierarchyCanonical.test.ts` |
+| Check | Command | Result |
+| --- | --- | --- |
+| Typecheck | `npm run typecheck` | PASS |
+| Unit tests | `npm test` | PASS — 820/820 (+ Point 33 + readiness) |
+| Build | `npm run build` | PASS |
+| Boundaries | `npm run check:boundaries` | PASS (0 violations) |
+| Biome changed | `QUALITY_BASE_REF=c010b26 npm run lint:biome:changed` | PASS |
+| Point 33 focused | `npx vitest run src/features/productTruth/packagingHierarchyCanonical.test.ts` | PASS — 11 tests |

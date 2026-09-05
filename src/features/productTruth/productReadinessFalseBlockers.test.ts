@@ -68,4 +68,15 @@ describe("packaging dimension — pack-based selling", () => {
     const packaging = result.dimensions.find((d) => d.dimension === "packaging_status");
     expect(packaging?.complete).toBe(false);
   });
+
+  it("blocks packaging readiness on Point 33 zero-quantity hierarchy errors", () => {
+    const input = productTruthInputFromForm({
+      ...MISR15_FORM,
+      carton_qty: 0,
+    });
+    const result = evaluateProductReadiness(input);
+    const packaging = result.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(false);
+    expect(packaging?.note).toContain("zero");
+  });
 });

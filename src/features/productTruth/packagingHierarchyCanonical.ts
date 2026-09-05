@@ -9,11 +9,7 @@ export type PackagingHierarchyLevel =
   | "master_carton"
   | "pallet";
 
-export type PackagingPersistence =
-  | "products_row"
-  | "form_only"
-  | "snapshot_only"
-  | "core_blocked";
+export type PackagingPersistence = "products_row" | "form_only" | "snapshot_only" | "core_blocked";
 
 export type PackagingHierarchyNode = {
   level: PackagingHierarchyLevel;
@@ -81,14 +77,14 @@ function sellablePackQty(form: Record<string, unknown>): number | null {
 
 function sellablePackUom(form: Record<string, unknown>): string | null {
   return (
-    str(form.primary_pack_uom) ??
-    str(form.primary_uom) ??
-    str(form.retail_uom) ??
-    str(form.b2b_uom)
+    str(form.primary_pack_uom) ?? str(form.primary_uom) ?? str(form.retail_uom) ?? str(form.b2b_uom)
   );
 }
 
-function caseCartonQty(form: Record<string, unknown>, packsPerCarton: number | null): number | null {
+function caseCartonQty(
+  form: Record<string, unknown>,
+  packsPerCarton: number | null,
+): number | null {
   const pcsPerCarton = positiveNum(form.pcs_per_carton);
   const pcsPerPack = sellablePackQty(form);
   if (pcsPerCarton && pcsPerPack) {
@@ -111,9 +107,7 @@ function masterCartonChildQty(
 }
 
 /** Enrich UI-only pack fields from persisted products-row columns (safe read adapter). */
-export function enrichPackFormFromDbRow(
-  data: Record<string, unknown>,
-): Record<string, unknown> {
+export function enrichPackFormFromDbRow(data: Record<string, unknown>): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
   const pcsPerPack = positiveNum(data.pcs_per_pack);
   const primaryUom = str(data.primary_uom) ?? str(data.retail_uom) ?? str(data.b2b_uom);
@@ -171,8 +165,7 @@ export function buildCanonicalPackagingHierarchy(
       label: "Sellable pack",
       qtyPerParent: sellableQty,
       uom: sellableUom,
-      persistence:
-        positiveNum(form.pcs_per_pack) != null ? "products_row" : "form_only",
+      persistence: positiveNum(form.pcs_per_pack) != null ? "products_row" : "form_only",
       sourceFields: [
         "pcs_per_pack",
         "qty_per_pack",

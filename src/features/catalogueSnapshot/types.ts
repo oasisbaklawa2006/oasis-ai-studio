@@ -1,6 +1,6 @@
-import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
+import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type {
   ChannelMoqRule,
   ChannelPriceRecord,

@@ -3,7 +3,6 @@
  * Source: src/integrations/supabase/types.ts products Insert + live Central compat columns.
  */
 
-import { isProductsPricingOrBasisField } from "@/features/productAuthority/channelPricingMapper";
 import {
   CENTRAL_COMPAT_PRODUCT_COLUMNS,
   isLiveProductsBlockedColumn,
@@ -444,7 +443,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     if (raw[k] === "") raw[k] = null;
   });
 
-  const { payload, stripped } = sanitizeLiveProductsPayload(raw);
+  const { payload } = sanitizeLiveProductsPayload(raw);
   return payload;
 }
 
