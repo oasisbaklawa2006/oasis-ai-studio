@@ -39,6 +39,10 @@ export interface ReadinessProductInput {
   master_carton_qty?: number | null;
   pcs_per_carton?: number | null;
   carton_dimensions_cm?: string | null;
+  product_dimensions_cm?: string | null;
+  dimension_l_cm?: number | null;
+  dimension_w_cm?: number | null;
+  dimension_h_cm?: number | null;
   moq_text?: string | null;
   moq_value?: number | null;
   shelf_life_days?: number | null;
@@ -123,14 +127,20 @@ function buildPackSize(p: ReadinessProductInput): ReadinessCategory {
 
 function buildCartonPackaging(p: ReadinessProductInput): ReadinessCategory {
   const hasCartonQty = hasNumber(p.pcs_per_carton) || hasNumber(p.carton_qty) || hasNumber(p.master_carton_qty);
-  const hasDims = hasText(p.carton_dimensions_cm);
+  const hasDims =
+    hasText(p.carton_dimensions_cm) ||
+    hasText(p.product_dimensions_cm) ||
+    (hasNumber(p.dimension_l_cm) && hasNumber(p.dimension_w_cm) && hasNumber(p.dimension_h_cm));
+  const dimsLabel =
+    p.carton_dimensions_cm ?? p.product_dimensions_cm ??
+    (hasDims ? `${p.dimension_l_cm}×${p.dimension_w_cm}×${p.dimension_h_cm} cm` : null);
   if (!hasCartonQty && !hasDims) {
     return { key: "carton_packaging", label: "Carton / Master Packaging", state: "missing", detail: "No carton quantity or carton dimensions set.", nextAction: "Fill in carton quantity and carton dimensions.", group: "packaging" };
   }
   if (!hasCartonQty || !hasDims) {
     return { key: "carton_packaging", label: "Carton / Master Packaging", state: "warn", detail: !hasCartonQty ? "Carton dimensions are set, carton quantity is blank." : "Carton quantity is set, carton dimensions are blank.", nextAction: !hasCartonQty ? "Set pieces/carton or master carton qty." : "Set carton dimensions (cm).", group: "packaging" };
   }
-  return { key: "carton_packaging", label: "Carton / Master Packaging", state: "pass", detail: `Carton dims: ${p.carton_dimensions_cm}`, nextAction: null, group: "packaging" };
+  return { key: "carton_packaging", label: "Carton / Master Packaging", state: "pass", detail: `Carton dims: ${dimsLabel}`, nextAction: null, group: "packaging" };
 }
 
 function buildMoq(p: ReadinessProductInput): ReadinessCategory {

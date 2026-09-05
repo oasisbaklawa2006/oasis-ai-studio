@@ -158,6 +158,7 @@ const PRODUCT_SELECT = [
   "id", "product_name", "sku", "category", "subcategory", "description", "short_description",
   "hero_image_url", "media_status", "mrp", "price_b2b", "b2b_uom", "pack_size", "net_weight_g",
   "carton_qty", "master_carton_qty", "pcs_per_carton", "moq_text", "moq_value", "moq_uom",
+  "dimension_l_cm", "dimension_w_cm", "dimension_h_cm", "product_dimensions_cm",
   "shelf_life_days", "storage_instructions", "temperature_requirement", "hsn_code", "gst_rate",
   "is_active", "is_catalogue_ready", "product_class", "main_department", "packaging_code",
 ].join(", ");
