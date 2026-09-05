@@ -1,25 +1,40 @@
-import { useState } from "react";
+import { CheckCircle2, ShieldAlert, Sparkles } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { ShieldAlert, Sparkles, CheckCircle2 } from "lucide-react";
+import {
+  bumpComplianceManualEditGeneration,
+  captureComplianceAiRequestGuard,
+  complianceFormRevisionFingerprint,
+  isStaleComplianceAiRequest,
+  isStaleComplianceFormRevision,
+} from "@/features/compliance/complianceAiStaleGuard";
+import {
+  applyAppliedComplianceFields,
+  approveComplianceFieldInMap,
+  complianceFieldDisplayLabel,
+  manualComplianceFieldMetaPatch,
+  readComplianceFieldMeta,
+  readComplianceFormField,
+} from "@/features/compliance/complianceFieldLiterals";
+import {
+  applyGovernedComplianceToForm,
+  extractGovernedCompliance,
+} from "@/features/governedAiExtraction";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  type ComplianceFieldMetaMap,
+  canApproveComplianceFields,
+} from "@/shared/ai/complianceApproval";
 import {
   AI_COMPLIANCE_UI_DISCLAIMER,
   type ComplianceSensitiveField,
 } from "@/shared/ai/complianceConstants";
 import {
-  approveComplianceFieldMeta,
-  canApproveComplianceFields,
-  createAiSuggestionFieldMeta,
-  type ComplianceFieldMetaMap,
-} from "@/shared/ai/complianceApproval";
-import {
   PERSISTED_COMPLIANCE_PRODUCT_COLUMNS,
   UI_ONLY_COMPLIANCE_FIELDS,
 } from "@/shared/ai/compliancePersistence";
-import type { AiComplianceResponse } from "@/shared/ai/complianceSuggestions";
-import { resolveAiComplianceResponse } from "@/shared/ai/complianceSuggestions";
-import { toast } from "sonner";
 
 type Props = {
   form: Record<string, unknown>;
@@ -30,57 +45,50 @@ type Props = {
   onManualEdit: (field: ComplianceSensitiveField) => void;
 };
 
-const FIELD_LABELS: Record<string, string> = {
-  hsn_code: "HSN",
-  gst_rate: "GST %",
-  shelf_life_days: "Shelf life (days)",
-  ingredients: "Ingredients",
-  allergen_warnings: "Allergen warnings",
-  nutritional_info: "Nutritional information",
-  storage_instructions: "Storage instructions",
-};
-
-export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onManualEdit }: Props) {
+export function ComplianceAiPanel({
+  form,
+  set,
+  roles,
+  metaMap,
+  setMetaMap,
+  onManualEdit: _onManualEdit,
+}: Props) {
   const [loading, setLoading] = useState(false);
   const canApprove = canApproveComplianceFields(roles);
+  const formRef = useRef(form);
 
-  const applyAiResponse = (response: AiComplianceResponse) => {
-    const { suggestions } = response;
-    const updates: Array<[ComplianceSensitiveField, unknown]> = [];
+  useEffect(() => {
+    formRef.current = form;
+  }, [form]);
 
-    if (suggestions.hsn_code != null) updates.push(["hsn_code", String(suggestions.hsn_code)]);
-    if (suggestions.gst_rate != null) updates.push(["gst_rate", String(suggestions.gst_rate)]);
-    if (suggestions.shelf_life_days != null) {
-      updates.push(["shelf_life_days", String(suggestions.shelf_life_days)]);
-    }
-    if (suggestions.ingredients != null) updates.push(["ingredients", suggestions.ingredients]);
-    if (suggestions.allergen_warnings != null) {
-      updates.push(["allergen_warnings", suggestions.allergen_warnings]);
-    }
-    if (suggestions.nutritional_info != null) {
-      updates.push(["nutritional_info", suggestions.nutritional_info]);
-    }
-    if (suggestions.storage_instructions != null) {
-      updates.push(["storage_instructions", suggestions.storage_instructions]);
-    }
+  const applyGovernedExtraction = (extraction: ReturnType<typeof extractGovernedCompliance>) => {
+    const {
+      form: mergedForm,
+      appliedFields,
+      preservedFields,
+      complianceFieldMeta,
+    } = applyGovernedComplianceToForm(form, extraction, metaMap);
 
-    setMetaMap((prev) => {
-      const next = { ...prev };
-      for (const [field] of updates) {
-        next[field] = createAiSuggestionFieldMeta();
-      }
-      return next;
-    });
+    setMetaMap((prev) => ({ ...prev, ...complianceFieldMeta }));
 
-    for (const [field, value] of updates) {
-      set(field, value);
+    applyAppliedComplianceFields(appliedFields, mergedForm, set);
+
+    if (preservedFields.length > 0) {
+      toast.message(
+        `AI suggestions applied to ${appliedFields.length} field(s). ${preservedFields.length} canonical field(s) preserved.`,
+      );
+      return;
     }
 
-    toast.message("AI suggestions applied to form — not approved for save until authorized user approves.");
+    toast.message(
+      "AI suggestions applied to form — not approved for save until authorized user approves.",
+    );
   };
 
   const generateSuggestions = async () => {
     setLoading(true);
+    const guardAtStart = captureComplianceAiRequestGuard();
+    const formFingerprintAtStart = complianceFormRevisionFingerprint(formRef.current);
     try {
       const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
         body: {
@@ -89,31 +97,52 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
         },
       });
 
-      const { response, usedHeuristic } = resolveAiComplianceResponse(data, {
-        product_name: String(form.product_name ?? ""),
-        category: String(form.category ?? ""),
-      });
-
-      if (error && usedHeuristic) {
-        if (import.meta.env.DEV) {
-          console.warn("[ComplianceAiPanel] edge function unavailable, using heuristic:", error.message);
-        }
+      if (
+        isStaleComplianceAiRequest(guardAtStart) ||
+        isStaleComplianceFormRevision(formFingerprintAtStart, formRef.current)
+      ) {
+        toast.message("Discarded stale AI compliance suggestions after manual edits.");
+        return;
       }
 
-      applyAiResponse(response);
+      const extraction = extractGovernedCompliance({
+        product_name: String(form.product_name ?? ""),
+        category: String(form.category ?? ""),
+        edgeData: data,
+        edgeError: error,
+      });
+
+      if (extraction.provenance.used_heuristic_fallback && import.meta.env.DEV) {
+        console.warn(
+          "[ComplianceAiPanel] governed fallback:",
+          extraction.provenance.uncertainty_reason ?? "provider uncertain",
+        );
+      }
+
+      applyGovernedExtraction(extraction);
       toast.message(
-        usedHeuristic
+        extraction.provenance.fail_closed
           ? "Offline compliance suggestions applied — review and approve before save."
           : "AI suggestions applied to form — not approved for save until authorized user approves.",
       );
     } catch (e) {
-      const { response } = resolveAiComplianceResponse(null, {
+      if (
+        isStaleComplianceAiRequest(guardAtStart) ||
+        isStaleComplianceFormRevision(formFingerprintAtStart, formRef.current)
+      ) {
+        toast.message("Discarded stale AI compliance suggestions after manual edits.");
+        return;
+      }
+
+      const extraction = extractGovernedCompliance({
         product_name: String(form.product_name ?? ""),
         category: String(form.category ?? ""),
+        edgeData: null,
+        edgeError: { message: e instanceof Error ? e.message : "Unknown error" },
       });
-      applyAiResponse(response);
+      applyGovernedExtraction(extraction);
       if (import.meta.env.DEV) {
-        console.warn("[ComplianceAiPanel] fallback after error:", e);
+        console.warn("[ComplianceAiPanel] governed fallback after error:", e);
       }
       toast.message("Offline compliance suggestions applied — review and approve before save.");
     } finally {
@@ -126,11 +155,9 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       toast.error("Only owner, admin, or product manager can approve compliance fields.");
       return;
     }
-    setMetaMap((prev) => ({
-      ...prev,
-      [field]: approveComplianceFieldMeta(prev[field], roles[0] ?? "admin"),
-    }));
-    toast.success(`${FIELD_LABELS[field] ?? field} approved for save.`);
+    bumpComplianceManualEditGeneration();
+    setMetaMap((prev) => approveComplianceFieldInMap(prev, field, roles[0] ?? "admin"));
+    toast.success(`${complianceFieldDisplayLabel(field)} approved for save.`);
   };
 
   const pendingFields = Object.entries(metaMap).filter(
@@ -142,16 +169,20 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
     ...UI_ONLY_COMPLIANCE_FIELDS,
   ] as const;
 
-  const authorityStatus = (field: string) => {
-    const value = form[field];
+  const authorityStatus = (field: ComplianceSensitiveField) => {
+    const value = readComplianceFormField(form, field);
     const hasValue = value !== null && value !== undefined && String(value).trim() !== "";
-    const meta = metaMap[field as ComplianceSensitiveField];
+    const meta = readComplianceFieldMeta(metaMap, field);
     if (!hasValue) return { label: "Missing", className: "text-destructive" };
     if (meta?.source === "ai_suggestion" && !meta.approved) {
       return { label: "AI pending approval", className: "text-warning" };
     }
     if (meta?.approved) return { label: "Approved for save", className: "text-success" };
-    if (PERSISTED_COMPLIANCE_PRODUCT_COLUMNS.includes(field as (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number])) {
+    if (
+      PERSISTED_COMPLIANCE_PRODUCT_COLUMNS.includes(
+        field as (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number],
+      )
+    ) {
       return { label: "Saved on product", className: "text-success" };
     }
     return { label: "Draft (form only)", className: "text-muted-foreground" };
@@ -172,7 +203,7 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
             const status = authorityStatus(field);
             return (
               <li key={field} className="flex items-center justify-between gap-2">
-                <span>{FIELD_LABELS[field] ?? field}</span>
+                <span>{complianceFieldDisplayLabel(field as ComplianceSensitiveField)}</span>
                 <span className={status.className}>{status.label}</span>
               </li>
             );
@@ -181,22 +212,37 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       </div>
 
       <div className="flex flex-wrap gap-2 items-center">
-        <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={generateSuggestions}>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={loading}
+          onClick={generateSuggestions}
+        >
           <Sparkles className="h-4 w-4 mr-1" />
           {loading ? "Generating…" : "Generate AI compliance suggestions"}
         </Button>
-        <span className="text-xs text-muted-foreground">Apply fills the form only — does not approve for catalogue truth.</span>
+        <span className="text-xs text-muted-foreground">
+          Apply fills the form only — does not approve for catalogue truth.
+        </span>
       </div>
 
       {pendingFields.length > 0 && (
         <div className="rounded-md border p-3 space-y-2">
-          <p className="text-sm font-medium">Pending AI suggestions (require approval before save)</p>
+          <p className="text-sm font-medium">
+            Pending AI suggestions (require approval before save)
+          </p>
           <ul className="space-y-1">
             {pendingFields.map(([field]) => (
               <li key={field} className="flex items-center justify-between gap-2 text-sm">
-                <span>{FIELD_LABELS[field] ?? field}</span>
+                <span>{complianceFieldDisplayLabel(field as ComplianceSensitiveField)}</span>
                 {canApprove ? (
-                  <Button type="button" size="sm" variant="outline" onClick={() => approveField(field as ComplianceSensitiveField)}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => approveField(field as ComplianceSensitiveField)}
+                  >
                     <CheckCircle2 className="h-3 w-3 mr-1" />
                     Approve for save
                   </Button>
@@ -210,7 +256,8 @@ export function ComplianceAiPanel({ form, set, roles, metaMap, setMetaMap, onMan
       )}
 
       <p className="text-[11px] text-muted-foreground">
-        Manual edits to compliance fields are tracked separately. Contributors may suggest; only authorized roles may approve GST/HSN and related compliance fields.
+        Manual edits to compliance fields are tracked separately. Contributors may suggest; only
+        authorized roles may approve GST/HSN and related compliance fields.
       </p>
     </div>
   );
@@ -221,9 +268,7 @@ export function trackManualComplianceEdit(
   setMetaMap: React.Dispatch<React.SetStateAction<ComplianceFieldMetaMap>>,
   onManualEdit: (field: ComplianceSensitiveField) => void,
 ) {
+  bumpComplianceManualEditGeneration();
   onManualEdit(field);
-  setMetaMap((prev) => ({
-    ...prev,
-    [field]: { source: "manual", approved: false, suggestion_only: false },
-  }));
+  setMetaMap((prev) => manualComplianceFieldMetaPatch(prev, field));
 }

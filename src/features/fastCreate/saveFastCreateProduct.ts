@@ -4,6 +4,7 @@ import {
   submitFastCreateProductDraft,
   withReviewedIntakeBarcode,
 } from "@/features/fastCreate/fastCreateIntakeBarcode";
+import { getPersistableFastCreateAliases } from "@/features/governedAiExtraction/fastCreateEnrichment";
 import {
   formatProductSaveError,
   formToDbProductPayload,
@@ -141,7 +142,12 @@ export async function saveFastCreateProduct(
       form.barcode_sku = await claimReviewedIntakeBarcode(intakeBarcode);
     }
 
-    const safePayload = stripUnapprovedComplianceFields(form, input.roles, {}, {});
+    const safePayload = stripUnapprovedComplianceFields(
+      form,
+      input.roles,
+      {},
+      input.suggestions.complianceFieldMeta ?? {},
+    );
     const productRow = formToDbProductPayload(safePayload);
 
     const validation = validateProductSavePayload(productRow, "create");
@@ -163,11 +169,12 @@ export async function saveFastCreateProduct(
       throw new Error(formatProductSaveError(res.error));
     }
 
+    const persistableAliases = getPersistableFastCreateAliases(input.suggestions);
     await persistFastCreateAliases(
       res.data.id,
-      input.suggestions.aliases,
-      input.suggestions.whatsappKeywords,
-      input.suggestions.searchKeywords,
+      persistableAliases.aliases,
+      persistableAliases.whatsappKeywords,
+      persistableAliases.searchKeywords,
     );
 
     return { id: res.data.id, sku: String(res.data.sku ?? form.sku) };
@@ -175,6 +182,7 @@ export async function saveFastCreateProduct(
 
   if (contributor) {
     const intakeBarcode = readIntakeBarcode(input.extraFormPatch);
+    const persistableAliases = getPersistableFastCreateAliases(input.suggestions);
     const groupedPayload = withReviewedIntakeBarcode(
       {
         identity: {
@@ -200,9 +208,9 @@ export async function saveFastCreateProduct(
           hero_image_url: input.heroUrl,
         },
         search: {
-          suggested_aliases: input.suggestions.aliases.map((a) => a.alias),
-          whatsapp_keywords: input.suggestions.whatsappKeywords,
-          search_keywords: input.suggestions.searchKeywords,
+          suggested_aliases: persistableAliases.aliases.map((a) => a.alias),
+          whatsapp_keywords: persistableAliases.whatsappKeywords,
+          search_keywords: persistableAliases.searchKeywords,
         },
         sku_draft: {
           note: "SKU must be finalized via generate_oasis_sku during admin approval — DRAFT-* blocked.",
