@@ -3,7 +3,6 @@
  * Source: src/integrations/supabase/types.ts products Insert + live Central compat columns.
  */
 
-import { isProductsPricingOrBasisField } from "@/features/productAuthority/channelPricingMapper";
 import {
   CENTRAL_COMPAT_PRODUCT_COLUMNS,
   isLiveProductsBlockedColumn,
