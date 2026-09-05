@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { COMPLIANCE_SENSITIVE_FIELDS } from "@/shared/ai/complianceConstants";
 import {
   bumpComplianceManualEditGeneration,
   captureComplianceAiRequestGuard,
@@ -61,5 +62,19 @@ describe("complianceAiStaleGuard", () => {
         ingredients: "Manual recipe",
       }),
     ).toBe(false);
+  });
+
+  it("discards AI responses when any governed ComplianceSensitiveField changes during the request", () => {
+    const baseForm = Object.fromEntries(
+      COMPLIANCE_SENSITIVE_FIELDS.map((field) => [field, `baseline-${field}`]),
+    ) as Record<string, unknown>;
+    const fingerprintAtStart = complianceFormRevisionFingerprint(baseForm);
+
+    for (const field of COMPLIANCE_SENSITIVE_FIELDS) {
+      const changedForm = { ...baseForm, [field]: `changed-${field}` };
+      expect(isStaleComplianceFormRevision(fingerprintAtStart, changedForm)).toBe(true);
+    }
+
+    expect(isStaleComplianceFormRevision(fingerprintAtStart, baseForm)).toBe(false);
   });
 });
