@@ -459,7 +459,7 @@ export function buildBenchmarkPhotographyGovernanceCensus(
     },
     downstreamPoints: {
       point44: "src/features/mediaReadiness/guidedMobileCameraCapture.ts",
-      point45: "Photo enhancement — separate",
+      point45: "src/features/mediaReadiness/exactProductEnhancement.ts",
       point46: "Photography QA scoring — separate",
       point47: "Photography output formats — separate",
     },
