@@ -42,7 +42,7 @@ Central snapshot connector (25B/25C) does not yet publish `cbm` / `carton_dimens
 | Rebased on current `main` @ `cf0fd3c` | **PASS** |
 | Review findings remediated | **PASS** |
 | `gross_weight_kg` semantics preserved (blocked) | **PASS** |
-| Unit tests (local) | **PASS** (55/55 — Point35 + fast-create draft guard) |
-| Exact-head CI | Pending push |
+| Unit tests (local) | **PASS** (58/58 — Point35 + fast-create draft guard) |
+| Exact-head CI | **PASS** (21/22 — Vercel deploy rate-limit infra only) |
 | Production mutation | **NONE** |
 | Merge approval | **STOP** — prior approval stale; awaiting fresh collaborator review |
