@@ -681,11 +681,11 @@ export function buildExactProductEnhancementCensus(
       "Catalogue Studio Media tab has no enhancement review-candidate UI",
       "product_media schema has no enhancement_provenance column — provenance carried in contract layer only",
       "Point 46 QA contract implemented in imageQaValidation.ts — persistence/UI integration still pending",
-      "Point 47 derivative encoding not implemented — no resize/WebP pipeline",
+      "Point 47 derivative contract implemented in derivativeOutputContract.ts — persistence/UI integration still pending",
     ],
     downstreamPoints: {
-      point46: "Photography QA scoring/approval — separate",
-      point47: "Photography output formats — separate",
+      point46: "Photography QA scoring/approval — imageQaValidation.ts",
+      point47: "Photography output formats — derivativeOutputContract.ts",
     },
   };
 }

@@ -26,9 +26,20 @@ import {
   validateEnhancementProviderOutput,
 } from "@/features/mediaReadiness/exactProductEnhancement";
 import {
+  type ApprovedQaSourceBinding,
+  type DerivativeOutputContract,
+  type DerivativeOutputResolution,
+  type DerivativeTransformOutput,
+  executeMockDerivativeTransform,
+  resolveDerivativeOutputContract,
+  validateDerivativePersistenceHandoff,
+  validateDerivativeTransformOutput,
+} from "@/features/mediaReadiness/derivativeOutputContract";
+import {
   type ImageQaCandidate,
   type ImageQaValidationContract,
   type ImageQaValidationResolution,
+  type QaAuditRecord,
   evaluateQaReadiness,
   recordQaDisposition,
   resolveImageQaValidation,
@@ -303,4 +314,58 @@ export function catalogueRecordQaDisposition(
   request: Parameters<typeof recordQaDisposition>[2],
 ): ReturnType<typeof recordQaDisposition> {
   return recordQaDisposition(contract, checks, request);
+}
+
+/** Point 47 derivative output contract — requires approved Point 46 QA source. */
+export function catalogueDerivativeOutput(
+  product: ProductMediaContext,
+  approvedSource: Omit<ApprovedQaSourceBinding, "qaAuditRef">,
+  qaAudit: QaAuditRecord,
+  profileId: string,
+): DerivativeOutputResolution {
+  return resolveDerivativeOutputContract(product, approvedSource, qaAudit, profileId);
+}
+
+export type CatalogueDerivativeOutputView = {
+  contract: DerivativeOutputContract | null;
+  resolutionError: string | null;
+};
+
+/** Human-readable derivative output view for Catalogue Studio Media tab. */
+export function catalogueDerivativeOutputView(
+  product: ProductMediaContext,
+  approvedSource: Omit<ApprovedQaSourceBinding, "qaAuditRef">,
+  qaAudit: QaAuditRecord,
+  profileId: string,
+): CatalogueDerivativeOutputView {
+  const resolved = resolveDerivativeOutputContract(product, approvedSource, qaAudit, profileId);
+  if (!resolved.ok) {
+    return { contract: null, resolutionError: resolved.message };
+  }
+  return { contract: resolved.contract, resolutionError: null };
+}
+
+/** Execute mock derivative transform through adapter — fixtures/local transforms only. */
+export function catalogueExecuteMockDerivativeTransform(
+  contract: DerivativeOutputContract,
+  sourceMetadata?: Parameters<typeof executeMockDerivativeTransform>[1],
+): ReturnType<typeof executeMockDerivativeTransform> {
+  return executeMockDerivativeTransform(contract, sourceMetadata);
+}
+
+/** Validate derivative transform provenance through adapter. */
+export function catalogueValidateDerivativeTransformOutput(
+  contract: DerivativeOutputContract,
+  output: DerivativeTransformOutput,
+): ReturnType<typeof validateDerivativeTransformOutput> {
+  return validateDerivativeTransformOutput(contract, output);
+}
+
+/** Validate derivative persistence handoff — no success without canonical persistence result. */
+export function catalogueValidateDerivativePersistenceHandoff(
+  contract: DerivativeOutputContract,
+  output: DerivativeTransformOutput,
+  handoff: Parameters<typeof validateDerivativePersistenceHandoff>[2],
+): ReturnType<typeof validateDerivativePersistenceHandoff> {
+  return validateDerivativePersistenceHandoff(contract, output, handoff);
 }
