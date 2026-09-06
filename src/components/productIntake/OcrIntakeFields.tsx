@@ -47,17 +47,21 @@ export function OcrIntakeFields({
         ref={fileRef}
         type="file"
         accept="image/png,image/jpeg,image/webp,image/gif"
+        capture="environment"
         className="hidden"
         onChange={handleFileChange}
       />
-      <div className="flex gap-2 items-center">
+      <div className="flex flex-wrap gap-2 items-center">
         <Button type="button" variant="outline" onClick={handleUploadClick} disabled={busy}>
           {busy ? (
             <Loader2 className="h-4 w-4 mr-1 animate-spin" />
           ) : (
             <FileImage className="h-4 w-4 mr-1" />
           )}
-          Upload image
+          {typeof navigator !== "undefined" &&
+          /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+            ? "Camera / upload"
+            : "Upload image"}
         </Button>
         {ocrFileName && <span className="text-xs text-muted-foreground">{ocrFileName}</span>}
       </div>

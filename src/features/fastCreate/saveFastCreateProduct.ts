@@ -22,9 +22,13 @@ import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import { supabase } from "@/integrations/supabase/client";
 import { insertProductAliases, type ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
+import { assertMobileProductCreateSaveAllowed } from "@/features/mobileProductCreate";
+import { FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX } from "@/features/mobileProductCreate/mobileProductCreateAuthority";
 import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 import { type FastCreateSuggestions, generateFastCreateSku } from "./fastCreateSuggestions";
+
+export { FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX } from "@/features/mobileProductCreate/mobileProductCreateAuthority";
 
 export const FAST_CREATE_SKU_BLOCK_MESSAGE =
   "Structured SKU could not be generated. Ensure sku_code_rules are configured and generate_oasis_sku RPC is deployed. Placeholder SKUs (DRAFT-*, OAS-FC-*) are blocked.";
@@ -72,9 +76,6 @@ export async function requireFastCreateSku(
   return generated;
 }
 
-export const FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX =
-  "has no supported catalogue classification yet";
-
 export type FastCreateSaveInput = {
   suggestions: FastCreateSuggestions;
   heroUrl: string | null;
@@ -106,6 +107,15 @@ export async function saveFastCreateProduct(
   const direct = await canWriteProductsDirectly(input.roles);
   const contributor =
     input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
+
+  assertMobileProductCreateSaveAllowed({
+    productName: String(form.product_name),
+    roles: input.roles,
+    canWriteDirectly: direct,
+    isContributor: contributor,
+    suggestions: input.suggestions,
+    saleType: input.saleType,
+  });
 
   if (direct) {
     // Sale types without a persisted product_class (internal_bom, export,
