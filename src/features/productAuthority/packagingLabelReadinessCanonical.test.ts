@@ -180,7 +180,11 @@ describe("evaluatePackagingLabelReadiness", () => {
       packagingAuthority: PACKAGING_AUTHORITY,
     });
     expect(result.snapshot.legal_label_gaps.core_dependencies).toEqual(
-      expect.arrayContaining(["products.batch_lot_number", "products.veg_nonveg_indicator"]),
+      expect.arrayContaining([
+        "products.batch_lot_number",
+        "products.veg_nonveg_indicator",
+        "products.label_mrp (label-grade)",
+      ]),
     );
     expect(result.snapshot.legal_label_gaps.core_dependencies).not.toContain(
       "products.fssai_licence_number (or equivalent label-compliance column bundle)",

@@ -86,7 +86,12 @@ describe("computeLabelReadiness", () => {
     const gaps = getLabelDataGaps();
     const noColumnKeys = gaps.filter((g) => g.severity === "no_column").map((g) => g.key);
     expect(noColumnKeys).toEqual(
-      expect.arrayContaining(["batch_lot_number", "veg_nonveg_indicator", "claims_flag"]),
+      expect.arrayContaining([
+        "batch_lot_number",
+        "veg_nonveg_indicator",
+        "label_mrp",
+        "claims_flag",
+      ]),
     );
     expect(noColumnKeys).not.toContain("fssai_licence_number");
     expect(noColumnKeys).not.toContain("country_of_origin");

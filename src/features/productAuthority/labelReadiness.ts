@@ -203,6 +203,12 @@ const DATA_GAPS: LabelDataGap[] = [
     note: "Only free-text pack_size/net_weight_g exist — no discrete net-quantity + unit field for label print.",
   },
   {
+    key: "label_mrp",
+    label: "MRP (label-grade)",
+    severity: "no_column",
+    note: "Pricing MRP exists on products/channel rules; discrete label-print MRP field not on products — needs Core migration.",
+  },
+  {
     key: "serving_size",
     label: "Serving Size",
     severity: "no_column",

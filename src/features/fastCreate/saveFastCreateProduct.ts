@@ -1,3 +1,4 @@
+import { appendLiveLegalFieldsToContributorCompliance } from "@/features/catalogueDrafts/catalogueProductDraftApproval";
 import {
   claimReviewedIntakeBarcode,
   readIntakeBarcode,
@@ -196,14 +197,17 @@ export async function saveFastCreateProduct(
           main_department: form.main_department,
           production_department: form.production_department,
         },
-        compliance: {
-          hsn_code: form.hsn_code,
-          gst_rate: form.gst_rate,
-          shelf_life_days: form.shelf_life_days,
-          ingredients: form.ingredients,
-          allergen_warnings: form.allergen_warnings,
-          storage_instructions: form.storage_instructions,
-        },
+        compliance: appendLiveLegalFieldsToContributorCompliance(
+          {
+            hsn_code: form.hsn_code,
+            gst_rate: form.gst_rate,
+            shelf_life_days: form.shelf_life_days,
+            ingredients: form.ingredients,
+            allergen_warnings: form.allergen_warnings,
+            storage_instructions: form.storage_instructions,
+          },
+          form,
+        ),
         media: {
           hero_image_url: input.heroUrl,
         },

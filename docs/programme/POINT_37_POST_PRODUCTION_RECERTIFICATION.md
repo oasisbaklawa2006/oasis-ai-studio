@@ -11,7 +11,8 @@
 | FSSAI licence | `DATA_GAPS.no_column` — fail-closed Draft | `products.fssai_licence_number` — read/write via adapter |
 | Country of origin | `DATA_GAPS.no_column` | `products.country_of_origin` |
 | Manufacturer / marketer | `DATA_GAPS.no_column` (`manufacturer_marketer_details`) | `products.label_manufacturer_details` |
-| Net quantity / MRP / batch / dates | Still `no_column` | Unchanged — remain Core follow-ups |
+| Net quantity / batch / dates | Still `no_column` | Unchanged — remain Core follow-ups |
+| Label-grade MRP | Still `no_column` | `products.label_mrp (label-grade)` in remaining deps |
 
 ## AI Studio bindings (this PR only)
 

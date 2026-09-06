@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { appendLiveLegalFieldsToContributorCompliance } from "@/features/catalogueDrafts/catalogueProductDraftApproval";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import {
   clearFastCreateDraft,
@@ -1661,20 +1662,23 @@ const ProductEdit = () => {
           b2b_price: payload.b2b_price,
           export_price: payload.export_price ? Math.round(Number(payload.export_price)) : null,
         },
-        compliance: {
-          ingredients: payload.ingredients,
-          allergen_information: payload.allergen_warnings || "Suggested — please review",
-          nutritional_information:
-            payload.nutritional_info || payload.nutrition_facts || "Draft placeholder only",
-          shelf_life_days: payload.shelf_life_days,
-          storage_instructions: payload.storage_instructions,
-          manufactured_by: "TCF Chocolates and Gifts Pvt Ltd",
-          production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015",
-          customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com",
-          complaint_text:
-            "If dissatisfied, tell us why and send the packet(s) along with bill of purchase to the above-mentioned address.",
-          label_disclaimer: "Draft label data — requires admin/compliance approval.",
-        },
+        compliance: appendLiveLegalFieldsToContributorCompliance(
+          {
+            ingredients: payload.ingredients,
+            allergen_information: payload.allergen_warnings || "Suggested — please review",
+            nutritional_information:
+              payload.nutritional_info || payload.nutrition_facts || "Draft placeholder only",
+            shelf_life_days: payload.shelf_life_days,
+            storage_instructions: payload.storage_instructions,
+            manufactured_by: "TCF Chocolates and Gifts Pvt Ltd",
+            production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015",
+            customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com",
+            complaint_text:
+              "If dissatisfied, tell us why and send the packet(s) along with bill of purchase to the above-mentioned address.",
+            label_disclaimer: "Draft label data — requires admin/compliance approval.",
+          },
+          payload,
+        ),
         private_label: {
           available: payload.private_label_allowed,
           moq: payload.private_label_moq,

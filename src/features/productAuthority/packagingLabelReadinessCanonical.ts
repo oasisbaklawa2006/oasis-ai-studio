@@ -622,6 +622,7 @@ export function evaluatePackagingLabelReadiness(input: PackagingLabelReadinessIn
         ...POINT_37_REMAINING_CORE_DEPENDENCIES.batchLot,
         ...POINT_37_REMAINING_CORE_DEPENDENCIES.vegIndicator,
         ...POINT_37_REMAINING_CORE_DEPENDENCIES.structuredNetQuantity,
+        ...POINT_37_REMAINING_CORE_DEPENDENCIES.labelMrp,
       ],
     },
     artwork: {

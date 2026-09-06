@@ -23,6 +23,7 @@ export const POINT_37_REMAINING_CORE_DEPENDENCIES = {
   batchLot: ["products.batch_lot_number"],
   vegIndicator: ["products.veg_nonveg_indicator"],
   structuredNetQuantity: ["products.net_quantity_structured (label-grade)"],
+  labelMrp: ["products.label_mrp (label-grade)"],
 } as const;
 
 export type LiveLegalLabelFieldState = "pass" | "missing" | "invalid";

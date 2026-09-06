@@ -17,7 +17,7 @@ describe("evaluateLiveLegalLabelFields", () => {
 
   it("fail-closed on null/blank values", () => {
     const results = evaluateLiveLegalLabelFields({
-      fssai_licence_number: "",
+      fssai_licence_number: null,
       country_of_origin: "India",
       label_manufacturer_details: "   ",
     });
