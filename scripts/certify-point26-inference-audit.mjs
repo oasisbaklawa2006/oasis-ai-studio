@@ -6,6 +6,14 @@
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+const EVIDENCE_OUT_PATH = join(
+  process.cwd(),
+  "audit-artifacts",
+  "point26-inference-audit",
+  "census-evidence.json",
+);
 
 const results = [];
 
@@ -41,7 +49,11 @@ function runUnitTests() {
 function runTypecheck() {
   const proc = spawnSync("npm", ["run", "typecheck"], { encoding: "utf8", cwd: process.cwd() });
   const passed = proc.status === 0;
-  record("typecheck", passed, passed ? "tsc --noEmit PASS" : (proc.stdout + proc.stderr).slice(-400));
+  record(
+    "typecheck",
+    passed,
+    passed ? "tsc --noEmit PASS" : (proc.stdout + proc.stderr).slice(-400),
+  );
   return passed;
 }
 
@@ -70,15 +82,13 @@ async function emitEvidence() {
     throw new Error("Failed to emit census evidence");
   }
 
-  const lastLine = proc.stdout.trim().split("\n").filter(Boolean).pop();
-  const parsed = JSON.parse(lastLine);
-  const baseEvidence = JSON.parse(readFileSync(parsed.outPath, "utf8"));
+  const baseEvidence = JSON.parse(readFileSync(EVIDENCE_OUT_PATH, "utf8"));
   const evidence = {
     ...baseEvidence,
     certification_checks: results,
   };
 
-  console.log(`\nEvidence written: ${parsed.outPath}`);
+  console.log(`\nEvidence written: ${EVIDENCE_OUT_PATH}`);
   return evidence;
 }
 

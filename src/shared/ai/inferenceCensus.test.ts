@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   AI_INFERENCE_BOUNDARY_CENSUS,
-  POINT26_CENSUS_BASELINE_SHA,
-  SHADOW_INFERENCE_RISKS,
   getLlmBoundaries,
   getPoint26AuditBoundaries,
+  POINT26_CENSUS_BASELINE_SHA,
+  SHADOW_INFERENCE_RISKS,
   summarizeCensusForAudit,
 } from "./inferenceCensus";
 
@@ -25,7 +25,9 @@ describe("inferenceCensus", () => {
 
   it("separates Point 26 audit scope from Point 30 extraction", () => {
     const point26 = getPoint26AuditBoundaries();
-    const point30 = AI_INFERENCE_BOUNDARY_CENSUS.filter((b) => b.programme_scope === "point30-extraction");
+    const point30 = AI_INFERENCE_BOUNDARY_CENSUS.filter(
+      (b) => b.programme_scope === "point30-extraction",
+    );
     expect(point26.some((b) => b.service === "catalogue-ai-copy")).toBe(true);
     expect(point30.some((b) => b.service === "oasis-ai-chat")).toBe(true);
     expect(point30.some((b) => b.service === "generate-product-attributes")).toBe(true);

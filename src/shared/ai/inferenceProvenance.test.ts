@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  CATALOGUE_AI_COPY_SERVICE,
   assertOperationalProvenanceComplete,
+  CATALOGUE_AI_COPY_SERVICE,
   extractInferenceProvenanceFromPayload,
   isGovernedCatalogueCopyResponse,
   isLegacyCatalogueAiServiceMarker,

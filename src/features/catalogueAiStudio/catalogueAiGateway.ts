@@ -10,8 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   CATALOGUE_AI_COPY_SERVICE,
   extractInferenceProvenanceFromPayload,
-  isGovernedCatalogueCopyResponse,
   type InferenceOperationProvenance,
+  isGovernedCatalogueCopyResponse,
 } from "@/shared/ai/inferenceProvenance";
 import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";

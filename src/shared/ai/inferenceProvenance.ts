@@ -34,10 +34,7 @@ export const GENERATE_PRODUCT_ATTRIBUTES_SERVICE: InferenceServiceId =
   "generate-product-attributes";
 
 /** Legacy persisted drafts used oasis-ai-chat before catalogue-ai-copy gateway landed. */
-export const LEGACY_CATALOGUE_AI_SERVICE_MARKERS = [
-  "oasis-ai-chat",
-  "catalogue-ai-copy",
-] as const;
+export const LEGACY_CATALOGUE_AI_SERVICE_MARKERS = ["oasis-ai-chat", "catalogue-ai-copy"] as const;
 
 export type LegacyCatalogueAiServiceMarker = (typeof LEGACY_CATALOGUE_AI_SERVICE_MARKERS)[number];
 
@@ -51,7 +48,9 @@ export function isLegacyCatalogueAiServiceMarker(
 }
 
 export function normalizeCatalogueAiServiceMarker(value: unknown): InferenceServiceId {
-  return isLegacyCatalogueAiServiceMarker(value) ? CATALOGUE_AI_COPY_SERVICE : CATALOGUE_AI_COPY_SERVICE;
+  return isLegacyCatalogueAiServiceMarker(value)
+    ? CATALOGUE_AI_COPY_SERVICE
+    : CATALOGUE_AI_COPY_SERVICE;
 }
 
 export function extractInferenceProvenanceFromPayload(
@@ -99,7 +98,9 @@ export function extractInferenceProvenanceFromPayload(
     suggestion_only,
     fail_closed: defaults.fail_closed ?? provider_status !== "ok",
     invoked_at: new Date().toISOString(),
-    uncertainty_reason: readOptionalString(provenanceBlock.uncertainty_reason ?? row.uncertainty_reason),
+    uncertainty_reason: readOptionalString(
+      provenanceBlock.uncertainty_reason ?? row.uncertainty_reason,
+    ),
   };
 }
 
@@ -122,7 +123,10 @@ export function assertOperationalProvenanceComplete(
 ): { ok: true } | { ok: false; missing: string[] } {
   const missing: string[] = [];
   if (!provenance.service) missing.push("service");
-  if (provenance.human_review_required !== true && provenance.service === CATALOGUE_AI_COPY_SERVICE) {
+  if (
+    provenance.human_review_required !== true &&
+    provenance.service === CATALOGUE_AI_COPY_SERVICE
+  ) {
     missing.push("human_review_required");
   }
   if (provenance.suggestion_only !== true && provenance.service !== "product-resolver-runtime") {

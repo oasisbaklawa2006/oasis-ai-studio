@@ -5,16 +5,21 @@
  * `mergeAiGeneratedContent` inside a React functional state update to stay race-safe against
  * concurrent typing while the AI request is in flight (see handleGenerateAiDraft).
  */
-import type { CatalogueDraftContent, CatalogueDraftContentKey, CatalogueDraftPrompts } from "./catalogueDraftTypes";
+
+import {
+  CATALOGUE_AI_COPY_SERVICE,
+  type InferenceServiceId,
+  isLegacyCatalogueAiServiceMarker,
+} from "@/shared/ai/inferenceProvenance";
+import { CATALOGUE_AI_TONES, type CatalogueAiTone } from "./catalogueAiGateway";
+import type {
+  CatalogueDraftContent,
+  CatalogueDraftContentKey,
+  CatalogueDraftPrompts,
+} from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
 import { isFieldEdited } from "./catalogueFieldEditedState";
 import type { ReadinessResult } from "./catalogueProductReadiness";
-import { CATALOGUE_AI_TONES, type CatalogueAiTone } from "./catalogueAiGateway";
-import {
-  CATALOGUE_AI_COPY_SERVICE,
-  isLegacyCatalogueAiServiceMarker,
-  type InferenceServiceId,
-} from "@/shared/ai/inferenceProvenance";
 
 /**
  * Bugbot-caught: the gate used to key off `readiness.overallLabel`, which is "Not ready" the
@@ -75,7 +80,9 @@ export function mergeAiGeneratedContent(
   for (const key of CATALOGUE_DRAFT_CONTENT_KEYS) {
     const alreadyEdited =
       lockedFields.has(key) ||
-      (activeBaselineContent ? isFieldEdited(currentContent[key], activeBaselineContent[key]) : false);
+      (activeBaselineContent
+        ? isFieldEdited(currentContent[key], activeBaselineContent[key])
+        : false);
     if (alreadyEdited) {
       preservedCount += 1;
     } else {
@@ -100,7 +107,11 @@ export function advanceAiFieldTracking(
   priorTracking: AiFieldTracking | null,
   appliedFields: CatalogueDraftContentKey[],
 ): AiFieldTracking {
-  const prior = priorTracking ?? { watchedFields: [], lockedHumanEditedFields: [], lockedPreservedFields: [] };
+  const prior = priorTracking ?? {
+    watchedFields: [],
+    lockedHumanEditedFields: [],
+    lockedPreservedFields: [],
+  };
   const appliedSet = new Set(appliedFields);
   const trackedSet = new Set([
     ...prior.watchedFields,
@@ -148,7 +159,9 @@ export function buildAiGenerationProvenance(
   return {
     service: CATALOGUE_AI_COPY_SERVICE,
     tone,
-    fields_ai_generated: tracking.watchedFields.filter((key) => !fieldsEditedAfterGeneration.includes(key)),
+    fields_ai_generated: tracking.watchedFields.filter(
+      (key) => !fieldsEditedAfterGeneration.includes(key),
+    ),
     fields_human_edited_after_generation: [
       ...tracking.lockedHumanEditedFields,
       ...fieldsEditedAfterGeneration,
@@ -158,7 +171,8 @@ export function buildAiGenerationProvenance(
 }
 
 function extractAiGenerationBlob(sourceSnapshot: unknown): Record<string, unknown> | null {
-  if (!sourceSnapshot || typeof sourceSnapshot !== "object" || Array.isArray(sourceSnapshot)) return null;
+  if (!sourceSnapshot || typeof sourceSnapshot !== "object" || Array.isArray(sourceSnapshot))
+    return null;
   const aiGeneration = (sourceSnapshot as Record<string, unknown>).ai_generation;
   if (!aiGeneration || typeof aiGeneration !== "object" || Array.isArray(aiGeneration)) return null;
   return aiGeneration as Record<string, unknown>;
@@ -190,14 +204,18 @@ function readTone(value: unknown): CatalogueAiTone | null {
  * `fields_ai_generated`/`fields_human_edited_after_generation`; treating that as "absent" wiped a
  * genuine provenance record on the next save (Bugbot regression).
  */
-export function readPersistedAiGenerationProvenance(sourceSnapshot: unknown): AiGenerationProvenance | null {
+export function readPersistedAiGenerationProvenance(
+  sourceSnapshot: unknown,
+): AiGenerationProvenance | null {
   const blob = extractAiGenerationBlob(sourceSnapshot);
   if (!blob || !isLegacyCatalogueAiServiceMarker(blob.service)) return null;
   return {
     service: CATALOGUE_AI_COPY_SERVICE,
     tone: readTone(blob.tone),
     fields_ai_generated: readContentKeyArray(blob.fields_ai_generated),
-    fields_human_edited_after_generation: readContentKeyArray(blob.fields_human_edited_after_generation),
+    fields_human_edited_after_generation: readContentKeyArray(
+      blob.fields_human_edited_after_generation,
+    ),
     fields_preserved_from_prior_edit: readContentKeyArray(blob.fields_preserved_from_prior_edit),
   };
 }

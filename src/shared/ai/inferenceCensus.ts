@@ -50,8 +50,10 @@ export const AI_INFERENCE_BOUNDARY_CENSUS: readonly InferenceBoundaryRecord[] = 
     records_provenance: true,
     production_vs_test:
       "Production edge fn on tcxvcatsqqertcnycuop; client gated by VITE_CATALOGUE_AI_ENABLED=true",
-    retry_timeout_owner: "Edge function (Point 24); client never retries or falls back to oasis-ai-chat",
-    pii_secrets_handling: "Staff JWT required; OPENAI_API_KEY server-side only; no secrets in client",
+    retry_timeout_owner:
+      "Edge function (Point 24); client never retries or falls back to oasis-ai-chat",
+    pii_secrets_handling:
+      "Staff JWT required; OPENAI_API_KEY server-side only; no secrets in client",
     notes:
       "Dedicated catalogue copy contract. Gateway refuses oasis-ai-chat fallback. validateAiCatalogueContent before editor state.",
   },
@@ -92,8 +94,10 @@ export const AI_INFERENCE_BOUNDARY_CENSUS: readonly InferenceBoundaryRecord[] = 
     records_provenance: true,
     production_vs_test:
       "Repo edge fn is heuristic placeholder until model provider configured; same contract as Central",
-    retry_timeout_owner: "supabase.functions.invoke single call; heuristic fallback on invalid shape",
-    pii_secrets_handling: "product_name/category only; suggestion_only + approved:false enforced client-side",
+    retry_timeout_owner:
+      "supabase.functions.invoke single call; heuristic fallback on invalid shape",
+    pii_secrets_handling:
+      "product_name/category only; suggestion_only + approved:false enforced client-side",
     notes:
       "ComplianceAiPanel + Fast Create enrichment. prepareFormForComplianceSave strips unapproved fields on save.",
   },
@@ -110,7 +114,8 @@ export const AI_INFERENCE_BOUNDARY_CENSUS: readonly InferenceBoundaryRecord[] = 
     human_review_gate: true,
     can_mutate_canonical_without_approval: false,
     records_provenance: true,
-    production_vs_test: "Deterministic client fallback when edge unavailable or response non-governed",
+    production_vs_test:
+      "Deterministic client fallback when edge unavailable or response non-governed",
     retry_timeout_owner: "Client-owned fallback in extractGovernedCompliance",
     pii_secrets_handling: "Category/name pattern match only",
     notes: "Never marks approved:true. Used when edge returns invalid shape or transport error.",
@@ -131,7 +136,8 @@ export const AI_INFERENCE_BOUNDARY_CENSUS: readonly InferenceBoundaryRecord[] = 
     production_vs_test: "Pure template functions; no provider call",
     retry_timeout_owner: "N/A",
     pii_secrets_handling: "Uses existing product fields only",
-    notes: "Not LLM inference. Listed for census completeness; excluded from Point 26 provider audit.",
+    notes:
+      "Not LLM inference. Listed for census completeness; excluded from Point 26 provider audit.",
   },
   {
     id: "ocr-tesseract",
@@ -205,19 +211,22 @@ export const SHADOW_INFERENCE_RISKS: readonly ShadowInferenceRisk[] = [
     id: "compliance-panel-unmounted",
     severity: "medium",
     description: "ComplianceAiPanel exists but may not be mounted on ProductEdit in all builds.",
-    mitigation: "Panel wired via governed extraction contract; mounting tracked separately from Point 26 audit census.",
+    mitigation:
+      "Panel wired via governed extraction contract; mounting tracked separately from Point 26 audit census.",
   },
   {
     id: "edge-fn-not-in-repo",
     severity: "low",
-    description: "catalogue-ai-copy and oasis-ai-chat edge functions deploy from Central/backend repo.",
+    description:
+      "catalogue-ai-copy and oasis-ai-chat edge functions deploy from Central/backend repo.",
     mitigation:
       "Client census + smoke/cert scripts document contracts; no AI Studio edge deploy from this repo.",
   },
   {
     id: "generate-product-attributes-no-live-llm",
     severity: "low",
-    description: "In-repo edge fn is heuristic-only until provider configured in deployment target.",
+    description:
+      "In-repo edge fn is heuristic-only until provider configured in deployment target.",
     mitigation:
       "Client enforces suggestion_only/approved:false regardless of provider; fail-closed parse + heuristic fallback.",
   },
@@ -253,8 +262,9 @@ export function summarizeCensusForAudit(): {
     total_boundaries: AI_INFERENCE_BOUNDARY_CENSUS.length,
     llm_boundaries: llm.length,
     point26_boundaries: getPoint26AuditBoundaries().length,
-    point30_boundaries: AI_INFERENCE_BOUNDARY_CENSUS.filter((b) => b.programme_scope === "point30-extraction")
-      .length,
+    point30_boundaries: AI_INFERENCE_BOUNDARY_CENSUS.filter(
+      (b) => b.programme_scope === "point30-extraction",
+    ).length,
     shadow_risks_open: SHADOW_INFERENCE_RISKS.filter((r) => r.severity !== "resolved").length,
     all_llm_fail_closed: llm.every((b) => b.fail_closed_on_malformed),
     all_llm_human_review: llm.every((b) => b.human_review_gate),
