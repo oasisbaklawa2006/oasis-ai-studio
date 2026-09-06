@@ -2,7 +2,7 @@
 
 **Issue:** #146 · **PR:** #147  
 **Baseline:** `main` @ `cf0fd3c` (includes #140 + #149 + #151)  
-**Core authority:** oasis-supabase-core #199 · `carton_dimensions_cm` + `cbm` live on shared `products`  
+**Core authority:** oasis-supabase-core #199 · production release #141 @ `8e73d94` (run `34008131771`)  
 **Classification:** **LIVE RECERTIFIED** for `carton_dimensions_cm` + `cbm`; `gross_weight_kg` remains UI-blocked
 
 ## Live authority census matrix
@@ -29,6 +29,15 @@ Unit tests in `productAuthority.test.ts` and `shippingDimensions.test.ts` prove:
 - CBM is **not** fabricated when dimensions incomplete
 - `gross_weight_kg` stripped by `sanitizeLiveProductsPayload` (grams-only UI preserved)
 
+## Production authority verification (no production mutation)
+
+| Check | Evidence |
+| --- | --- |
+| Core migration applied | Production Migration Release #141 run `34008131771` SUCCESS @ `8e73d94` |
+| Post-deploy ledger + semantic parity | Passed per Core release workflow |
+| AI Studio adapter contract | Unit tests only — `carton_dimensions_cm` + `cbm` live write/read; `gross_weight_kg` stripped |
+| Prior #139 skipped-deploy hold | **SUPERSEDED** by #141 protected deploy |
+
 ## Remaining programme delta
 
 `gross_weight_kg` column exists on Core schema but AI Studio keeps grams as the operator-facing unit.
@@ -42,7 +51,9 @@ Central snapshot connector (25B/25C) does not yet publish `cbm` / `carton_dimens
 | Rebased on current `main` @ `cf0fd3c` | **PASS** |
 | Review findings remediated | **PASS** |
 | `gross_weight_kg` semantics preserved (blocked) | **PASS** |
-| Unit tests (local) | **PASS** (58/58 — Point35 + fast-create draft guard) |
-| Exact-head CI | **PASS** (21/22 — Vercel deploy rate-limit infra only) |
-| Production mutation | **NONE** |
-| Merge approval | **STOP** — prior approval stale; awaiting fresh collaborator review |
+| Unit tests (local) | **PASS** (60/60 — Point35 + fast-create draft guard) |
+| Exact-head CI | **PASS** (23/23) |
+| Core production dependency (#141 @ `8e73d94`) | **PASS** |
+| Production mutation (AI Studio) | **NONE** |
+| Collaborator approval @ `f7165eb` | **CONFIRMED** |
+| Merge | **READY** — programme gates clear; await merge authorization |
