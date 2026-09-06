@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   catalogueBenchmarkGovernance,
   catalogueBenchmarkGovernanceView,
+  catalogueGuidedCaptureView,
+  catalogueGuidedMobileCapture,
   catalogueMediaTabDeepLink,
   cataloguePhotographyFamily,
   cataloguePhotographyFamilyView,
   catalogueRequiredMediaSlots,
+  catalogueValidateCaptureHandoff,
   catalogueValidateImagePromptInstruction,
 } from "./catalogueMediaSlots";
 
@@ -61,6 +64,41 @@ describe("catalogueBenchmarkGovernance", () => {
       category: "Baklawa",
     });
     expect(result.ok).toBe(true);
+  });
+});
+
+describe("catalogueGuidedMobileCapture", () => {
+  const product = { productId: "p1", category: "Baklawa", subcategory: "Pyramid" };
+
+  it("resolves Point 44 guided capture via Point 42/43 chain", () => {
+    const resolved = catalogueGuidedMobileCapture(product, "hero_image");
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.contract.schema).toBe("point44_v1");
+    expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
+  });
+
+  it("view surfaces contract and resolution errors", () => {
+    const okView = catalogueGuidedCaptureView(product, "hero_image");
+    expect(okView.contract?.binding.uploaderType).toBe("hero_image");
+    expect(okView.resolutionError).toBeNull();
+
+    const failView = catalogueGuidedCaptureView({ category: "Baklawa" }, "hero_image");
+    expect(failView.contract).toBeNull();
+    expect(failView.resolutionError).toContain("Product identity");
+  });
+
+  it("validates capture handoff through adapter", () => {
+    const resolved = catalogueGuidedMobileCapture(product, "hero_image");
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+
+    const handoff = catalogueValidateCaptureHandoff(resolved.contract, {
+      uploaderType: "hero_image",
+      mimeType: "image/jpeg",
+      source: "guided_camera",
+    });
+    expect(handoff.ok).toBe(true);
   });
 });
 
