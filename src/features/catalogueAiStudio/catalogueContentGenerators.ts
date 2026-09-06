@@ -11,6 +11,7 @@ import type {
   CatalogueDraftPromptKey,
 } from "./catalogueDraftTypes";
 import { hasNumber, hasText } from "./catalogueFieldUtils";
+import { MISSING_FIELD_PLACEHOLDER_PREFIX } from "@/features/productAuthority/deferredDetailContract";
 import { isMissingFieldOnlyMessage } from "./missingFieldMessage";
 
 export interface DraftBlockMeta {
@@ -70,7 +71,7 @@ export interface DraftProductInput {
   carton_dimensions_cm?: string | null;
 }
 
-const MISSING_FIELD = (field: string) => `Add missing field first: ${field}.`;
+const MISSING_FIELD = (field: string) => `${MISSING_FIELD_PLACEHOLDER_PREFIX} ${field}.`;
 
 interface DisplayPrice {
   /** Clearly distinguishes an actual B2B price from an MRP fallback — never conflate the two. */
@@ -267,7 +268,7 @@ export function composeCatalogueImagePrompt(
  * attachment); it deliberately doesn't flag the fragment embedded inline in otherwise-real copy, so
  * a separate substring check is needed here to decide whether a bundle is safe to hand out.
  */
-const MISSING_FIELD_FRAGMENT = "Add missing field first:";
+const MISSING_FIELD_FRAGMENT = MISSING_FIELD_PLACEHOLDER_PREFIX;
 
 export function exportBundleHasMissingFieldPlaceholder(content: CatalogueDraftContent): boolean {
   return Object.values(content).some(

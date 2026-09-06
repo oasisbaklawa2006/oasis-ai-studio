@@ -24,6 +24,7 @@ import {
   clearFastCreateDraft,
   emptyFastCreateDraft,
   type FastCreateDraftSnapshot,
+  fastCreateDeferredDetailPayload,
   fastCreateFormPatchFromDraft,
   fastCreateReadinessCategories,
   fastCreateReadinessScore,
@@ -285,6 +286,7 @@ const FastCreateProduct = () => {
         resolvedSku: skuResult.sku,
         extraFormPatch: fastCreateFormPatchFromDraft(draft),
         saleType: draft.saleType,
+        deferredDetail: fastCreateDeferredDetailPayload(draft),
       });
 
       clearFastCreateDraft();
