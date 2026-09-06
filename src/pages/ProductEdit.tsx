@@ -86,6 +86,7 @@ import {
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
 import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
+import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
 import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 import {
   COMPLIANCE_SENSITIVE_FIELDS,
@@ -751,7 +752,10 @@ const ProductEdit = () => {
 
   const complianceMetaPending = useMemo(
     () =>
-      Object.values(complianceMetaMap).some((m) => m?.source === "ai_suggestion" && !m?.approved),
+      Object.values(complianceMetaMap).some(
+        (m) =>
+          (m?.source === "ai_suggestion" || m?.source === "category_rule") && !m?.approved,
+      ),
     [complianceMetaMap],
   );
 
@@ -1664,12 +1668,7 @@ const ProductEdit = () => {
         },
         compliance: appendLiveLegalFieldsToContributorCompliance(
           {
-            ingredients: payload.ingredients,
-            allergen_information: payload.allergen_warnings || "Suggested — please review",
-            nutritional_information:
-              payload.nutritional_info || payload.nutrition_facts || "Draft placeholder only",
-            shelf_life_days: payload.shelf_life_days,
-            storage_instructions: payload.storage_instructions,
+            ...factualCompositionDraftPayload(payload),
             manufactured_by: "TCF Chocolates and Gifts Pvt Ltd",
             production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015",
             customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com",

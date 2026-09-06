@@ -7,13 +7,8 @@
  *
  * Only `identity`, `quantity`, and `shelf_storage` are scored from real, actually-persisted
  * product fields. Ingredients, allergen warnings, and nutritional info are deliberately
- * NOT scored as pass/warn/missing here, even though `products.ingredients` /
- * `allergen_warnings` / `nutritional_info` exist as columns — `formToDbProductPayload`
- * (productSchemaAdapter.ts) intentionally excludes them from every save, per its own
- * comment: "Compliance text fields (ingredients, allergens) are UI-only until
- * label/nutrition tables own them." Scoring them as real data would be misleading, since
- * whatever staff types into the Full Editor for these three fields today is never actually
- * saved. They're reported as `dataGaps` with severity "not_persisted", not scored.
+ * NOT scored as pass/warn/missing here — `productFactualCompositionCanonical.ts`
+ * classifies them as `core_blocked` / `deferred` until Core ships durable columns.
  *
  * FSSAI licence number, batch/lot number, mfg/best-before dates, veg/non-veg indicator,
  * structured net quantity, serving size, and claims fields without a live Core column are
@@ -164,19 +159,19 @@ const DATA_GAPS: LabelDataGap[] = [
     key: "ingredients",
     label: "Ingredient Declaration",
     severity: "not_persisted",
-    note: "products.ingredients exists but formToDbProductPayload excludes it from every save — UI-only until a label/nutrition table owns it.",
+    note: "Point 34 canonical: core_blocked — products.ingredients not on Studio write contract; use product_ingredients when Core ships.",
   },
   {
     key: "allergen_warnings",
     label: "Allergen Declaration",
     severity: "not_persisted",
-    note: "products.allergen_warnings exists but formToDbProductPayload excludes it from every save — UI-only until a label/nutrition table owns it.",
+    note: "Point 34 canonical: core_blocked — products.allergen_warnings not on Studio write contract.",
   },
   {
     key: "nutrition",
     label: "Nutrition Information",
     severity: "not_persisted",
-    note: `products.nutritional_info exists but formToDbProductPayload excludes it from every save. ${NUTRITION_REVIEW_NOTICE}`,
+    note: `Point 34 canonical: core_blocked — nutrition_panels / products.nutrition_facts not wired. ${NUTRITION_REVIEW_NOTICE}`,
   },
   {
     key: "batch_lot_number",

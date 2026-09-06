@@ -5,7 +5,7 @@ import {
 } from "./complianceConstants";
 
 export type ComplianceFieldMeta = {
-  source: "manual" | "ai_suggestion";
+  source: "manual" | "ai_suggestion" | "category_rule";
   approved: boolean;
   suggestion_only?: boolean;
   approved_at?: string;
@@ -32,6 +32,11 @@ export function createAiSuggestionFieldMeta(): ComplianceFieldMeta {
   return { source: "ai_suggestion", approved: false, suggestion_only: true };
 }
 
+/** Category-rule prefeed — deferred factual default until explicit human approval (Point 34). */
+export function createCategoryRuleFieldMeta(): ComplianceFieldMeta {
+  return { source: "category_rule", approved: false, suggestion_only: true };
+}
+
 export function approveComplianceFieldMeta(
   meta: ComplianceFieldMeta | undefined,
   role: string,
@@ -53,7 +58,10 @@ export function isComplianceFieldApproved(
   const meta = metaMap?.[field];
   if (!meta) return true;
   if (meta.source === "manual" && meta.approved) return true;
-  if (meta.source === "ai_suggestion" && meta.approved) return true;
+  if ((meta.source === "ai_suggestion" || meta.source === "category_rule") && meta.approved) {
+    return true;
+  }
+  if (meta.source === "ai_suggestion" || meta.source === "category_rule") return false;
   if (canApproveComplianceFields(roles) && meta.approved) return true;
   return false;
 }

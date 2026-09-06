@@ -7,8 +7,12 @@ import {
   seedAliasesFromName,
   whatsappKeywordsFromAliases,
 } from "@/features/productLanguage/aliasSeedRules";
+import { CATEGORY_RULE_DEFERRED_FACTUAL_FIELDS } from "@/features/productTruth/productFactualCompositionCanonical";
 import { supabase } from "@/integrations/supabase/client";
-import type { ComplianceFieldMetaMap } from "@/shared/ai/complianceApproval";
+import {
+  createCategoryRuleFieldMeta,
+  type ComplianceFieldMetaMap,
+} from "@/shared/ai/complianceApproval";
 import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 
 export type FastCreateSuggestions = {
@@ -69,12 +73,19 @@ export function buildHeuristicSuggestions(
   formPatch.short_name = productName.split(/[/,|]/)[0]?.trim() || productName.trim();
   formPatch.description = buildDescription(productName, category, productType);
   formPatch.short_description = buildShortDescription(productName, productType);
-  formPatch.allergen_warnings =
-    formPatch.allergen_warnings ||
-    "Contains nuts, gluten, and dairy. May contain traces of sesame and soy.";
-  formPatch.ingredients =
-    formPatch.ingredients ||
-    "Refer to batch label. Typical ingredients include nuts, sugar, clarified butter, and filo pastry.";
+  // Point 34: never invent ingredients, allergens, or nutrition from category/name.
+  delete formPatch.ingredients;
+  delete formPatch.allergen_warnings;
+  delete formPatch.nutritional_info;
+  delete formPatch.nutrition_facts;
+
+  const complianceFieldMeta: ComplianceFieldMetaMap = {};
+  for (const field of CATEGORY_RULE_DEFERRED_FACTUAL_FIELDS) {
+    const value = formPatch[field];
+    if (value !== "" && value != null && String(value).trim() !== "") {
+      complianceFieldMeta[field] = createCategoryRuleFieldMeta();
+    }
+  }
 
   const aliases = seedAliasesFromName(productName);
   const whatsappKeywords = whatsappKeywordsFromAliases(aliases);
@@ -89,9 +100,9 @@ export function buildHeuristicSuggestions(
     searchKeywords: searchKeywordsFromForm(productName, category, aliases),
     labelStarter: {
       product_name: productName.trim(),
-      ingredients_hint: String(formPatch.ingredients ?? ""),
-      allergen_hint: String(formPatch.allergen_warnings ?? ""),
-      net_weight_hint: String(formPatch.pack_size ?? "As labelled"),
+      ingredients_hint: "",
+      allergen_hint: "",
+      net_weight_hint: String(formPatch.pack_size ?? ""),
     },
     productTruthStarters: {
       piecesPerKg: Number.isFinite(piecesPerKg) ? piecesPerKg : null,
@@ -104,6 +115,7 @@ export function buildHeuristicSuggestions(
       aiCompliance: false,
       aiAliases: false,
     },
+    complianceFieldMeta,
   };
 }
 

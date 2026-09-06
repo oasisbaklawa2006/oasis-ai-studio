@@ -2,6 +2,7 @@ import type { PackagingTaxonomyAuthority } from "@/features/productAuthority/cat
 import type { Point36FulfillmentReadinessSnapshot } from "@/features/productAuthority/moqLeadTimeReadinessCanonical";
 import type { Point37PackagingLabelReadinessSnapshot } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
+import type { SnapshotFactualComposition } from "@/features/productTruth/productFactualCompositionCanonical";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type {
@@ -69,6 +70,7 @@ export type CatalogueSnapshotJson = {
   packaging_hierarchy: SnapshotPackagingHierarchy;
   /** Point 37 — packaging / label-readiness canonical block (preview-only when taxonomy unloaded). */
   packaging_label_readiness: Point37PackagingLabelReadinessSnapshot;
+  factual_composition: SnapshotFactualComposition;
   channel_rules: ChannelMoqRule[];
   pricing_rules: ChannelPriceRecord[];
   media: {

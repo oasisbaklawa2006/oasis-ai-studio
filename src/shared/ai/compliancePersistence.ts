@@ -4,22 +4,27 @@
   type ComplianceBaseline,
   type ComplianceFieldMetaMap,
 } from "./complianceApproval";
+import {
+  PERSISTED_FACTUAL_PRODUCT_COLUMNS,
+  UI_ONLY_FACTUAL_FIELDS,
+} from "@/features/productTruth/productFactualCompositionCanonical";
 
-/** Columns on `products` that ProductEdit persists on save. */
+/** Columns on `products` that ProductEdit persists on save (Point 34 canonical). */
 export const PERSISTED_COMPLIANCE_PRODUCT_COLUMNS = [
   "hsn_code",
   "gst_rate",
-  "shelf_life_days",
-  "storage_instructions",
+  ...PERSISTED_FACTUAL_PRODUCT_COLUMNS.filter(
+    (f) => f === "shelf_life_days" || f === "storage_instructions",
+  ),
 ] as const;
 
 export type PersistedComplianceColumn = (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number];
 
-/** Form-only compliance text — not written to `products` until structured tables are wired. */
+/** Form-only compliance text — not written to `products` until Core ships columns (Point 34). */
 export const UI_ONLY_COMPLIANCE_FIELDS = [
-  "ingredients",
-  "allergen_warnings",
-  "nutritional_info",
+  ...UI_ONLY_FACTUAL_FIELDS.filter(
+    (f) => f === "ingredients" || f === "allergen_warnings" || f === "nutritional_info",
+  ),
 ] as const;
 
 /**
