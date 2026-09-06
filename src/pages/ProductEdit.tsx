@@ -76,6 +76,7 @@ import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
+import { assertNoBlockingProductCollisions } from "@/features/productGovernance/productDuplicateContract";
 import {
   type MoqRuleRow,
   mapMoqRules,
@@ -1432,6 +1433,21 @@ const ProductEdit = () => {
         setSubmitError(message);
         toast.error(message);
         return;
+      }
+
+      if (isNew) {
+        try {
+          await assertNoBlockingProductCollisions({
+            sku: productRow.sku as string,
+          });
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Product identity collision detected.";
+          setLoading(false);
+          setSubmitError(message);
+          toast.error(message);
+          return;
+        }
       }
 
       // productRow is a dynamically-assembled Record<string, unknown> (built from the free-form
