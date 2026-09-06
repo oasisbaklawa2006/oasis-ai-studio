@@ -52,7 +52,7 @@ export function mockCatalogueAiCopyProvider(
         case "whatsapp_product_message":
           return [key, `Hi! We have *${facts.product_name}* available. Reply to know more.`];
         case "hindi_description":
-          return [key, `${facts.product_name} — समीक्षा के लिए ड्राफ्ट.`];
+          return [key, "समीक्षा के लिए हिंदी ड्राफ्ट — अनुमोदित स्रोत प्रतिलिपि आवश्यक।"];
         case "storage_shelf_life_copy":
           return [key, "Refer to product label for storage and shelf-life details."];
         default:

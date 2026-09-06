@@ -24,6 +24,8 @@ describe("fastCreateSuggestions", () => {
     expect(String(result.formPatch.short_description).toLowerCase()).not.toContain("signature");
     expect(result.namingProvenance?.service).toBe("heuristic");
     expect(result.namingProvenance?.fail_closed).toBe(false);
+    expect(result.multilingualProvenance?.service).toBe("heuristic");
+    expect(result.multilingualProvenance?.source_version).toBeTruthy();
   });
 });
 
