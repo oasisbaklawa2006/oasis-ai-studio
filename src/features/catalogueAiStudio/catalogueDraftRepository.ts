@@ -6,6 +6,13 @@
  */
 
 import {
+  assertCorrectionResubmissionAllowed,
+  assertRejectionReasonRequired,
+  assertTerminalSnapshotNotMutatedInPlace,
+  buildPredecessorLinkage,
+  buildRejectAuditMetadata,
+} from "@/features/productWorkflow/productCorrectionContract";
+import {
   assertValidWorkflowTransition,
   mapCatalogueDraftStatus,
 } from "@/features/productWorkflow/productWorkflowState";
@@ -132,6 +139,7 @@ export async function saveDraft(params: {
   }
 
   if (latest && latest.status === "DRAFT") {
+    assertTerminalSnapshotNotMutatedInPlace(latest.status as CatalogueDraftStatus);
     const { data, error } = await supabase
       .from("catalogue_ai_studio_drafts")
       .update({ ...params.content })
@@ -143,6 +151,13 @@ export async function saveDraft(params: {
     if (!data) throw new Error(STATUS_CHANGED_MESSAGE);
     await insertAudit(data.id, "SAVE_DRAFT", "DRAFT", "DRAFT", params.actorId);
     return data;
+  }
+
+  if (latest) {
+    assertCorrectionResubmissionAllowed({
+      fromStatus: latest.status as CatalogueDraftStatus,
+      actorRole: "contributor",
+    });
   }
 
   const nextVersion = latest ? latest.version_number + 1 : 1;
@@ -168,13 +183,14 @@ export async function saveDraft(params: {
     }
     throw new Error(error.message);
   }
-  // Carry the previous version's rejection reason forward onto the new version's own audit
-  // entry — the audit log is scoped to a single draft_id (see fetchDraftAuditLog), so without
-  // this, "why was the prior version rejected" becomes invisible the moment a new version starts.
-  const versionMetadata =
-    latest?.status === "REJECTED" && latest.rejection_reason
-      ? { previous_version_rejection_reason: latest.rejection_reason }
-      : undefined;
+  const versionMetadata = latest
+    ? buildPredecessorLinkage({
+        predecessorDraftId: latest.id,
+        predecessorVersionNumber: latest.version_number,
+        predecessorStatus: latest.status as CatalogueDraftStatus,
+        rejectionReason: latest.rejection_reason,
+      })
+    : undefined;
   await insertAudit(
     data.id,
     latest ? "CREATE_NEW_VERSION" : "CREATE_DRAFT",
@@ -260,6 +276,8 @@ export async function rejectDraft(
   actorId: string | null,
   reason: string,
 ): Promise<CatalogueDraftRow> {
+  assertRejectionReasonRequired(reason);
+
   const existing = await supabase
     .from("catalogue_ai_studio_drafts")
     .select("status")
@@ -275,13 +293,14 @@ export async function rejectDraft(
     });
   }
 
+  const normalizedReason = reason.trim();
   const { data, error } = await supabase
     .from("catalogue_ai_studio_drafts")
     .update({
       status: "REJECTED",
       reviewed_by: actorId,
       reviewed_at: new Date().toISOString(),
-      rejection_reason: reason,
+      rejection_reason: normalizedReason,
     })
     .eq("id", draftId)
     .eq("status", "UNDER_REVIEW")
@@ -289,8 +308,13 @@ export async function rejectDraft(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error(STATUS_CHANGED_MESSAGE);
-  await insertAudit(draftId, "REJECT", "UNDER_REVIEW", "REJECTED", actorId, {
-    rejection_reason: reason,
-  });
+  await insertAudit(
+    draftId,
+    "REJECT",
+    "UNDER_REVIEW",
+    "REJECTED",
+    actorId,
+    buildRejectAuditMetadata(normalizedReason),
+  );
   return data;
 }
