@@ -311,6 +311,39 @@ describe("productSchemaAdapter", () => {
     expect(payload.lead_time_days).toBe(21);
   });
 
+  it("maps Point37 live legal label columns via compat columns (Core production recert)", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Export Baklawa",
+      sku: "OAS-AS-BKL-0024",
+      fssai_licence_number: "10012345678901",
+      country_of_origin: "India",
+      label_manufacturer_details: "Oasis Foods Pvt Ltd, Mumbai",
+    });
+    expect(payload.fssai_licence_number).toBe("10012345678901");
+    expect(payload.country_of_origin).toBe("India");
+    expect(payload.label_manufacturer_details).toBe("Oasis Foods Pvt Ltd, Mumbai");
+  });
+
+  it("round-trips Point37 live legal label columns through dbRowToProductForm", () => {
+    const form = dbRowToProductForm(
+      {
+        product_name: "Export",
+        sku: "OAS-X",
+        fssai_licence_number: "10012345678901",
+        country_of_origin: "India",
+        label_manufacturer_details: "Oasis Foods Pvt Ltd, Mumbai",
+      },
+      {},
+    );
+    expect(form.fssai_licence_number).toBe("10012345678901");
+    expect(form.country_of_origin).toBe("India");
+    expect(form.label_manufacturer_details).toBe("Oasis Foods Pvt Ltd, Mumbai");
+    const payload = formToDbProductPayload(form);
+    expect(payload.fssai_licence_number).toBe("10012345678901");
+    expect(payload.country_of_origin).toBe("India");
+    expect(payload.label_manufacturer_details).toBe("Oasis Foods Pvt Ltd, Mumbai");
+  });
+
   it("maps structured dimensions and gram weights to live products columns", () => {
     const payload = formToDbProductPayload({
       product_name: "Gift Box",

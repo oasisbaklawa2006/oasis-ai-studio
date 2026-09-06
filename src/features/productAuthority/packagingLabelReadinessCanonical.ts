@@ -5,7 +5,8 @@
  * - Packaging type/form: Core `products.packaging_code` validated against active taxonomy
  *   (`evaluatePackagingReadiness`) — wins over shadow free-text `pack_size` / `primary_pack_type`
  * - Pack / inner / master carton declarations: Point 33 `buildCanonicalPackagingHierarchy`
- * - Legal / FSSAI / metrology: `labelReadiness.ts` data gaps (not scored as pass until persisted)
+ * - Legal / FSSAI / metrology: live `fssai_licence_number`, `country_of_origin`,
+ *   `label_manufacturer_details` @ Core release `34034910469`; remaining gaps via `labelReadiness.ts`
  * - Artwork / label assets: media readiness slots (`label_front_image`, `label_back_image`,
  *   `packaging_reference`) — Trace print execution remains Point 95
  * - Barcode / EAN linkage: Core `products.barcode_sku` (claim-governed write path)
@@ -30,16 +31,21 @@ import {
   type PackagingTaxonomyAuthority,
 } from "./catalogueReadyGate";
 import {
+  evaluateLiveLegalLabelFields,
+  type LiveLegalLabelFieldState,
+  liveLegalLabelFieldsFromForm,
+  type POINT_37_LIVE_PRODUCT_COLUMNS,
+  POINT_37_REMAINING_CORE_DEPENDENCIES,
+} from "./labelComplianceLiveColumns";
+import {
   computeLabelReadiness,
   getLabelDataGaps,
   type LabelReadinessResult,
 } from "./labelReadiness";
 import { getSaleTypeRequirements, type SaleType } from "./saleType";
 
-export const POINT_37_CORE_DEPENDENCIES = {
-  /** Smallest bounded Core prerequisite — FSSAI licence is mandatory for Indian retail label print. */
-  fssaiLicence: ["products.fssai_licence_number (or equivalent label-compliance column bundle)"],
-} as const;
+/** @deprecated Use POINT_37_REMAINING_CORE_DEPENDENCIES — live trio now bound in recert. */
+export const POINT_37_CORE_DEPENDENCIES = POINT_37_REMAINING_CORE_DEPENDENCIES;
 
 export const PACKAGING_TYPE_SHADOW_FIELDS = [
   "pack_size",
@@ -92,7 +98,17 @@ export interface BarcodeLinkageResult {
 }
 
 export type Point37PackagingLabelReadinessSnapshot = {
-  schema: "point37_v1";
+  schema: "point37_v2";
+  core_production_release: {
+    core_sha: "9c93fc32edb65ece2b125e787046e0c001d29b47";
+    release_run: "34034910469";
+  };
+  live_legal_fields: Array<{
+    field: (typeof POINT_37_LIVE_PRODUCT_COLUMNS)[number];
+    state: LiveLegalLabelFieldState;
+    value: string | null;
+    publication_blockers: string[];
+  }>;
   packaging_type: {
     state: PackagingTypeAuthorityState;
     canonical_field: "packaging_code";
@@ -536,7 +552,13 @@ export function evaluatePackagingLabelReadiness(input: PackagingLabelReadinessIn
     pack_size: input.form.pack_size as string | null | undefined,
     net_weight_g: input.form.net_weight_g as number | string | null | undefined,
     pcs_per_pack: input.form.pcs_per_pack as number | string | null | undefined,
+    ...liveLegalLabelFieldsFromForm(input.form),
   });
+  const liveLegalFields = evaluateLiveLegalLabelFields(liveLegalLabelFieldsFromForm(input.form));
+  const customerFacing = getSaleTypeRequirements(input.saleType).customerFacing;
+  const liveLegalBlockers = customerFacing
+    ? liveLegalFields.flatMap((field) => field.publicationBlockers)
+    : [];
   const artwork = evaluateArtworkLabelAssets(input.saleType, input.mediaAssets ?? []);
   const barcode = evaluateBarcodeLinkage(input.form, input.saleType);
 
@@ -550,7 +572,7 @@ export function evaluatePackagingLabelReadiness(input: PackagingLabelReadinessIn
       ...hierarchyLabels.flatMap((h) => h.publicationBlockers),
       ...artwork.publicationBlockers,
       ...barcode.publicationBlockers,
-      // Legal gaps always block honest "ready for label design" — fail-closed.
+      ...liveLegalBlockers,
       ...notPersisted.map((key) => `Legal label field not persisted: ${key}`),
       ...noColumn.map((key) => `Legal label field has no column: ${key}`),
     ]),
@@ -569,7 +591,17 @@ export function evaluatePackagingLabelReadiness(input: PackagingLabelReadinessIn
     publicationBlockers.length === 0;
 
   const snapshot: Point37PackagingLabelReadinessSnapshot = {
-    schema: "point37_v1",
+    schema: "point37_v2",
+    core_production_release: {
+      core_sha: "9c93fc32edb65ece2b125e787046e0c001d29b47",
+      release_run: "34034910469",
+    },
+    live_legal_fields: liveLegalFields.map((field) => ({
+      field: field.field,
+      state: field.state,
+      value: field.value,
+      publication_blockers: field.publicationBlockers,
+    })),
     packaging_type: {
       state: packagingType.state,
       canonical_field: "packaging_code",
@@ -586,7 +618,12 @@ export function evaluatePackagingLabelReadiness(input: PackagingLabelReadinessIn
     legal_label_gaps: {
       not_persisted: notPersisted,
       no_column: noColumn,
-      core_dependencies: POINT_37_CORE_DEPENDENCIES.fssaiLicence,
+      core_dependencies: [
+        ...POINT_37_REMAINING_CORE_DEPENDENCIES.batchLot,
+        ...POINT_37_REMAINING_CORE_DEPENDENCIES.vegIndicator,
+        ...POINT_37_REMAINING_CORE_DEPENDENCIES.structuredNetQuantity,
+        ...POINT_37_REMAINING_CORE_DEPENDENCIES.labelMrp,
+      ],
     },
     artwork: {
       state: artwork.state,

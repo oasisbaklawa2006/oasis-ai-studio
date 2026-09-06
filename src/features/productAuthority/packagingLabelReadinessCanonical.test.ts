@@ -6,7 +6,7 @@ import {
   evaluateHierarchyLabelReadiness,
   evaluatePackagingLabelReadiness,
   evaluatePackagingTypeAuthority,
-  POINT_37_CORE_DEPENDENCIES,
+  POINT_37_REMAINING_CORE_DEPENDENCIES,
 } from "./packagingLabelReadinessCanonical";
 
 const PACKAGING_AUTHORITY: PackagingTaxonomyAuthority = {
@@ -27,6 +27,9 @@ const COMPLETE_FORM: Record<string, unknown> = {
   carton_qty: 4,
   carton_uom: "carton",
   barcode_sku: "5901234123457",
+  fssai_licence_number: "10020030040005",
+  country_of_origin: "India",
+  label_manufacturer_details: "Oasis Baklawa Pvt Ltd",
 };
 
 describe("evaluatePackagingTypeAuthority", () => {
@@ -165,17 +168,48 @@ describe("evaluatePackagingLabelReadiness", () => {
     });
     expect(result.readyForLabelDesign).toBe(false);
     expect(result.publicationBlockers.some((b) => b.includes("no column"))).toBe(true);
-    expect(result.snapshot.schema).toBe("point37_v1");
+    expect(result.snapshot.schema).toBe("point37_v2");
+    expect(result.snapshot.live_legal_fields).toHaveLength(3);
+    expect(result.snapshot.core_production_release.release_run).toBe("34034910469");
   });
 
-  it("documents Core FSSAI dependency", () => {
+  it("documents remaining Core dependencies after live trio recert", () => {
     const result = evaluatePackagingLabelReadiness({
       form: COMPLETE_FORM,
       saleType: "retail_ready_pack",
       packagingAuthority: PACKAGING_AUTHORITY,
     });
     expect(result.snapshot.legal_label_gaps.core_dependencies).toEqual(
-      POINT_37_CORE_DEPENDENCIES.fssaiLicence,
+      expect.arrayContaining([
+        "products.batch_lot_number",
+        "products.veg_nonveg_indicator",
+        "products.label_mrp (label-grade)",
+      ]),
+    );
+    expect(result.snapshot.legal_label_gaps.core_dependencies).not.toContain(
+      "products.fssai_licence_number (or equivalent label-compliance column bundle)",
+    );
+  });
+
+  it("blocks customer-facing products with missing live legal fields", () => {
+    const result = evaluatePackagingLabelReadiness({
+      form: { ...COMPLETE_FORM, fssai_licence_number: "", country_of_origin: null },
+      saleType: "retail_ready_pack",
+      packagingAuthority: PACKAGING_AUTHORITY,
+    });
+    expect(result.publicationBlockers.some((b) => b.includes("FSSAI Licence Number missing"))).toBe(
+      true,
+    );
+  });
+
+  it("does not require live legal fields for internal BOM products", () => {
+    const result = evaluatePackagingLabelReadiness({
+      form: {},
+      saleType: "internal_bom",
+      packagingAuthority: PACKAGING_AUTHORITY,
+    });
+    expect(result.publicationBlockers.some((b) => b.includes("FSSAI Licence Number missing"))).toBe(
+      false,
     );
   });
 

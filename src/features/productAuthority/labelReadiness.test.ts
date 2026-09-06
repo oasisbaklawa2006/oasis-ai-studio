@@ -66,7 +66,7 @@ describe("computeLabelReadiness", () => {
       expect(result.categories.find((c) => c.key === "quantity")?.state).toBe("warn");
     });
 
-    it("treats a \"0\" string shelf_life_days as missing, not a valid zero", () => {
+    it('treats a "0" string shelf_life_days as missing, not a valid zero', () => {
       const result = computeLabelReadiness({ ...COMPLETE_INPUT, shelf_life_days: "0" });
       expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("warn");
     });
@@ -82,11 +82,38 @@ describe("computeLabelReadiness", () => {
     });
   });
 
-  it("reports FSSAI-mandatory fields as no_column data gaps", () => {
+  it("reports remaining schema-blocked fields as no_column data gaps", () => {
     const gaps = getLabelDataGaps();
     const noColumnKeys = gaps.filter((g) => g.severity === "no_column").map((g) => g.key);
     expect(noColumnKeys).toEqual(
-      expect.arrayContaining(["fssai_licence_number", "batch_lot_number", "veg_nonveg_indicator", "country_of_origin"]),
+      expect.arrayContaining([
+        "batch_lot_number",
+        "veg_nonveg_indicator",
+        "label_mrp",
+        "claims_flag",
+      ]),
     );
+    expect(noColumnKeys).not.toContain("fssai_licence_number");
+    expect(noColumnKeys).not.toContain("country_of_origin");
+  });
+
+  it("scores live legal label fields from persisted Core columns", () => {
+    const result = computeLabelReadiness({
+      ...COMPLETE_INPUT,
+      fssai_licence_number: "10020030040005",
+      country_of_origin: "India",
+      label_manufacturer_details: "Oasis Baklawa Pvt Ltd",
+    });
+    const legal = result.categories.find((c) => c.key === "legal_label_fields");
+    expect(legal?.state).toBe("pass");
+  });
+
+  it("warns when live legal label fields are partially set", () => {
+    const result = computeLabelReadiness({
+      ...COMPLETE_INPUT,
+      country_of_origin: "India",
+    });
+    const legal = result.categories.find((c) => c.key === "legal_label_fields");
+    expect(legal?.state).toBe("warn");
   });
 });

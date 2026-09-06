@@ -16,13 +16,18 @@
  * saved. They're reported as `dataGaps` with severity "not_persisted", not scored.
  *
  * FSSAI licence number, batch/lot number, mfg/best-before dates, veg/non-veg indicator,
- * structured net quantity, serving size, and manufacturer/marketer/packed-by/country-of-
- * origin/claims fields have no column at all — reported as `dataGaps` with severity
- * "no_column". Both gap severities cap the overall status at "Draft" since a product
- * cannot honestly be "ready for label design" while legally mandatory data has nowhere
- * reliable to live yet.
+ * structured net quantity, serving size, and claims fields without a live Core column are
+ * reported as `dataGaps` with severity "no_column".
+ *
+ * Live @ Core #Point37 recert (release run `34034910469` @ `9c93fc32`):
+ * `fssai_licence_number`, `country_of_origin`, `label_manufacturer_details` — scored via
+ * `legal_label_fields` category; persisted through `formToDbProductPayload` compat columns.
  */
 import { hasNumericInput, hasText } from "@/features/catalogueAiStudio/catalogueFieldUtils";
+import {
+  buildLiveLegalLabelCategory,
+  evaluateLiveLegalLabelFields,
+} from "./labelComplianceLiveColumns";
 
 export type LabelReadinessState = "pass" | "warn" | "missing";
 
@@ -63,6 +68,10 @@ export interface LabelReadinessProductInput {
   net_weight_g?: number | string | null;
   /** Pieces per retail pack — lets pack declarations read as "6 pcs box · 500g". */
   pcs_per_pack?: number | string | null;
+  /** Live Core label-compliance columns (Point 37 recert). */
+  fssai_licence_number?: string | null;
+  country_of_origin?: string | null;
+  label_manufacturer_details?: string | null;
 }
 
 const NUTRITION_REVIEW_NOTICE = "Draft nutrition data — requires compliance review.";
@@ -77,7 +86,13 @@ function buildIdentity(p: LabelReadinessProductInput): LabelReadinessCategory {
       nextAction: "Set Product Name and Category.",
     };
   }
-  return { key: "identity", label: "Product Identity", state: "pass", detail: "Name and category are set.", nextAction: null };
+  return {
+    key: "identity",
+    label: "Product Identity",
+    state: "pass",
+    detail: "Name and category are set.",
+    nextAction: null,
+  };
 }
 
 function buildQuantity(p: LabelReadinessProductInput): LabelReadinessCategory {
@@ -129,11 +144,19 @@ function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategor
       key: "shelf_storage",
       label: "Shelf Life / Storage",
       state: "warn",
-      detail: !hasShelf ? "Storage is set, Shelf Life is blank." : "Shelf life is set, Storage is blank.",
+      detail: !hasShelf
+        ? "Storage is set, Shelf Life is blank."
+        : "Shelf life is set, Storage is blank.",
       nextAction: !hasShelf ? "Set Shelf Life (days)." : "Set Storage Instructions.",
     };
   }
-  return { key: "shelf_storage", label: "Shelf Life / Storage", state: "pass", detail: `${p.shelf_life_days} days · ${p.storage_instructions}`, nextAction: null };
+  return {
+    key: "shelf_storage",
+    label: "Shelf Life / Storage",
+    state: "pass",
+    detail: `${p.shelf_life_days} days · ${p.storage_instructions}`,
+    nextAction: null,
+  };
 }
 
 const DATA_GAPS: LabelDataGap[] = [
@@ -155,15 +178,48 @@ const DATA_GAPS: LabelDataGap[] = [
     severity: "not_persisted",
     note: `products.nutritional_info exists but formToDbProductPayload excludes it from every save. ${NUTRITION_REVIEW_NOTICE}`,
   },
-  { key: "fssai_licence_number", label: "FSSAI Licence Number", severity: "no_column", note: "No column on products — needs a Supabase Core migration." },
-  { key: "batch_lot_number", label: "Batch / Lot Number", severity: "no_column", note: "No column on products — needs a Supabase Core migration." },
-  { key: "mfg_best_before_dates", label: "Manufacturing / Best Before Dates", severity: "no_column", note: "No date columns for label purposes — needs a Supabase Core migration." },
-  { key: "veg_nonveg_indicator", label: "Veg / Non-Veg / Vegan Indicator", severity: "no_column", note: "No column on products — needs a Supabase Core migration." },
-  { key: "net_quantity_structured", label: "Net Quantity (structured, label-grade)", severity: "no_column", note: "Only free-text pack_size/net_weight_g exist — no discrete net-quantity + unit field for label print." },
-  { key: "serving_size", label: "Serving Size", severity: "no_column", note: "No column on products — needs a Supabase Core migration." },
-  { key: "manufacturer_marketer_details", label: "Manufacturer / Marketer / Packed-by / Imported-by", severity: "no_column", note: "No columns on products — needs a Supabase Core migration." },
-  { key: "country_of_origin", label: "Country of Origin", severity: "no_column", note: "No column on products — needs a Supabase Core migration." },
-  { key: "claims_flag", label: "Marketing Claims Review Flag", severity: "no_column", note: "No structured way to flag/approve claims like \"organic\" or \"sugar free\" — needs a Supabase Core migration." },
+  {
+    key: "batch_lot_number",
+    label: "Batch / Lot Number",
+    severity: "no_column",
+    note: "No column on products — needs a Supabase Core migration.",
+  },
+  {
+    key: "mfg_best_before_dates",
+    label: "Manufacturing / Best Before Dates",
+    severity: "no_column",
+    note: "No date columns for label purposes — needs a Supabase Core migration.",
+  },
+  {
+    key: "veg_nonveg_indicator",
+    label: "Veg / Non-Veg / Vegan Indicator",
+    severity: "no_column",
+    note: "No column on products — needs a Supabase Core migration.",
+  },
+  {
+    key: "net_quantity_structured",
+    label: "Net Quantity (structured, label-grade)",
+    severity: "no_column",
+    note: "Only free-text pack_size/net_weight_g exist — no discrete net-quantity + unit field for label print.",
+  },
+  {
+    key: "label_mrp",
+    label: "MRP (label-grade)",
+    severity: "no_column",
+    note: "Pricing MRP exists on products/channel rules; discrete label-print MRP field not on products — needs Core migration.",
+  },
+  {
+    key: "serving_size",
+    label: "Serving Size",
+    severity: "no_column",
+    note: "No column on products — needs a Supabase Core migration.",
+  },
+  {
+    key: "claims_flag",
+    label: "Marketing Claims Review Flag",
+    severity: "no_column",
+    note: 'No structured way to flag/approve claims like "organic" or "sugar free" — needs a Supabase Core migration.',
+  },
 ];
 
 export function getLabelDataGaps(): LabelDataGap[] {
@@ -171,16 +227,22 @@ export function getLabelDataGaps(): LabelDataGap[] {
 }
 
 export function computeLabelReadiness(product: LabelReadinessProductInput): LabelReadinessResult {
-  const categories = [buildIdentity(product), buildQuantity(product), buildShelfStorage(product)];
+  const liveLegalResults = evaluateLiveLegalLabelFields(product);
+  const categories = [
+    buildIdentity(product),
+    buildQuantity(product),
+    buildShelfStorage(product),
+    buildLiveLegalLabelCategory(liveLegalResults),
+  ];
 
+  const dataGaps = getLabelDataGaps();
   const hasMissing = categories.some((c) => c.state === "missing");
   const hasWarn = categories.some((c) => c.state === "warn");
 
-  // Ingredients/allergens/nutrition are never truly persisted today, and legally mandatory
-  // FSSAI fields have no column at all — this can never honestly reach "Ready for label
-  // designer" or "Approved" until that changes. See module docblock.
+  // Ingredients/allergens/nutrition are never truly persisted today; remaining legally mandatory
+  // fields without a live column still cap status at Draft. See module docblock.
   let overallStatus: LabelOverallStatus;
-  if (hasMissing || DATA_GAPS.length > 0) {
+  if (hasMissing || dataGaps.length > 0) {
     overallStatus = "Draft";
   } else {
     overallStatus = hasWarn ? "Needs review" : "Ready for label designer";
@@ -188,7 +250,7 @@ export function computeLabelReadiness(product: LabelReadinessProductInput): Labe
 
   return {
     categories,
-    dataGaps: DATA_GAPS,
+    dataGaps,
     overallStatus,
     nutritionReviewNotice: NUTRITION_REVIEW_NOTICE,
   };
