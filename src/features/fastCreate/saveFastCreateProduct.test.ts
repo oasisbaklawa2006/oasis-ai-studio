@@ -2,9 +2,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { FastCreateSuggestions } from "./fastCreateSuggestions";
 
 const rpcMock = vi.fn(async (fn: string, args: Record<string, unknown>) => {
-  if (fn === "catalogue_claim_intake_barcode") {
-    return { data: String(args.p_barcode), error: null };
-  }
   if (fn === "submit_catalogue_product_draft_v1") {
     return { data: [{ draft_id: "draft-1", already_pending: false }], error: null };
   }
@@ -14,15 +11,23 @@ const rpcMock = vi.fn(async (fn: string, args: Record<string, unknown>) => {
   };
 });
 
+const productsInsertMock = vi.fn();
+
 vi.mock("@/integrations/supabase/client", () => {
   const insertChain: Record<string, unknown> = {};
   insertChain.select = () => insertChain;
   insertChain.single = () =>
     Promise.resolve({ data: { id: "prod-1", sku: "OAS-AS-BKL-ASS-LOOSE-0001" }, error: null });
+  productsInsertMock.mockImplementation(() => insertChain);
   return {
     supabase: {
       rpc: (fn: string, args: Record<string, unknown>) => rpcMock(fn, args),
-      from: () => ({ insert: () => insertChain }),
+      from: (table: string) => ({
+        insert: (...args: unknown[]) => {
+          productsInsertMock(table, ...args);
+          return insertChain;
+        },
+      }),
     },
   };
 });
@@ -33,13 +38,8 @@ vi.mock("@/shared/auth/centralPermissions", () => ({
   isCatalogueContributor: async () => false,
 }));
 
-const insertProductAliasesMock = vi.hoisted(() => vi.fn(async () => ({ error: null })));
-
-vi.mock("@/lib/aliasSchemaAdapter", () => ({
-  insertProductAliases: insertProductAliasesMock,
-}));
-
 const {
+  buildFastCreateGroupedDraftPayload,
   requireFastCreateSku,
   saveFastCreateProduct,
   FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX,
@@ -110,14 +110,62 @@ function skuPackagingOf(sku: string): string {
   return sku.split("-")[4];
 }
 
-describe("saveFastCreateProduct — unapproved AI aliases are not persisted", () => {
+describe("buildFastCreateGroupedDraftPayload", () => {
+  it("includes structured SKU and fast_create_meta for governed approval", () => {
+    const payload = buildFastCreateGroupedDraftPayload(
+      {
+        product_name: "Test Product",
+        category: "Baklawa",
+        product_class: "bulk_loose_product",
+      },
+      "https://example.com/hero.jpg",
+      minimalSuggestions,
+      {
+        sku: "OAS-AS-BKL-ASS-LOOSE-0001",
+        codes: {
+          division_code: "AS",
+          category_code: "BKL",
+          subcategory_code: "ASS",
+          packaging_code: "LOOSE",
+        },
+      },
+    );
+    expect(payload.sku_draft).toMatchObject({
+      sku: "OAS-AS-BKL-ASS-LOOSE-0001",
+      packaging_code: "LOOSE",
+    });
+    expect(payload.fast_create_meta).toMatchObject({
+      source: "fast_create",
+      is_catalogue_ready: false,
+    });
+    expect(payload.media).toEqual({ hero_image_url: "https://example.com/hero.jpg" });
+  });
+});
+
+describe("saveFastCreateProduct — canonical governed draft only", () => {
   beforeEach(() => {
     rpcMock.mockClear();
-    insertProductAliasesMock.mockClear();
+    productsInsertMock.mockClear();
   });
 
-  it("persists only approved/heuristic aliases and excludes pending AI suggestions", async () => {
+  it("submits catalogue_product_drafts via Core RPC for privileged roles (no direct products insert)", async () => {
     const result = await saveFastCreateProduct({
+      suggestions: minimalSuggestions,
+      heroUrl: null,
+      roles: ["owner"],
+      categoryKey: "other",
+    });
+
+    expect(result).toEqual({ draft: true, draftId: "draft-1", alreadyPending: false });
+    expect(rpcMock).toHaveBeenCalledWith(
+      "submit_catalogue_product_draft_v1",
+      expect.objectContaining({ p_operation: "create" }),
+    );
+    expect(productsInsertMock).not.toHaveBeenCalled();
+  });
+
+  it("excludes pending AI aliases from draft search payload", async () => {
+    await saveFastCreateProduct({
       suggestions: {
         ...minimalSuggestions,
         aliases: [
@@ -125,8 +173,6 @@ describe("saveFastCreateProduct — unapproved AI aliases are not persisted", ()
           { alias: "ai alias one", alias_type: "search_term" },
         ],
         pendingAiAliases: [{ alias: "ai alias one", alias_type: "search_term" }],
-        whatsappKeywords: ["heuristic", "ai alias one"],
-        searchKeywords: ["heuristic alias", "ai alias one"],
         sources: {
           defaults: true,
           heuristicAliases: true,
@@ -139,11 +185,12 @@ describe("saveFastCreateProduct — unapproved AI aliases are not persisted", ()
       categoryKey: "other",
     });
 
-    expect("id" in result).toBe(true);
-    expect(insertProductAliasesMock).toHaveBeenCalledTimes(1);
-    const rows = insertProductAliasesMock.mock.calls[0]?.[1] as Array<{ alias: string }>;
-    expect(rows.some((row) => row.alias === "ai alias one")).toBe(false);
-    expect(rows.some((row) => row.alias === "heuristic alias")).toBe(true);
+    const rpcArgs = rpcMock.mock.calls.find(
+      ([fn]) => fn === "submit_catalogue_product_draft_v1",
+    )?.[1] as { p_payload?: { search?: { suggested_aliases?: string[] } } };
+    const aliases = rpcArgs?.p_payload?.search?.suggested_aliases ?? [];
+    expect(aliases).toContain("heuristic alias");
+    expect(aliases).not.toContain("ai alias one");
   });
 });
 
@@ -152,7 +199,7 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
     rpcMock.mockClear();
   });
 
-  it("blocks direct creation of an internal_bom product instead of defaulting to bulk_loose_product", async () => {
+  it("blocks internal_bom instead of defaulting to bulk_loose_product", async () => {
     await expect(
       saveFastCreateProduct({
         suggestions: minimalSuggestions,
@@ -165,7 +212,7 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("blocks internal_bom even when heuristic category defaults already set product_class (Bugbot regression)", async () => {
+  it("blocks internal_bom even when heuristic category defaults already set product_class", async () => {
     await expect(
       saveFastCreateProduct({
         suggestions: {
@@ -181,7 +228,7 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
     expect(rpcMock).not.toHaveBeenCalled();
   });
 
-  it("still allows a b2b_horeca product to default to bulk_loose_product (unchanged behavior)", async () => {
+  it("still allows b2b_horeca with structured SKU in draft payload", async () => {
     const result = await saveFastCreateProduct({
       suggestions: minimalSuggestions,
       heroUrl: null,
@@ -189,31 +236,25 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
       categoryKey: "other",
       saleType: "b2b_horeca",
     });
-    expect("id" in result).toBe(true);
+    expect(result.draft).toBe(true);
+    expect(rpcMock).toHaveBeenCalledWith("submit_catalogue_product_draft_v1", expect.any(Object));
   });
 
-  it("still allows direct creation with no saleType supplied at all (backward compatibility)", async () => {
-    const result = await saveFastCreateProduct({
-      suggestions: minimalSuggestions,
-      heroUrl: null,
-      roles: ["owner"],
-      categoryKey: "other",
-    });
-    expect("id" in result).toBe(true);
-  });
-
-  it("claims intake barcode through Core authority before direct product insert", async () => {
-    const result = await saveFastCreateProduct({
+  it("includes intake barcode in draft payload without claiming master barcode_sku", async () => {
+    await saveFastCreateProduct({
       suggestions: minimalSuggestions,
       heroUrl: null,
       roles: ["owner"],
       categoryKey: "other",
       extraFormPatch: { intake_barcode: "5901234123457" },
     });
-    expect("id" in result).toBe(true);
+
     expect(rpcMock).toHaveBeenCalledWith(
-      "catalogue_claim_intake_barcode",
-      expect.objectContaining({ p_barcode: "5901234123457" }),
+      "submit_catalogue_product_draft_v1",
+      expect.objectContaining({
+        p_payload: expect.objectContaining({ intake_barcode: "5901234123457" }),
+      }),
     );
+    expect(rpcMock).not.toHaveBeenCalledWith("catalogue_claim_intake_barcode", expect.anything());
   });
 });

@@ -1,7 +1,7 @@
 # AI Studio Parallel Closure Lane — Points 26–27, 31–33 Evidence Matrix
 
 **Lane:** Mission Control master #437 parallel closure (AI Studio issue #137)  
-**Baseline:** `main` @ `8556bdd43fba43423f54f7dd11daed0c417f0548` (2026-09-03)  
+**Baseline:** `main` @ `6f8e16417dcef2323d833072d23a92a32b87a833` (2026-09-06)  
 **Predecessor:** current `main` — not unmerged #135 or Point-30 branches  
 **Rebase target:** `main` after each predecessor PR merges  
 
@@ -11,7 +11,7 @@
 | --- | --- |
 | `npm run typecheck` | PASS |
 | `npm run check:boundaries` | PASS (2 legacy Supabase warnings, 0 violations) |
-| `npm test` | PASS — 758/758 |
+| `npm test` | PASS — includes Point 27 draft-only closure + census guard |
 
 ## Point matrix
 
@@ -38,12 +38,13 @@
 ### Point 27 — evidence, gaps, blockers
 
 - **Evidence on `main`:** `src/pages/FastCreateProduct.tsx`, `src/features/fastCreate/`
-  (6 modules, **36** unit tests); route `/products/new/fast`; session draft v2 +
-  Full Editor handoff (`fastCreateDraft.ts`); governed save + SKU guard.
+  (32 modules, **64+** unit tests incl. authority census); route `/products/new/fast`;
+  session draft v2 + Full Editor handoff (`fastCreateDraft.ts`); **draft-only** save via
+  `submit_catalogue_product_draft_v1` (see `POINT_27_FAST_CREATE_CENSUS.md`).
 - **Remaining gap:** Phase R3 production E2E checklist still open; live
   `generate_oasis_sku` RPC required in target Supabase.
 - **Blocked by:** **Core:** `generate_oasis_sku` / `sku_code_rules`. Soft:
-  `product-media` bucket for hero pre-upload.
+  `product-media` bucket for hero pre-upload. **Point38 #157:** not a hard dependency.
 
 ### Point 31 — evidence, gaps, blockers
 

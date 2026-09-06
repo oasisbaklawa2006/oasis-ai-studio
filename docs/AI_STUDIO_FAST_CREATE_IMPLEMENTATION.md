@@ -56,11 +56,10 @@ src/features/productLanguage/
 
 | Role | Behavior |
 |------|----------|
-| owner / admin / product_manager | Direct `products` insert + alias rows |
-| catalogue_contributor | `catalogue_product_drafts` via `submitCatalogueDraft` |
+| owner / admin / product_manager / catalogue_contributor | `catalogue_product_drafts` via `submit_catalogue_product_draft_v1` RPC (governed draft only) |
 | Other | Error — contact admin |
 
-**Governance preserved:** Compliance AI suggestions still require approval in full editor; Fast Create uses approved category defaults for HSN/GST.
+**Governance preserved:** Fast Create never inserts into master `products`; ApprovalInbox + `approve_catalogue_product_draft` promotes the minimal candidate. Compliance AI suggestions still require approval; unapproved fields are stripped before draft submit.
 
 ---
 
