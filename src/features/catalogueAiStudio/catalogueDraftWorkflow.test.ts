@@ -7,14 +7,21 @@ import {
 } from "./catalogueDraftTypes";
 import {
   canApprove,
+  canCreateNewVersion,
   canReject,
+  canSaveDraft,
   canSubmitForReview,
   isExportBundleDistributable,
   STATUS_LABEL,
 } from "./catalogueDraftWorkflow";
 
-function content(fill: string, overrides: Partial<CatalogueDraftContent> = {}): CatalogueDraftContent {
-  const base = Object.fromEntries(CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, fill])) as CatalogueDraftContent;
+function content(
+  fill: string,
+  overrides: Partial<CatalogueDraftContent> = {},
+): CatalogueDraftContent {
+  const base = Object.fromEntries(
+    CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, fill]),
+  ) as CatalogueDraftContent;
   return { ...base, ...overrides };
 }
 
@@ -37,6 +44,21 @@ describe("catalogueDraftWorkflow transition guards", () => {
     }
   });
 
+  it("blocks save while UNDER_REVIEW and allows from DRAFT/APPROVED/REJECTED/null", () => {
+    expect(canSaveDraft("UNDER_REVIEW")).toBe(false);
+    expect(canSaveDraft("DRAFT")).toBe(true);
+    expect(canSaveDraft("APPROVED")).toBe(true);
+    expect(canSaveDraft("REJECTED")).toBe(true);
+    expect(canSaveDraft(null)).toBe(true);
+  });
+
+  it("allows new version only from APPROVED or REJECTED (Point 39 boundary)", () => {
+    expect(canCreateNewVersion("APPROVED")).toBe(true);
+    expect(canCreateNewVersion("REJECTED")).toBe(true);
+    expect(canCreateNewVersion("DRAFT")).toBe(false);
+    expect(canCreateNewVersion("UNDER_REVIEW")).toBe(false);
+  });
+
   it("has a label for every status", () => {
     for (const status of CATALOGUE_DRAFT_STATUSES) {
       expect(STATUS_LABEL[status as CatalogueDraftStatus]).toBeTruthy();
@@ -47,7 +69,8 @@ describe("catalogueDraftWorkflow transition guards", () => {
 describe("isExportBundleDistributable (owner-smoke-test: Stage 5 export-bundle safety)", () => {
   const complete = content("Complete real copy.");
   const incompleteRejected = content("ok", {
-    b2b_sales_copy: "Blackcurrant Ball is available for wholesale. Add missing field first: B2B price.",
+    b2b_sales_copy:
+      "Blackcurrant Ball is available for wholesale. Add missing field first: B2B price.",
   });
 
   it("is distributable when APPROVED and every content block is complete", () => {
