@@ -1,26 +1,15 @@
 import {
-  claimReviewedIntakeBarcode,
   readIntakeBarcode,
   submitFastCreateProductDraft,
   withReviewedIntakeBarcode,
 } from "@/features/fastCreate/fastCreateIntakeBarcode";
 import { getPersistableFastCreateAliases } from "@/features/governedAiExtraction/fastCreateEnrichment";
-import {
-  formatProductSaveError,
-  formToDbProductPayload,
-  type ProductsInsert,
-  productSaveValidationMessage,
-  validateProductSavePayload,
-} from "@/features/productAuthority/productSchemaAdapter";
 import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
 import {
   assertStructuredSkuForSave,
   skuPackagingSegment,
 } from "@/features/productAuthority/skuGuard";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
-import { supabase } from "@/integrations/supabase/client";
-import { insertProductAliases, type ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
@@ -88,9 +77,71 @@ export type FastCreateSaveInput = {
   saleType?: SaleType;
 };
 
+export type FastCreateSaveResult = {
+  draft: true;
+  draftId: string;
+  alreadyPending: boolean;
+};
+
+/** Build the grouped catalogue_product_drafts payload for Fast Create. */
+export function buildFastCreateGroupedDraftPayload(
+  form: Record<string, unknown>,
+  heroUrl: string | null,
+  suggestions: FastCreateSuggestions,
+  skuResult: { sku: string; codes: FastCreateSkuCodeSet },
+): Record<string, unknown> {
+  const persistableAliases = getPersistableFastCreateAliases(suggestions);
+  return {
+    identity: {
+      product_name: form.product_name,
+      product_class: form.product_class,
+      product_type: form.product_type,
+      category: form.category,
+      subcategory: form.subcategory,
+      description: form.description,
+      short_description: form.short_description,
+      main_department: form.main_department,
+      production_department: form.production_department,
+    },
+    compliance: {
+      hsn_code: form.hsn_code,
+      gst_rate: form.gst_rate,
+      shelf_life_days: form.shelf_life_days,
+      ingredients: form.ingredients,
+      allergen_warnings: form.allergen_warnings,
+      storage_instructions: form.storage_instructions,
+    },
+    media: {
+      hero_image_url: heroUrl,
+    },
+    search: {
+      suggested_aliases: persistableAliases.aliases.map((a) => a.alias),
+      whatsapp_keywords: persistableAliases.whatsappKeywords,
+      search_keywords: persistableAliases.searchKeywords,
+    },
+    sku_draft: {
+      sku: skuResult.sku,
+      division_code: skuResult.codes.division_code,
+      category_code: skuResult.codes.category_code,
+      subcategory_code: skuResult.codes.subcategory_code,
+      packaging_code: skuResult.codes.packaging_code,
+      note: "Structured SKU proposed by Fast Create — finalized on catalogue approval.",
+    },
+    fast_create_meta: {
+      source: "fast_create",
+      is_catalogue_ready: false,
+      is_active: true,
+    },
+  };
+}
+
+/**
+ * Canonical Fast Create save — always submits a governed catalogue_product_drafts candidate.
+ * Never writes master `products` directly; approval/publication remain in ApprovalInbox.
+ */
 export async function saveFastCreateProduct(
   input: FastCreateSaveInput,
-): Promise<{ id: string; sku: string } | { draft: true }> {
+): Promise<FastCreateSaveResult> {
   const form: Record<string, unknown> = {
     ...input.suggestions.formPatch,
     ...(input.extraFormPatch ?? {}),
@@ -103,180 +154,56 @@ export async function saveFastCreateProduct(
     throw new Error("Product name and category are required.");
   }
 
-  const direct = await canWriteProductsDirectly(input.roles);
-  const contributor =
-    input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
+  const canSubmit =
+    (await canWriteProductsDirectly(input.roles)) ||
+    input.roles.includes("catalogue_contributor") ||
+    (await isCatalogueContributor());
 
-  if (direct) {
-    // Sale types without a persisted product_class (internal_bom, export,
-    // packaging_material — see saleType.ts) must never silently become a sellable
-    // "bulk_loose_product": that would make an internal/not-for-sale item look and gate
-    // like customer-facing B2B stock. This check is unconditional — not just when
-    // form.product_class happens to be empty — because buildHeuristicSuggestions'
-    // category defaults always set a product_class regardless of the chosen sale type,
-    // so an emptiness check alone never fires for the exact case it exists to catch.
-    if (input.saleType && !productClassForSaleType(input.saleType)) {
-      throw new Error(
-        `Sale type "${input.saleType}" ${FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX}. ` +
-          "Submit for admin review as a catalogue draft instead of direct creation, or choose a sale type with a supported product class.",
-      );
-    }
-    if (!form.product_class) form.product_class = "bulk_loose_product";
-    if (!form.main_department) form.main_department = "ready_goods_store";
+  if (!canSubmit) {
+    throw new Error("You do not have permission to create products. Contact an administrator.");
+  }
 
-    const skuResult = await requireFastCreateSku(
-      input.categoryKey,
-      input.resolvedSku ?? (form.sku as string | null),
-      (input.extraFormPatch?.packaging_code as string | null) ?? null,
+  if (input.saleType && !productClassForSaleType(input.saleType)) {
+    throw new Error(
+      `Sale type "${input.saleType}" ${FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX}. ` +
+        "Choose a sale type with a supported product class, or use the Full Editor for admin review.",
     );
-    form.sku = skuResult.sku;
-    form.division_code = skuResult.codes.division_code;
-    form.category_code = skuResult.codes.category_code;
-    form.subcategory_code = skuResult.codes.subcategory_code;
-    form.packaging_code = skuResult.codes.packaging_code;
-    form.sku_locked = true;
-    form.sku_generated_at = new Date().toISOString();
-
-    const intakeBarcode = readIntakeBarcode(input.extraFormPatch);
-    if (intakeBarcode) {
-      form.barcode_sku = await claimReviewedIntakeBarcode(intakeBarcode);
-    }
-
-    const safePayload = stripUnapprovedComplianceFields(
-      form,
-      input.roles,
-      {},
-      input.suggestions.complianceFieldMeta ?? {},
-    );
-    const productRow = formToDbProductPayload(safePayload);
-
-    const validation = validateProductSavePayload(productRow, "create");
-    if (!validation.ok) {
-      throw new Error(productSaveValidationMessage(validation));
-    }
-
-    const skuGuard = assertStructuredSkuForSave(productRow.sku as string);
-    if (skuGuard.ok === false) {
-      throw new Error(skuGuard.reason);
-    }
-
-    const res = await supabase
-      .from("products")
-      .insert(productRow as ProductsInsert)
-      .select("id, sku")
-      .single();
-    if (res.error) {
-      throw new Error(formatProductSaveError(res.error));
-    }
-
-    const persistableAliases = getPersistableFastCreateAliases(input.suggestions);
-    await persistFastCreateAliases(
-      res.data.id,
-      persistableAliases.aliases,
-      persistableAliases.whatsappKeywords,
-      persistableAliases.searchKeywords,
-    );
-
-    return { id: res.data.id, sku: String(res.data.sku ?? form.sku) };
   }
+  if (!form.product_class) form.product_class = "bulk_loose_product";
+  if (!form.main_department) form.main_department = "ready_goods_store";
 
-  if (contributor) {
-    const intakeBarcode = readIntakeBarcode(input.extraFormPatch);
-    const persistableAliases = getPersistableFastCreateAliases(input.suggestions);
-    const groupedPayload = withReviewedIntakeBarcode(
-      {
-        identity: {
-          product_name: form.product_name,
-          product_class: form.product_class,
-          product_type: form.product_type,
-          category: form.category,
-          subcategory: form.subcategory,
-          description: form.description,
-          short_description: form.short_description,
-          main_department: form.main_department,
-          production_department: form.production_department,
-        },
-        compliance: {
-          hsn_code: form.hsn_code,
-          gst_rate: form.gst_rate,
-          shelf_life_days: form.shelf_life_days,
-          ingredients: form.ingredients,
-          allergen_warnings: form.allergen_warnings,
-          storage_instructions: form.storage_instructions,
-        },
-        media: {
-          hero_image_url: input.heroUrl,
-        },
-        search: {
-          suggested_aliases: persistableAliases.aliases.map((a) => a.alias),
-          whatsapp_keywords: persistableAliases.whatsappKeywords,
-          search_keywords: persistableAliases.searchKeywords,
-        },
-        sku_draft: {
-          note: "SKU must be finalized via generate_oasis_sku during admin approval — DRAFT-* blocked.",
-        },
-      },
-      intakeBarcode,
-    );
+  const skuResult = await requireFastCreateSku(
+    input.categoryKey,
+    input.resolvedSku ?? (form.sku as string | null),
+    (input.extraFormPatch?.packaging_code as string | null) ?? null,
+  );
+  form.sku = skuResult.sku;
+  form.division_code = skuResult.codes.division_code;
+  form.category_code = skuResult.codes.category_code;
+  form.subcategory_code = skuResult.codes.subcategory_code;
+  form.packaging_code = skuResult.codes.packaging_code;
 
-    try {
-      const draftRes = await submitFastCreateProductDraft(groupedPayload, "create", null);
-      if (draftRes.alreadyPending) {
-        return { draft: true };
-      }
-      return { draft: true };
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : "Product draft submit failed");
-    }
-  }
+  const safeForm = stripUnapprovedComplianceFields(
+    form,
+    input.roles,
+    {},
+    input.suggestions.complianceFieldMeta ?? {},
+  );
 
-  throw new Error("You do not have permission to create products. Contact an administrator.");
-}
+  const intakeBarcode = readIntakeBarcode(input.extraFormPatch);
+  const groupedPayload = withReviewedIntakeBarcode(
+    buildFastCreateGroupedDraftPayload(safeForm, input.heroUrl, input.suggestions, skuResult),
+    intakeBarcode,
+  );
 
-async function persistFastCreateAliases(
-  productId: string,
-  aliases: AliasSeed[],
-  whatsappKeywords: string[],
-  searchKeywords: string[],
-) {
-  const seen = new Set<string>();
-  const rows: ProductAliasInsertInput[] = [];
-
-  const push = (
-    alias: string,
-    alias_type: string,
-    language?: string | null,
-    script?: string | null,
-  ) => {
-    const key = alias.trim().toLowerCase();
-    if (!key || seen.has(key)) return;
-    seen.add(key);
-    rows.push({
-      product_id: productId,
-      alias: alias.trim(),
-      alias_type,
-      language: language ?? null,
-      script: script ?? null,
-      is_active: true,
-      source: "fast_create",
-      confidence_score: 0.85,
-    });
-  };
-
-  for (const a of aliases.slice(0, 6)) {
-    push(a.alias, a.alias_type ?? "official_alias", a.language, a.script);
-  }
-  for (const k of whatsappKeywords.slice(0, 4)) {
-    push(k, "whatsapp_keyword");
-  }
-  for (const k of searchKeywords.slice(0, 4)) {
-    push(k, "search_keyword");
-  }
-
-  if (!rows.length) return;
-
-  const { error } = await insertProductAliases(supabase, rows);
-  if (error) {
-    console.warn("[FastCreate] alias insert failed:", error.message);
+  try {
+    const draftRes = await submitFastCreateProductDraft(groupedPayload, "create", null);
+    return {
+      draft: true,
+      draftId: draftRes.draftId,
+      alreadyPending: draftRes.alreadyPending,
+    };
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : "Product draft submit failed");
   }
 }

@@ -289,14 +289,12 @@ const FastCreateProduct = () => {
 
       clearFastCreateDraft();
 
-      if ("draft" in result) {
-        toast.success("Product draft submitted for approval.");
-        nav("/approvals");
-        return;
+      if (result.alreadyPending) {
+        toast.message("A pending Fast Create draft already exists — review it in Approvals.");
+      } else {
+        toast.success(`Product draft submitted for approval (${skuResult.sku}).`);
       }
-
-      toast.success(`Product draft created (${result.sku}) — opening full editor.`);
-      nav(`/products/${result.id}`);
+      nav("/approvals");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Create failed");
     } finally {
