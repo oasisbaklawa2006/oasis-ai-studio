@@ -2,14 +2,19 @@ import { describe, expect, it } from "vitest";
 import {
   catalogueBenchmarkGovernance,
   catalogueBenchmarkGovernanceView,
+  catalogueEvaluateQaReadiness,
   catalogueExactProductEnhancement,
   catalogueExactProductEnhancementView,
   catalogueGuidedCaptureView,
   catalogueGuidedMobileCapture,
+  catalogueImageQaValidation,
+  catalogueImageQaView,
   catalogueMediaTabDeepLink,
   cataloguePhotographyFamily,
   cataloguePhotographyFamilyView,
+  catalogueRecordQaDisposition,
   catalogueRequiredMediaSlots,
+  catalogueRunAutomatedQaChecks,
   catalogueValidateCaptureHandoff,
   catalogueValidateEnhancementHandoff,
   catalogueValidateEnhancementInstruction,
@@ -171,6 +176,72 @@ describe("catalogueExactProductEnhancement", () => {
     expect(handoff.ok).toBe(true);
     if (!handoff.ok) return;
     expect(handoff.candidate.status).toBe("pending_review");
+  });
+});
+
+describe("catalogueImageQaValidation", () => {
+  const product = { productId: "p1", category: "Baklawa", subcategory: "Pyramid" };
+  const candidate = {
+    mediaRef: "mock://qa/candidate-001",
+    origin: "capture" as const,
+    productId: "p1",
+    sourceMediaId: "media-001",
+    sourceContentHash: "sha256:qahash",
+    readinessSlot: "primary_image" as const,
+    uploaderType: "hero_image",
+    metadata: {
+      mimeType: "image/jpeg",
+      widthPx: 1200,
+      heightPx: 1200,
+      fileSizeBytes: 500_000,
+    },
+  };
+
+  it("resolves Point 46 image QA via Point 42/43/44/45 chain", () => {
+    const resolved = catalogueImageQaValidation(product, candidate);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.contract.schema).toBe("point46_v1");
+    expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
+  });
+
+  it("view surfaces contract and resolution errors", () => {
+    const okView = catalogueImageQaView(product, candidate);
+    expect(okView.contract?.candidate.mediaRef).toBe("mock://qa/candidate-001");
+    expect(okView.resolutionError).toBeNull();
+
+    const failView = catalogueImageQaView({ category: "Baklawa" }, candidate);
+    expect(failView.contract).toBeNull();
+    expect(failView.resolutionError).toContain("Product identity");
+  });
+
+  it("runs automated checks and evaluates readiness through adapter", () => {
+    const resolved = catalogueImageQaValidation(product, candidate);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+
+    const checks = catalogueRunAutomatedQaChecks(resolved.contract);
+    const readiness = catalogueEvaluateQaReadiness(checks);
+    expect(readiness.ok).toBe(true);
+  });
+
+  it("records governed disposition with audit through adapter", () => {
+    const resolved = catalogueImageQaValidation(product, candidate);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+
+    const checks = catalogueRunAutomatedQaChecks(resolved.contract);
+    const disposition = catalogueRecordQaDisposition(resolved.contract, checks, {
+      disposition: "approved",
+      reviewer: {
+        reviewerId: "reviewer-1",
+        role: "media_qa_reviewer",
+        authorizedAt: new Date(0).toISOString(),
+      },
+    });
+    expect(disposition.ok).toBe(true);
+    if (!disposition.ok) return;
+    expect(disposition.audit.schema).toBe("point46_audit_v1");
   });
 });
 
