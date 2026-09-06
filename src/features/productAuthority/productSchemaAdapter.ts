@@ -362,10 +362,10 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
         ? String(form.carton_dimensions_cm)
         : null
     : structuredTouched
-      ? hasTextValue(form.carton_dimensions_cm)
-        ? String(form.carton_dimensions_cm)
-        : toBool(form.fixed_carton_required, false)
-          ? structuredText
+      ? toBool(form.fixed_carton_required, false)
+        ? structuredText
+        : hasTextValue(form.carton_dimensions_cm)
+          ? String(form.carton_dimensions_cm)
           : null
       : hasTextValue(form.carton_dimensions_cm)
         ? String(form.carton_dimensions_cm)
