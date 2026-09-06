@@ -90,7 +90,9 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 
 | Check | Expected |
 | --- | --- |
-| `npm test` | PASS |
+| Editor save→reload certification | `productFactualCompositionRoundTrip.test.ts` — 4 synthetic cases |
+| Point 34 canonical unit tests | `productFactualCompositionCanonical.test.ts` |
+| `npm test` | **865/865 PASS** |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS |
 | `npm run check:boundaries` | PASS |
@@ -98,4 +100,4 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 
 ## 8. Gate state
 
-`PR merged != Point 34 cleared` — runtime editor round-trip certification remains a programme gate. **No open Core schema prerequisite** for composition text columns.
+`PR merged != Point 34 cleared` — live runtime smoke remains a programme gate. **Editor save→reload certified synthetically.** No open Core schema prerequisite for composition text columns.
