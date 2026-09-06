@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  catalogueBenchmarkGovernance,
+  catalogueBenchmarkGovernanceView,
   catalogueMediaTabDeepLink,
   cataloguePhotographyFamily,
   cataloguePhotographyFamilyView,
   catalogueRequiredMediaSlots,
+  catalogueValidateImagePromptInstruction,
 } from "./catalogueMediaSlots";
 
 describe("catalogueMediaTabDeepLink", () => {
@@ -26,6 +29,38 @@ describe("cataloguePhotographyFamily", () => {
     const view = cataloguePhotographyFamilyView({ category: "Baklawa", subcategory: "Pyramid" });
     expect(view.family?.familyKey).toBe("baklawa_small_sweets");
     expect(view.resolutionError).toBeNull();
+  });
+});
+
+describe("catalogueBenchmarkGovernance", () => {
+  it("resolves Point 43 governance from product signals via Point 42 chain", () => {
+    const resolved = catalogueBenchmarkGovernance({ category: "Baklawa", subcategory: "Pyramid" });
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.contract.schema).toBe("point43_v1");
+    expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
+    expect(resolved.familyContract.schema).toBe("point42_v1");
+  });
+
+  it("view surfaces governance contract and family together", () => {
+    const view = catalogueBenchmarkGovernanceView({ category: "Baklawa", subcategory: "Pyramid" });
+    expect(view.governance?.schema).toBe("point43_v1");
+    expect(view.family?.familyKey).toBe("baklawa_small_sweets");
+    expect(view.resolutionError).toBeNull();
+  });
+
+  it("rejects forbidden brand references in image prompt instructions", () => {
+    const result = catalogueValidateImagePromptInstruction("make it look like Bateel", {
+      category: "Baklawa",
+    });
+    expect(result.ok).toBe(false);
+  });
+
+  it("accepts neutral operator instructions", () => {
+    const result = catalogueValidateImagePromptInstruction("warmer background tone", {
+      category: "Baklawa",
+    });
+    expect(result.ok).toBe(true);
   });
 });
 

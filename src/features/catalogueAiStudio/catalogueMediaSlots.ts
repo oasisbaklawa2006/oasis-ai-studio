@@ -7,6 +7,12 @@
  */
 
 import {
+  type BenchmarkGovernanceResolution,
+  type BenchmarkPhotographyGovernanceContract,
+  resolveBenchmarkPhotographyGovernance,
+  validateBenchmarkOperatorInstruction,
+} from "@/features/mediaReadiness/benchmarkPhotographyGovernance";
+import {
   type ControlledPhotographyFamilyContract,
   type PhotographyFamilyResolution,
   resolveControlledPhotographyFamily,
@@ -83,4 +89,42 @@ export function catalogueRequiredMediaSlots(
       label: slot.label,
       status: slot.present && slot.approved ? "satisfied" : "missing",
     }));
+}
+
+/** Point 43 benchmark governance contract — fail-closed via Point 42 family chain. */
+export function catalogueBenchmarkGovernance(
+  product: ProductMediaContext,
+): BenchmarkGovernanceResolution {
+  return resolveBenchmarkPhotographyGovernance(product);
+}
+
+export type CatalogueBenchmarkGovernanceView = {
+  governance: BenchmarkPhotographyGovernanceContract | null;
+  family: ControlledPhotographyFamilyContract | null;
+  resolutionError: string | null;
+};
+
+/** Human-readable benchmark governance view for Catalogue Studio Media tab. */
+export function catalogueBenchmarkGovernanceView(
+  product: ProductMediaContext,
+): CatalogueBenchmarkGovernanceView {
+  const resolved = resolveBenchmarkPhotographyGovernance(product);
+  if (!resolved.ok) {
+    return { governance: null, family: null, resolutionError: resolved.message };
+  }
+  return {
+    governance: resolved.contract,
+    family: resolved.familyContract,
+    resolutionError: null,
+  };
+}
+
+/** Validate operator image-prompt instruction against Point 43 benchmark governance — fail-closed. */
+export function catalogueValidateImagePromptInstruction(
+  instruction: string,
+  product: ProductMediaContext,
+): ReturnType<typeof validateBenchmarkOperatorInstruction> {
+  const resolved = resolveBenchmarkPhotographyGovernance(product);
+  const familyKey = resolved.ok ? resolved.contract.familyKey : undefined;
+  return validateBenchmarkOperatorInstruction(instruction, { familyKey });
 }
