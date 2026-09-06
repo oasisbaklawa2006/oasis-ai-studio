@@ -94,10 +94,17 @@ describe("computeLabelReadiness", () => {
     const noColumnKeys = gaps.filter((g) => g.severity === "no_column").map((g) => g.key);
     expect(noColumnKeys).toEqual(
       expect.arrayContaining([
+<<<<<<< HEAD
         "batch_lot_number",
         "veg_nonveg_indicator",
         "label_mrp",
         "claims_flag",
+=======
+        "fssai_licence_number",
+        "batch_lot_number",
+        "veg_nonveg_indicator",
+        "country_of_origin",
+>>>>>>> ae91241 (POINT34: editor save→reload certification + biome CI fix)
       ]),
     );
     expect(noColumnKeys).not.toContain("fssai_licence_number");
