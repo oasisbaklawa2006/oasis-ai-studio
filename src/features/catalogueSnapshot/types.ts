@@ -150,7 +150,7 @@ export type SnapshotGeneratorInput = {
   complianceMetaPending?: boolean;
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
-  /** Optional BOM max lead time (days) — product-level lead time remains Core-blocked. */
+  /** Optional BOM max lead time (days) — component-only; never substitutes product row. */
   bomMaxLeadTimeDays?: number | null;
   productMediaRows?: import("@/features/mediaReadiness/mediaAssetsFromForm").ProductMediaRow[];
   approvedBy?: string | null;

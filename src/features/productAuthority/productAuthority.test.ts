@@ -7,6 +7,7 @@ import { FAST_CREATE_SKU_BLOCK_MESSAGE } from "@/features/fastCreate/saveFastCre
 import { PILOT_COLLISION_HINTS } from "@/features/productAuthority/pilotCollisionHints";
 import {
   CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
+  dbRowToProductForm,
   extractChannelPricingFromForm,
   findPricingLeaksInProductPayload,
   formatProductSaveError,
@@ -298,6 +299,16 @@ describe("productSchemaAdapter", () => {
       lead_time_days: "14",
     });
     expect(payload.lead_time_days).toBe(14);
+  });
+
+  it("round-trips product lead_time_days through dbRowToProductForm (Core #209)", () => {
+    const form = dbRowToProductForm(
+      { product_name: "Export", sku: "OAS-X", lead_time_days: 21 },
+      {},
+    );
+    expect(form.lead_time_days).toBe("21");
+    const payload = formToDbProductPayload(form);
+    expect(payload.lead_time_days).toBe(21);
   });
 
   it("maps structured dimensions and gram weights to live products columns", () => {

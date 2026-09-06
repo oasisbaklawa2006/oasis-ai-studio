@@ -155,13 +155,23 @@ describe("evaluatePublicationReadiness", () => {
     expect(result.publicationBlockers).toContain("Channel MOQ missing for b2b");
   });
 
-  it("cannot silently pass publication with placeholder MOQ missing UOM", () => {
-    const result = evaluatePublicationReadiness({
+  it("export publication clears lead-time blocker when product lead_time_days is set", () => {
+    const without = evaluatePublicationReadiness({
       saleType: "export",
-      moq: { moq_rule_type: "fixed_min", moq_value: 1 },
-      pricedChannels: [],
+      moq: { moq_rule_type: "quotation" },
+      productLeadTimeDays: null,
     });
-    expect(result.moq.state).toBe("invalid");
-    expect(result.publicationBlockers.length).toBeGreaterThan(0);
+    expect(without.publicationBlockers).toContain("Lead time (days) required for export products");
+
+    const withLead = evaluatePublicationReadiness({
+      saleType: "export",
+      moq: { moq_rule_type: "quotation" },
+      productLeadTimeDays: 10,
+    });
+    expect(withLead.leadTime.state).toBe("product_stored");
+    expect(withLead.snapshot.lead_time.product_days).toBe(10);
+    expect(withLead.publicationBlockers).not.toContain(
+      "Lead time (days) required for export products",
+    );
   });
 });
