@@ -251,6 +251,7 @@ const empty: Record<string, unknown> = {
   export_price: "",
   currency: "INR",
   moq_text: "",
+  lead_time_days: "",
   carton_logic: "",
   hero_image_url: "",
   is_active: true,
@@ -336,6 +337,7 @@ const NUMERIC_FIELDS = [
   "qty_per_pack",
   "pcs_per_pack",
   "moq_value",
+  "lead_time_days",
   "increment_value",
   "carton_qty",
   "master_carton_qty",
@@ -920,6 +922,51 @@ const ProductEdit = () => {
     [form, packagingAuthority, productMediaRows],
   );
 
+  const pricedChannels = useMemo(
+    () =>
+      channelPrices
+        .filter((p) => p.sellingPrice != null || p.mrp != null)
+        .map((p) => String(p.channel ?? "").trim())
+        .filter(Boolean),
+    [channelPrices],
+  );
+
+  const moqScalars = useMemo(
+    () => ({
+      moq_rule_type: form.moq_rule_type,
+      moq_value: form.moq_value === "" || form.moq_value == null ? null : Number(form.moq_value),
+      moq_uom: form.moq_uom,
+      moq_text: form.moq_text,
+      increment_value:
+        form.increment_value === "" || form.increment_value == null
+          ? null
+          : Number(form.increment_value),
+      increment_uom: form.increment_uom,
+      fixed_carton_required: form.fixed_carton_required,
+      carton_qty:
+        form.carton_qty === "" || form.carton_qty == null ? null : Number(form.carton_qty),
+      carton_uom: form.carton_uom,
+      master_carton_qty:
+        form.master_carton_qty === "" || form.master_carton_qty == null
+          ? null
+          : Number(form.master_carton_qty),
+      master_carton_uom: form.master_carton_uom,
+      private_label_allowed: form.private_label_allowed,
+      private_label_moq:
+        form.private_label_moq === "" || form.private_label_moq == null
+          ? null
+          : Number(form.private_label_moq),
+      private_label_moq_uom: form.private_label_moq_uom,
+    }),
+    [form],
+  );
+
+  const productLeadTimeDays = useMemo(() => {
+    if (form.lead_time_days === "" || form.lead_time_days == null) return null;
+    const n = Number(form.lead_time_days);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }, [form.lead_time_days]);
+
   // Hard gate for the Catalogue-ready toggle — Active stays separate and ungated. Used for
   // the visible blocker list and the save-time hard guard, both of which must treat "the
   // packaging taxonomy authority hasn't loaded" as a real, active blocker (default
@@ -935,8 +982,21 @@ const ProductEdit = () => {
         heroImageUrl: readinessSnapshot?.derivedHeroUrl ?? form.hero_image_url,
         truthScore: readinessSnapshot?.readiness.score ?? null,
         truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
+        moq: moqScalars,
+        channelMoqRules,
+        pricedChannels,
+        productLeadTimeDays,
       }),
-    [form, channelPrices, packagingAuthority, readinessSnapshot],
+    [
+      form,
+      channelPrices,
+      packagingAuthority,
+      readinessSnapshot,
+      moqScalars,
+      channelMoqRules,
+      pricedChannels,
+      productLeadTimeDays,
+    ],
   );
 
   // Same evaluation, but with `ignorePendingPackagingAuthority: true` — used only by the
@@ -957,8 +1017,21 @@ const ProductEdit = () => {
         truthScore: readinessSnapshot?.readiness.score ?? null,
         truthMaxScore: readinessSnapshot?.readiness.maxScore ?? null,
         ignorePendingPackagingAuthority: true,
+        moq: moqScalars,
+        channelMoqRules,
+        pricedChannels,
+        productLeadTimeDays,
       }),
-    [form, channelPrices, packagingAuthority, readinessSnapshot],
+    [
+      form,
+      channelPrices,
+      packagingAuthority,
+      readinessSnapshot,
+      moqScalars,
+      channelMoqRules,
+      pricedChannels,
+      productLeadTimeDays,
+    ],
   );
 
   // A product that was already catalogue-ready must not silently stay ready once it
@@ -2223,6 +2296,18 @@ const ProductEdit = () => {
                       value={form.moq_text ?? ""}
                       onChange={(e) => set("moq_text", e.target.value)}
                       placeholder="Free text fallback"
+                    />
+                  </Field>
+                  <Field
+                    label="Lead time (days)"
+                    hint="Product-level dispatch lead time (Core products.lead_time_days). BOM component lead times stay on BOM rows only."
+                  >
+                    <Input
+                      type="number"
+                      min={1}
+                      value={form.lead_time_days ?? ""}
+                      onChange={(e) => set("lead_time_days", e.target.value)}
+                      placeholder="e.g. 7"
                     />
                   </Field>
                 </div>

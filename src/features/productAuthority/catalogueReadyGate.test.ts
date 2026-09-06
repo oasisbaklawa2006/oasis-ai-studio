@@ -3,8 +3,8 @@ import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
   evaluatePackagingReadiness,
-  packagingAuthorityFromRulesResult,
   type PackagingTaxonomyAuthority,
+  packagingAuthorityFromRulesResult,
 } from "./catalogueReadyGate";
 import { resolvePricing } from "./pricingAuthority";
 
@@ -66,7 +66,10 @@ describe("evaluateCatalogueReadyGate", () => {
   });
 
   it("passes through Central preview blockers", () => {
-    const result = evaluateCatalogueReadyGate({ ...READY_INPUT, centralBlockers: ["SKU not mapped"] });
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      centralBlockers: ["SKU not mapped"],
+    });
     expect(result.blockers).toContain("Central preview: SKU not mapped");
   });
 
@@ -271,7 +274,10 @@ describe("packagingAuthorityFromRulesResult (Bugbot regression on PR #77)", () =
   it("returns null when zero rules come back, whether or not an error is attached", () => {
     expect(packagingAuthorityFromRulesResult({ rules: [], error: null })).toBeNull();
     expect(
-      packagingAuthorityFromRulesResult({ rules: [], error: "sku_code_rules returned zero active rows" }),
+      packagingAuthorityFromRulesResult({
+        rules: [],
+        error: "sku_code_rules returned zero active rows",
+      }),
     ).toBeNull();
     expect(packagingAuthorityFromRulesResult({ rules: [], error: "network error" })).toBeNull();
   });
@@ -329,5 +335,29 @@ describe("evaluateCatalogueReadyGate ignorePendingPackagingAuthority (Bugbot reg
     });
     expect(result.allowed).toBe(false);
     expect(result.blockers).toContain("Packaging missing");
+  });
+
+  it("blocks B2B products with placeholder MOQ missing UOM (Point 36 fail-closed)", () => {
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      saleType: "b2b_horeca",
+      pricing: resolvePricing({ price_b2b: 2800 }),
+      moq: { moq_rule_type: "fixed_min", moq_value: 1, moq_uom: null },
+      channelMoqRules: [{ channel: "b2b", moqApplicable: true, moqValue: 1, moqUom: "kg" }],
+      pricedChannels: ["b2b"],
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.blockers).toContain("MOQ UOM required when MOQ value is set");
+  });
+
+  it("blocks when channel pricing exists without channel MOQ rule", () => {
+    const result = evaluateCatalogueReadyGate({
+      ...READY_INPUT,
+      moq: { moq_rule_type: "not_applicable" },
+      pricedChannels: ["b2b"],
+      channelMoqRules: [],
+    });
+    expect(result.allowed).toBe(false);
+    expect(result.blockers).toContain("Channel MOQ missing for b2b");
   });
 });

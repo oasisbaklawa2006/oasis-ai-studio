@@ -6,6 +6,7 @@ import {
   evaluateMediaReadiness,
   selectApprovedImageUrlsForCentral,
 } from "@/features/mediaReadiness/mediaReadinessEngine";
+import { evaluatePublicationReadiness } from "@/features/productAuthority/moqLeadTimeReadinessCanonical";
 import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
@@ -20,6 +21,12 @@ import type {
   GstClassificationStatus,
   SnapshotGeneratorInput,
 } from "./types";
+
+function positiveLeadTimeDays(v: unknown): number | null {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 function conversionRulesFromHierarchy(hierarchy: PackagingHierarchy): ConversionRule[] {
   const rules: ConversionRule[] = [];
@@ -103,6 +110,19 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
     conversion_rules: conversionRules,
   };
 
+  const pricedChannels = (input.prices ?? [])
+    .filter((p) => p.sellingPrice != null || p.mrp != null)
+    .map((p) => String(p.channel ?? "").trim())
+    .filter(Boolean);
+  const point36 = evaluatePublicationReadiness({
+    saleType: saleTypeFromForm(input.form),
+    moq: input.form,
+    channelMoqRules: input.moqRules ?? [],
+    pricedChannels,
+    productLeadTimeDays: positiveLeadTimeDays(input.form.lead_time_days),
+    bomMaxLeadTimeDays: input.bomMaxLeadTimeDays ?? null,
+  });
+
   const aliasRows = input.languageAliasRows ?? [];
   const productAliases = aliasRows
     .map((row) => {
@@ -161,6 +181,7 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
       can_sync_media_to_central: mediaReadiness.canSyncMediaToCentral,
     },
     fulfillment_transform: fulfillmentTransform,
+    fulfillment_readiness: point36.snapshot,
     language_intelligence: buildSnapshotLanguageIntelligence({
       productId: input.productId,
       officialName: String(input.form.product_name ?? ""),

@@ -13,6 +13,7 @@ import {
  * Studio-only columns confirmed absent on live shared products table.
  * Point 35: `gross_weight_kg` remains Studio-only — grams (`gross_weight_g`) stay canonical in UI.
  * Core #199 · production release #141 @ `8e73d94` (run `34008131771`) landed `carton_dimensions_cm` + `cbm`.
+ * Point 36: `lead_time_days` live @ Core #209 / release run `34027390507` @ `5066064` — compat until types regen.
  */
 export const LIVE_PRODUCTS_STUDIO_ONLY_COLUMNS: ReadonlySet<string> = new Set([
   "approximate_piece_weight_g",
@@ -55,6 +56,7 @@ export const CENTRAL_COMPAT_PRODUCT_COLUMNS = [
   "grams_per_piece",
   "pcs_per_kg",
   "weight_per_pc_grams",
+  "lead_time_days",
 ] as const;
 
 export type CentralCompatProductColumn = (typeof CENTRAL_COMPAT_PRODUCT_COLUMNS)[number];

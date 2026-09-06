@@ -3,6 +3,12 @@
  * Reads only existing `products` fields already available to this app — no new backend
  * status column is invented and no field is mutated here.
  */
+
+import {
+  evaluateProductMoqAuthority,
+  type ProductMoqInput,
+} from "@/features/productAuthority/moqLeadTimeReadinessCanonical";
+import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { hasNumber, hasText } from "./catalogueFieldUtils";
 
 export type ReadinessState = "pass" | "warn" | "missing";
@@ -45,6 +51,18 @@ export interface ReadinessProductInput {
   dimension_h_cm?: number | null;
   moq_text?: string | null;
   moq_value?: number | null;
+  moq_uom?: string | null;
+  moq_rule_type?: string | null;
+  increment_value?: number | null;
+  increment_uom?: string | null;
+  fixed_carton_required?: boolean | null;
+  carton_uom?: string | null;
+  master_carton_uom?: string | null;
+  private_label_allowed?: boolean | null;
+  private_label_moq?: number | null;
+  private_label_moq_uom?: string | null;
+  product_class?: string | null;
+  main_department?: string | null;
   shelf_life_days?: number | null;
   storage_instructions?: string | null;
   hsn_code?: string | null;
@@ -306,22 +324,63 @@ function buildCartonPackaging(p: ReadinessProductInput): ReadinessCategory {
 }
 
 function buildMoq(p: ReadinessProductInput): ReadinessCategory {
-  const hasMoq = hasText(p.moq_text) || hasNumber(p.moq_value);
-  if (!hasMoq) {
+  const saleType = saleTypeFromForm(p as Record<string, unknown>);
+  const moqInput: ProductMoqInput = {
+    moq_rule_type: p.moq_rule_type,
+    moq_value: p.moq_value,
+    moq_uom: p.moq_uom,
+    moq_text: p.moq_text,
+    increment_value: p.increment_value,
+    increment_uom: p.increment_uom,
+    fixed_carton_required: p.fixed_carton_required,
+    carton_qty: p.carton_qty,
+    carton_uom: p.carton_uom,
+    master_carton_qty: p.master_carton_qty,
+    master_carton_uom: p.master_carton_uom,
+    private_label_allowed: p.private_label_allowed,
+    private_label_moq: p.private_label_moq,
+    private_label_moq_uom: p.private_label_moq_uom,
+  };
+  const authority = evaluateProductMoqAuthority(moqInput, saleType);
+
+  if (authority.state === "deferred") {
+    return {
+      key: "moq",
+      label: "MOQ",
+      state: "warn",
+      detail: "MOQ optional for this sale type.",
+      nextAction: "Set MOQ for stronger B2B sales copy.",
+      group: "packaging",
+    };
+  }
+
+  if (authority.state === "invalid") {
     return {
       key: "moq",
       label: "MOQ",
       state: "missing",
-      detail: "No minimum order quantity set.",
+      detail: authority.summary ?? authority.publicationBlockers[0] ?? "MOQ data is invalid.",
+      nextAction: "Fix MOQ value/UOM or rule type before catalogue publication.",
+      group: "packaging",
+    };
+  }
+
+  if (authority.state === "missing") {
+    return {
+      key: "moq",
+      label: "MOQ",
+      state: "missing",
+      detail: authority.publicationBlockers[0] ?? "No minimum order quantity set.",
       nextAction: "Set an MOQ so B2B sales copy is complete.",
       group: "packaging",
     };
   }
+
   return {
     key: "moq",
     label: "MOQ",
     state: "pass",
-    detail: `MOQ: ${p.moq_text ?? p.moq_value}`,
+    detail: authority.summary ?? `MOQ: ${p.moq_text ?? p.moq_value}`,
     nextAction: null,
     group: "packaging",
   };

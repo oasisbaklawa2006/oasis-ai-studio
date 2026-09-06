@@ -4,11 +4,16 @@
  * Pure: callers assemble the input from their own authorities (skuGuard, pricing
  * authority, Product Truth) so the gate itself never queries anything.
  */
-import { isStructuredOasisSku, skuPackagingSegment } from "./skuGuard";
-import type { SaleType } from "./saleType";
-import { getSaleTypeRequirements } from "./saleType";
+import type { ChannelMoqRule } from "@/features/productTruth/types";
+import {
+  evaluatePublicationReadiness,
+  type ProductMoqInput,
+} from "./moqLeadTimeReadinessCanonical";
 import type { ResolvedPricing } from "./pricingAuthority";
 import { pricingBlockers } from "./pricingAuthority";
+import type { SaleType } from "./saleType";
+import { getSaleTypeRequirements } from "./saleType";
+import { isStructuredOasisSku, skuPackagingSegment } from "./skuGuard";
 
 export const CATALOGUE_READY_TRUTH_THRESHOLD = 0.7;
 
@@ -42,6 +47,16 @@ export interface CatalogueReadyGateInput {
   truthMaxScore?: number | null;
   /** Central sync preview / validation blockers, when available. */
   centralBlockers?: string[];
+  /** Point 36 — product-row MOQ scalars for publication eligibility. */
+  moq?: ProductMoqInput;
+  /** Point 36 — channel MOQ rules (retail/b2b gap detection). */
+  channelMoqRules?: ChannelMoqRule[];
+  /** Point 36 — channels with configured pricing (for MOQ gap detection). */
+  pricedChannels?: string[];
+  /** Point 36 — live `products.lead_time_days` (Core #209). */
+  productLeadTimeDays?: number | null;
+  /** Point 36 — optional BOM max lead time (days); component-only, never substitutes product row. */
+  bomMaxLeadTimeDays?: number | null;
   /** When packaging is required and packagingAuthority is `null`, the default behaviour is
    *  a hard `PACKAGING_AUTHORITY_NOT_LOADED_MESSAGE` blocker — correct for a save-time gate,
    *  which must stay blocked while genuinely uncertain. Set this to `true` to omit that one
@@ -60,7 +75,9 @@ export interface CatalogueReadyGateResult {
   blockers: string[];
 }
 
-export function evaluateCatalogueReadyGate(input: CatalogueReadyGateInput): CatalogueReadyGateResult {
+export function evaluateCatalogueReadyGate(
+  input: CatalogueReadyGateInput,
+): CatalogueReadyGateResult {
   const req = getSaleTypeRequirements(input.saleType, { b2bEnabled: input.b2bEnabled });
   const blockers: string[] = [];
 
@@ -73,7 +90,9 @@ export function evaluateCatalogueReadyGate(input: CatalogueReadyGateInput): Cata
     blockers.push("SKU invalid — fix packaging/category before approval");
   }
 
-  blockers.push(...pricingBlockers(input.pricing, input.saleType, { b2bEnabled: input.b2bEnabled }));
+  blockers.push(
+    ...pricingBlockers(input.pricing, input.saleType, { b2bEnabled: input.b2bEnabled }),
+  );
 
   if (req.requiresPackaging) {
     if (!input.packagingAuthority) {
@@ -110,6 +129,18 @@ export function evaluateCatalogueReadyGate(input: CatalogueReadyGateInput): Cata
     blockers.push(`Central preview: ${blocker}`);
   }
 
+  const publication = evaluatePublicationReadiness({
+    saleType: input.saleType,
+    moq: input.moq ?? {},
+    channelMoqRules: input.channelMoqRules ?? [],
+    pricedChannels: input.pricedChannels ?? [],
+    productLeadTimeDays: input.productLeadTimeDays ?? null,
+    bomMaxLeadTimeDays: input.bomMaxLeadTimeDays ?? null,
+  });
+  for (const blocker of publication.publicationBlockers) {
+    blockers.push(blocker);
+  }
+
   return { allowed: blockers.length === 0, blockers };
 }
 
@@ -118,7 +149,9 @@ export function catalogueReadyBlockedMessage(result: CatalogueReadyGateResult): 
 }
 
 export function normalizePackagingCode(code: unknown): string {
-  return String(code ?? "").trim().toUpperCase();
+  return String(code ?? "")
+    .trim()
+    .toUpperCase();
 }
 
 export interface PackagingReadinessInput {
@@ -172,7 +205,9 @@ export function packagingAuthorityFromRulesResult(
 ): PackagingTaxonomyAuthority | null {
   if (!result.rules.length) return null;
   const activeCodes = new Set(
-    result.rules.filter((r) => r.code_type === "packaging").map((r) => normalizePackagingCode(r.code)),
+    result.rules
+      .filter((r) => r.code_type === "packaging")
+      .map((r) => normalizePackagingCode(r.code)),
   );
   return { activeCodes };
 }
