@@ -1,7 +1,7 @@
 {
   "point": 26,
   "title": "AI inference / audit authority closure",
-  "generated_at": "2026-09-06T07:13:54.683Z",
+  "generated_at": "2026-09-06T07:23:43.778Z",
   "baseline_sha": "6f8e16417dcef2323d833072d23a92a32b87a833",
   "census_summary": {
     "baseline_sha": "6f8e16417dcef2323d833072d23a92a32b87a833",
@@ -180,6 +180,23 @@
       "severity": "low",
       "description": "In-repo edge fn is heuristic-only until provider configured in deployment target.",
       "mitigation": "Client enforces suggestion_only/approved:false regardless of provider; fail-closed parse + heuristic fallback."
+    }
+  ],
+  "certification_checks": [
+    {
+      "name": "unit: inference census + provenance + catalogue gateway",
+      "passed": true,
+      "detail": "all targeted tests passed"
+    },
+    {
+      "name": "typecheck",
+      "passed": true,
+      "detail": "tsc --noEmit PASS"
+    },
+    {
+      "name": "repo boundaries",
+      "passed": true,
+      "detail": "0 violations"
     }
   ]
 }

@@ -5,7 +5,6 @@
  */
 
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 const EVIDENCE_OUT_PATH = join(
@@ -32,6 +31,7 @@ function runUnitTests() {
       "vitest.config.ts",
       "src/shared/ai/inferenceCensus.test.ts",
       "src/shared/ai/inferenceProvenance.test.ts",
+      "src/shared/ai/point26EvidenceArtifact.test.ts",
       "src/features/catalogueAiStudio/catalogueAiGateway.test.ts",
       "src/features/catalogueAiStudio/catalogueAiGenerationMerge.test.ts",
     ],
@@ -82,14 +82,26 @@ async function emitEvidence() {
     throw new Error("Failed to emit census evidence");
   }
 
-  const baseEvidence = JSON.parse(readFileSync(EVIDENCE_OUT_PATH, "utf8"));
-  const evidence = {
-    ...baseEvidence,
-    certification_checks: results,
-  };
+  const finalize = spawnSync("npx", ["vite-node", "scripts/finalize-point26-census-evidence.ts"], {
+    encoding: "utf8",
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      POINT26_CERTIFICATION_CHECKS: JSON.stringify(results),
+    },
+  });
+
+  if (finalize.status !== 0) {
+    record(
+      "persist certification evidence",
+      false,
+      (finalize.stdout + finalize.stderr).slice(-400),
+    );
+    throw new Error("Failed to persist certification evidence");
+  }
 
   console.log(`\nEvidence written: ${EVIDENCE_OUT_PATH}`);
-  return evidence;
+  return { certification_checks: results };
 }
 
 async function main() {
@@ -100,13 +112,12 @@ async function main() {
   runTypecheck();
   runBoundaries();
 
-  const evidence = await emitEvidence();
+  await emitEvidence();
   const failed = results.filter((r) => !r.passed);
 
   console.log(`\n${results.length - failed.length}/${results.length} checks passed.`);
   console.log(
-    `Census: ${evidence.census_summary.llm_boundaries} LLM boundaries, ` +
-      `${evidence.census_summary.shadow_risks_open} open shadow risks`,
+    `Evidence artifact includes ${results.length} certification_checks at ${EVIDENCE_OUT_PATH}`,
   );
 
   if (failed.length) {
