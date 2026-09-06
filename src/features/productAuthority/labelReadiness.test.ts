@@ -52,6 +52,10 @@ describe("computeLabelReadiness", () => {
     expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("missing");
     expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("missing");
     expect(result.dataGaps.every((g) => g.severity === "no_column")).toBe(true);
+    const dataGapKeys = result.dataGaps.map((gap) => gap.key);
+    expect(dataGapKeys).not.toContain("ingredients");
+    expect(dataGapKeys).not.toContain("allergen_warnings");
+    expect(dataGapKeys).not.toContain("nutrition");
   });
 
   // Full Editor's `form` state binds net_weight_g/shelf_life_days to <Input> elements,
@@ -94,17 +98,10 @@ describe("computeLabelReadiness", () => {
     const noColumnKeys = gaps.filter((g) => g.severity === "no_column").map((g) => g.key);
     expect(noColumnKeys).toEqual(
       expect.arrayContaining([
-<<<<<<< HEAD
         "batch_lot_number",
         "veg_nonveg_indicator",
         "label_mrp",
         "claims_flag",
-=======
-        "fssai_licence_number",
-        "batch_lot_number",
-        "veg_nonveg_indicator",
-        "country_of_origin",
->>>>>>> ae91241 (POINT34: editor save→reload certification + biome CI fix)
       ]),
     );
     expect(noColumnKeys).not.toContain("fssai_licence_number");
