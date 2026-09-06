@@ -5,7 +5,7 @@ _Date: 2026-03-13 · Goal: create product in **under 60 seconds**_
 ## Problem
 
 | Metric | Central | AI Studio (before) |
-|--------|---------|-------------------|
+| --- | --- | --- |
 | Min clicks | ~3 | ~11 |
 | Min manual fields | ~5 | ~8 |
 | Visible controls | ~47 | ~72 |
@@ -24,7 +24,7 @@ _Date: 2026-03-13 · Goal: create product in **under 60 seconds**_
 ### System-generated (on "Generate suggestions")
 
 | Output | Source |
-|--------|--------|
+| --- | --- |
 | Description / short description | Heuristic templates |
 | Keywords / search terms | Name + category + aliases |
 | WhatsApp search terms | Alias seed rules |
@@ -39,7 +39,7 @@ _Date: 2026-03-13 · Goal: create product in **under 60 seconds**_
 
 ## Architecture
 
-```
+```text
 src/pages/FastCreateProduct.tsx          # UI
 src/features/fastCreate/
   fastCreateSuggestions.ts               # Heuristic + AI enrichment
@@ -55,7 +55,7 @@ src/features/productLanguage/
 ### Save paths
 
 | Role | Behavior |
-|------|----------|
+| --- | --- |
 | owner / admin / product_manager / catalogue_contributor | `catalogue_product_drafts` via `submit_catalogue_product_draft_v1` RPC (governed draft only) |
 | Other | Error — contact admin |
 
@@ -66,7 +66,7 @@ src/features/productLanguage/
 ## UX flow (target timing)
 
 | Step | Action | Est. time |
-|------|--------|-----------|
+| --- | --- | --- |
 | 1 | Open Fast Create | 2s |
 | 2 | Type name, pick category | 15s |
 | 3 | Upload image | 10s |
@@ -79,7 +79,7 @@ src/features/productLanguage/
 ## Current vs target metrics
 
 | Metric | Full editor (before) | Fast Create (now) | Target |
-|--------|---------------------|-------------------|--------|
+| --- | --- | --- | --- |
 | Clicks to create | ~11 | **~4** | ≤5 |
 | Manual fields | ~8 | **3** | 3 |
 | Time to create | ~2–4 min | **~45s** | <60s |

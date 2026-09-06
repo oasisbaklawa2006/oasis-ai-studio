@@ -37,7 +37,7 @@
 
 ## Canonical Fast Create boundary
 
-```
+```text
 Operator inputs (name, category, sale type, packaging, hero)
         ↓
 Session draft + readiness gates (fastCreateDraft.ts)
