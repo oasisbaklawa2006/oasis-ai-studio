@@ -38,7 +38,10 @@ export type WhatsAppKnowledgeSku = {
   sku: string;
   name: string;
   family: string | null;
+  /** @deprecated Use short_name_ref — not a hierarchical variant id. */
   variant: string | null;
+  /** Display short name only — not sellable variant parentage or option key. */
+  short_name_ref: string | null;
   packaging_code: string | null;
 };
 
@@ -137,6 +140,7 @@ export function buildWhatsAppIntelligenceKnowledge(
       sku,
       name,
       family: skuFamily(product.category, product.subcategory),
+      short_name_ref: product.short_name?.trim() || null,
       variant: product.short_name?.trim() || null,
       packaging_code: product.packaging_code?.trim() || null,
     });

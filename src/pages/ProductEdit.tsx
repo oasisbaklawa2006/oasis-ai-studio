@@ -78,6 +78,8 @@ import {
 } from "@/features/productAuthority/productSchemaAdapter";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
 import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
+import { ProductVariantHierarchyPanel } from "@/features/productAuthority/panels/ProductVariantHierarchyPanel";
+import { assertVariantHierarchySaveAllowed } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
@@ -1445,6 +1447,14 @@ const ProductEdit = () => {
         return;
       }
 
+      const variantGuard = assertVariantHierarchySaveAllowed(safePayload);
+      if (variantGuard.ok === false) {
+        setLoading(false);
+        setSubmitError(variantGuard.reason);
+        toast.error(variantGuard.reason);
+        return;
+      }
+
       const productRow = formToProductRow(safePayload);
       const validation = validateProductSavePayload(productRow, isNew ? "create" : "update");
       if (!validation.ok) {
@@ -1967,6 +1977,8 @@ const ProductEdit = () => {
                 productClass={form.product_class}
                 onChange={patch}
               />
+
+              <ProductVariantHierarchyPanel form={form} />
 
               {isContributorMode && (
                 <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">

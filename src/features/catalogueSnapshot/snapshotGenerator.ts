@@ -7,6 +7,7 @@ import {
   selectApprovedImageUrlsForCentral,
 } from "@/features/mediaReadiness/mediaReadinessEngine";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
+import { serializeProductVariantHierarchyForSnapshot } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { serializePackagingHierarchyForSnapshot } from "@/features/productTruth/packagingHierarchyCanonical";
 import {
   evaluateProductReadiness,
@@ -89,6 +90,7 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
   const hero = approvedImages[0] ?? str(input.form.hero_image_url);
 
   const packagingHierarchy = serializePackagingHierarchyForSnapshot(input.form);
+  const productVariantHierarchy = serializeProductVariantHierarchyForSnapshot(input.form);
   const primaryPack = packagingHierarchy.primary_pack;
   const masterCarton = packagingHierarchy.master_carton;
 
@@ -140,6 +142,7 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
       rules: conversionRules,
     },
     packaging_hierarchy: packagingHierarchy,
+    product_variant_hierarchy: productVariantHierarchy,
     channel_rules: input.moqRules ?? [],
     pricing_rules: input.prices ?? [],
     media: {
