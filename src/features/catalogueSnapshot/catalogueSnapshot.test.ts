@@ -129,6 +129,52 @@ describe("catalogueSnapshot", () => {
     expect(snap.language_intelligence.official_name).toBe("Cashew Pyramid");
   });
 
+  it("suppresses unapproved factual composition values in snapshot preview", () => {
+    const snap = generateCatalogueSnapshot({
+      form: {
+        ...baseForm,
+        ingredients: "AI invented recipe",
+        shelf_life_days: 90,
+        storage_instructions: "Category-rule default",
+      },
+      productId: String(baseForm.id),
+      complianceApproved: false,
+      complianceMetaPending: true,
+      prices: approvedPrices,
+      moqRules,
+    });
+    const ingredients = snap.factual_composition.fields.find((f) => f.key === "ingredients");
+    const shelf = snap.factual_composition.fields.find((f) => f.key === "shelf_life_days");
+    expect(ingredients?.review_state).toBe("unknown");
+    expect(ingredients?.value).toBeNull();
+    expect(shelf?.review_state).toBe("unknown");
+    expect(shelf?.value).toBeNull();
+    expect(snap.compliance.ingredients).toBeNull();
+  });
+
+  it("includes approved factual composition values when compliance is manually approved", () => {
+    const snap = generateCatalogueSnapshot({
+      form: {
+        ...baseForm,
+        ingredients: "Cashew, sugar, clarified butter",
+        shelf_life_days: 60,
+        storage_instructions: "Store cool and dry",
+      },
+      productId: String(baseForm.id),
+      complianceApproved: true,
+      complianceMetaPending: false,
+      prices: approvedPrices,
+      moqRules,
+    });
+    const ingredients = snap.factual_composition.fields.find((f) => f.key === "ingredients");
+    const shelf = snap.factual_composition.fields.find((f) => f.key === "shelf_life_days");
+    expect(ingredients?.review_state).toBe("known");
+    expect(ingredients?.value).toBe("Cashew, sugar, clarified butter");
+    expect(shelf?.review_state).toBe("known");
+    expect(shelf?.value).toBe(60);
+    expect(snap.compliance.ingredients).toBe("Cashew, sugar, clarified butter");
+  });
+
   it("includes durable product_aliases in snapshot preview", () => {
     const snap = generateCatalogueSnapshot({
       form: baseForm,

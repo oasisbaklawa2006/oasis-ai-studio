@@ -553,7 +553,7 @@ export function dbRowToProductForm(
     dimension_h_cm: toBlank(data.dimension_h_cm),
     carton_dimensions_cm: toBlank(data.carton_dimensions_cm),
     cbm: toBlank(data.cbm),
-    // Form-only factual composition text (core_blocked — Point 34 canonical)
+    // Factual composition fields loaded via canonical adapter (Point 34)
     ...factualCompositionFromDbRow(data),
   };
 }

@@ -347,20 +347,55 @@ export function factualCompositionFromDbRow(
   };
 }
 
+/** Products-row factual keys gated on compliance approval in snapshot preview. */
+const PRODUCTS_ROW_FACTUAL_FORM_KEYS: ReadonlyArray<FactualFieldKey> = [
+  "shelf_life_days",
+  "frozen_shelf_life_days",
+  "post_processing_shelf_life_days",
+  "storage_instructions",
+  "temperature_requirement",
+  "thawing_instruction",
+  "ingredients",
+  "allergen_warnings",
+  "nutritional_info",
+  "nutrition_facts",
+];
+
+/** Strip unapproved products-row factual values before snapshot serialization. */
+export function factualCompositionFormForSnapshot(
+  form: Record<string, unknown>,
+  complianceManuallyApproved: boolean,
+): Record<string, unknown> {
+  if (complianceManuallyApproved) return form;
+  const filtered = { ...form };
+  for (const key of PRODUCTS_ROW_FACTUAL_FORM_KEYS) {
+    filtered[key] = "";
+  }
+  return filtered;
+}
+
 /** Contributor draft / snapshot compliance block — never invent placeholders. */
 export function factualCompositionDraftPayload(form: Record<string, unknown>): {
   ingredients: string | null;
   allergen_information: string | null;
   nutritional_information: string | null;
   shelf_life_days: string | number | null;
+  frozen_shelf_life_days: string | number | null;
+  post_processing_shelf_life_days: string | number | null;
   storage_instructions: string | null;
+  temperature_requirement: string | null;
+  thawing_instruction: string | null;
 } {
   return {
     ingredients: str(form.ingredients),
     allergen_information: str(form.allergen_warnings),
     nutritional_information: normalizeNutritionText(form),
     shelf_life_days: form.shelf_life_days ?? null,
+    frozen_shelf_life_days: form.frozen_shelf_life_days ?? null,
+    post_processing_shelf_life_days: form.post_processing_shelf_life_days ?? null,
     storage_instructions: str(form.storage_instructions),
+    temperature_requirement: str(form.temperature_requirement),
+    thawing_instruction: str(form.thawing_instruction),
   };
 }
 

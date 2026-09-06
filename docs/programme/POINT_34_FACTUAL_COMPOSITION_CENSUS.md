@@ -91,8 +91,9 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 | Check | Expected |
 | --- | --- |
 | Editor save→reload certification | `productFactualCompositionRoundTrip.test.ts` — 4 synthetic cases |
+| Snapshot approval gating | `catalogueSnapshot.test.ts` — pending vs approved factual_composition |
 | Point 34 canonical unit tests | `productFactualCompositionCanonical.test.ts` |
-| `npm test` | **865/865 PASS** |
+| `npm test` | **906/906 PASS** (rebased on Point36 main `b30b94d`) |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS |
 | `npm run check:boundaries` | PASS |

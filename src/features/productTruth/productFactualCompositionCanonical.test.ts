@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCanonicalFactualComposition,
   factualCompositionDraftPayload,
+  factualCompositionFormForSnapshot,
   factualCompositionFromDbRow,
   factualCompositionToDbPayload,
   normalizeNutritionText,
@@ -104,6 +105,28 @@ describe("productFactualCompositionCanonical", () => {
     expect(draft.allergen_information).toBeNull();
     expect(draft.nutritional_information).toBeNull();
     expect(draft.shelf_life_days).toBe(90);
+  });
+
+  it("includes all persisted shelf/storage fields in contributor draft payload", () => {
+    const draft = factualCompositionDraftPayload({
+      frozen_shelf_life_days: 180,
+      post_processing_shelf_life_days: 30,
+      temperature_requirement: "Ambient",
+      thawing_instruction: "Thaw at room temperature",
+    });
+    expect(draft.frozen_shelf_life_days).toBe(180);
+    expect(draft.post_processing_shelf_life_days).toBe(30);
+    expect(draft.temperature_requirement).toBe("Ambient");
+    expect(draft.thawing_instruction).toBe("Thaw at room temperature");
+  });
+
+  it("strips unapproved products-row factual values for snapshot preview", () => {
+    const filtered = factualCompositionFormForSnapshot(
+      { ingredients: "AI draft", shelf_life_days: 90 },
+      false,
+    );
+    expect(filtered.ingredients).toBe("");
+    expect(filtered.shelf_life_days).toBe("");
   });
 
   it("serializes point34_v1 snapshot block with review states", () => {

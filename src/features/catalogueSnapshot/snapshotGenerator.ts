@@ -13,6 +13,7 @@ import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligenc
 import { serializePackagingHierarchyForSnapshot } from "@/features/productTruth/packagingHierarchyCanonical";
 import {
   factualCompositionDraftPayload,
+  factualCompositionFormForSnapshot,
   serializeFactualCompositionForSnapshot,
 } from "@/features/productTruth/productFactualCompositionCanonical";
 import {
@@ -103,7 +104,10 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
   const hero = approvedImages[0] ?? str(input.form.hero_image_url);
 
   const packagingHierarchy = serializePackagingHierarchyForSnapshot(input.form);
-  const factualComposition = serializeFactualCompositionForSnapshot(input.form);
+  const manuallyApproved = !!input.complianceApproved && !input.complianceMetaPending;
+  const factualComposition = serializeFactualCompositionForSnapshot(
+    factualCompositionFormForSnapshot(input.form, manuallyApproved),
+  );
   const primaryPack = packagingHierarchy.primary_pack;
   const masterCarton = packagingHierarchy.master_carton;
 

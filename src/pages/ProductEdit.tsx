@@ -2787,8 +2787,9 @@ const ProductEdit = () => {
                   <div className="sm:col-span-3">
                     <Field label="Nutritional information">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Nutrition panels will be owned
-                        by Label Designer.
+                        {isContributorMode
+                          ? "Draft only — submitted for compliance approval before product persistence."
+                          : "Approval-gated — persists to products.nutrition_facts when saved with compliance approval."}
                       </p>
                       <Textarea
                         rows={3}
