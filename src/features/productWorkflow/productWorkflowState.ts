@@ -8,7 +8,7 @@
  *
  * Boundaries (referenced, not implemented here):
  * - Point 39 — correction / resubmission after rejection (`create_new_version` only)
- * - Point 40 — version history audit (out of scope)
+ * - Point 40 — version history read model (`productVersionHistory.ts`)
  * - Point 54 — publication (`published` / `synced` phases)
  *
  * AI Studio owns pure transition guards and UI bindings — never Core transactional authority.
