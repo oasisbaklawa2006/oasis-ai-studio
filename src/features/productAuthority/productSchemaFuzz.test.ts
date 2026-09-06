@@ -59,9 +59,11 @@ describe("live products schema fuzz", () => {
     }
   });
 
-  it("strips unknown, media, alias, and compliance metadata keys", () => {
+  it("strips unknown, media, alias, and compliance metadata keys but keeps composition columns", () => {
     const payload = formToDbProductPayload(FUZZ_FORM);
-    expect(payload.ingredients).toBeUndefined();
+    expect(payload.ingredients).toBe("pistachio");
+    expect(payload.allergen_warnings).toBe("nuts");
+    expect(payload.nutrition_facts).toBe("{}");
     expect(payload.alias_seed).toBeUndefined();
     expect(payload.media_assets).toBeUndefined();
     expect(payload.random_unknown_field).toBeUndefined();

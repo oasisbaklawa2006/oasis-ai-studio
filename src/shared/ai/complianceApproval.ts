@@ -80,14 +80,15 @@ export function prepareFormForComplianceSave<T extends Record<string, unknown>>(
   for (const field of COMPLIANCE_SENSITIVE_FIELDS) {
     if (isComplianceFieldApproved(field, metaMap, roles)) continue;
     const baselineValue = baseline[field];
-    (out as Record<string, unknown>)[field] =
-      baselineValue === undefined ? null : baselineValue;
+    (out as Record<string, unknown>)[field] = baselineValue === undefined ? null : baselineValue;
   }
 
   return out as T;
 }
 
-export function stripComplianceFromDraftPayload(payload: Record<string, unknown>): Record<string, unknown> {
+export function stripComplianceFromDraftPayload(
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
   const next = { ...payload };
   const pricing = { ...(next.pricing as Record<string, unknown> | undefined) };
   const compliance = { ...(next.compliance as Record<string, unknown> | undefined) };

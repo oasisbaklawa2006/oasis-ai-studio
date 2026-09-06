@@ -3,6 +3,7 @@
 **ASM:** AI Studio factual product composition fields  
 **Mission Control authority:** Central #459 — Point 34  
 **Starting SHA:** `6f8e164` (`main` after #147 Point 35 + #151 Point 33)  
+**Reconciled head:** `cursor/point34-factual-composition-closure-c61e` (#197)  
 **Boundary:** No Core migration; no shadow truth; Point 37 owns FSSAI label issuance  
 
 ## 1. Starting ancestry
@@ -13,69 +14,88 @@
 | Starting SHA | `6f8e16417dcef2323d833072d23a92a32b87a833` |
 | Parent commits | `6f8e164` Point 35 (#147) · `cf0fd3c` Point 33 (#151) · `33f61f2` residual Point 27/29/30 (#140) |
 
-## 2. Field census matrix
+## 2. Core authority reconciliation (#197 follow-up)
 
-| Field | UI surfaces | Parser / AI | Default source | Draft / persistence | Approval | Publication | ProductEdit tab |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `shelf_life_days` | ProductEdit, Fast Create, Products list, DataCorrection, Catalogue Studio | `governedComplianceAiExtraction`, `complianceSuggestions` | **Category rule** (`categoryDefaults`) — deferred meta | **products row** via `formToDbProductPayload` | `category_rule` / `ai_suggestion` meta gate | Snapshot `factual_composition` + `storage_shelf_life_copy` when set | Compliance → Pack & shelf |
-| `frozen_shelf_life_days` | ProductEdit (frozen tab) | — | None | **products row** | Manual | Snapshot `point34_v1` | Compliance (frozen fields) |
-| `post_processing_shelf_life_days` | ProductEdit | — | None | **products row** | Manual | Snapshot `point34_v1` | Compliance |
-| `storage_instructions` | ProductEdit, Fast Create, category import | AI extraction (suggestion-only) | **Category rule** — deferred meta | **products row** | `category_rule` / `ai_suggestion` meta gate | Catalogue AI gateway reads facts only; snapshot | Compliance |
-| `temperature_requirement` | ProductEdit | — | None | **products row** | Manual | Snapshot | Compliance |
-| `thawing_instruction` | ProductEdit | — | None | **products row** | Manual | Snapshot | Compliance |
-| `ingredients` | ProductEdit textarea, Fast Create (removed), Category1 import, snapshot | AI extraction, `generate-product-attributes` edge fn | **Was invented** in `fastCreateSuggestions` — **removed** | **core_blocked** — not on Studio `products` Insert types | UI-only; never in live products write | Gated null in snapshot until approved + Core column | Compliance |
-| `allergen_warnings` | ProductEdit, Fast Create (removed), import | AI extraction | **Was invented** in heuristics + draft placeholders — **removed** | **core_blocked** | UI-only | Gated null in snapshot | Compliance |
-| `nutritional_info` / `nutrition_facts` | ProductEdit, AI panel | AI extraction; Central uses `nutrition_facts` alias | Heuristic AI drafts (suggestion-only) | **core_blocked** — `nutrition_panels` table exists unwired | UI-only; conflict resolved to `nutritional_info` on read | Gated null in snapshot | Compliance |
-| `pdf_shelf_life` / `pdf_storage_condition` | PDF import path only | — | PDF extraction | **pdf_import_only** — not in editor allowlist | — | — | — |
-| `ingredients` + `product_ingredients` tables | `/ingredients` page (partial) | — | — | **structured_table** — not wired to ProductEdit save | — | — | Separate route |
+Mission Control correction: **Core already owns** `products.ingredients`, `products.allergen_warnings`, and `products.nutrition_facts`. The gap was **AI Studio stale generated types + save adapter omission**, not missing Core schema.
 
-## 3. Defects identified (pre-closure)
+| Evidence | Location |
+| --- | --- |
+| Central draft approve SQL writes composition columns | `scripts/supabase/PR06C1_central_tag_alias_approve_mapping.sql` |
+| DataCorrection reads composition from `products` | `src/pages/DataCorrection.tsx` |
+| ProductEdit validation doc expects row columns | `docs/AI_STUDIO_AUTHENTICATED_PRODUCTEDIT_VALIDATION.md` |
+| Import playbook maps CSV → products columns | `docs/CATEGORY1_FIRST_IMPORT_PLAYBOOK.md` |
 
-| Defect | Severity | Resolution |
-| --- | --- | --- |
-| Fast Create invented ingredients/allergens from category/name | **P0** | Removed; labelStarter hints empty |
-| Contributor draft used `"Suggested — please review"` / `"Draft placeholder only"` | **P0** | `factualCompositionDraftPayload` — null when absent |
-| `nutritional_info` vs `nutrition_facts` dual keys | **P1** | `normalizeNutritionText` — `nutritional_info` canonical |
-| Category shelf-life/storage auto-persisted without approval | **P1** | `category_rule` compliance meta + save gate |
-| Ingredients/allergens in snapshot before approval | **P1** | Snapshot compliance gated on `complianceApproved` |
-| Label readiness scored phantom persisted ingredients | **P2** | `dataGaps` only; Point 34 canonical references |
+### Reconciliation actions (this branch)
 
-## 4. Canonical contract (this PR)
+| Action | Module |
+| --- | --- |
+| Regenerated AI-side `products` types for composition columns | `src/integrations/supabase/types.ts` |
+| Added Central compat allowlist entries | `src/features/productAuthority/liveProductsSchema.ts` |
+| Wired governed persistence (`nutritional_info` → `nutrition_facts`) | `productFactualCompositionCanonical.ts` → `productSchemaAdapter.ts` |
+| Approval-gated save via existing compliance meta | `compliancePersistence.ts`, `stripUnapprovedComplianceFields` |
+| Removed false `core_blocked` / Core prerequisite claims | census, `labelReadiness.ts`, canonical registry |
+
+**No Core prerequisite returned** — composition text columns are proven on live Central `products`.
+
+## 3. Field census matrix
+
+| Field | UI | AI / parser | Defaults | Persistence | Approval | Publication |
+| --- | --- | --- | --- | --- | --- | --- |
+| `shelf_life_days` | ProductEdit, Fast Create, Products, DataCorrection | Governed AI extraction | Category rule (deferred meta) | `products.shelf_life_days` | `category_rule` / `ai_suggestion` meta | Snapshot `factual_composition` |
+| `frozen_shelf_life_days` / `post_processing_shelf_life_days` | ProductEdit | — | None | `products` row | Manual | Snapshot |
+| `storage_instructions` | ProductEdit, Fast Create, import | AI (suggestion-only) | Category rule (deferred) | `products.storage_instructions` | Meta gate | Catalogue AI facts-only |
+| `temperature_requirement` / `thawing_instruction` | ProductEdit | — | None | `products` row | Manual | Snapshot |
+| `ingredients` | ProductEdit, import, snapshot | AI edge fn | **Never invented** from category/name | `products.ingredients` | Compliance approval gate | Snapshot gated until approved |
+| `allergen_warnings` | ProductEdit, import | AI | **Never invented** | `products.allergen_warnings` | Compliance approval gate | Snapshot gated until approved |
+| `nutritional_info` (UI) / `nutrition_facts` (DB) | ProductEdit, AI panel | AI | Heuristic AI drafts (suggestion-only) | `products.nutrition_facts` | Compliance approval gate | `nutritional_info` canonical on read |
+| `pdf_shelf_life` / `pdf_storage_condition` | PDF import | — | PDF extraction | `pdf_import_only` | — | — |
+| `product_ingredients` + `nutrition_panels` | `/ingredients`, Label Studio | — | — | Optional structured paths (not Point 34 text closure) | — | — |
+
+## 4. Defects identified and resolution
+
+| Defect | Resolution |
+| --- | --- |
+| Fast Create invented ingredients/allergens | **Fixed** — removed |
+| Draft placeholder invention | **Fixed** — null when absent |
+| `nutritional_info` vs `nutrition_facts` conflict | **Fixed** — canonical read + DB write mapping |
+| Category shelf-life/storage auto-persisted | **Fixed** — `category_rule` deferred meta |
+| Composition columns dropped on save (stale types) | **Fixed** — types + adapter wiring |
+| False Core schema-gap prerequisite | **Removed** — reconciled against Core authority |
+
+## 5. Canonical contract
 
 | Module | Responsibility |
 | --- | --- |
-| `src/features/productTruth/productFactualCompositionCanonical.ts` | Field registry, validation, adapter helpers, snapshot `point34_v1` |
-| `src/features/productAuthority/productSchemaAdapter.ts` | Delegates shelf/storage to canonical `factualCompositionToDbPayload` |
-| `src/shared/ai/complianceApproval.ts` | `category_rule` source + deferred meta |
-| `src/features/fastCreate/fastCreateSuggestions.ts` | No invented composition; deferred category meta |
+| `productFactualCompositionCanonical.ts` | Registry, validation, adapter helpers, `point34_v1` snapshot |
+| `productSchemaAdapter.ts` | Delegates all factual fields to canonical payload builder |
+| `compliancePersistence.ts` | All composition fields in approval-gated persisted set |
+| `fastCreateSuggestions.ts` | No invention; deferred category meta for shelf/storage |
 
-### Persisted (products row — AI Studio write contract)
+### Write mapping
 
-- `shelf_life_days` (days, integer > 0)
-- `frozen_shelf_life_days`, `post_processing_shelf_life_days`
-- `storage_instructions`, `temperature_requirement`, `thawing_instruction`
-
-### Core-blocked (exact prerequisite — do not shadow-persist)
-
-```
-products.ingredients
-products.allergen_warnings
-products.nutrition_facts OR products.nutritional_info
-ingredients + product_ingredients junction (structured path)
-nutrition_panels per product_id
-```
-
-## 5. Test matrix
-
-| Check | Command | Expected |
+| UI form key | DB column | Notes |
 | --- | --- | --- |
-| Point 34 unit tests | `npm test -- productFactualCompositionCanonical` | PASS |
-| Fast Create no-invention | `npm test -- fastCreate.test` | PASS |
-| Snapshot point34_v1 | `npm test -- catalogueSnapshot.test` | PASS |
-| Full unit suite | `npm test` | PASS |
-| Typecheck | `npm run typecheck` | PASS |
-| Build | `npm run build` | PASS |
+| `ingredients` | `products.ingredients` | Approval-gated |
+| `allergen_warnings` | `products.allergen_warnings` | Approval-gated |
+| `nutritional_info` | `products.nutrition_facts` | Central compat column name |
+| `shelf_life_days` | `products.shelf_life_days` | Integer days |
+| `storage_instructions` | `products.storage_instructions` | Text |
 
-## 6. Gate state
+## 6. Optional structured paths (not blockers)
 
-`PR merged != Point 34 cleared` — runtime editor round-trip and Core column prerequisite remain programme gates.
+- `ingredients` master + `product_ingredients` junction (structured rollup)
+- `nutrition_panels` per `product_id` (macro nutrients — separate from free-text)
+
+## 7. Test matrix
+
+| Check | Expected |
+| --- | --- |
+| `npm test` | PASS |
+| `npm run typecheck` | PASS |
+| `npm run build` | PASS |
+| `npm run check:boundaries` | PASS |
+| `QUALITY_BASE_REF=main npm run lint:biome:changed` | PASS |
+
+## 8. Gate state
+
+`PR merged != Point 34 cleared` — runtime editor round-trip certification remains a programme gate. **No open Core schema prerequisite** for composition text columns.

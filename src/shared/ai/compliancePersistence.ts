@@ -1,36 +1,30 @@
-﻿import {
-  createManualFieldMeta,
-  pickComplianceBaseline,
+﻿import { PERSISTED_FACTUAL_PRODUCT_COLUMNS } from "@/features/productTruth/productFactualCompositionCanonical";
+import {
   type ComplianceBaseline,
   type ComplianceFieldMetaMap,
+  createManualFieldMeta,
+  pickComplianceBaseline,
 } from "./complianceApproval";
-import {
-  PERSISTED_FACTUAL_PRODUCT_COLUMNS,
-  UI_ONLY_FACTUAL_FIELDS,
-} from "@/features/productTruth/productFactualCompositionCanonical";
 
-/** Columns on `products` that ProductEdit persists on save (Point 34 canonical). */
+const FACTUAL_COMPLIANCE_FORM_KEYS = PERSISTED_FACTUAL_PRODUCT_COLUMNS.filter(
+  (key) => key !== "nutrition_facts",
+);
+
+/** Columns on `products` that ProductEdit persists on save (Point 34 canonical, approval-gated). */
 export const PERSISTED_COMPLIANCE_PRODUCT_COLUMNS = [
   "hsn_code",
   "gst_rate",
-  ...PERSISTED_FACTUAL_PRODUCT_COLUMNS.filter(
-    (f) => f === "shelf_life_days" || f === "storage_instructions",
-  ),
+  ...FACTUAL_COMPLIANCE_FORM_KEYS,
 ] as const;
 
 export type PersistedComplianceColumn = (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number];
 
-/** Form-only compliance text — not written to `products` until Core ships columns (Point 34). */
-export const UI_ONLY_COMPLIANCE_FIELDS = [
-  ...UI_ONLY_FACTUAL_FIELDS.filter(
-    (f) => f === "ingredients" || f === "allergen_warnings" || f === "nutritional_info",
-  ),
-] as const;
+/** DB column alias — UI edits `nutritional_info`, writes `nutrition_facts`. */
+export const UI_ONLY_COMPLIANCE_FIELDS = ["nutrition_facts"] as const;
 
 /**
  * Build session meta from a DB-loaded product row.
  * Persisted columns with values are treated as approved manual edits (saved state).
- * UI-only fields with values remain unapproved until explicitly approved.
  */
 export function buildComplianceMetaFromSavedProduct(
   form: Record<string, unknown>,
@@ -46,13 +40,6 @@ export function buildComplianceMetaFromSavedProduct(
     }
   }
 
-  for (const field of UI_ONLY_COMPLIANCE_FIELDS) {
-    const v = form[field];
-    if (v !== null && v !== undefined && String(v).trim() !== "") {
-      meta[field] = { source: "manual", approved: false, suggestion_only: false };
-    }
-  }
-
   return meta;
 }
 
@@ -65,7 +52,7 @@ export function deriveComplianceApprovedForReadiness(form: Record<string, unknow
   return true;
 }
 
-/** Session approval gate for save — persisted columns only (not UI-only text). */
+/** Session approval gate for save — all persisted compliance columns require approval when meta exists. */
 export function isPersistedComplianceApproved(
   metaMap: ComplianceFieldMetaMap,
   complianceMetaPending: boolean,

@@ -1168,6 +1168,7 @@ export type Database = {
       }
       products: {
         Row: {
+          allergen_warnings: string | null
           approximate_piece_weight_g: number | null
           avg_qty_per_tray_g: number | null
           b2b_price: number | null
@@ -1206,6 +1207,7 @@ export type Database = {
           hsn_code: string | null
           id: string
           import_confidence: string | null
+          ingredients: string | null
           increment_uom: string | null
           increment_value: number | null
           is_active: boolean | null
@@ -1224,6 +1226,7 @@ export type Database = {
           moq_value: number | null
           mrp: number | null
           net_weight_g: number | null
+          nutrition_facts: string | null
           operational_notes: string | null
           pack_size: string | null
           packaging_code: string | null
@@ -1274,6 +1277,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          allergen_warnings?: string | null
           approximate_piece_weight_g?: number | null
           avg_qty_per_tray_g?: number | null
           b2b_price?: number | null
@@ -1312,6 +1316,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           import_confidence?: string | null
+          ingredients?: string | null
           increment_uom?: string | null
           increment_value?: number | null
           is_active?: boolean | null
@@ -1330,6 +1335,7 @@ export type Database = {
           moq_value?: number | null
           mrp?: number | null
           net_weight_g?: number | null
+          nutrition_facts?: string | null
           operational_notes?: string | null
           pack_size?: string | null
           packaging_code?: string | null
@@ -1380,6 +1386,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          allergen_warnings?: string | null
           approximate_piece_weight_g?: number | null
           avg_qty_per_tray_g?: number | null
           b2b_price?: number | null
@@ -1418,6 +1425,7 @@ export type Database = {
           hsn_code?: string | null
           id?: string
           import_confidence?: string | null
+          ingredients?: string | null
           increment_uom?: string | null
           increment_value?: number | null
           is_active?: boolean | null
@@ -1436,6 +1444,7 @@ export type Database = {
           moq_value?: number | null
           mrp?: number | null
           net_weight_g?: number | null
+          nutrition_facts?: string | null
           operational_notes?: string | null
           pack_size?: string | null
           packaging_code?: string | null

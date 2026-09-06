@@ -10,8 +10,8 @@ import {
 import { CATEGORY_RULE_DEFERRED_FACTUAL_FIELDS } from "@/features/productTruth/productFactualCompositionCanonical";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  createCategoryRuleFieldMeta,
   type ComplianceFieldMetaMap,
+  createCategoryRuleFieldMeta,
 } from "@/shared/ai/complianceApproval";
 import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 

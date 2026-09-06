@@ -10,7 +10,7 @@ import {
 } from "./productFactualCompositionCanonical";
 
 describe("productFactualCompositionCanonical", () => {
-  it("maps persisted shelf/storage fields round-trip through adapter helpers", () => {
+  it("maps persisted shelf/storage/composition fields round-trip through adapter helpers", () => {
     const form = {
       shelf_life_days: "90",
       storage_instructions: "Store in a cool, dry place.",
@@ -18,20 +18,25 @@ describe("productFactualCompositionCanonical", () => {
       post_processing_shelf_life_days: "30",
       temperature_requirement: "Ambient",
       thawing_instruction: "Thaw at room temperature",
+      ingredients: "Cashew, sugar, butter",
+      allergen_warnings: "Contains nuts",
+      nutritional_info: "Per 100g: energy 450 kcal",
     };
 
     const payload = factualCompositionToDbPayload(form);
     expect(payload.shelf_life_days).toBe(90);
     expect(payload.storage_instructions).toBe("Store in a cool, dry place.");
-    expect(payload.frozen_shelf_life_days).toBe(180);
-    expect(payload.post_processing_shelf_life_days).toBe(30);
+    expect(payload.ingredients).toBe("Cashew, sugar, butter");
+    expect(payload.allergen_warnings).toBe("Contains nuts");
+    expect(payload.nutrition_facts).toBe("Per 100g: energy 450 kcal");
 
     const loaded = factualCompositionFromDbRow(payload);
     expect(loaded.shelf_life_days).toBe(90);
-    expect(loaded.storage_instructions).toBe("Store in a cool, dry place.");
+    expect(loaded.ingredients).toBe("Cashew, sugar, butter");
+    expect(loaded.nutritional_info).toBe("Per 100g: energy 450 kcal");
   });
 
-  it("keeps unknown/deferred state for core-blocked ingredients/allergens/nutrition", () => {
+  it("marks composition fields as products_row / known when present", () => {
     const canonical = buildCanonicalFactualComposition({
       shelf_life_days: 90,
       storage_instructions: "Cool dry place",
@@ -44,11 +49,11 @@ describe("productFactualCompositionCanonical", () => {
     const allergens = canonical.fields.find((f) => f.key === "allergen_warnings");
     const nutrition = canonical.fields.find((f) => f.key === "nutritional_info");
 
-    expect(ingredients?.reviewState).toBe("deferred");
-    expect(ingredients?.persistence).toBe("core_blocked");
-    expect(allergens?.reviewState).toBe("deferred");
-    expect(nutrition?.reviewState).toBe("deferred");
-    expect(canonical.coreDependencies.length).toBeGreaterThan(0);
+    expect(ingredients?.reviewState).toBe("known");
+    expect(ingredients?.persistence).toBe("products_row");
+    expect(allergens?.reviewState).toBe("known");
+    expect(nutrition?.reviewState).toBe("known");
+    expect(canonical.optionalStructuredPaths.length).toBeGreaterThan(0);
   });
 
   it("normalizes nutritional_info over nutrition_facts when both exist", () => {
@@ -109,15 +114,16 @@ describe("productFactualCompositionCanonical", () => {
     });
     expect(snap.schema).toBe("point34_v1");
     expect(snap.nutrition_canonical_field).toBe("nutritional_info");
+    expect(snap.nutrition_db_column).toBe("nutrition_facts");
     expect(snap.point37_label_authority).toBe(true);
     const ing = snap.fields.find((f) => f.key === "ingredients");
-    expect(ing?.review_state).toBe("deferred");
-    expect(ing?.persistence).toBe("core_blocked");
+    expect(ing?.review_state).toBe("known");
+    expect(ing?.persistence).toBe("products_row");
   });
 
   it("documents all persisted product columns in registry", () => {
     expect(PERSISTED_FACTUAL_PRODUCT_COLUMNS).toContain("shelf_life_days");
-    expect(PERSISTED_FACTUAL_PRODUCT_COLUMNS).toContain("storage_instructions");
-    expect(PERSISTED_FACTUAL_PRODUCT_COLUMNS).not.toContain("ingredients");
+    expect(PERSISTED_FACTUAL_PRODUCT_COLUMNS).toContain("ingredients");
+    expect(PERSISTED_FACTUAL_PRODUCT_COLUMNS).toContain("allergen_warnings");
   });
 });

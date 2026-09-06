@@ -5,20 +5,16 @@
  * They must never be merged into one toggle — a product can be catalogue-ready while
  * legally required label data is still missing.
  *
- * Only `identity`, `quantity`, and `shelf_storage` are scored from real, actually-persisted
- * product fields. Ingredients, allergen warnings, and nutritional info are deliberately
- * NOT scored as pass/warn/missing here — `productFactualCompositionCanonical.ts`
- * classifies them as `core_blocked` / `deferred` until Core ships durable columns.
- *
- * FSSAI licence number, batch/lot number, mfg/best-before dates, veg/non-veg indicator,
- * structured net quantity, serving size, and claims fields without a live Core column are
- * reported as `dataGaps` with severity "no_column".
+ * Scores identity, quantity, shelf/storage, product-composition text (Point 34), and
+ * live legal-label columns (Point 37 recert). Remaining label-grade fields without a live
+ * Core column are reported as `dataGaps` with severity "no_column".
  *
  * Live @ Core #Point37 recert (release run `34034910469` @ `9c93fc32`):
  * `fssai_licence_number`, `country_of_origin`, `label_manufacturer_details` — scored via
  * `legal_label_fields` category; persisted through `formToDbProductPayload` compat columns.
  */
 import { hasNumericInput, hasText } from "@/features/catalogueAiStudio/catalogueFieldUtils";
+import { normalizeNutritionText } from "@/features/productTruth/productFactualCompositionCanonical";
 import {
   buildLiveLegalLabelCategory,
   evaluateLiveLegalLabelFields,
@@ -67,6 +63,11 @@ export interface LabelReadinessProductInput {
   fssai_licence_number?: string | null;
   country_of_origin?: string | null;
   label_manufacturer_details?: string | null;
+  /** Point 34 factual composition — persisted on products row when approved. */
+  ingredients?: string | null;
+  allergen_warnings?: string | null;
+  nutritional_info?: string | null;
+  nutrition_facts?: string | null;
 }
 
 const NUTRITION_REVIEW_NOTICE = "Draft nutrition data — requires compliance review.";
@@ -154,25 +155,65 @@ function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategor
   };
 }
 
-const DATA_GAPS: LabelDataGap[] = [
-  {
+function buildIngredients(p: LabelReadinessProductInput): LabelReadinessCategory {
+  if (!hasText(p.ingredients)) {
+    return {
+      key: "ingredients",
+      label: "Ingredient Declaration",
+      state: "missing",
+      detail: "No ingredient declaration set.",
+      nextAction: "Set Ingredients and approve before save.",
+    };
+  }
+  return {
     key: "ingredients",
     label: "Ingredient Declaration",
-    severity: "not_persisted",
-    note: "Point 34 canonical: core_blocked — products.ingredients not on Studio write contract; use product_ingredients when Core ships.",
-  },
-  {
+    state: "pass",
+    detail: "Ingredient text is set.",
+    nextAction: null,
+  };
+}
+
+function buildAllergens(p: LabelReadinessProductInput): LabelReadinessCategory {
+  if (!hasText(p.allergen_warnings)) {
+    return {
+      key: "allergen_warnings",
+      label: "Allergen Declaration",
+      state: "missing",
+      detail: "No allergen warnings set.",
+      nextAction: "Set Allergen warnings and approve before save.",
+    };
+  }
+  return {
     key: "allergen_warnings",
     label: "Allergen Declaration",
-    severity: "not_persisted",
-    note: "Point 34 canonical: core_blocked — products.allergen_warnings not on Studio write contract.",
-  },
-  {
+    state: "pass",
+    detail: "Allergen warnings are set.",
+    nextAction: null,
+  };
+}
+
+function buildNutrition(p: LabelReadinessProductInput): LabelReadinessCategory {
+  const nutrition = normalizeNutritionText(p);
+  if (!nutrition) {
+    return {
+      key: "nutrition",
+      label: "Nutrition Information",
+      state: "missing",
+      detail: "No nutrition information set.",
+      nextAction: "Set Nutrition and approve before save.",
+    };
+  }
+  return {
     key: "nutrition",
     label: "Nutrition Information",
-    severity: "not_persisted",
-    note: `Point 34 canonical: core_blocked — nutrition_panels / products.nutrition_facts not wired. ${NUTRITION_REVIEW_NOTICE}`,
-  },
+    state: "pass",
+    detail: NUTRITION_REVIEW_NOTICE,
+    nextAction: null,
+  };
+}
+
+const DATA_GAPS: LabelDataGap[] = [
   {
     key: "batch_lot_number",
     label: "Batch / Lot Number",
@@ -228,14 +269,15 @@ export function computeLabelReadiness(product: LabelReadinessProductInput): Labe
     buildQuantity(product),
     buildShelfStorage(product),
     buildLiveLegalLabelCategory(liveLegalResults),
+    buildIngredients(product),
+    buildAllergens(product),
+    buildNutrition(product),
   ];
 
   const dataGaps = getLabelDataGaps();
   const hasMissing = categories.some((c) => c.state === "missing");
   const hasWarn = categories.some((c) => c.state === "warn");
 
-  // Ingredients/allergens/nutrition are never truly persisted today; remaining legally mandatory
-  // fields without a live column still cap status at Draft. See module docblock.
   let overallStatus: LabelOverallStatus;
   if (hasMissing || dataGaps.length > 0) {
     overallStatus = "Draft";

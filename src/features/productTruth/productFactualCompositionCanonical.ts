@@ -1,13 +1,16 @@
 /**
  * Point 34 — ingredients / allergens / shelf-life / storage canonical closure.
  * Factual product composition fields only — Point 37 owns FSSAI label issuance.
+ *
+ * Core authority: `products.ingredients`, `products.allergen_warnings`, and
+ * `products.nutrition_facts` are active Central columns. AI Studio previously
+ * omitted them from generated types / save adapter — reconciled here.
  */
 
 export type FactualPersistence =
   | "products_row"
   | "structured_table"
   | "form_only"
-  | "core_blocked"
   | "pdf_import_only";
 
 export type FactualReviewState = "known" | "deferred" | "unknown";
@@ -32,18 +35,13 @@ export type FactualFieldSpec = {
   unit: string | null;
   persistence: FactualPersistence;
   reviewRequired: boolean;
-  /** Core column or structured table target when persistence is not form_only. */
   authorityTarget: string;
 };
 
-export const POINT_34_CORE_DEPENDENCIES = {
-  productTextCompliance: [
-    "products.ingredients",
-    "products.allergen_warnings",
-    "products.nutrition_facts (Central compat) OR products.nutritional_info",
-  ],
+/** Optional structured paths — not required for Point 34 text-field closure. */
+export const POINT_34_OPTIONAL_STRUCTURED_PATHS = {
   structuredIngredients: ["ingredients master + product_ingredients junction"],
-  nutritionPanels: ["nutrition_panels per product_id"],
+  nutritionPanels: ["nutrition_panels per product_id (structured macros)"],
 } as const;
 
 export const FACTUAL_FIELD_REGISTRY: ReadonlyArray<FactualFieldSpec> = [
@@ -99,31 +97,31 @@ export const FACTUAL_FIELD_REGISTRY: ReadonlyArray<FactualFieldSpec> = [
     key: "ingredients",
     label: "Ingredients",
     unit: null,
-    persistence: "core_blocked",
+    persistence: "products_row",
     reviewRequired: true,
-    authorityTarget: "products.ingredients OR product_ingredients + ingredients",
+    authorityTarget: "products.ingredients",
   },
   {
     key: "allergen_warnings",
     label: "Allergen warnings",
     unit: null,
-    persistence: "core_blocked",
+    persistence: "products_row",
     reviewRequired: true,
-    authorityTarget: "products.allergen_warnings OR ingredients.allergen_group",
+    authorityTarget: "products.allergen_warnings",
   },
   {
     key: "nutritional_info",
     label: "Nutrition information (text)",
     unit: null,
-    persistence: "core_blocked",
+    persistence: "products_row",
     reviewRequired: true,
-    authorityTarget: "products.nutritional_info OR nutrition_panels",
+    authorityTarget: "products.nutrition_facts (UI writes nutritional_info)",
   },
   {
     key: "nutrition_facts",
-    label: "Nutrition facts (Central compat)",
+    label: "Nutrition facts (Central column)",
     unit: null,
-    persistence: "core_blocked",
+    persistence: "products_row",
     reviewRequired: true,
     authorityTarget: "products.nutrition_facts",
   },
@@ -154,11 +152,16 @@ export const PERSISTED_FACTUAL_PRODUCT_COLUMNS = FACTUAL_FIELD_REGISTRY.filter(
   | "storage_instructions"
   | "temperature_requirement"
   | "thawing_instruction"
+  | "ingredients"
+  | "allergen_warnings"
+  | "nutritional_info"
+  | "nutrition_facts"
 >;
 
-export const UI_ONLY_FACTUAL_FIELDS = FACTUAL_FIELD_REGISTRY.filter(
-  (f) => f.persistence === "core_blocked" || f.persistence === "form_only",
-).map((f) => f.key);
+/** UI form keys that map to products-row columns (never sent under UI key names). */
+export const UI_TO_PRODUCTS_FACTUAL_FIELD_MAP = {
+  nutritional_info: "nutrition_facts",
+} as const;
 
 function hasText(v: unknown): boolean {
   return v != null && String(v).trim().length > 0;
@@ -204,15 +207,21 @@ export type CanonicalFactualComposition = {
     errors: string[];
     warnings: string[];
   };
-  coreDependencies: string[];
+  optionalStructuredPaths: string[];
   point37LabelAuthority: true;
 };
+
+function specForKey(key: FactualFieldKey): FactualFieldSpec {
+  const spec = FACTUAL_FIELD_REGISTRY.find((f) => f.key === key);
+  if (!spec) throw new Error(`Unknown factual field: ${key}`);
+  return spec;
+}
 
 export function resolveFactualFieldState(
   key: FactualFieldKey,
   form: Record<string, unknown>,
 ): FactualFieldState {
-  const spec = FACTUAL_FIELD_REGISTRY.find((f) => f.key === key)!;
+  const spec = specForKey(key);
   let value: string | number | null = null;
   let present = false;
 
@@ -231,12 +240,8 @@ export function resolveFactualFieldState(
   }
 
   let reviewState: FactualReviewState = "unknown";
-  if (!present) {
-    reviewState = "unknown";
-  } else if (spec.persistence === "core_blocked" || spec.persistence === "form_only") {
-    reviewState = "deferred";
-  } else {
-    reviewState = "known";
+  if (present) {
+    reviewState = spec.persistence === "products_row" ? "known" : "deferred";
   }
 
   return {
@@ -262,11 +267,7 @@ export function buildCanonicalFactualComposition(
   if (form.shelf_life_days !== "" && form.shelf_life_days != null && shelf == null) {
     errors.push("shelf_life_days must be a positive whole number of days");
   }
-  if (
-    form.frozen_shelf_life_days !== "" &&
-    form.frozen_shelf_life_days != null &&
-    frozen == null
-  ) {
+  if (form.frozen_shelf_life_days !== "" && form.frozen_shelf_life_days != null && frozen == null) {
     errors.push("frozen_shelf_life_days must be a positive whole number of days");
   }
   if (
@@ -288,24 +289,25 @@ export function buildCanonicalFactualComposition(
   }
 
   if (hasText(form.ingredients) && !hasText(form.allergen_warnings)) {
-    warnings.push("ingredients present without allergen_warnings — allergen safety review required");
+    warnings.push(
+      "ingredients present without allergen_warnings — allergen safety review required",
+    );
   }
 
-  const coreDependencies = [
-    ...POINT_34_CORE_DEPENDENCIES.productTextCompliance,
-    ...POINT_34_CORE_DEPENDENCIES.structuredIngredients,
-    ...POINT_34_CORE_DEPENDENCIES.nutritionPanels,
+  const optionalStructuredPaths = [
+    ...POINT_34_OPTIONAL_STRUCTURED_PATHS.structuredIngredients,
+    ...POINT_34_OPTIONAL_STRUCTURED_PATHS.nutritionPanels,
   ];
 
   return {
     fields,
     validation: { valid: errors.length === 0, errors, warnings },
-    coreDependencies,
+    optionalStructuredPaths,
     point37LabelAuthority: true,
   };
 }
 
-/** UI form → persisted products-row factual fields (Point 34 owned columns only). */
+/** UI form → persisted products-row factual fields (approval-gated before save). */
 export function factualCompositionToDbPayload(
   form: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -316,10 +318,13 @@ export function factualCompositionToDbPayload(
     storage_instructions: form.storage_instructions ?? null,
     temperature_requirement: form.temperature_requirement ?? null,
     thawing_instruction: form.thawing_instruction ?? null,
+    ingredients: str(form.ingredients),
+    allergen_warnings: str(form.allergen_warnings),
+    nutrition_facts: normalizeNutritionText(form),
   };
 }
 
-/** DB row → UI factual composition fields (includes form-only reads when present on row). */
+/** DB row → UI factual composition fields. */
 export function factualCompositionFromDbRow(
   data: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -369,8 +374,9 @@ export type SnapshotFactualComposition = {
     unit: string | null;
   }>;
   validation: CanonicalFactualComposition["validation"];
-  core_dependencies: string[];
+  optional_structured_paths: string[];
   nutrition_canonical_field: "nutritional_info";
+  nutrition_db_column: "nutrition_facts";
   point37_label_authority: true;
 };
 
@@ -382,7 +388,7 @@ export function serializeFactualCompositionForSnapshot(
   return {
     schema: "point34_v1",
     fields: canonical.fields.map((f) => {
-      const spec = FACTUAL_FIELD_REGISTRY.find((s) => s.key === f.key)!;
+      const spec = specForKey(f.key);
       return {
         key: f.key,
         persistence: f.persistence,
@@ -392,8 +398,9 @@ export function serializeFactualCompositionForSnapshot(
       };
     }),
     validation: canonical.validation,
-    core_dependencies: [...canonical.coreDependencies],
+    optional_structured_paths: [...canonical.optionalStructuredPaths],
     nutrition_canonical_field: "nutritional_info",
+    nutrition_db_column: "nutrition_facts",
     point37_label_authority: true,
   };
 }

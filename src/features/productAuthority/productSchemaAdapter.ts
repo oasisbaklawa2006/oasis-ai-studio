@@ -47,6 +47,7 @@ export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
 /** Columns safe to send on insert/update per generated Studio types. */
 export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
   Object.keys({
+    allergen_warnings: true,
     approximate_piece_weight_g: true,
     avg_qty_per_tray_g: true,
     b2b_price: true,
@@ -85,6 +86,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     hsn_code: true,
     id: true,
     import_confidence: true,
+    ingredients: true,
     increment_uom: true,
     increment_value: true,
     is_active: true,
@@ -104,6 +106,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     moq_value: true,
     mrp: true,
     net_weight_g: true,
+    nutrition_facts: true,
     operational_notes: true,
     pack_size: true,
     packaging_code: true,
@@ -341,8 +344,8 @@ export function formatProductSaveError(error: unknown): string {
 
 /**
  * UI form → products row (Studio canonical columns only).
- * Compliance text fields (ingredients, allergens, nutrition) are form-only until Core
- * ships products.ingredients / allergen_warnings / nutrition_facts (Point 34 canonical).
+ * Product composition text fields map to Core `products` columns (approval-gated).
+ * UI `nutritional_info` writes to `nutrition_facts` (Central compat column).
  */
 export function formToDbProductPayload(form: Record<string, unknown>): Record<string, unknown> {
   const hero = (form.hero_image_url as string) ?? null;

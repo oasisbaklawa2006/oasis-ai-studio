@@ -85,8 +85,8 @@ import {
   mapPricingRules,
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
-import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
+import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 import {
   COMPLIANCE_SENSITIVE_FIELDS,
@@ -753,8 +753,7 @@ const ProductEdit = () => {
   const complianceMetaPending = useMemo(
     () =>
       Object.values(complianceMetaMap).some(
-        (m) =>
-          (m?.source === "ai_suggestion" || m?.source === "category_rule") && !m?.approved,
+        (m) => (m?.source === "ai_suggestion" || m?.source === "category_rule") && !m?.approved,
       ),
     [complianceMetaMap],
   );
@@ -2758,8 +2757,8 @@ const ProductEdit = () => {
                   <div className="sm:col-span-3">
                     <Field label="Ingredients">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Label Designer will use
-                        structured ingredient tables.
+                        Approval-gated — persists to products.ingredients when saved with compliance
+                        approval.
                       </p>
                       <Textarea
                         rows={2}
@@ -2773,8 +2772,8 @@ const ProductEdit = () => {
                   <div className="sm:col-span-3">
                     <Field label="Allergen warnings">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Use Labels / Ingredients for
-                        durable allergen data.
+                        Approval-gated — persists to products.allergen_warnings when saved with
+                        compliance approval.
                       </p>
                       <Textarea
                         rows={2}

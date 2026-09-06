@@ -19,8 +19,8 @@ import {
   skuPackagingSegment,
 } from "@/features/productAuthority/skuGuard";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
+import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
 import { supabase } from "@/integrations/supabase/client";
 import { insertProductAliases, type ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";

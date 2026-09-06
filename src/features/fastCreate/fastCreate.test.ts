@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildHeuristicSuggestions } from "./fastCreateSuggestions";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { seedAliasesFromName } from "@/features/productLanguage/aliasSeedRules";
+import { buildHeuristicSuggestions } from "./fastCreateSuggestions";
 
 describe("fastCreateSuggestions", () => {
   it("applies category defaults and heuristic aliases without inventing ingredients/allergens", () => {

@@ -2,8 +2,8 @@ import type { PackagingTaxonomyAuthority } from "@/features/productAuthority/cat
 import type { Point36FulfillmentReadinessSnapshot } from "@/features/productAuthority/moqLeadTimeReadinessCanonical";
 import type { Point37PackagingLabelReadinessSnapshot } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
-import type { SnapshotFactualComposition } from "@/features/productTruth/productFactualCompositionCanonical";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
+import type { SnapshotFactualComposition } from "@/features/productTruth/productFactualCompositionCanonical";
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type {
   ChannelMoqRule,

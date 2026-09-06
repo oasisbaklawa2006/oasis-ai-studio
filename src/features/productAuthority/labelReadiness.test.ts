@@ -34,17 +34,24 @@ describe("computeLabelReadiness", () => {
     expect(shelf?.state).toBe("pass");
   });
 
-  it("reports ingredients/allergens/nutrition as not_persisted data gaps, not scored categories", () => {
+  it("scores composition fields as categories when present on form", () => {
+    const result = computeLabelReadiness({
+      ...COMPLETE_INPUT,
+      ingredients: "Cashew, sugar",
+      allergen_warnings: "Contains nuts",
+      nutritional_info: "Per 100g draft",
+    });
+    expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("pass");
+    expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("pass");
+    expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("pass");
+  });
+
+  it("flags missing composition fields as scored categories, not not_persisted gaps", () => {
     const result = computeLabelReadiness(COMPLETE_INPUT);
-    expect(result.categories.some((c) => c.key === "ingredients")).toBe(false);
-    expect(result.categories.some((c) => c.key === "nutrition")).toBe(false);
-    const gapKeys = result.dataGaps.map((g) => g.key);
-    expect(gapKeys).toContain("ingredients");
-    expect(gapKeys).toContain("allergen_warnings");
-    expect(gapKeys).toContain("nutrition");
-    for (const key of ["ingredients", "allergen_warnings", "nutrition"]) {
-      expect(result.dataGaps.find((g) => g.key === key)?.severity).toBe("not_persisted");
-    }
+    expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("missing");
+    expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("missing");
+    expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("missing");
+    expect(result.dataGaps.every((g) => g.severity === "no_column")).toBe(true);
   });
 
   // Full Editor's `form` state binds net_weight_g/shelf_life_days to <Input> elements,
