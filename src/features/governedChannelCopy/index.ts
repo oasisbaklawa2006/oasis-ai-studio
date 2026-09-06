@@ -1,0 +1,37 @@
+export {
+  buildHeuristicChannelSuggestions,
+  channelSuggestionsToContent,
+  CHANNEL_COPY_CHARACTER_LIMITS,
+  detectChannelFactualDrift,
+  GOVERNED_CHANNEL_COPY_DISCLAIMER,
+  GOVERNED_CHANNEL_COPY_PROMPT_VERSION,
+  isGovernedChannelCopyKey,
+  isSupportedChannel,
+  PENDING_CHANNEL_COPY_MARKER,
+  resolveChannel,
+  serializeChannelSuggestions,
+  truncateChannelCopySafely,
+  validateChannelCopyText,
+  validateChannelSource,
+  validateGovernedChannelCopy,
+  validateProviderChannelEnvelope,
+} from "./governedChannelCopyContract";
+export {
+  buildAuthoritativeChannelSource,
+  mergeChannelCopyIntoDraftContent,
+  type MockChannelCopyScenario,
+  mockChannelCopyProvider,
+} from "./governedChannelCopyProvider";
+export {
+  CHANNEL_KEY_TO_CHANNEL,
+  GOVERNED_CHANNEL_COPY_KEYS,
+  type AuthoritativeChannelSource,
+  type ChannelResolutionResult,
+  type GovernedChannel,
+  type GovernedChannelCopyKey,
+  type GovernedChannelCopyProvenance,
+  type GovernedChannelCopyService,
+  type GovernedChannelCopySuggestionResult,
+  type GovernedChannelCopyValidationResult,
+  type GovernedChannelFieldSuggestion,
+} from "./types";

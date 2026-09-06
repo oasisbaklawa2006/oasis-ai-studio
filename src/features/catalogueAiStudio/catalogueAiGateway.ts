@@ -15,6 +15,12 @@ import {
   validateGovernedHindiDescription,
   validateProviderMultilingualEnvelope,
 } from "@/features/governedMultilingual";
+import {
+  GOVERNED_CHANNEL_COPY_PROMPT_VERSION,
+  validateGovernedChannelCopy,
+  validateProviderChannelEnvelope,
+  buildAuthoritativeChannelSource,
+} from "@/features/governedChannelCopy";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
@@ -244,6 +250,35 @@ export async function generateCatalogueContentDraft(
   });
   if (!hindiCheck.ok) {
     return { ok: false, reason: hindiCheck.reason };
+  }
+  const channelSource = buildAuthoritativeChannelSource({
+    product_name: facts.productName,
+    category: facts.category,
+    subcategory: facts.subcategory,
+    pack_size: facts.packSize,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    shelf_life_days: facts.shelfLifeDays,
+    storage_instructions: facts.storageInstructions,
+  });
+  const channelCheck = validateGovernedChannelCopy(
+    {
+      b2b_sales_copy: groundingCheck.content.b2b_sales_copy,
+      export_catalogue_copy: groundingCheck.content.export_catalogue_copy,
+      whatsapp_product_message: groundingCheck.content.whatsapp_product_message,
+      storage_shelf_life_copy: groundingCheck.content.storage_shelf_life_copy,
+    },
+    channelSource,
+  );
+  if (!channelCheck.ok) {
+    return { ok: false, reason: channelCheck.reason };
+  }
+  const channelEnvelopeCheck = validateProviderChannelEnvelope({
+    ...payload,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    channel_prompt_version: GOVERNED_CHANNEL_COPY_PROMPT_VERSION,
+  });
+  if (!channelEnvelopeCheck.ok) {
+    return { ok: false, reason: channelEnvelopeCheck.reason };
   }
   return {
     ok: true,
