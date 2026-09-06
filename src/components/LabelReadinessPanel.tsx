@@ -95,7 +95,11 @@ export function LabelReadinessPanel({
               variant="outline"
               className={
                 CATEGORY_BADGE_CLASS[
-                  packagingLabelReadiness.packagingType.state === "complete" ? "pass" : "missing"
+                  packagingLabelReadiness.packagingType.state === "complete"
+                    ? "pass"
+                    : packagingLabelReadiness.packagingType.state === "not_required"
+                      ? "not_applicable"
+                      : "missing"
                 ]
               }
               title={`Canonical field: packaging_code`}

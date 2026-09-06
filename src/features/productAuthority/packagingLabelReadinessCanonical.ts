@@ -20,7 +20,10 @@
 import { hasNumericInput, hasText } from "@/features/catalogueAiStudio/catalogueFieldUtils";
 import { normalizeBarcodeInput } from "@/features/fastCreate/intake/barcodeChecksum";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
-import { buildCanonicalPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
+import {
+  buildCanonicalPackagingHierarchy,
+  type CanonicalPackagingHierarchy,
+} from "@/features/productTruth/packagingHierarchyCanonical";
 import {
   evaluatePackagingReadiness,
   normalizePackagingCode,
@@ -239,9 +242,9 @@ function evaluateHierarchyLabelLevel(
   level: HierarchyLabelLevel,
   form: Record<string, unknown>,
   saleType: SaleType,
+  hierarchy: CanonicalPackagingHierarchy,
 ): HierarchyLabelLevelResult {
   const req = getSaleTypeRequirements(saleType);
-  const hierarchy = buildCanonicalPackagingHierarchy(form);
   const publicationBlockers: string[] = [];
 
   const sellableNode = hierarchy.nodes.find((n) => n.level === "sellable_pack");
@@ -376,8 +379,9 @@ export function evaluateHierarchyLabelReadiness(
   form: Record<string, unknown>,
   saleType: SaleType,
 ): HierarchyLabelLevelResult[] {
+  const hierarchy = buildCanonicalPackagingHierarchy(form);
   return (["sellable_pack", "inner_carton", "master_carton"] as HierarchyLabelLevel[]).map(
-    (level) => evaluateHierarchyLabelLevel(level, form, saleType),
+    (level) => evaluateHierarchyLabelLevel(level, form, saleType, hierarchy),
   );
 }
 
@@ -426,6 +430,8 @@ export function evaluateArtworkLabelAssets(
       publicationBlockers.push(
         "Export label artwork missing — front label / packaging reference required",
       );
+    } else {
+      publicationBlockers.push(`Label artwork incomplete — missing: ${missing.join(", ")}`);
     }
     return {
       state: "missing",

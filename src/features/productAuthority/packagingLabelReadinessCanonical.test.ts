@@ -100,6 +100,14 @@ describe("evaluateArtworkLabelAssets", () => {
     expect(result.publicationBlockers.join(" ")).toContain("artwork");
   });
 
+  it("emits customer-facing artwork blocker when all required slots are missing for retail", () => {
+    const result = evaluateArtworkLabelAssets("retail_ready_pack", []);
+    expect(result.state).toBe("missing");
+    expect(result.publicationBlockers).toContain(
+      "Label artwork incomplete — missing: packaging_reference",
+    );
+  });
+
   it("passes when required export slots are approved", () => {
     const result = evaluateArtworkLabelAssets("export", [
       {
