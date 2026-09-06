@@ -1,6 +1,6 @@
-import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
 import type { PackagingTaxonomyAuthority } from "@/features/productAuthority/catalogueReadyGate";
 import type { Point37PackagingLabelReadinessSnapshot } from "@/features/productAuthority/packagingLabelReadinessCanonical";
+import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type {

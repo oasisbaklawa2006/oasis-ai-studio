@@ -26,7 +26,11 @@ import {
   normalizePackagingCode,
   type PackagingTaxonomyAuthority,
 } from "./catalogueReadyGate";
-import { computeLabelReadiness, getLabelDataGaps, type LabelReadinessResult } from "./labelReadiness";
+import {
+  computeLabelReadiness,
+  getLabelDataGaps,
+  type LabelReadinessResult,
+} from "./labelReadiness";
 import { getSaleTypeRequirements, type SaleType } from "./saleType";
 
 export const POINT_37_CORE_DEPENDENCIES = {
@@ -137,7 +141,9 @@ function positiveNum(v: unknown): number | null {
 function hasShadowPackagingOnly(form: Record<string, unknown>): boolean {
   const hasCode = hasText(form.packaging_code as string | null | undefined);
   if (hasCode) return false;
-  return PACKAGING_TYPE_SHADOW_FIELDS.some((field) => hasText(form[field] as string | null | undefined));
+  return PACKAGING_TYPE_SHADOW_FIELDS.some((field) =>
+    hasText(form[field] as string | null | undefined),
+  );
 }
 
 /**
@@ -370,8 +376,8 @@ export function evaluateHierarchyLabelReadiness(
   form: Record<string, unknown>,
   saleType: SaleType,
 ): HierarchyLabelLevelResult[] {
-  return (["sellable_pack", "inner_carton", "master_carton"] as HierarchyLabelLevel[]).map((level) =>
-    evaluateHierarchyLabelLevel(level, form, saleType),
+  return (["sellable_pack", "inner_carton", "master_carton"] as HierarchyLabelLevel[]).map(
+    (level) => evaluateHierarchyLabelLevel(level, form, saleType),
   );
 }
 
@@ -379,9 +385,7 @@ const EXPORT_ARTWORK_SLOTS = ["label_front_image", "packaging_reference"] as con
 const RETAIL_ARTWORK_SLOTS = ["packaging_reference"] as const;
 
 function approvedAssetTypes(assets: MediaAsset[]): string[] {
-  return assets
-    .filter((a) => a.url && a.status === "approved")
-    .map((a) => a.type);
+  return assets.filter((a) => a.url && a.status === "approved").map((a) => a.type);
 }
 
 /**
@@ -419,7 +423,9 @@ export function evaluateArtworkLabelAssets(
 
   if (missing.length === requiredSlots.length) {
     if (saleType === "export" || req.requiresExportFields) {
-      publicationBlockers.push("Export label artwork missing — front label / packaging reference required");
+      publicationBlockers.push(
+        "Export label artwork missing — front label / packaging reference required",
+      );
     }
     return {
       state: "missing",

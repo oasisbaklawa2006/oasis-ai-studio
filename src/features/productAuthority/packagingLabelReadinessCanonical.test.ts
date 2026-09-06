@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { PackagingTaxonomyAuthority } from "./catalogueReadyGate";
 import {
   evaluateArtworkLabelAssets,
   evaluateBarcodeLinkage,
@@ -7,7 +8,6 @@ import {
   evaluatePackagingTypeAuthority,
   POINT_37_CORE_DEPENDENCIES,
 } from "./packagingLabelReadinessCanonical";
-import type { PackagingTaxonomyAuthority } from "./catalogueReadyGate";
 
 const PACKAGING_AUTHORITY: PackagingTaxonomyAuthority = {
   activeCodes: new Set(["PAPERBOX", "TIN"]),

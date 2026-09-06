@@ -25,6 +25,7 @@ import {
   fastCreateFormPatchFromDraft,
   loadFastCreateDraft,
 } from "@/features/fastCreate/fastCreateDraft";
+import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
@@ -33,7 +34,6 @@ import {
 } from "@/features/productAuthority/catalogueReadyGate";
 import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
 import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
-import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { ProductTruthTabSkeleton } from "@/features/productTruth/ProductTruthTabSkeleton";
