@@ -25,6 +25,7 @@ import {
   fastCreateFormPatchFromDraft,
   loadFastCreateDraft,
 } from "@/features/fastCreate/fastCreateDraft";
+import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
@@ -32,6 +33,7 @@ import {
   packagingAuthorityFromRulesResult,
 } from "@/features/productAuthority/catalogueReadyGate";
 import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
+import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { ProductTruthTabSkeleton } from "@/features/productTruth/ProductTruthTabSkeleton";
@@ -906,6 +908,17 @@ const ProductEdit = () => {
   // Deliberately separate from readinessSnapshot/catalogue readiness above — see
   // labelReadiness.ts docblock for why they must never be merged into one toggle.
   const labelReadiness = useMemo(() => computeLabelReadiness(form), [form]);
+
+  const packagingLabelReadiness = useMemo(
+    () =>
+      evaluatePackagingLabelReadiness({
+        form,
+        saleType: saleTypeFromForm(form),
+        packagingAuthority,
+        mediaAssets: mediaAssetsFromSources({ form, productMediaRows }),
+      }),
+    [form, packagingAuthority, productMediaRows],
+  );
 
   // Hard gate for the Catalogue-ready toggle — Active stays separate and ungated. Used for
   // the visible blocker list and the save-time hard guard, both of which must treat "the
@@ -2589,7 +2602,10 @@ const ProductEdit = () => {
             )}
 
             <TabsContent value="compliance" className="space-y-6">
-              <LabelReadinessPanel readiness={labelReadiness} />
+              <LabelReadinessPanel
+                readiness={labelReadiness}
+                packagingLabelReadiness={packagingLabelReadiness}
+              />
 
               <ComplianceAiPanel
                 form={form}
