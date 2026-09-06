@@ -1,4 +1,6 @@
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
+import type { PackagingTaxonomyAuthority } from "@/features/productAuthority/catalogueReadyGate";
+import type { Point37PackagingLabelReadinessSnapshot } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type {
@@ -64,6 +66,8 @@ export type CatalogueSnapshotJson = {
   };
   uom_conversion_rules: PackagingHierarchy & Record<string, unknown>;
   packaging_hierarchy: SnapshotPackagingHierarchy;
+  /** Point 37 — packaging / label-readiness canonical block (preview-only when taxonomy unloaded). */
+  packaging_label_readiness: Point37PackagingLabelReadinessSnapshot;
   channel_rules: ChannelMoqRule[];
   pricing_rules: ChannelPriceRecord[];
   media: {
@@ -154,4 +158,6 @@ export type SnapshotGeneratorInput = {
     canonical_name?: string | null;
     alias_type?: string | null;
   }>;
+  /** When null, Point 37 packaging type validation stays fail-closed in snapshots. */
+  packagingAuthority?: PackagingTaxonomyAuthority | null;
 };

@@ -1,4 +1,5 @@
 import type { LabelReadinessResult } from "@/features/productAuthority/labelReadiness";
+import type { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import { Badge } from "@/components/ui/badge";
 
 const STATUS_BADGE_CLASS: Record<LabelReadinessResult["overallStatus"], string> = {
@@ -12,10 +13,14 @@ const CATEGORY_BADGE_CLASS: Record<string, string> = {
   pass: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-400/40",
   warn: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-400/40",
   missing: "bg-destructive/10 text-destructive border-destructive/40",
+  not_applicable: "bg-muted text-muted-foreground border-border",
 };
+
+type PackagingLabelReadinessResult = ReturnType<typeof evaluatePackagingLabelReadiness>;
 
 interface LabelReadinessPanelProps {
   readiness: LabelReadinessResult;
+  packagingLabelReadiness?: PackagingLabelReadinessResult;
 }
 
 /**
@@ -23,7 +28,10 @@ interface LabelReadinessPanelProps {
  * what catalogue readiness doesn't: whether this product can honestly move to label
  * design / packaging print, which today it never fully can (see labelReadiness.ts).
  */
-export function LabelReadinessPanel({ readiness }: LabelReadinessPanelProps) {
+export function LabelReadinessPanel({
+  readiness,
+  packagingLabelReadiness,
+}: LabelReadinessPanelProps) {
   const notPersisted = readiness.dataGaps.filter((g) => g.severity === "not_persisted");
   const noColumn = readiness.dataGaps.filter((g) => g.severity === "no_column");
 
@@ -46,6 +54,79 @@ export function LabelReadinessPanel({ readiness }: LabelReadinessPanelProps) {
           </Badge>
         ))}
       </div>
+
+      {packagingLabelReadiness && (
+        <div className="space-y-2 border-t pt-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[10px] font-semibold uppercase text-muted-foreground">
+              Packaging / label hierarchy (Point 37)
+            </p>
+            <Badge
+              variant="outline"
+              className={
+                packagingLabelReadiness.readyForLabelDesign
+                  ? CATEGORY_BADGE_CLASS.pass
+                  : CATEGORY_BADGE_CLASS.missing
+              }
+            >
+              {packagingLabelReadiness.readyForLabelDesign ? "Hierarchy ready" : "Blocked"}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {packagingLabelReadiness.hierarchyLabels.map((h) => (
+              <Badge
+                key={h.level}
+                variant="outline"
+                className={CATEGORY_BADGE_CLASS[h.state] ?? CATEGORY_BADGE_CLASS.missing}
+                title={h.detail}
+              >
+                {h.label}: {h.state.replace("_", " ")}
+              </Badge>
+            ))}
+            <Badge
+              variant="outline"
+              className={CATEGORY_BADGE_CLASS[packagingLabelReadiness.packagingType.state === "complete" ? "pass" : "missing"]}
+              title={`Canonical field: packaging_code`}
+            >
+              Packaging type: {packagingLabelReadiness.packagingType.state.replace("_", " ")}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={
+                CATEGORY_BADGE_CLASS[
+                  packagingLabelReadiness.artwork.state === "complete"
+                    ? "pass"
+                    : packagingLabelReadiness.artwork.state === "not_required"
+                      ? "not_applicable"
+                      : "warn"
+                ]
+              }
+            >
+              Artwork: {packagingLabelReadiness.artwork.state.replace("_", " ")}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={
+                CATEGORY_BADGE_CLASS[
+                  packagingLabelReadiness.barcode.state === "complete"
+                    ? "pass"
+                    : packagingLabelReadiness.barcode.state === "not_required"
+                      ? "not_applicable"
+                      : "missing"
+                ]
+              }
+            >
+              Barcode: {packagingLabelReadiness.barcode.state.replace("_", " ")}
+            </Badge>
+          </div>
+          {packagingLabelReadiness.publicationBlockers.length > 0 && (
+            <p className="text-[11px] text-destructive">
+              Blockers: {packagingLabelReadiness.publicationBlockers.slice(0, 4).join(" · ")}
+              {packagingLabelReadiness.publicationBlockers.length > 4 ? " …" : ""}
+            </p>
+          )}
+        </div>
+      )}
 
       {notPersisted.length > 0 && (
         <div className="space-y-1">

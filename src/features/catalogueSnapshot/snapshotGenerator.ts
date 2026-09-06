@@ -6,6 +6,8 @@ import {
   evaluateMediaReadiness,
   selectApprovedImageUrlsForCentral,
 } from "@/features/mediaReadiness/mediaReadinessEngine";
+import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
+import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
 import { serializePackagingHierarchyForSnapshot } from "@/features/productTruth/packagingHierarchyCanonical";
 import {
@@ -116,6 +118,13 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
       (row): row is { alias: string; alias_type: string | null; source: string | null } => !!row,
     );
 
+  const point37 = evaluatePackagingLabelReadiness({
+    form: input.form,
+    saleType: saleTypeFromForm(input.form),
+    packagingAuthority: input.packagingAuthority ?? null,
+    mediaAssets,
+  });
+
   return {
     generated_at: new Date().toISOString(),
     catalogue_product_id: input.productId,
@@ -140,6 +149,7 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
       rules: conversionRules,
     },
     packaging_hierarchy: packagingHierarchy,
+    packaging_label_readiness: point37.snapshot,
     channel_rules: input.moqRules ?? [],
     pricing_rules: input.prices ?? [],
     media: {

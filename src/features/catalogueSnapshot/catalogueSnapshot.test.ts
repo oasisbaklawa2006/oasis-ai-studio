@@ -116,6 +116,8 @@ describe("catalogueSnapshot", () => {
     expect(snap.packaging_hierarchy.schema).toBe("point33_v1");
     expect(snap.packaging_hierarchy.primary_pack).toBeTruthy();
     expect(snap.packaging_hierarchy.case_carton).toBeTruthy();
+    expect(snap.packaging_label_readiness.schema).toBe("point37_v1");
+    expect(snap.packaging_label_readiness.ready_for_label_design).toBe(false);
     expect(snap.channel_rules).toHaveLength(1);
     expect(snap.pricing_rules).toHaveLength(1);
     expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);
