@@ -10,6 +10,11 @@ import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
 import { isFieldEdited } from "./catalogueFieldEditedState";
 import type { ReadinessResult } from "./catalogueProductReadiness";
 import { CATALOGUE_AI_TONES, type CatalogueAiTone } from "./catalogueAiGateway";
+import {
+  CATALOGUE_AI_COPY_SERVICE,
+  isLegacyCatalogueAiServiceMarker,
+  type InferenceServiceId,
+} from "@/shared/ai/inferenceProvenance";
 
 /**
  * Bugbot-caught: the gate used to key off `readiness.overallLabel`, which is "Not ready" the
@@ -114,7 +119,7 @@ export function advanceAiFieldTracking(
 }
 
 export interface AiGenerationProvenance {
-  service: "oasis-ai-chat";
+  service: InferenceServiceId;
   tone: CatalogueAiTone | null;
   fields_ai_generated: CatalogueDraftContentKey[];
   fields_human_edited_after_generation: CatalogueDraftContentKey[];
@@ -141,7 +146,7 @@ export function buildAiGenerationProvenance(
     isFieldEdited(finalContent[key], baselineContent[key]),
   );
   return {
-    service: "oasis-ai-chat",
+    service: CATALOGUE_AI_COPY_SERVICE,
     tone,
     fields_ai_generated: tracking.watchedFields.filter((key) => !fieldsEditedAfterGeneration.includes(key)),
     fields_human_edited_after_generation: [
@@ -187,9 +192,9 @@ function readTone(value: unknown): CatalogueAiTone | null {
  */
 export function readPersistedAiGenerationProvenance(sourceSnapshot: unknown): AiGenerationProvenance | null {
   const blob = extractAiGenerationBlob(sourceSnapshot);
-  if (!blob || blob.service !== "oasis-ai-chat") return null;
+  if (!blob || !isLegacyCatalogueAiServiceMarker(blob.service)) return null;
   return {
-    service: "oasis-ai-chat",
+    service: CATALOGUE_AI_COPY_SERVICE,
     tone: readTone(blob.tone),
     fields_ai_generated: readContentKeyArray(blob.fields_ai_generated),
     fields_human_edited_after_generation: readContentKeyArray(blob.fields_human_edited_after_generation),
@@ -224,7 +229,7 @@ export function restoreAiGenerationState(
   sourceSnapshot: unknown,
 ): RestoredAiGeneration | null {
   const blob = extractAiGenerationBlob(sourceSnapshot);
-  if (!blob || blob.service !== "oasis-ai-chat") return null;
+  if (!blob || !isLegacyCatalogueAiServiceMarker(blob.service)) return null;
   return {
     baseline: { productId, content: loadedContent, prompts: loadedPrompts },
     tracking: {

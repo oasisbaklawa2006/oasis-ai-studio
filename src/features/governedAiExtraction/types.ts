@@ -6,7 +6,11 @@ export type GovernedAiConfidence = "high" | "medium" | "low" | "unresolved";
 
 export type GovernedAiProviderStatus = "ok" | "degraded" | "failed";
 
-export type GovernedAiService = "generate-product-attributes" | "oasis-ai-chat" | "heuristic";
+export type GovernedAiService =
+  | "generate-product-attributes"
+  | "oasis-ai-chat"
+  | "catalogue-ai-copy"
+  | "heuristic";
 
 export type GovernedAiFieldSuggestion = {
   field: ComplianceSensitiveField | "alias";
@@ -19,6 +23,9 @@ export type GovernedAiFieldSuggestion = {
 
 export type GovernedAiProvenance = {
   service: GovernedAiService;
+  provider?: string;
+  model?: string;
+  prompt_version?: string;
   provider_status: GovernedAiProviderStatus;
   used_heuristic_fallback: boolean;
   fail_closed: boolean;

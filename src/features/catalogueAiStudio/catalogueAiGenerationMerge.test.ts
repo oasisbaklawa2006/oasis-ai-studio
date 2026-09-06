@@ -141,6 +141,17 @@ describe("advanceAiFieldTracking", () => {
 });
 
 describe("buildAiGenerationProvenance", () => {
+  it("records catalogue-ai-copy as the governed service for new provenance", () => {
+    const ai = content("ai generated");
+    const provenance = buildAiGenerationProvenance(
+      ai,
+      ai,
+      tracking({ watchedFields: ["catalogue_title"] }),
+      "Informational",
+    );
+    expect(provenance.service).toBe("catalogue-ai-copy");
+  });
+
   it("classifies an untouched watched field as fields_ai_generated", () => {
     const ai = content("ai generated");
     const provenance = buildAiGenerationProvenance(
@@ -255,6 +266,7 @@ describe("readPersistedAiGenerationProvenance", () => {
       };
       const result = readPersistedAiGenerationProvenance(snapshot);
       expect(result).not.toBeNull();
+      expect(result?.service).toBe("catalogue-ai-copy");
       expect(result?.tone).toBe("Premium");
       expect(result?.fields_ai_generated).toEqual(["catalogue_title", "short_description"]);
       expect(result?.fields_human_edited_after_generation).toEqual(["long_description"]);
