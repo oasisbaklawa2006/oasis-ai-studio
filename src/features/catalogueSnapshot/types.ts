@@ -1,4 +1,5 @@
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
+import type { SnapshotProductVariantHierarchy } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type {
@@ -64,6 +65,8 @@ export type CatalogueSnapshotJson = {
   };
   uom_conversion_rules: PackagingHierarchy & Record<string, unknown>;
   packaging_hierarchy: SnapshotPackagingHierarchy;
+  /** Point 32 — sellable SKU identity; variant graph core_blocked until Core schema ships. */
+  product_variant_hierarchy: SnapshotProductVariantHierarchy;
   channel_rules: ChannelMoqRule[];
   pricing_rules: ChannelPriceRecord[];
   media: {

@@ -140,4 +140,10 @@ export type ProductTruthInput = {
     errors: string[];
     warnings: string[];
   };
+  /** Point 32 canonical variant hierarchy validation (errors block identity readiness). */
+  variantHierarchyValidation?: {
+    valid: boolean;
+    errors: string[];
+    warnings: string[];
+  };
 };

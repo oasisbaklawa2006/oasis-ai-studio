@@ -32,6 +32,7 @@ describe("FULL_EDITOR_TAB_DOMAIN_OWNERSHIP", () => {
   });
 
   it("assigns downstream owners without Point31 absorbing field domains", () => {
+    expect(resolveFullEditorTabOwner("identity")?.owner).toBe("Point32");
     expect(resolveFullEditorTabOwner("media")?.owner).toBe("Point41");
     expect(resolveFullEditorTabOwner("uom")?.owner).toBe("Point33");
     expect(resolveFullEditorTabOwner("product_truth")?.owner).toBe("Point53");

@@ -15,6 +15,7 @@ import type { MediaAsset } from "@/features/mediaReadiness/types";
 import { isPackBasedSelling } from "@/features/productAuthority/packLogic";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
+import { buildCanonicalProductVariantHierarchy } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { buildCanonicalPackagingHierarchy } from "./packagingHierarchyCanonical";
 import { packagingHierarchyFromForm } from "./packagingHierarchyFromForm";
 import type { DimensionStatus, ProductTruthInput, ReadinessBadge } from "./types";
@@ -332,6 +333,7 @@ export function productTruthInputFromForm(
       (form.primary_uom as string) ?? (form.retail_uom as string) ?? null,
     ),
     packagingHierarchyValidation: buildCanonicalPackagingHierarchy(form).validation,
+    variantHierarchyValidation: buildCanonicalProductVariantHierarchy(form).validation,
   };
 }
 
