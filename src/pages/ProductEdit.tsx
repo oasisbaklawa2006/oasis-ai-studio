@@ -63,7 +63,13 @@ import {
   labelStatusInfoLine,
   mediaGovernanceStatusLine,
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
-import { resolveProductEditTab } from "@/features/productAuthority/productEditTabs";
+import {
+  fullEditorFormDraftKey,
+  fullEditorTabStorageKey,
+  resolveFullEditorIdentity,
+  resolveFullEditorSavePath,
+  resolveFullEditorTabState,
+} from "@/features/productAuthority/fullEditorArchitecture";
 import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
 import {
   buildDimensionsText,
@@ -648,8 +654,9 @@ const ProductEdit = () => {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const duplicateFrom = searchParams.get("duplicateFrom");
-  const isNew = !id || id === "new";
-  const savedProductId = id ?? "";
+  const editorIdentity = resolveFullEditorIdentity(id);
+  const isNew = editorIdentity.kind === "create";
+  const savedProductId = editorIdentity.kind === "edit" ? editorIdentity.productId : "";
   const nav = useNavigate();
   const { roles } = useAuth();
 
@@ -672,40 +679,45 @@ const ProductEdit = () => {
   const [rpcContributorRole, setRpcContributorRole] = useState(false);
   const [languageTermsRefreshKey, setLanguageTermsRefreshKey] = useState(0);
 
-  const tabKey = `oasis_product_edit_tab_${id ?? "new"}`;
+  const tabKey = fullEditorTabStorageKey(id);
   // ?tab= lets another page (e.g. Catalogue Product AI Studio's missing-field deep-link) open
   // this product directly on the section that owns a given field. Once mounted, navigation
   // within this page still goes through setTab/localStorage as before, so it never fights the
   // operator's own tab clicks.
-  // Bugbot-caught: an unvalidated ?tab= (mistyped or an obsolete deep link) previously assigned
-  // straight to controlled tab state, leaving the Tabs control on a non-existent panel with no
-  // fallback. resolveProductEditTab() validates against the real TabsTrigger values and falls back
-  // to "identity".
   const rawDeepLinkTab = searchParams.get("tab");
-  const deepLinkTab = rawDeepLinkTab ? resolveProductEditTab(rawDeepLinkTab) : null;
-  const [tab, setTab] = useState<string>(() => {
-    if (deepLinkTab) return deepLinkTab;
-    try {
-      return localStorage.getItem(tabKey) || "identity";
-    } catch {
-      return "identity";
-    }
+  const tabState = resolveFullEditorTabState({
+    rawDeepLinkTab,
+    persistedTab: (() => {
+      try {
+        return localStorage.getItem(tabKey);
+      } catch {
+        return null;
+      }
+    })(),
+    locationKey: location.key,
+    appliedLocationKey: "",
   });
+  const deepLinkTab = tabState.deepLinkTab;
+  const [tab, setTab] = useState<string>(() => tabState.initialTab);
 
   // Bugbot-caught (twice): the initializer above only seeds `tab` on first mount, so a later
   // `?tab=` was silently ignored when React Router re-renders this same component instance (no
-  // remount) for a param-only navigation. An id/tab-value comparison isn't enough either — a
-  // repeat click of the exact same deep link (e.g. "Fix in Full Editor" for the same product+tab)
-  // leaves those values unchanged and would still be skipped. `location.key` changes on every
-  // navigation, even to an identical URL, so it reliably distinguishes "a fresh navigation
-  // happened" from "the operator clicked a tab locally" (which never touches the router).
+  // remount) for a param-only navigation. `location.key` changes on every navigation, even to an
+  // identical URL, so it reliably distinguishes "a fresh navigation happened" from "the operator
+  // clicked a tab locally" (which never touches the router).
   const appliedLocationKeyRef = useRef<string>(location.key);
   useEffect(() => {
-    if (deepLinkTab && appliedLocationKeyRef.current !== location.key) {
-      setTab(deepLinkTab);
+    const nextTabState = resolveFullEditorTabState({
+      rawDeepLinkTab,
+      persistedTab: null,
+      locationKey: location.key,
+      appliedLocationKey: appliedLocationKeyRef.current,
+    });
+    if (nextTabState.shouldApplyDeepLink && nextTabState.deepLinkTab) {
+      setTab(nextTabState.deepLinkTab);
     }
     appliedLocationKeyRef.current = location.key;
-  }, [location.key, deepLinkTab]);
+  }, [location.key, rawDeepLinkTab]);
 
   useEffect(() => {
     if (tab !== "identity" || location.hash !== "#product-language-terms") return;
@@ -736,9 +748,7 @@ const ProductEdit = () => {
   const restored = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
   const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
-  const draftKey = isNew
-    ? "catalogue_product_form_draft_new"
-    : `catalogue_product_form_draft_${id}`;
+  const draftKey = fullEditorFormDraftKey(editorIdentity);
 
   const isContributorMode = authContextContributor || rpcContributorRole;
 
@@ -1471,6 +1481,20 @@ const ProductEdit = () => {
       return;
     }
 
+    const savePath = resolveFullEditorSavePath({
+      identity: editorIdentity,
+      canDirectWrite: await canWriteProductsDirectly(roles),
+      isContributor: isContributorMode || (await isCatalogueContributor()),
+      fetchPending: productFetchPending,
+      loadedId,
+    });
+
+    if (!savePath.allowed) {
+      setSubmitError(savePath.reason);
+      toast.error(savePath.reason);
+      return;
+    }
+
     setLoading(true);
 
     const factualValidation = factualCompositionSaveValidation(form);
@@ -1508,10 +1532,7 @@ const ProductEdit = () => {
       payload[k] = k === "bom_required" ? isPackingAssembly || !!form[k] : !!form[k];
     });
 
-    const direct = await canWriteProductsDirectly(roles);
-    const contributor = isContributorMode || (await isCatalogueContributor());
-
-    if (direct) {
+    if (savePath.kind === "direct_write") {
       const safePayload = stripUnapprovedComplianceFields(
         payload,
         roles,
@@ -1605,7 +1626,7 @@ const ProductEdit = () => {
       return;
     }
 
-    if (contributor) {
+    if (savePath.kind === "contributor_draft") {
       const packPreview = getPrimaryPackPreview(payload);
 
       const optionalReviewFlags = {
@@ -1769,10 +1790,23 @@ const ProductEdit = () => {
       nav("/products");
       return;
     }
-
-    setLoading(false);
-    toast.error("Read-only mode: you do not have permission to save products.");
   };
+
+  if (editorIdentity.kind === "invalid") {
+    return (
+      <>
+        <PageHeader
+          title="Product unavailable"
+          subtitle={editorIdentity.reason}
+          actions={
+            <Button variant="outline" onClick={() => nav("/products")}>
+              Back to products
+            </Button>
+          }
+        />
+      </>
+    );
+  }
 
   return (
     <>

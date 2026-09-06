@@ -1,28 +1,13 @@
 /**
- * Maps a Catalogue Product AI Studio readiness category (all currently master-product-owned —
- * see catalogueProductReadiness.ts) to the Full Editor tab that actually owns that field, so a
- * missing-field chip can deep-link to the right place instead of always opening the product on
- * its default tab. Every key here must exist as a TabsTrigger value in ProductEdit.tsx.
+ * Maps a Catalogue Product AI Studio readiness category to the Full Editor tab that owns that
+ * field, so a missing-field chip can deep-link to the right place. Tab ownership is defined in
+ * fullEditorArchitecture.ts (Point 31 contract).
  */
-import type { ReadinessCategory } from "./catalogueProductReadiness";
-
-const CATEGORY_TO_FULL_EDITOR_TAB: Record<ReadinessCategory["key"], string> = {
-  identity: "identity",
-  sku: "identity",
-  category: "identity",
-  hero_image: "media",
-  pricing: "channels",
-  catalogue_visibility: "identity",
-  pack_size: "uom",
-  carton_packaging: "uom",
-  moq: "uom",
-  shelf_storage: "compliance",
-  export_compliance: "compliance",
-};
+import { fullEditorTabForReadinessCategory } from "@/features/productAuthority/fullEditorArchitecture";
 
 /** Full Editor tab for a readiness category key — falls back to "identity" for any unknown key. */
 export function fullEditorTabForCategory(categoryKey: string): string {
-  return CATEGORY_TO_FULL_EDITOR_TAB[categoryKey] ?? "identity";
+  return fullEditorTabForReadinessCategory(categoryKey);
 }
 
 /** Deep-link URL into the Full Editor, pre-selecting the tab that owns the given category. */
