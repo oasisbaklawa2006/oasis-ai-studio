@@ -1,4 +1,5 @@
 import type { PackagingTaxonomyAuthority } from "@/features/productAuthority/catalogueReadyGate";
+import type { Point36FulfillmentReadinessSnapshot } from "@/features/productAuthority/moqLeadTimeReadinessCanonical";
 import type { Point37PackagingLabelReadinessSnapshot } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
@@ -79,6 +80,8 @@ export type CatalogueSnapshotJson = {
     can_sync_media_to_central?: boolean;
   };
   fulfillment_transform: Record<string, unknown>;
+  /** Point 36 — MOQ / lead-time publication authority (`point36_v1` snapshot). */
+  fulfillment_readiness?: Point36FulfillmentReadinessSnapshot;
   /** Product Intelligence — read-only until product_language_terms schema ships. */
   language_intelligence: SnapshotLanguageIntelligence;
   /** Durable search aliases from product_aliases (preview / downstream discoverability). */
@@ -147,6 +150,8 @@ export type SnapshotGeneratorInput = {
   complianceMetaPending?: boolean;
   prices?: ChannelPriceRecord[];
   moqRules?: ChannelMoqRule[];
+  /** Optional BOM max lead time (days) — product-level lead time remains Core-blocked. */
+  bomMaxLeadTimeDays?: number | null;
   productMediaRows?: import("@/features/mediaReadiness/mediaAssetsFromForm").ProductMediaRow[];
   approvedBy?: string | null;
   /** Optional alias rows for language_intelligence section (read-only preview). */

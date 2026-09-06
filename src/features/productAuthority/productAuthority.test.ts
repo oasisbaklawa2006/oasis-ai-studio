@@ -291,6 +291,15 @@ describe("productSchemaAdapter", () => {
     expect(payload.carton_qty).toBe(6);
   });
 
+  it("maps product lead_time_days via live compat column (Core #209)", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Export Baklawa",
+      sku: "OAS-AS-BKL-0024",
+      lead_time_days: "14",
+    });
+    expect(payload.lead_time_days).toBe(14);
+  });
+
   it("maps structured dimensions and gram weights to live products columns", () => {
     const payload = formToDbProductPayload({
       product_name: "Gift Box",
