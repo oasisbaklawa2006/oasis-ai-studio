@@ -67,7 +67,14 @@ export function loadFastCreateDraft(): FastCreateDraftSnapshot | null {
   try {
     const raw = sessionStorage.getItem(FAST_CREATE_DRAFT_STORAGE_KEY);
     if (!raw) return null;
-    return { ...emptyFastCreateDraft(), ...(JSON.parse(raw) as Partial<FastCreateDraftSnapshot>) };
+    const parsed = {
+      ...emptyFastCreateDraft(),
+      ...(JSON.parse(raw) as Partial<FastCreateDraftSnapshot>),
+    };
+    if (typeof parsed.productName !== "string") {
+      parsed.productName = "";
+    }
+    return parsed;
   } catch {
     return null;
   }

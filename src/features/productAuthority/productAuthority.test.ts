@@ -13,6 +13,7 @@ import {
   formToDbProductPayload,
   productSaveValidationMessage,
   resolveCentralLegacyProductName,
+  sanitizeLiveProductsPayload,
   stripUnknownProductFields,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -288,6 +289,150 @@ describe("productSchemaAdapter", () => {
     expect(payload.pcs_per_pack).toBe(12);
     expect(payload.pcs_per_carton).toBe(50);
     expect(payload.carton_qty).toBe(6);
+  });
+
+  it("maps structured dimensions and gram weights to live products columns", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "22",
+      dimension_w_cm: "18",
+      dimension_h_cm: "6",
+      net_weight_g: "500",
+      gross_weight_g: "550",
+    });
+    expect(payload.dimension_l_cm).toBe(22);
+    expect(payload.dimension_w_cm).toBe(18);
+    expect(payload.dimension_h_cm).toBe(6);
+    expect(payload.product_dimensions_cm).toBe("L 22 cm × W 18 cm × H 6 cm");
+    expect(payload.net_weight_g).toBe(500);
+    expect(payload.gross_weight_g).toBe(550);
+  });
+
+  it("persists derived CBM and carton dimensions on live save after Core #199", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "100",
+      dimension_w_cm: "100",
+      dimension_h_cm: "100",
+      fixed_carton_required: true,
+    });
+    expect(payload.cbm).toBe(1);
+    expect(payload.carton_dimensions_cm).toBe("L 100 cm × W 100 cm × H 100 cm");
+    expect(payload.dimension_l_cm).toBe(100);
+  });
+
+  it("persists explicit carton_dimensions_cm text on live save", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      carton_dimensions_cm: "L 40 cm × W 30 cm × H 20 cm",
+    });
+    expect(payload.carton_dimensions_cm).toBe("L 40 cm × W 30 cm × H 20 cm");
+    expect(payload.product_dimensions_cm).toBeNull();
+  });
+
+  it("recomputes derived fields when structured dimensions change on edit", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "50",
+      dimension_w_cm: "40",
+      dimension_h_cm: "30",
+      product_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      carton_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      cbm: 0.001,
+      fixed_carton_required: true,
+    });
+    expect(payload.product_dimensions_cm).toBe("L 50 cm × W 40 cm × H 30 cm");
+    expect(payload.carton_dimensions_cm).toBe("L 50 cm × W 40 cm × H 30 cm");
+    expect(payload.cbm).toBe(0.06);
+  });
+
+  it("does not fabricate CBM when dimensions are incomplete", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "100",
+      dimension_w_cm: "100",
+    });
+    expect(payload.cbm).toBeNull();
+  });
+
+  it("clears stale hydrated CBM when one structured dimension is removed", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "100",
+      dimension_w_cm: "100",
+      dimension_h_cm: "",
+      cbm: 1,
+    });
+    expect(payload.cbm).toBeNull();
+  });
+
+  it("clears stale hydrated dims and CBM when all structured dimensions are cleared", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "",
+      dimension_w_cm: "",
+      dimension_h_cm: "",
+      product_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      cbm: 0.001,
+    });
+    expect(payload.product_dimensions_cm).toBeNull();
+    expect(payload.cbm).toBeNull();
+  });
+
+  it("uses partial structured text instead of stale hydrated product_dimensions_cm", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "22",
+      dimension_w_cm: "",
+      dimension_h_cm: "6",
+      product_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+    });
+    expect(payload.product_dimensions_cm).toBe("L 22 cm × H 6 cm");
+  });
+
+  it("clears stale hydrated carton_dimensions_cm when fixed-carton dims are cleared", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "",
+      dimension_w_cm: "",
+      dimension_h_cm: "",
+      carton_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      fixed_carton_required: true,
+    });
+    expect(payload.carton_dimensions_cm).toBeNull();
+  });
+
+  it("uses partial structured text for fixed_carton over stale hydrated carton text", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      dimension_l_cm: "22",
+      dimension_w_cm: "",
+      dimension_h_cm: "6",
+      carton_dimensions_cm: "L 10 cm × W 10 cm × H 10 cm",
+      fixed_carton_required: true,
+    });
+    expect(payload.carton_dimensions_cm).toBe("L 22 cm × H 6 cm");
+  });
+
+  it("strips gross_weight_kg via live allowlist sanitizer", () => {
+    const { payload } = sanitizeLiveProductsPayload({
+      product_name: "Gift Box",
+      sku: "OAS-AS-BKL-0001-0001",
+      gross_weight_kg: 2.5,
+      net_weight_g: 500,
+    });
+    expect(payload.gross_weight_kg).toBeUndefined();
+    expect(payload.net_weight_g).toBe(500);
   });
 
   it("formats PGRST204 schema mismatch with actionable message", () => {

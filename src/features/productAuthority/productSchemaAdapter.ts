@@ -11,6 +11,11 @@ import {
   LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
   LIVE_PRODUCTS_PRICING_FORM_KEYS,
 } from "@/features/productAuthority/liveProductsSchema";
+import {
+  deriveCbmFromCm,
+  formatDimensionsCmText,
+  resolveProductDimensionsCmText,
+} from "@/features/productAuthority/shippingDimensions";
 import { enrichPackFormFromDbRow } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { Database } from "@/integrations/supabase/types";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
@@ -207,6 +212,17 @@ function toBlank(v: unknown): string {
   return v == null ? "" : String(v);
 }
 
+function hasTextValue(v: unknown): boolean {
+  return v != null && String(v).trim().length > 0;
+}
+
+/** True when structured L/W/H controls were hydrated or edited (including cleared to ""). */
+function isStructuredDimensionTouched(...fields: unknown[]): boolean {
+  return fields.some(
+    (v) => v === "" || hasTextValue(v) || (typeof v === "number" && Number.isFinite(v)),
+  );
+}
+
 function toNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);
@@ -242,18 +258,9 @@ export function resolveCentralLegacyProductName(fields: {
   return "Untitled Product";
 }
 
+/** @deprecated Use resolveProductDimensionsCmText from shippingDimensions.ts */
 export function buildDimensionsText(form: Record<string, unknown>): string | null {
-  if (form.product_dimensions_cm) return String(form.product_dimensions_cm);
-  if (form.dimensions) return String(form.dimensions);
-  const l = form.dimension_l_cm;
-  const w = form.dimension_w_cm;
-  const h = form.dimension_h_cm;
-  if (l || w || h) {
-    return [l ? `L ${l} cm` : null, w ? `W ${w} cm` : null, h ? `H ${h} cm` : null]
-      .filter(Boolean)
-      .join(" × ");
-  }
-  return null;
+  return resolveProductDimensionsCmText(form);
 }
 
 function isPricingLeakKey(key: string): boolean {
@@ -333,7 +340,40 @@ export function formatProductSaveError(error: unknown): string {
  */
 export function formToDbProductPayload(form: Record<string, unknown>): Record<string, unknown> {
   const hero = (form.hero_image_url as string) ?? null;
-  const dims = buildDimensionsText(form);
+  const structuredText = formatDimensionsCmText(
+    form.dimension_l_cm,
+    form.dimension_w_cm,
+    form.dimension_h_cm,
+  );
+  const derivedCbm = deriveCbmFromCm(form.dimension_l_cm, form.dimension_w_cm, form.dimension_h_cm);
+  const hasCompleteStructured = derivedCbm != null;
+  const structuredTouched = isStructuredDimensionTouched(
+    form.dimension_l_cm,
+    form.dimension_w_cm,
+    form.dimension_h_cm,
+  );
+
+  const productDims = structuredTouched ? structuredText : resolveProductDimensionsCmText(form);
+
+  const cartonDims = hasCompleteStructured
+    ? toBool(form.fixed_carton_required, false)
+      ? structuredText
+      : hasTextValue(form.carton_dimensions_cm)
+        ? String(form.carton_dimensions_cm)
+        : null
+    : structuredTouched
+      ? toBool(form.fixed_carton_required, false)
+        ? structuredText
+        : hasTextValue(form.carton_dimensions_cm)
+          ? String(form.carton_dimensions_cm)
+          : null
+      : hasTextValue(form.carton_dimensions_cm)
+        ? String(form.carton_dimensions_cm)
+        : toBool(form.fixed_carton_required, false)
+          ? structuredText
+          : null;
+
+  const cbm = structuredTouched ? derivedCbm : toNum(form.cbm);
 
   const centralLegacyName = resolveCentralLegacyProductName({
     product_name: form.product_name,
@@ -398,7 +438,9 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     dimension_l_cm: toNum(form.dimension_l_cm),
     dimension_w_cm: toNum(form.dimension_w_cm),
     dimension_h_cm: toNum(form.dimension_h_cm),
-    product_dimensions_cm: dims,
+    product_dimensions_cm: productDims,
+    carton_dimensions_cm: cartonDims,
+    cbm,
     grams_per_piece: toNum(form.approximate_piece_weight_g),
     pcs_per_kg:
       toNum(form.pieces_per_kg) ??
@@ -496,6 +538,11 @@ export function dbRowToProductForm(
     product_class: toBlank(data.product_class),
     material_type: toBlank(data.material_type ?? data.material),
     product_dimensions_cm: toBlank(data.product_dimensions_cm ?? data.dimensions),
+    dimension_l_cm: toBlank(data.dimension_l_cm),
+    dimension_w_cm: toBlank(data.dimension_w_cm),
+    dimension_h_cm: toBlank(data.dimension_h_cm),
+    carton_dimensions_cm: toBlank(data.carton_dimensions_cm),
+    cbm: toBlank(data.cbm),
     // UI-only compliance text (not persisted on products row)
     ingredients: toBlank(data.ingredients),
     allergen_warnings: toBlank(data.allergen_warnings),
