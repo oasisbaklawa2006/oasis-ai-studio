@@ -141,7 +141,10 @@ function buildQuantity(p: LabelReadinessProductInput): LabelReadinessCategory {
   };
 }
 
-function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategory {
+function buildShelfStorage(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
   const hasShelf = hasNumericInput(p.shelf_life_days);
   const hasStorage = hasText(p.storage_instructions);
   if (!hasShelf && !hasStorage) {
@@ -162,6 +165,24 @@ function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategor
         ? "Storage is set, Shelf Life is blank."
         : "Shelf life is set, Storage is blank.",
       nextAction: !hasShelf ? "Set Shelf Life (days)." : "Set Storage Instructions.",
+    };
+  }
+  const shelfPendingApproval =
+    hasShelf && !isCompositionFieldApproved("shelf_life_days", options);
+  const storagePendingApproval =
+    hasStorage && !isCompositionFieldApproved("storage_instructions", options);
+  if (shelfPendingApproval || storagePendingApproval) {
+    return {
+      key: "shelf_storage",
+      label: "Shelf Life / Storage",
+      state: "warn",
+      detail:
+        shelfPendingApproval && storagePendingApproval
+          ? "Shelf life and storage instructions are pending compliance approval and will not persist on save."
+          : shelfPendingApproval
+            ? "Shelf life is pending compliance approval and will not persist on save."
+            : "Storage instructions are pending compliance approval and will not persist on save.",
+      nextAction: "Approve shelf life and storage instructions before save.",
     };
   }
   return {
@@ -327,7 +348,7 @@ export function computeLabelReadiness(
   const categories = [
     buildIdentity(product),
     buildQuantity(product),
-    buildShelfStorage(product),
+    buildShelfStorage(product, options),
     buildLiveLegalLabelCategory(liveLegalResults),
     buildIngredients(product, options),
     buildAllergens(product, options),

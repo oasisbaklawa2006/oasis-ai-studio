@@ -52,6 +52,8 @@ function editorSavePayload(
   baseline: Record<string, unknown>,
   metaMap: ComplianceFieldMetaMap,
 ): Record<string, unknown> {
+  const validation = factualCompositionSaveValidation(form);
+  if (!validation.ok) throw new Error(validation.message);
   const safe = stripUnapprovedComplianceFields(form, roles, baseline, metaMap);
   return formToDbProductPayload(safe);
 }
@@ -215,17 +217,13 @@ describe("Point34 editor save→reload certification (synthetic)", () => {
       post_processing_shelf_life_days: "0",
     };
 
-    const validation = factualCompositionSaveValidation(editorForm);
-    expect(validation.ok).toBe(false);
-    if (!validation.ok) {
-      expect(validation.message).toContain("shelf_life_days");
-      expect(validation.message).toContain("frozen_shelf_life_days");
-      expect(validation.message).toContain("post_processing_shelf_life_days");
-      return;
-    }
-
-    const savedRow = editorSavePayload(editorForm, ["owner"], {}, {});
-    expect(savedRow).toBeDefined();
+    expect(() => editorSavePayload(editorForm, ["owner"], {}, {})).toThrow(/shelf_life_days/);
+    expect(() => editorSavePayload(editorForm, ["owner"], {}, {})).toThrow(
+      /frozen_shelf_life_days/,
+    );
+    expect(() => editorSavePayload(editorForm, ["owner"], {}, {})).toThrow(
+      /post_processing_shelf_life_days/,
+    );
   });
 
   it("does not persist unapproved extended factual fields (frozen shelf, temperature, thawing)", () => {

@@ -186,5 +186,32 @@ describe("computeLabelReadiness", () => {
       expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("pass");
       expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("pass");
     });
+
+    it("warns for unapproved AI shelf_life_days when populated", () => {
+      const result = computeLabelReadiness(COMPLETE_INPUT, {
+        complianceMetaMap: { shelf_life_days: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved category-rule storage_instructions when populated", () => {
+      const result = computeLabelReadiness(COMPLETE_INPUT, {
+        complianceMetaMap: { storage_instructions: createCategoryRuleFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("warn");
+    });
+
+    it("passes shelf/storage when both fields are manually approved", () => {
+      const result = computeLabelReadiness(COMPLETE_INPUT, {
+        complianceMetaMap: {
+          shelf_life_days: createManualFieldMeta(),
+          storage_instructions: createManualFieldMeta(),
+        },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("pass");
+    });
   });
 });
