@@ -167,8 +167,7 @@ function buildShelfStorage(
       nextAction: !hasShelf ? "Set Shelf Life (days)." : "Set Storage Instructions.",
     };
   }
-  const shelfPendingApproval =
-    hasShelf && !isCompositionFieldApproved("shelf_life_days", options);
+  const shelfPendingApproval = hasShelf && !isCompositionFieldApproved("shelf_life_days", options);
   const storagePendingApproval =
     hasStorage && !isCompositionFieldApproved("storage_instructions", options);
   if (shelfPendingApproval || storagePendingApproval) {
