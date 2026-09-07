@@ -10,6 +10,17 @@ import type {
   CatalogueDraftPrompts,
   CatalogueDraftPromptKey,
 } from "./catalogueDraftTypes";
+import {
+  GOVERNED_NAMING_PROMPT_VERSION,
+} from "@/features/governedProductNaming";
+import {
+  resolveTemplateHindiDescription,
+} from "@/features/governedMultilingual";
+import {
+  buildHeuristicChannelSuggestions,
+  buildAuthoritativeChannelSource,
+  channelSuggestionsToContent,
+} from "@/features/governedChannelCopy";
 import { hasNumber, hasText } from "./catalogueFieldUtils";
 import { isMissingFieldOnlyMessage } from "./missingFieldMessage";
 
@@ -72,24 +83,6 @@ export interface DraftProductInput {
 
 const MISSING_FIELD = (field: string) => `Add missing field first: ${field}.`;
 
-interface DisplayPrice {
-  /** Clearly distinguishes an actual B2B price from an MRP fallback — never conflate the two. */
-  label: "B2B price" | "MRP";
-  amount: number;
-}
-
-function getDisplayPrice(p: DraftProductInput): DisplayPrice | null {
-  if (hasNumber(p.b2b_price)) return { label: "B2B price", amount: p.b2b_price! };
-  if (hasNumber(p.mrp)) return { label: "MRP", amount: p.mrp! };
-  return null;
-}
-
-function moqLabel(p: DraftProductInput): string | null {
-  if (hasText(p.moq_text)) return p.moq_text!.trim();
-  if (hasNumber(p.moq_value)) return `${p.moq_value}${hasText(p.moq_uom) ? ` ${p.moq_uom}` : ""}`;
-  return null;
-}
-
 function catalogueTitle(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
   const packSuffix = hasText(p.pack_size) ? ` (${p.pack_size})` : "";
@@ -125,55 +118,71 @@ function longDescription(p: DraftProductInput): string {
 }
 
 function b2bSalesCopy(p: DraftProductInput): string {
-  if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  if (!hasNumber(p.b2b_price)) {
-    return `${p.product_name} is available for wholesale. ${MISSING_FIELD("B2B price")}`;
-  }
-  const moq = moqLabel(p);
-  const moqPart = moq ? ` MOQ: ${moq}.` : " Add MOQ for a complete pitch.";
-  const uomPart = hasText(p.b2b_uom) ? `/${p.b2b_uom}` : "";
-  return `${p.product_name} — B2B base ₹${p.b2b_price}${uomPart}.${moqPart}`;
+  return resolveGovernedChannelField(p, "b2b_sales_copy");
 }
 
 function exportCatalogueCopy(p: DraftProductInput): string {
-  if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  const parts: string[] = [p.product_name!];
-  parts.push(hasText(p.hsn_code) ? `HSN ${p.hsn_code}` : MISSING_FIELD("HSN Code"));
-  parts.push(typeof p.gst_rate === "number" ? `GST ${p.gst_rate}%` : MISSING_FIELD("GST Rate"));
-  if (hasNumber(p.net_weight_g)) parts.push(`Net wt ${p.net_weight_g}g`);
-  return parts.join(" · ");
+  return resolveGovernedChannelField(p, "export_catalogue_copy");
 }
 
 function whatsappProductMessage(p: DraftProductInput): string {
-  if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  const price = getDisplayPrice(p);
-  if (!price) {
-    return `Hi! We have *${p.product_name}* available. ${MISSING_FIELD("a price (MRP or B2B price)")} Reply to know more.`;
+  return resolveGovernedChannelField(p, "whatsapp_product_message");
+}
+
+function resolveGovernedChannelField(
+  p: DraftProductInput,
+  key: "b2b_sales_copy" | "export_catalogue_copy" | "whatsapp_product_message" | "storage_shelf_life_copy",
+): string {
+  const source = draftProductInputToChannelSource(p);
+  const result = buildHeuristicChannelSuggestions(source);
+  if (!result.ok) {
+    if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
+    return result.reason;
   }
-  const uomPart = price.label === "B2B price" && hasText(p.b2b_uom) ? `/${p.b2b_uom}` : "";
-  return `Hi! We have *${p.product_name}* available — ${price.label} ₹${price.amount}${uomPart}. Reply to know more.`;
+  const content = channelSuggestionsToContent(result.suggestions);
+  return content[key];
+}
+
+function draftProductInputToChannelSource(p: DraftProductInput) {
+  return buildAuthoritativeChannelSource({
+    product_name: p.product_name?.trim() ?? "",
+    category: p.category ?? null,
+    subcategory: p.subcategory ?? null,
+    description: p.description ?? null,
+    short_description: p.short_description ?? null,
+    pack_size: p.pack_size ?? null,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    b2b_price: p.b2b_price ?? null,
+    mrp: p.mrp ?? null,
+    b2b_uom: p.b2b_uom ?? null,
+    moq_text: p.moq_text ?? null,
+    moq_value: p.moq_value ?? null,
+    moq_uom: p.moq_uom ?? null,
+    hsn_code: p.hsn_code ?? null,
+    gst_rate: p.gst_rate ?? null,
+    net_weight_g: p.net_weight_g ?? null,
+    shelf_life_days: p.shelf_life_days ?? null,
+    storage_instructions: p.storage_instructions ?? null,
+    temperature_requirement: p.temperature_requirement ?? null,
+  });
 }
 
 function hindiDescription(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  const category = hasText(p.category) ? p.category : "उत्पाद";
-  const price = getDisplayPrice(p);
-  const priceLine = price ? ` ${price.label === "B2B price" ? "B2B कीमत" : "MRP"} ₹${price.amount} है।` : "";
-  return `${p.product_name} अब उपलब्ध है (${category})।${priceLine} अधिक जानकारी के लिए संपर्क करें।\n(सरल हिंदी ड्राफ्ट — प्रमाणित अनुवाद नहीं है, भेजने से पहले जाँच लें।)`;
+  return resolveTemplateHindiDescription({
+    product_name: p.product_name!.trim(),
+    category: p.category ?? null,
+    subcategory: p.subcategory ?? null,
+    description: p.description ?? null,
+    short_description: p.short_description ?? null,
+    pack_size: p.pack_size ?? null,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    approved_hindi_description: null,
+  }).value;
 }
 
-/**
- * shelf_life_days is a plain number in this schema (unlike Central's free-text shelf_life) —
- * still guarded so a zero/blank value never silently renders as "0 days".
- */
 function storageShelfLifeCopy(p: DraftProductInput): string {
-  const hasShelf = hasNumber(p.shelf_life_days);
-  const hasStorage = hasText(p.storage_instructions) || hasText(p.temperature_requirement);
-  if (!hasShelf && !hasStorage) return MISSING_FIELD("Shelf Life and Storage Instructions");
-  const shelf = hasShelf ? `Shelf life: ${p.shelf_life_days} days.` : MISSING_FIELD("Shelf Life");
-  const storageText = [p.storage_instructions, p.temperature_requirement].filter(hasText).join(" · ");
-  const storage = hasStorage ? `Store: ${storageText}.` : MISSING_FIELD("Storage Instructions");
-  return `${shelf} ${storage}`;
+  return resolveGovernedChannelField(p, "storage_shelf_life_copy");
 }
 
 export function generateCatalogueDraftContent(product: DraftProductInput): CatalogueDraftContent {

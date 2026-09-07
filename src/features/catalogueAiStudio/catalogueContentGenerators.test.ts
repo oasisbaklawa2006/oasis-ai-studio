@@ -7,6 +7,38 @@ function content(fill: string, overrides: Partial<CatalogueDraftContent> = {}): 
   return { ...base, ...overrides };
 }
 
+describe("generateCatalogueDraftContent channel governance (Point 50)", () => {
+  it("grounds WhatsApp channel copy in approved product_name with review-only draft tone", () => {
+    const generated = generateCatalogueDraftContent({
+      product_name: "Cashew Pyramid Baklawa",
+      mrp: 750,
+    });
+    expect(generated.whatsapp_product_message).toContain("Cashew Pyramid Baklawa");
+    expect(generated.whatsapp_product_message).toContain("₹750");
+  });
+
+  it("includes authoritative HSN/GST in export channel copy", () => {
+    const generated = generateCatalogueDraftContent({
+      product_name: "Cashew Pyramid Baklawa",
+      hsn_code: "1704",
+      gst_rate: 12,
+    });
+    expect(generated.export_catalogue_copy).toContain("HSN 1704");
+    expect(generated.export_catalogue_copy).toContain("GST 12%");
+  });
+});
+
+describe("generateCatalogueDraftContent hindi governance (Point 49)", () => {
+  it("emits explicit pending marker instead of fake Hindi with embedded English product name", () => {
+    const generated = generateCatalogueDraftContent({
+      product_name: "Cashew Pyramid Baklawa",
+      category: "Baklawa",
+    });
+    expect(generated.hindi_description).toContain("pending");
+    expect(generated.hindi_description).not.toContain("Cashew Pyramid Baklawa");
+  });
+});
+
 describe("exportBundleHasMissingFieldPlaceholder (owner-smoke-test: Stage 5 export-bundle safety)", () => {
   it("returns false when every block is complete real copy", () => {
     expect(exportBundleHasMissingFieldPlaceholder(content("Complete real copy."))).toBe(false);

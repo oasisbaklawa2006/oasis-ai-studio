@@ -1,10 +1,18 @@
 import type { GovernedAiProvenance } from "@/features/governedAiExtraction";
 import { enrichFastCreateWithGovernedAi } from "@/features/governedAiExtraction";
+import {
+  buildHeuristicNamingSuggestions,
+  GOVERNED_NAMING_PROMPT_VERSION,
+  type GovernedNamingProvenance,
+} from "@/features/governedProductNaming";
+import {
+  governedAliasSeedsFromSource,
+  type GovernedMultilingualProvenance,
+} from "@/features/governedMultilingual";
 import { applyCategoryDefaults } from "@/features/productDefaults/applyDefaults";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import {
   type AliasSeed,
-  seedAliasesFromName,
   whatsappKeywordsFromAliases,
 } from "@/features/productLanguage/aliasSeedRules";
 import { supabase } from "@/integrations/supabase/client";
@@ -37,18 +45,13 @@ export type FastCreateSuggestions = {
   complianceFieldMeta?: ComplianceFieldMetaMap;
   /** Provider/runtime provenance for governed enrichment rounds. */
   extractionProvenance?: GovernedAiProvenance[];
+  /** Point 48 naming/description provenance — review-only, never publication truth. */
+  namingProvenance?: GovernedNamingProvenance;
+  /** Point 49 multilingual provenance — review-only, never publication truth. */
+  multilingualProvenance?: GovernedMultilingualProvenance;
   /** Review-only AI alias suggestions — never persisted until explicitly approved. */
   pendingAiAliases?: AliasSeed[];
 };
-
-function buildDescription(name: string, category: string, productType: string): string {
-  return `Premium Oasis ${productType || category} — ${name}. Crafted with quality ingredients for wholesale and retail catalogue use.`;
-}
-
-function buildShortDescription(name: string, productType: string): string {
-  const short = name.split(/[/,|]/)[0]?.trim() || name;
-  return `${short} — signature ${productType || "Oasis"} product.`;
-}
 
 function searchKeywordsFromForm(name: string, category: string, aliases: AliasSeed[]): string[] {
   const base = [name, category, ...aliases.map((a) => a.alias)];
@@ -66,9 +69,21 @@ export function buildHeuristicSuggestions(
 
   const category = String(formPatch.category ?? "");
   const productType = String(formPatch.product_type ?? "");
-  formPatch.short_name = productName.split(/[/,|]/)[0]?.trim() || productName.trim();
-  formPatch.description = buildDescription(productName, category, productType);
-  formPatch.short_description = buildShortDescription(productName, productType);
+  const naming = buildHeuristicNamingSuggestions({
+    product_name: productName.trim(),
+    category,
+    product_type: productType,
+    pack_size: formPatch.pack_size ? String(formPatch.pack_size) : null,
+    description: formPatch.description ? String(formPatch.description) : null,
+    short_description: formPatch.short_description ? String(formPatch.short_description) : null,
+  });
+  if (naming.ok) {
+    if (naming.suggestions.short_name) formPatch.short_name = naming.suggestions.short_name;
+    if (naming.suggestions.description) formPatch.description = naming.suggestions.description;
+    if (naming.suggestions.short_description) {
+      formPatch.short_description = naming.suggestions.short_description;
+    }
+  }
   formPatch.allergen_warnings =
     formPatch.allergen_warnings ||
     "Contains nuts, gluten, and dairy. May contain traces of sesame and soy.";
@@ -76,7 +91,19 @@ export function buildHeuristicSuggestions(
     formPatch.ingredients ||
     "Refer to batch label. Typical ingredients include nuts, sugar, clarified butter, and filo pastry.";
 
-  const aliases = seedAliasesFromName(productName);
+  const multilingualSource = {
+    product_name: productName.trim(),
+    category,
+    product_type: productType,
+    pack_size: formPatch.pack_size ? String(formPatch.pack_size) : null,
+    description: formPatch.description ? String(formPatch.description) : null,
+    short_description: formPatch.short_description ? String(formPatch.short_description) : null,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    approved_short_description: naming.ok ? naming.suggestions.short_description ?? null : null,
+    approved_description: naming.ok ? naming.suggestions.description ?? null : null,
+  };
+  const governedAliases = governedAliasSeedsFromSource(multilingualSource);
+  const aliases = governedAliases.ok ? governedAliases.aliases : [];
   const whatsappKeywords = whatsappKeywordsFromAliases(aliases);
   const piecesPerKg = formPatch.pieces_per_kg ? Number(formPatch.pieces_per_kg) : null;
   const traysPerMasterCarton =
@@ -104,6 +131,8 @@ export function buildHeuristicSuggestions(
       aiCompliance: false,
       aiAliases: false,
     },
+    namingProvenance: naming.provenance,
+    multilingualProvenance: governedAliases.provenance,
   };
 }
 
