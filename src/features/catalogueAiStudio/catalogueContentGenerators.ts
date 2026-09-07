@@ -10,6 +10,12 @@ import type {
   CatalogueDraftPrompts,
   CatalogueDraftPromptKey,
 } from "./catalogueDraftTypes";
+import {
+  GOVERNED_NAMING_PROMPT_VERSION,
+} from "@/features/governedProductNaming";
+import {
+  resolveTemplateHindiDescription,
+} from "@/features/governedMultilingual";
 import { hasNumber, hasText } from "./catalogueFieldUtils";
 import { isMissingFieldOnlyMessage } from "./missingFieldMessage";
 
@@ -156,10 +162,16 @@ function whatsappProductMessage(p: DraftProductInput): string {
 
 function hindiDescription(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  const category = hasText(p.category) ? p.category : "उत्पाद";
-  const price = getDisplayPrice(p);
-  const priceLine = price ? ` ${price.label === "B2B price" ? "B2B कीमत" : "MRP"} ₹${price.amount} है।` : "";
-  return `${p.product_name} अब उपलब्ध है (${category})।${priceLine} अधिक जानकारी के लिए संपर्क करें।\n(सरल हिंदी ड्राफ्ट — प्रमाणित अनुवाद नहीं है, भेजने से पहले जाँच लें।)`;
+  return resolveTemplateHindiDescription({
+    product_name: p.product_name!.trim(),
+    category: p.category ?? null,
+    subcategory: p.subcategory ?? null,
+    description: p.description ?? null,
+    short_description: p.short_description ?? null,
+    pack_size: p.pack_size ?? null,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    approved_hindi_description: null,
+  }).value;
 }
 
 /**

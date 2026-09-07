@@ -5,11 +5,16 @@
  * `mergeAiGeneratedContent` inside a React functional state update to stay race-safe against
  * concurrent typing while the AI request is in flight (see handleGenerateAiDraft).
  */
-import type { CatalogueDraftContent, CatalogueDraftContentKey, CatalogueDraftPrompts } from "./catalogueDraftTypes";
+
+import { CATALOGUE_AI_TONES, type CatalogueAiTone } from "./catalogueAiGateway";
+import type {
+  CatalogueDraftContent,
+  CatalogueDraftContentKey,
+  CatalogueDraftPrompts,
+} from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
 import { isFieldEdited } from "./catalogueFieldEditedState";
 import type { ReadinessResult } from "./catalogueProductReadiness";
-import { CATALOGUE_AI_TONES, type CatalogueAiTone } from "./catalogueAiGateway";
 
 /**
  * Bugbot-caught: the gate used to key off `readiness.overallLabel`, which is "Not ready" the
@@ -70,7 +75,9 @@ export function mergeAiGeneratedContent(
   for (const key of CATALOGUE_DRAFT_CONTENT_KEYS) {
     const alreadyEdited =
       lockedFields.has(key) ||
-      (activeBaselineContent ? isFieldEdited(currentContent[key], activeBaselineContent[key]) : false);
+      (activeBaselineContent
+        ? isFieldEdited(currentContent[key], activeBaselineContent[key])
+        : false);
     if (alreadyEdited) {
       preservedCount += 1;
     } else {
@@ -95,7 +102,11 @@ export function advanceAiFieldTracking(
   priorTracking: AiFieldTracking | null,
   appliedFields: CatalogueDraftContentKey[],
 ): AiFieldTracking {
-  const prior = priorTracking ?? { watchedFields: [], lockedHumanEditedFields: [], lockedPreservedFields: [] };
+  const prior = priorTracking ?? {
+    watchedFields: [],
+    lockedHumanEditedFields: [],
+    lockedPreservedFields: [],
+  };
   const appliedSet = new Set(appliedFields);
   const trackedSet = new Set([
     ...prior.watchedFields,
@@ -114,12 +125,15 @@ export function advanceAiFieldTracking(
 }
 
 export interface AiGenerationProvenance {
-  service: "oasis-ai-chat";
+  service: "catalogue-ai-copy";
   tone: CatalogueAiTone | null;
   fields_ai_generated: CatalogueDraftContentKey[];
   fields_human_edited_after_generation: CatalogueDraftContentKey[];
   fields_preserved_from_prior_edit: CatalogueDraftContentKey[];
 }
+
+const CATALOGUE_AI_PROVENANCE_SERVICES = ["catalogue-ai-copy", "oasis-ai-chat"] as const;
+type CatalogueAiProvenanceService = (typeof CATALOGUE_AI_PROVENANCE_SERVICES)[number];
 
 /**
  * A3 AI safety/provenance: records which content fields came from the governed AI gateway versus
@@ -141,9 +155,11 @@ export function buildAiGenerationProvenance(
     isFieldEdited(finalContent[key], baselineContent[key]),
   );
   return {
-    service: "oasis-ai-chat",
+    service: "catalogue-ai-copy",
     tone,
-    fields_ai_generated: tracking.watchedFields.filter((key) => !fieldsEditedAfterGeneration.includes(key)),
+    fields_ai_generated: tracking.watchedFields.filter(
+      (key) => !fieldsEditedAfterGeneration.includes(key),
+    ),
     fields_human_edited_after_generation: [
       ...tracking.lockedHumanEditedFields,
       ...fieldsEditedAfterGeneration,
@@ -153,7 +169,8 @@ export function buildAiGenerationProvenance(
 }
 
 function extractAiGenerationBlob(sourceSnapshot: unknown): Record<string, unknown> | null {
-  if (!sourceSnapshot || typeof sourceSnapshot !== "object" || Array.isArray(sourceSnapshot)) return null;
+  if (!sourceSnapshot || typeof sourceSnapshot !== "object" || Array.isArray(sourceSnapshot))
+    return null;
   const aiGeneration = (sourceSnapshot as Record<string, unknown>).ai_generation;
   if (!aiGeneration || typeof aiGeneration !== "object" || Array.isArray(aiGeneration)) return null;
   return aiGeneration as Record<string, unknown>;
@@ -165,6 +182,13 @@ function readContentKeyArray(value: unknown): CatalogueDraftContentKey[] {
     (key): key is CatalogueDraftContentKey =>
       typeof key === "string" && (CATALOGUE_DRAFT_CONTENT_KEYS as readonly string[]).includes(key),
   );
+}
+
+function readProvenanceService(value: unknown): CatalogueAiProvenanceService | null {
+  return typeof value === "string" &&
+    (CATALOGUE_AI_PROVENANCE_SERVICES as readonly string[]).includes(value)
+    ? (value as CatalogueAiProvenanceService)
+    : null;
 }
 
 function readTone(value: unknown): CatalogueAiTone | null {
@@ -185,14 +209,18 @@ function readTone(value: unknown): CatalogueAiTone | null {
  * `fields_ai_generated`/`fields_human_edited_after_generation`; treating that as "absent" wiped a
  * genuine provenance record on the next save (Bugbot regression).
  */
-export function readPersistedAiGenerationProvenance(sourceSnapshot: unknown): AiGenerationProvenance | null {
+export function readPersistedAiGenerationProvenance(
+  sourceSnapshot: unknown,
+): AiGenerationProvenance | null {
   const blob = extractAiGenerationBlob(sourceSnapshot);
-  if (!blob || blob.service !== "oasis-ai-chat") return null;
+  if (!blob || !readProvenanceService(blob.service)) return null;
   return {
-    service: "oasis-ai-chat",
+    service: "catalogue-ai-copy",
     tone: readTone(blob.tone),
     fields_ai_generated: readContentKeyArray(blob.fields_ai_generated),
-    fields_human_edited_after_generation: readContentKeyArray(blob.fields_human_edited_after_generation),
+    fields_human_edited_after_generation: readContentKeyArray(
+      blob.fields_human_edited_after_generation,
+    ),
     fields_preserved_from_prior_edit: readContentKeyArray(blob.fields_preserved_from_prior_edit),
   };
 }
@@ -224,7 +252,7 @@ export function restoreAiGenerationState(
   sourceSnapshot: unknown,
 ): RestoredAiGeneration | null {
   const blob = extractAiGenerationBlob(sourceSnapshot);
-  if (!blob || blob.service !== "oasis-ai-chat") return null;
+  if (!blob || !readProvenanceService(blob.service)) return null;
   return {
     baseline: { productId, content: loadedContent, prompts: loadedPrompts },
     tracking: {

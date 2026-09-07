@@ -7,6 +7,17 @@ function content(fill: string, overrides: Partial<CatalogueDraftContent> = {}): 
   return { ...base, ...overrides };
 }
 
+describe("generateCatalogueDraftContent hindi governance (Point 49)", () => {
+  it("emits explicit pending marker instead of fake Hindi with embedded English product name", () => {
+    const generated = generateCatalogueDraftContent({
+      product_name: "Cashew Pyramid Baklawa",
+      category: "Baklawa",
+    });
+    expect(generated.hindi_description).toContain("pending");
+    expect(generated.hindi_description).not.toContain("Cashew Pyramid Baklawa");
+  });
+});
+
 describe("exportBundleHasMissingFieldPlaceholder (owner-smoke-test: Stage 5 export-bundle safety)", () => {
   it("returns false when every block is complete real copy", () => {
     expect(exportBundleHasMissingFieldPlaceholder(content("Complete real copy."))).toBe(false);

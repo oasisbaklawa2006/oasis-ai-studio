@@ -6,6 +6,15 @@
  * never fall back to it. The feature is disabled unless VITE_CATALOGUE_AI_ENABLED is exactly true.
  */
 
+import {
+  GOVERNED_NAMING_PROMPT_VERSION,
+  validateGovernedCatalogueCopy,
+  validateProviderReviewEnvelope,
+} from "@/features/governedProductNaming";
+import {
+  validateGovernedHindiDescription,
+  validateProviderMultilingualEnvelope,
+} from "@/features/governedMultilingual";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
@@ -202,8 +211,45 @@ export async function generateCatalogueContentDraft(
   }
 
   const payload = await resp.json().catch(() => null);
-  if (payload?.ok !== true || payload.human_review_required !== true) {
-    return { ok: false, reason: "AI response could not be parsed as structured content." };
+  const envelopeCheck = validateProviderReviewEnvelope(payload);
+  if (!envelopeCheck.ok) {
+    return { ok: false, reason: envelopeCheck.reason };
   }
-  return validateAiCatalogueContent(payload.content);
+  const multilingualEnvelopeCheck = validateProviderMultilingualEnvelope({
+    ...payload,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+  });
+  if (!multilingualEnvelopeCheck.ok) {
+    return { ok: false, reason: multilingualEnvelopeCheck.reason };
+  }
+  const schemaCheck = validateAiCatalogueContent(payload.content);
+  if (!schemaCheck.ok) {
+    return schemaCheck;
+  }
+  const groundingCheck = validateGovernedCatalogueCopy(schemaCheck.content, {
+    product_name: facts.productName,
+    category: facts.category,
+    subcategory: facts.subcategory,
+    pack_size: facts.packSize,
+  });
+  if (!groundingCheck.ok) {
+    return { ok: false, reason: groundingCheck.reason };
+  }
+  const hindiCheck = validateGovernedHindiDescription(groundingCheck.content.hindi_description, {
+    product_name: facts.productName,
+    category: facts.category,
+    subcategory: facts.subcategory,
+    pack_size: facts.packSize,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+  });
+  if (!hindiCheck.ok) {
+    return { ok: false, reason: hindiCheck.reason };
+  }
+  return {
+    ok: true,
+    content: {
+      ...groundingCheck.content,
+      hindi_description: hindiCheck.value,
+    },
+  };
 }
