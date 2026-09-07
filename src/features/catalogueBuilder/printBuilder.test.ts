@@ -1,10 +1,13 @@
+import { jsPDF } from "jspdf";
 import { describe, expect, it } from "vitest";
 import {
+  applyPrintProductionPageBoxes,
   deriveDeterministicPdfFileId,
   exportCataloguePdf,
   exportPrintCataloguePdf,
   hashPdfBlob,
   isoToCanonicalPdfUtcDate,
+  parsePdfPageBoxesMm,
 } from "./pdfExport";
 import {
   applyPriceVisibilityToCard,
@@ -15,8 +18,12 @@ import {
 } from "./priceVisibility";
 import { buildPrintComposition, validateCompositionForPrint } from "./printComposition";
 import {
+  bleedBoxMm,
   contentBoxMm,
+  mediaBoxMm,
   PRINT_PAGE,
+  printPageFormatMm,
+  trimBoxMm,
   validatePrintImageQuality,
   validatePrintLayout,
 } from "./printLayout";
@@ -378,19 +385,32 @@ describe("printSnapshot", () => {
 
 describe("printLayout bleed", () => {
   it("uses trim plus 3mm bleed on each edge for media box", () => {
+    expect(printPageFormatMm()).toEqual([216, 303]);
     expect(PRINT_PAGE.mediaWidthMm).toBe(216);
     expect(PRINT_PAGE.mediaHeightMm).toBe(303);
     expect(PRINT_PAGE.mediaWidthMm).toBe(PRINT_PAGE.trimWidthMm + 2 * PRINT_PAGE.bleedMm);
     expect(PRINT_PAGE.mediaHeightMm).toBe(PRINT_PAGE.trimHeightMm + 2 * PRINT_PAGE.bleedMm);
   });
 
-  it("positions content inside bleed and safe margins", () => {
+  it("offsets trim box inside media by bleed on every edge", () => {
+    const media = mediaBoxMm();
+    const trim = trimBoxMm();
+    const bleed = bleedBoxMm();
+    expect(media).toEqual({ bottomLeftX: 0, bottomLeftY: 0, topRightX: 216, topRightY: 303 });
+    expect(trim).toEqual({ bottomLeftX: 3, bottomLeftY: 3, topRightX: 213, topRightY: 300 });
+    expect(bleed).toEqual(media);
+    expect(trim.topRightX - trim.bottomLeftX).toBe(PRINT_PAGE.trimWidthMm);
+    expect(trim.topRightY - trim.bottomLeftY).toBe(PRINT_PAGE.trimHeightMm);
+  });
+
+  it("positions live content inside trim safe margins with bleed offset", () => {
     const box = contentBoxMm();
     expect(box.left).toBe(PRINT_PAGE.bleedMm + PRINT_PAGE.safeMarginMm);
     expect(box.top).toBe(PRINT_PAGE.bleedMm + PRINT_PAGE.safeMarginMm);
-    expect(box.width).toBe(
-      PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm),
-    );
+    expect(box.width).toBe(PRINT_PAGE.trimWidthMm - 2 * PRINT_PAGE.safeMarginMm);
+    expect(box.height).toBe(PRINT_PAGE.trimHeightMm - 2 * PRINT_PAGE.safeMarginMm);
+    expect(box.right).toBe(box.left + box.width);
+    expect(box.bottom).toBe(box.top + box.height);
   });
 });
 
@@ -517,5 +537,18 @@ describe("printPdfExport", () => {
     });
     const [hashA, hashB] = await Promise.all([hashPdfBlob(blobA), hashPdfBlob(blobB)]);
     expect(hashA).toBe(hashB);
+  });
+
+  it("stamps bleed-inclusive media and trim boxes into production PDF page dictionaries", () => {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: printPageFormatMm() });
+    applyPrintProductionPageBoxes(doc);
+    const bytes = new Uint8Array(doc.output("arraybuffer") as ArrayBuffer);
+    const boxes = parsePdfPageBoxesMm(bytes);
+    expect(boxes).not.toBeNull();
+    expect(boxes!.media.widthMm).toBeCloseTo(216, 1);
+    expect(boxes!.media.heightMm).toBeCloseTo(303, 1);
+    expect(boxes!.trim.widthMm).toBeCloseTo(210, 1);
+    expect(boxes!.trim.heightMm).toBeCloseTo(297, 1);
+    expect(boxes!.trim.offsetMm).toBeCloseTo(3, 1);
   });
 });

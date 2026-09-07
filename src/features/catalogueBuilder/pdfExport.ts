@@ -1,7 +1,14 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatPriceForExport } from "./priceVisibility";
-import { contentBoxMm, PRINT_PAGE } from "./printLayout";
+import {
+  bleedBoxMm,
+  contentBoxMm,
+  type PdfPageBoxMm,
+  PRINT_PAGE,
+  printPageFormatMm,
+  trimBoxMm,
+} from "./printLayout";
 import type { PrintCatalogueSnapshot } from "./printSnapshot";
 import { getPrintTemplate, type PrintTemplateId } from "./printTemplates";
 import type { CatalogueProductCard, PrintComposition } from "./types";
@@ -179,6 +186,59 @@ export function deriveDeterministicPdfFileId(seed: string): string {
   return combined.slice(0, 32).padEnd(32, "0");
 }
 
+function toInternalPageBox(box: PdfPageBoxMm, scaleFactor: number) {
+  return {
+    bottomLeftX: box.bottomLeftX * scaleFactor,
+    bottomLeftY: box.bottomLeftY * scaleFactor,
+    topRightX: box.topRightX * scaleFactor,
+    topRightY: box.topRightY * scaleFactor,
+  };
+}
+
+/** Stamp Trim/Bleed/Crop boxes so prepress sees true 210×297 trim inside 216×303 media. */
+export function applyPrintProductionPageBoxes(doc: jsPDF): void {
+  const scaleFactor = doc.internal.scaleFactor;
+  const trim = toInternalPageBox(trimBoxMm(), scaleFactor);
+  const bleed = toInternalPageBox(bleedBoxMm(), scaleFactor);
+  const total = doc.getNumberOfPages();
+  for (let page = 1; page <= total; page++) {
+    const { pageContext } = doc.internal.getPageInfo(page);
+    pageContext.trimBox = trim;
+    pageContext.bleedBox = bleed;
+    pageContext.cropBox = trim;
+  }
+}
+
+const PT_TO_MM = 25.4 / 72;
+
+/** Parse first page Media/Trim box sizes from PDF bytes (regression helper). */
+export function parsePdfPageBoxesMm(pdfBytes: Uint8Array): {
+  media: { widthMm: number; heightMm: number };
+  trim: { widthMm: number; heightMm: number; offsetMm: number };
+} | null {
+  const text = new TextDecoder("latin1").decode(pdfBytes);
+  const mediaMatch = text.match(/\/MediaBox\s*\[([^\]]+)\]/);
+  const trimMatch = text.match(/\/TrimBox\s*\[([^\]]+)\]/);
+  if (!mediaMatch || !trimMatch) return null;
+
+  const parseBox = (raw: string) => raw.trim().split(/\s+/).map(Number);
+  const media = parseBox(mediaMatch[1]);
+  const trim = parseBox(trimMatch[1]);
+  if (media.length < 4 || trim.length < 4) return null;
+
+  return {
+    media: {
+      widthMm: (media[2] - media[0]) * PT_TO_MM,
+      heightMm: (media[3] - media[1]) * PT_TO_MM,
+    },
+    trim: {
+      widthMm: (trim[2] - trim[0]) * PT_TO_MM,
+      heightMm: (trim[3] - trim[1]) * PT_TO_MM,
+      offsetMm: trim[0] * PT_TO_MM,
+    },
+  };
+}
+
 function applyDeterministicPdfMetadata(
   doc: jsPDF,
   snapshot?: Pick<PrintCatalogueSnapshot, "contentHash" | "versionNumber" | "createdAt">,
@@ -210,15 +270,16 @@ function applyDeterministicPdfMetadata(
  */
 export async function exportPrintCataloguePdf(input: PrintPdfExportInput): Promise<Blob> {
   const template = getPrintTemplate(input.templateId);
+  const pageFormat = printPageFormatMm();
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: [PRINT_PAGE.mediaWidthMm, PRINT_PAGE.mediaHeightMm],
+    format: pageFormat,
   });
 
   for (let idx = 0; idx < input.composition.sections.length; idx++) {
     const section = input.composition.sections[idx];
-    if (idx > 0) doc.addPage([PRINT_PAGE.mediaWidthMm, PRINT_PAGE.mediaHeightMm]);
+    if (idx > 0) doc.addPage(pageFormat);
 
     switch (section.kind) {
       case "cover":
@@ -245,6 +306,7 @@ export async function exportPrintCataloguePdf(input: PrintPdfExportInput): Promi
     addPageFooter(doc, i, total, input.snapshot?.contentHash);
   }
 
+  applyPrintProductionPageBoxes(doc);
   applyDeterministicPdfMetadata(doc, input.snapshot, input.composition.collectionTitle);
 
   return doc.output("blob");

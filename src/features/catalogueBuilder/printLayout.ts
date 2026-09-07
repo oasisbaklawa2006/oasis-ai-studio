@@ -6,10 +6,52 @@ export const PRINT_PAGE = {
   bleedMm: 3,
   safeMarginMm: 12,
   /** Full media box width including bleed (for jsPDF page size). */
-  mediaWidthMm: 210 + 2 * 3,
+  get mediaWidthMm() {
+    return this.trimWidthMm + 2 * this.bleedMm;
+  },
   /** Full media box height including bleed (for jsPDF page size). */
-  mediaHeightMm: 297 + 2 * 3,
+  get mediaHeightMm() {
+    return this.trimHeightMm + 2 * this.bleedMm;
+  },
 };
+
+export type PdfPageBoxMm = {
+  bottomLeftX: number;
+  bottomLeftY: number;
+  topRightX: number;
+  topRightY: number;
+};
+
+/** jsPDF custom page format: media box including bleed on all sides. */
+export function printPageFormatMm(): [number, number] {
+  return [PRINT_PAGE.mediaWidthMm, PRINT_PAGE.mediaHeightMm];
+}
+
+/** Full physical page (media box) — origin at bottom-left of bleed area. */
+export function mediaBoxMm(): PdfPageBoxMm {
+  return {
+    bottomLeftX: 0,
+    bottomLeftY: 0,
+    topRightX: PRINT_PAGE.mediaWidthMm,
+    topRightY: PRINT_PAGE.mediaHeightMm,
+  };
+}
+
+/** Trim box offset inside the media box by bleed on each edge. */
+export function trimBoxMm(): PdfPageBoxMm {
+  const bleed = PRINT_PAGE.bleedMm;
+  return {
+    bottomLeftX: bleed,
+    bottomLeftY: bleed,
+    topRightX: bleed + PRINT_PAGE.trimWidthMm,
+    topRightY: bleed + PRINT_PAGE.trimHeightMm,
+  };
+}
+
+/** Bleed box spans the full media area for prepress handoff. */
+export function bleedBoxMm(): PdfPageBoxMm {
+  return mediaBoxMm();
+}
 
 export const MIN_PRINT_DPI = 300;
 export const MIN_IMAGE_WIDTH_PX = 1200;
@@ -98,7 +140,7 @@ export function validatePrintLayout(args: {
     );
   }
 
-  const contentWidth = PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
+  const contentWidth = PRINT_PAGE.trimWidthMm - 2 * PRINT_PAGE.safeMarginMm;
   if (contentWidth < 40) {
     issues.push("Safe area leaves insufficient content width");
   }
@@ -121,11 +163,14 @@ export function maxProductsPerProductPage(layout: "standard" | "hero" | "compact
   return rows * cols;
 }
 
-/** Bleed-inclusive coordinates for jsPDF (mm). */
+/**
+ * Live/safe content area inside trim, offset into the bleed-inclusive media box.
+ * Safe margin is measured from the trim edge, not from media edge.
+ */
 export function contentBoxMm() {
-  const left = PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm;
-  const top = PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm;
-  const width = PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
-  const height = PRINT_PAGE.trimHeightMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
+  const left = PRINT_PAGE.bleedMm + PRINT_PAGE.safeMarginMm;
+  const top = PRINT_PAGE.bleedMm + PRINT_PAGE.safeMarginMm;
+  const width = PRINT_PAGE.trimWidthMm - 2 * PRINT_PAGE.safeMarginMm;
+  const height = PRINT_PAGE.trimHeightMm - 2 * PRINT_PAGE.safeMarginMm;
   return { left, top, width, height, bottom: top + height, right: left + width };
 }
