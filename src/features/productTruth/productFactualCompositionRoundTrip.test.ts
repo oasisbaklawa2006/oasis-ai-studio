@@ -7,6 +7,7 @@ import {
   dbRowToProductForm,
   formToDbProductPayload,
 } from "@/features/productAuthority/productSchemaAdapter";
+import { factualCompositionSaveValidation } from "@/features/productTruth/productFactualCompositionCanonical";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 import {
   type ComplianceFieldMetaMap,
@@ -105,10 +106,10 @@ describe("Point34 editor save→reload certification (synthetic)", () => {
     expect(reloaded.ingredients).toBe(SYNTHETIC_SAVED_ROW.ingredients);
     expect(reloaded.allergen_warnings).toBe(SYNTHETIC_SAVED_ROW.allergen_warnings);
     expect(reloaded.nutritional_info).toBe(SYNTHETIC_SAVED_ROW.nutrition_facts);
-    expect(reloaded.shelf_life_days).toBe(90);
+    expect(reloaded.shelf_life_days).toBe("90");
     expect(reloaded.storage_instructions).toBe(SYNTHETIC_SAVED_ROW.storage_instructions);
-    expect(reloaded.frozen_shelf_life_days).toBe(180);
-    expect(reloaded.post_processing_shelf_life_days).toBe(30);
+    expect(reloaded.frozen_shelf_life_days).toBe("180");
+    expect(reloaded.post_processing_shelf_life_days).toBe("30");
   });
 
   it("does not persist unapproved AI composition suggestions (reverts to baseline)", () => {
@@ -200,5 +201,64 @@ describe("Point34 editor save→reload certification (synthetic)", () => {
     expect(reloaded.nutritional_info).toBe("");
     expect(reloaded.shelf_life_days).toBe("");
     expect(reloaded.storage_instructions).toBe("");
+  });
+
+  it("blocks invalid shelf-life from reaching products payload (save-path regression)", () => {
+    const editorForm: Record<string, unknown> = {
+      ...EDITOR_EMPTY,
+      product_name: "Invalid Shelf Life SKU",
+      sku: "OAS-AS-BKL-0099-0002",
+      main_department: "ready_goods_store",
+      production_department: "arabic_sweets",
+      shelf_life_days: "-5",
+      frozen_shelf_life_days: "2.5",
+      post_processing_shelf_life_days: "0",
+    };
+
+    const validation = factualCompositionSaveValidation(editorForm);
+    expect(validation.ok).toBe(false);
+    if (!validation.ok) {
+      expect(validation.message).toContain("shelf_life_days");
+      expect(validation.message).toContain("frozen_shelf_life_days");
+      expect(validation.message).toContain("post_processing_shelf_life_days");
+      return;
+    }
+
+    const savedRow = editorSavePayload(editorForm, ["owner"], {}, {});
+    expect(savedRow).toBeDefined();
+  });
+
+  it("does not persist unapproved extended factual fields (frozen shelf, temperature, thawing)", () => {
+    const baseline = {
+      frozen_shelf_life_days: "120",
+      post_processing_shelf_life_days: "",
+      temperature_requirement: "Ambient baseline",
+      thawing_instruction: "",
+    };
+
+    const editorForm: Record<string, unknown> = {
+      ...EDITOR_EMPTY,
+      product_name: "Extended Factual Fields",
+      sku: "OAS-AS-BKL-0099-0003",
+      main_department: "ready_goods_store",
+      production_department: "arabic_sweets",
+      frozen_shelf_life_days: "999",
+      post_processing_shelf_life_days: "45",
+      temperature_requirement: "AI invented temp",
+      thawing_instruction: "AI invented thaw",
+    };
+
+    const metaMap: ComplianceFieldMetaMap = {
+      frozen_shelf_life_days: createAiSuggestionFieldMeta(),
+      post_processing_shelf_life_days: createAiSuggestionFieldMeta(),
+      temperature_requirement: createAiSuggestionFieldMeta(),
+      thawing_instruction: createAiSuggestionFieldMeta(),
+    };
+
+    const savedRow = editorSavePayload(editorForm, ["catalogue_contributor"], baseline, metaMap);
+    expect(savedRow.frozen_shelf_life_days).toBe(120);
+    expect(savedRow.post_processing_shelf_life_days).toBeNull();
+    expect(savedRow.temperature_requirement).toBe("Ambient baseline");
+    expect(savedRow.thawing_instruction).toBeNull();
   });
 });

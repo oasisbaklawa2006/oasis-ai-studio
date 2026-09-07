@@ -185,6 +185,12 @@ function str(v: unknown): string | null {
   return s || null;
 }
 
+/** ProductEdit binds shelf-life inputs as strings — normalize DB integers on reload. */
+function shelfLifeFormValue(v: unknown): string {
+  if (v === "" || v == null) return "";
+  return String(v);
+}
+
 /** Canonical nutrition text — nutritional_info wins; nutrition_facts is Central compat alias. */
 export function normalizeNutritionText(form: Record<string, unknown>): string | null {
   const primary = str(form.nutritional_info);
@@ -307,6 +313,15 @@ export function buildCanonicalFactualComposition(
   };
 }
 
+/** Block live products writes when canonical shelf-life validation fails. */
+export function factualCompositionSaveValidation(
+  form: Record<string, unknown>,
+): { ok: true } | { ok: false; message: string } {
+  const canonical = buildCanonicalFactualComposition(form);
+  if (canonical.validation.valid) return { ok: true };
+  return { ok: false, message: canonical.validation.errors.join("; ") };
+}
+
 /** UI form → persisted products-row factual fields (approval-gated before save). */
 export function factualCompositionToDbPayload(
   form: Record<string, unknown>,
@@ -334,9 +349,9 @@ export function factualCompositionFromDbRow(
   });
 
   return {
-    shelf_life_days: data.shelf_life_days ?? "",
-    frozen_shelf_life_days: data.frozen_shelf_life_days ?? "",
-    post_processing_shelf_life_days: data.post_processing_shelf_life_days ?? "",
+    shelf_life_days: shelfLifeFormValue(data.shelf_life_days),
+    frozen_shelf_life_days: shelfLifeFormValue(data.frozen_shelf_life_days),
+    post_processing_shelf_life_days: shelfLifeFormValue(data.post_processing_shelf_life_days),
     storage_instructions: data.storage_instructions ?? "",
     temperature_requirement: data.temperature_requirement ?? "",
     thawing_instruction: data.thawing_instruction ?? "",

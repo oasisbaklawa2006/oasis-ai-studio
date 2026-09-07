@@ -4,6 +4,7 @@ import {
   factualCompositionDraftPayload,
   factualCompositionFormForSnapshot,
   factualCompositionFromDbRow,
+  factualCompositionSaveValidation,
   factualCompositionToDbPayload,
   normalizeNutritionText,
   PERSISTED_FACTUAL_PRODUCT_COLUMNS,
@@ -32,7 +33,9 @@ describe("productFactualCompositionCanonical", () => {
     expect(payload.nutrition_facts).toBe("Per 100g: energy 450 kcal");
 
     const loaded = factualCompositionFromDbRow(payload);
-    expect(loaded.shelf_life_days).toBe(90);
+    expect(loaded.shelf_life_days).toBe("90");
+    expect(loaded.frozen_shelf_life_days).toBe("180");
+    expect(loaded.post_processing_shelf_life_days).toBe("30");
     expect(loaded.ingredients).toBe("Cashew, sugar, butter");
     expect(loaded.nutritional_info).toBe("Per 100g: energy 450 kcal");
   });
@@ -94,6 +97,23 @@ describe("productFactualCompositionCanonical", () => {
     });
     expect(canonical.validation.valid).toBe(false);
     expect(canonical.validation.errors.length).toBeGreaterThan(0);
+  });
+
+  it("blocks invalid shelf-life from live save validation", () => {
+    const invalid = factualCompositionSaveValidation({
+      shelf_life_days: "-1",
+      frozen_shelf_life_days: "1.5",
+      post_processing_shelf_life_days: "0",
+    });
+    expect(invalid.ok).toBe(false);
+    if (!invalid.ok) {
+      expect(invalid.message).toContain("shelf_life_days");
+      expect(invalid.message).toContain("frozen_shelf_life_days");
+      expect(invalid.message).toContain("post_processing_shelf_life_days");
+    }
+
+    const valid = factualCompositionSaveValidation({ shelf_life_days: "90" });
+    expect(valid.ok).toBe(true);
   });
 
   it("never invents draft payload placeholders for missing allergens/nutrition", () => {

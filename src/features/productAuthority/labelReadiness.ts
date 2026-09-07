@@ -16,6 +16,11 @@
 import { hasNumericInput, hasText } from "@/features/catalogueAiStudio/catalogueFieldUtils";
 import { normalizeNutritionText } from "@/features/productTruth/productFactualCompositionCanonical";
 import {
+  type ComplianceFieldMetaMap,
+  isComplianceFieldApproved,
+} from "@/shared/ai/complianceApproval";
+import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
+import {
   buildLiveLegalLabelCategory,
   evaluateLiveLegalLabelFields,
 } from "./labelComplianceLiveColumns";
@@ -70,7 +75,20 @@ export interface LabelReadinessProductInput {
   nutrition_facts?: string | null;
 }
 
+export interface LabelReadinessOptions {
+  complianceMetaMap?: ComplianceFieldMetaMap;
+  roles?: string[];
+}
+
 const NUTRITION_REVIEW_NOTICE = "Draft nutrition data — requires compliance review.";
+
+function isCompositionFieldApproved(
+  field: ComplianceSensitiveField,
+  options?: LabelReadinessOptions,
+): boolean {
+  if (!options?.complianceMetaMap) return true;
+  return isComplianceFieldApproved(field, options.complianceMetaMap, options.roles ?? []);
+}
 
 function buildIdentity(p: LabelReadinessProductInput): LabelReadinessCategory {
   if (!hasText(p.product_name) || !hasText(p.category)) {
@@ -155,7 +173,10 @@ function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategor
   };
 }
 
-function buildIngredients(p: LabelReadinessProductInput): LabelReadinessCategory {
+function buildIngredients(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
   if (!hasText(p.ingredients)) {
     return {
       key: "ingredients",
@@ -163,6 +184,15 @@ function buildIngredients(p: LabelReadinessProductInput): LabelReadinessCategory
       state: "missing",
       detail: "No ingredient declaration set.",
       nextAction: "Set Ingredients and approve before save.",
+    };
+  }
+  if (!isCompositionFieldApproved("ingredients", options)) {
+    return {
+      key: "ingredients",
+      label: "Ingredient Declaration",
+      state: "warn",
+      detail: "Ingredient text is pending compliance approval and will not persist on save.",
+      nextAction: "Approve ingredients before save.",
     };
   }
   return {
@@ -174,7 +204,10 @@ function buildIngredients(p: LabelReadinessProductInput): LabelReadinessCategory
   };
 }
 
-function buildAllergens(p: LabelReadinessProductInput): LabelReadinessCategory {
+function buildAllergens(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
   if (!hasText(p.allergen_warnings)) {
     return {
       key: "allergen_warnings",
@@ -182,6 +215,15 @@ function buildAllergens(p: LabelReadinessProductInput): LabelReadinessCategory {
       state: "missing",
       detail: "No allergen warnings set.",
       nextAction: "Set Allergen warnings and approve before save.",
+    };
+  }
+  if (!isCompositionFieldApproved("allergen_warnings", options)) {
+    return {
+      key: "allergen_warnings",
+      label: "Allergen Declaration",
+      state: "warn",
+      detail: "Allergen warnings are pending compliance approval and will not persist on save.",
+      nextAction: "Approve allergen warnings before save.",
     };
   }
   return {
@@ -193,7 +235,10 @@ function buildAllergens(p: LabelReadinessProductInput): LabelReadinessCategory {
   };
 }
 
-function buildNutrition(p: LabelReadinessProductInput): LabelReadinessCategory {
+function buildNutrition(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
   const nutrition = normalizeNutritionText(p);
   if (!nutrition) {
     return {
@@ -202,6 +247,18 @@ function buildNutrition(p: LabelReadinessProductInput): LabelReadinessCategory {
       state: "missing",
       detail: "No nutrition information set.",
       nextAction: "Set Nutrition and approve before save.",
+    };
+  }
+  const nutritionApproved =
+    isCompositionFieldApproved("nutritional_info", options) &&
+    isCompositionFieldApproved("nutrition_facts", options);
+  if (!nutritionApproved) {
+    return {
+      key: "nutrition",
+      label: "Nutrition Information",
+      state: "warn",
+      detail: "Nutrition information is pending compliance approval and will not persist on save.",
+      nextAction: "Approve nutrition before save.",
     };
   }
   return {
@@ -262,16 +319,19 @@ export function getLabelDataGaps(): LabelDataGap[] {
   return DATA_GAPS;
 }
 
-export function computeLabelReadiness(product: LabelReadinessProductInput): LabelReadinessResult {
+export function computeLabelReadiness(
+  product: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessResult {
   const liveLegalResults = evaluateLiveLegalLabelFields(product);
   const categories = [
     buildIdentity(product),
     buildQuantity(product),
     buildShelfStorage(product),
     buildLiveLegalLabelCategory(liveLegalResults),
-    buildIngredients(product),
-    buildAllergens(product),
-    buildNutrition(product),
+    buildIngredients(product, options),
+    buildAllergens(product, options),
+    buildNutrition(product, options),
   ];
 
   const dataGaps = getLabelDataGaps();

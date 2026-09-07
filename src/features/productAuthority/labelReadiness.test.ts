@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import {
+  createAiSuggestionFieldMeta,
+  createCategoryRuleFieldMeta,
+  createManualFieldMeta,
+} from "@/shared/ai/complianceApproval";
 import { computeLabelReadiness, getLabelDataGaps } from "./labelReadiness";
 
 const COMPLETE_INPUT = {
@@ -126,5 +131,60 @@ describe("computeLabelReadiness", () => {
     });
     const legal = result.categories.find((c) => c.key === "legal_label_fields");
     expect(legal?.state).toBe("warn");
+  });
+
+  describe("approval-aware composition readiness (Point 34)", () => {
+    const compositionInput = {
+      ...COMPLETE_INPUT,
+      ingredients: "Cashew, sugar",
+      allergen_warnings: "Contains nuts",
+      nutritional_info: "Per 100g draft",
+    };
+
+    it("warns for unapproved AI ingredients", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { ingredients: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved AI allergens", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { allergen_warnings: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved AI nutrition", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { nutritional_info: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved category-rule nutrition", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { nutritional_info: createCategoryRuleFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("warn");
+    });
+
+    it("passes when composition fields are manually approved", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: {
+          ingredients: createManualFieldMeta(),
+          allergen_warnings: createManualFieldMeta(),
+          nutritional_info: createManualFieldMeta(),
+        },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("pass");
+      expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("pass");
+      expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("pass");
+    });
   });
 });

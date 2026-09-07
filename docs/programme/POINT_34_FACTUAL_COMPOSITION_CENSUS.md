@@ -32,7 +32,10 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 | Regenerated AI-side `products` types for composition columns | `src/integrations/supabase/types.ts` |
 | Added Central compat allowlist entries | `src/features/productAuthority/liveProductsSchema.ts` |
 | Wired governed persistence (`nutritional_info` → `nutrition_facts`) | `productFactualCompositionCanonical.ts` → `productSchemaAdapter.ts` |
-| Approval-gated save via existing compliance meta | `compliancePersistence.ts`, `stripUnapprovedComplianceFields` |
+| Approval-gated save via existing compliance meta | `compliancePersistence.ts`, `stripUnapprovedComplianceFields` (all persisted factual fields) |
+| Canonical shelf-life validation before live save | `factualCompositionSaveValidation` → ProductEdit save guard |
+| Approval-aware label readiness for composition | `labelReadiness.ts` + ProductEdit `complianceMetaMap` |
+| Shelf-life reload string normalization | `factualCompositionFromDbRow` |
 | Removed false `core_blocked` / Core prerequisite claims | census, `labelReadiness.ts`, canonical registry |
 
 **No Core prerequisite returned** — composition text columns are proven on live Central `products`.
@@ -90,10 +93,11 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 
 | Check | Expected |
 | --- | --- |
-| Editor save→reload certification | `productFactualCompositionRoundTrip.test.ts` — 4 synthetic cases |
+| Editor save→reload certification | `productFactualCompositionRoundTrip.test.ts` — synthetic cases incl. invalid shelf-life guard |
+| Approval-aware composition readiness | `labelReadiness.test.ts` — per-field AI/category warn regressions |
 | Snapshot approval gating | `catalogueSnapshot.test.ts` — pending vs approved factual_composition |
 | Point 34 canonical unit tests | `productFactualCompositionCanonical.test.ts` |
-| `npm test` | **925/925 PASS** (rebased on Point37 #198 main `a7fc4c8`) |
+| `npm test` | Full suite PASS (rebased on Point37 #198 main) |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS |
 | `npm run check:boundaries` | PASS |

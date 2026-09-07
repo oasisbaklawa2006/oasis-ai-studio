@@ -85,7 +85,10 @@ import {
   mapPricingRules,
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
-import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
+import {
+  factualCompositionDraftPayload,
+  factualCompositionSaveValidation,
+} from "@/features/productTruth/productFactualCompositionCanonical";
 import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 import {
@@ -916,7 +919,10 @@ const ProductEdit = () => {
 
   // Deliberately separate from readinessSnapshot/catalogue readiness above — see
   // labelReadiness.ts docblock for why they must never be merged into one toggle.
-  const labelReadiness = useMemo(() => computeLabelReadiness(form), [form]);
+  const labelReadiness = useMemo(
+    () => computeLabelReadiness(form, { complianceMetaMap, roles }),
+    [form, complianceMetaMap, roles],
+  );
 
   const packagingLabelReadiness = useMemo(
     () =>
@@ -1468,6 +1474,14 @@ const ProductEdit = () => {
     }
 
     setLoading(true);
+
+    const factualValidation = factualCompositionSaveValidation(form);
+    if (!factualValidation.ok) {
+      setLoading(false);
+      setSubmitError(factualValidation.message);
+      toast.error(factualValidation.message);
+      return;
+    }
 
     const payload: Record<string, unknown> = {
       ...form,
