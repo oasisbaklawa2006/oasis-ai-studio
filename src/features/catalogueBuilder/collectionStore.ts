@@ -24,6 +24,28 @@ const SHARES_KEY = "oasis_catalogue_share_links";
 const authorityDb =
   supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
 
+type CatalogueCollectionItemInsert =
+  ExtendedDatabase["public"]["Tables"]["catalogue_collection_items"]["Insert"];
+
+/** Map an in-memory collection item to a typed Supabase upsert row (Insert contract). */
+function collectionItemUpsertRow(
+  item: CatalogueCollectionItemRow,
+  sortOrder: number,
+): CatalogueCollectionItemInsert {
+  return {
+    id: item.id,
+    collection_id: item.collection_id,
+    product_id: item.product_id,
+    sort_order: sortOrder,
+    catalogue_version_id: item.catalogue_version_id,
+    display_name_override: item.display_name_override,
+    description_override: item.description_override,
+    price_visibility: item.price_visibility,
+    is_featured: item.is_featured,
+    created_at: item.created_at,
+  };
+}
+
 function readLocal<T>(key: string): T[] {
   try {
     const raw = localStorage.getItem(key);
@@ -252,17 +274,17 @@ export async function reorderCollectionItems(
   const originalSortOrders = new Map(items.map((item) => [item.id, item.sort_order]));
 
   try {
-    const { error } = await authorityDb.from("catalogue_collection_items").upsert(
-      updated.map((item) => ({ id: item.id, sort_order: item.sort_order })),
-      { onConflict: "id" },
-    );
+    const upsertRows = updated.map((item) => collectionItemUpsertRow(item, item.sort_order));
+    const { error } = await authorityDb
+      .from("catalogue_collection_items")
+      .upsert(upsertRows, { onConflict: "id" });
     if (error) {
       throw new Error(`Failed to reorder collection items: ${error.message}`);
     }
     return;
   } catch (err) {
     if (err instanceof Error && err.message.startsWith("Failed to reorder")) {
-      await rollbackCollectionSortOrders(originalSortOrders);
+      await rollbackCollectionSortOrders(items, originalSortOrders);
       throw err;
     }
     /* fall through to local fallback */
@@ -276,12 +298,12 @@ export async function reorderCollectionItems(
 }
 
 async function rollbackCollectionSortOrders(
+  items: CatalogueCollectionItemRow[],
   originalSortOrders: Map<string, number>,
 ): Promise<void> {
-  const rows = [...originalSortOrders.entries()].map(([id, sort_order]) => ({
-    id,
-    sort_order,
-  }));
+  const rows = items.map((item) =>
+    collectionItemUpsertRow(item, originalSortOrders.get(item.id) ?? item.sort_order),
+  );
   if (!rows.length) return;
   try {
     await authorityDb.from("catalogue_collection_items").upsert(rows, { onConflict: "id" });

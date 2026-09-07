@@ -84,17 +84,39 @@ describe("reorderCollectionItems", () => {
     upsertMock.mockResolvedValue({ error: null });
   });
 
-  it("persists reorder in a single upsert batch", async () => {
+  it("persists reorder in a single typed upsert batch", async () => {
     await reorderCollectionItems("col-1", ["p-b", "p-a"]);
 
     expect(upsertMock).toHaveBeenCalledTimes(1);
     const [rows] = upsertMock.mock.calls[0] as [
-      Array<{ id: string; sort_order: number }>,
+      Array<CatalogueCollectionItemRow & { sort_order: number }>,
       { onConflict: string },
     ];
     expect(rows).toEqual([
-      { id: "item-a", sort_order: 1 },
-      { id: "item-b", sort_order: 0 },
+      {
+        id: "item-a",
+        collection_id: "col-1",
+        product_id: "p-a",
+        catalogue_version_id: null,
+        sort_order: 1,
+        display_name_override: null,
+        description_override: null,
+        price_visibility: "visible",
+        is_featured: false,
+        created_at: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "item-b",
+        collection_id: "col-1",
+        product_id: "p-b",
+        catalogue_version_id: null,
+        sort_order: 0,
+        display_name_override: null,
+        description_override: null,
+        price_visibility: "visible",
+        is_featured: false,
+        created_at: "2026-01-01T00:00:00Z",
+      },
     ]);
   });
 
