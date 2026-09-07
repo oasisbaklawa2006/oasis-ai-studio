@@ -64,4 +64,30 @@ export type CatalogueProductCard = {
   isFeatured: boolean;
   publishable: boolean;
   blockers: string[];
+  /** Optional image dimensions for print-quality validation. */
+  imageWidthPx?: number | null;
+  imageHeightPx?: number | null;
+  /** Applied at composition time from collection item price_visibility. */
+  priceVisibilityMode?: CatalogueCollectionItemRow["price_visibility"];
+  priceLabel?: string | null;
+};
+
+export type PrintSectionKind = "cover" | "company_intro" | "contents" | "category_divider" | "product";
+
+export type PrintCompositionSection = {
+  kind: PrintSectionKind;
+  title?: string;
+  category?: string | null;
+  products?: CatalogueProductCard[];
+  pageNumber?: number;
+};
+
+export type PrintComposition = {
+  collectionId: string;
+  collectionTitle: string;
+  templateId: string;
+  variant: string;
+  sections: PrintCompositionSection[];
+  productCount: number;
+  contentsEntries: Array<{ title: string; page: number }>;
 };

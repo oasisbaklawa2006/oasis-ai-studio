@@ -13,6 +13,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 const AIStudio = lazy(() => import("./pages/AIStudio"));
 const ApprovalInbox = lazy(() => import("./pages/ApprovalInbox"));
 const Auth = lazy(() => import("./pages/Auth"));
+const CatalogueBuilder = lazy(() => import("./pages/CatalogueBuilder"));
 const CatalogueProductStudio = lazy(() => import("./pages/CatalogueProductStudio"));
 const Category1ImportStaging = lazy(() => import("./pages/Category1ImportStaging"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
@@ -152,11 +153,7 @@ const App = () => (
                     path="/admin/catalogue-builder"
                     element={
                       <RoleGate page="catalogues">
-                        <CapabilityUnavailable
-                          title="Catalogue Builder"
-                          capability="the catalogue collections persistence tables"
-                          retained="The builder implementation and product data remain retained."
-                        />
+                        <CatalogueBuilder />
                       </RoleGate>
                     }
                   />

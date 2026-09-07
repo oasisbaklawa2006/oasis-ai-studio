@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { evaluateCataloguePublishability } from "./cataloguePublishability";
 import { generateWhatsAppMiniCatalogueText } from "./whatsappPreview";
 import { exportCataloguePdf } from "./pdfExport";
+import { applyPriceVisibilityToCard } from "./priceVisibility";
 import { selectApprovedImageUrlsForCentral } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
 import type { CatalogueProductCard } from "./types";
@@ -59,6 +60,32 @@ describe("catalogueBuilder", () => {
     });
     expect(pub.publishable).toBe(false);
     expect(pub.blockers.length).toBeGreaterThan(0);
+  });
+
+  it("WhatsApp preview respects hidden price visibility", () => {
+    const hiddenCard = applyPriceVisibilityToCard(
+      {
+        productId: "1",
+        name: "Pyramid",
+        sku: "OB-1",
+        category: "Baklawa",
+        description: null,
+        imageUrl: null,
+        mrp: 1200,
+        sellingPrice: 1000,
+        moqLabel: "5 kg",
+        isFeatured: false,
+        publishable: true,
+        blockers: [],
+      },
+      "hidden",
+    );
+    const text = generateWhatsAppMiniCatalogueText({
+      title: "B2B Summer",
+      products: [hiddenCard],
+    });
+    expect(text).not.toContain("₹1000");
+    expect(text).not.toContain("MRP");
   });
 
   it("generates WhatsApp preview text", () => {

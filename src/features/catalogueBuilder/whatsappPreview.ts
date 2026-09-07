@@ -1,4 +1,5 @@
 import type { CatalogueProductCard } from "./types";
+import { formatPriceForExport } from "./priceVisibility";
 
 export function generateWhatsAppMiniCatalogueText(args: {
   title: string;
@@ -12,12 +13,7 @@ export function generateWhatsAppMiniCatalogueText(args: {
   ];
 
   for (const p of args.products.slice(0, 12)) {
-    const price =
-      p.sellingPrice != null
-        ? `₹${p.sellingPrice}`
-        : p.mrp != null
-          ? `MRP ₹${p.mrp}`
-          : "Price on request";
+    const price = formatPriceForExport(p);
     lines.push(`• *${p.name}*${p.sku ? ` (${p.sku})` : ""}`);
     lines.push(`  ${price}${p.moqLabel ? ` · MOQ ${p.moqLabel}` : ""}`);
     if (p.imageUrl) lines.push(`  ${p.imageUrl}`);

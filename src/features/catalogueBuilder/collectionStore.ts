@@ -248,6 +248,45 @@ export async function reorderCollectionItems(
   writeLocal(ITEMS_KEY, [...all, ...updated]);
 }
 
+export async function updateCollectionItem(
+  collectionId: string,
+  productId: string,
+  patch: Partial<
+    Pick<
+      CatalogueCollectionItemRow,
+      | "price_visibility"
+      | "display_name_override"
+      | "description_override"
+      | "is_featured"
+      | "catalogue_version_id"
+    >
+  >,
+): Promise<CatalogueCollectionItemRow> {
+  const items = await listCollectionItems(collectionId);
+  const existing = items.find((i) => i.product_id === productId);
+  if (!existing) throw new Error("Collection item not found");
+
+  const updated: CatalogueCollectionItemRow = { ...existing, ...patch };
+
+  try {
+    const { data, error } = await authorityDb
+      .from("catalogue_collection_items")
+      .update(patch)
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (!error && data) return data as CatalogueCollectionItemRow;
+  } catch {
+    /* fall through */
+  }
+
+  assertLocalCatalogueFallbackWrite("updateCollectionItem");
+  const all = readLocal<CatalogueCollectionItemRow>(ITEMS_KEY).filter((i) => i.id !== existing.id);
+  all.push(updated);
+  writeLocal(ITEMS_KEY, all);
+  return updated;
+}
+
 export async function createShareLinkPlaceholder(
   collectionId: string,
   shareType: CatalogueShareLinkRow["share_type"] = "view",
