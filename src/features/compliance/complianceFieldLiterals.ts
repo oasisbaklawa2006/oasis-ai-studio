@@ -63,7 +63,8 @@ export function applyAppliedComplianceFields(
     set("storage_instructions", mergedForm.storage_instructions);
   if (applied.has("temperature_requirement"))
     set("temperature_requirement", mergedForm.temperature_requirement);
-  if (applied.has("thawing_instruction")) set("thawing_instruction", mergedForm.thawing_instruction);
+  if (applied.has("thawing_instruction"))
+    set("thawing_instruction", mergedForm.thawing_instruction);
   if (applied.has("country_of_origin")) set("country_of_origin", mergedForm.country_of_origin);
   if (applied.has("legal_claims")) set("legal_claims", mergedForm.legal_claims);
   if (applied.has("export_compliance_notes")) {
