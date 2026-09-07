@@ -202,7 +202,7 @@ export function applyPrintProductionPageBoxes(doc: jsPDF): void {
   const bleed = toInternalPageBox(bleedBoxMm(), scaleFactor);
   const total = doc.getNumberOfPages();
   for (let page = 1; page <= total; page++) {
-    const { pageContext } = doc.internal.getPageInfo(page);
+    const { pageContext } = doc.getPageInfo(page);
     pageContext.trimBox = trim;
     pageContext.bleedBox = bleed;
     pageContext.cropBox = trim;
