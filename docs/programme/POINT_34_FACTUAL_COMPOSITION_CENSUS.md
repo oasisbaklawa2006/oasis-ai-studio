@@ -33,8 +33,8 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 | Added Central compat allowlist entries | `src/features/productAuthority/liveProductsSchema.ts` |
 | Wired governed persistence (`nutritional_info` → `nutrition_facts`) | `productFactualCompositionCanonical.ts` → `productSchemaAdapter.ts` |
 | Approval-gated save via existing compliance meta | `compliancePersistence.ts`, `stripUnapprovedComplianceFields` (all persisted factual fields) |
-| Canonical shelf-life validation before live save | `factualCompositionSaveValidation` → ProductEdit save guard |
-| Approval-aware label readiness for composition | `labelReadiness.ts` + ProductEdit `complianceMetaMap` |
+| Canonical shelf-life validation before live save | `factualCompositionSaveValidation` → ProductEdit form guard + `productEditDirectProductsRow` pre-write gate |
+| Approval-aware label readiness for composition + shelf/storage | `labelReadiness.ts` + ProductEdit `complianceMetaMap` |
 | Shelf-life reload string normalization | `factualCompositionFromDbRow` |
 | Removed false `core_blocked` / Core prerequisite claims | census, `labelReadiness.ts`, canonical registry |
 
@@ -93,11 +93,11 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 
 | Check | Expected |
 | --- | --- |
-| Editor save→reload certification | `productFactualCompositionRoundTrip.test.ts` — synthetic cases incl. persistence validation gate |
+| Editor save→reload certification | `productFactualCompositionRoundTrip.test.ts` + `productEditFactualCompositionPersistence.test.ts` |
 | Approval-aware composition readiness | `labelReadiness.test.ts` — per-field AI/category warn regressions incl. shelf/storage |
 | Snapshot approval gating | `catalogueSnapshot.test.ts` — pending vs approved factual_composition |
 | Point 34 canonical unit tests | `productFactualCompositionCanonical.test.ts` |
-| `npm test` | **970/970 PASS** (rebased on #200 main `512f529`) |
+| `npm test` | **975/975 PASS** (rebased on #200 main `512f529`, head `TBD`) |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS |
 | `npm run check:boundaries` | PASS |

@@ -1,12 +1,13 @@
 /**
  * Point 34 — deterministic ProductEdit save→reload certification (synthetic data only).
- * Models: compliance strip → formToDbProductPayload → db row → dbRowToProductForm.
+ * Models: validate → numeric coercion → compliance strip → direct products-row gate → reload.
  */
 import { describe, expect, it } from "vitest";
+import { dbRowToProductForm } from "@/features/productAuthority/productSchemaAdapter";
 import {
-  dbRowToProductForm,
-  formToDbProductPayload,
-} from "@/features/productAuthority/productSchemaAdapter";
+  PRODUCT_EDIT_SHELF_LIFE_NUMERIC_FIELDS,
+  productEditDirectProductsRow,
+} from "@/features/productTruth/productEditFactualCompositionPersistence";
 import { factualCompositionSaveValidation } from "@/features/productTruth/productFactualCompositionCanonical";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 import {
@@ -46,6 +47,15 @@ const SYNTHETIC_SAVED_ROW = {
   nutrition_facts: "Per 100g: energy 450 kcal",
 };
 
+function coerceShelfLifeNumericFields(form: Record<string, unknown>): Record<string, unknown> {
+  const payload = { ...form };
+  for (const field of PRODUCT_EDIT_SHELF_LIFE_NUMERIC_FIELDS) {
+    payload[field] =
+      payload[field] === "" || payload[field] == null ? null : Number(payload[field]);
+  }
+  return payload;
+}
+
 function editorSavePayload(
   form: Record<string, unknown>,
   roles: string[],
@@ -54,8 +64,9 @@ function editorSavePayload(
 ): Record<string, unknown> {
   const validation = factualCompositionSaveValidation(form);
   if (!validation.ok) throw new Error(validation.message);
-  const safe = stripUnapprovedComplianceFields(form, roles, baseline, metaMap);
-  return formToDbProductPayload(safe);
+  const payload = coerceShelfLifeNumericFields(form);
+  const safe = stripUnapprovedComplianceFields(payload, roles, baseline, metaMap);
+  return productEditDirectProductsRow(safe);
 }
 
 function editorReloadForm(dbRow: Record<string, unknown>): Record<string, unknown> {

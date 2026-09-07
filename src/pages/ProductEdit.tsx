@@ -69,7 +69,6 @@ import {
   buildDimensionsText,
   dbRowToProductForm,
   formatProductSaveError,
-  formToDbProductPayload,
   productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -85,6 +84,7 @@ import {
   mapPricingRules,
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
+import { productEditDirectProductsRow } from "@/features/productTruth/productEditFactualCompositionPersistence";
 import {
   factualCompositionDraftPayload,
   factualCompositionSaveValidation,
@@ -634,8 +634,6 @@ const dbProductToForm = (data: Record<string, unknown>): Record<string, unknown>
     bom_required: mainDepartment === "packing_assembly" ? true : !!loaded.bom_required,
   };
 };
-
-const formToProductRow = (form: Record<string, unknown>) => formToDbProductPayload(form);
 
 const pickComplianceBaseline = (form: Record<string, unknown>) => {
   const baseline: Record<string, unknown> = {};
@@ -1531,7 +1529,18 @@ const ProductEdit = () => {
         return;
       }
 
-      const productRow = formToProductRow(safePayload);
+      let productRow: Record<string, unknown>;
+      try {
+        productRow = productEditDirectProductsRow(safePayload);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Invalid factual composition for products save.";
+        setLoading(false);
+        setSubmitError(message);
+        toast.error(message);
+        return;
+      }
+
       const validation = validateProductSavePayload(productRow, isNew ? "create" : "update");
       if (!validation.ok) {
         const message = productSaveValidationMessage(validation);
@@ -1542,7 +1551,7 @@ const ProductEdit = () => {
       }
 
       // productRow is a dynamically-assembled Record<string, unknown> (built from the free-form
-      // form state via formToProductRow/formToDbProductPayload), not the generated Insert/Update
+      // form state via productEditDirectProductsRow/formToDbProductPayload), not the generated Insert/Update
       // row shape, so the generated client's excess-property check rejects it structurally even
       // though validateProductSavePayload() above already vetted its actual columns.
       const res = isNew
