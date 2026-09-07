@@ -1,4 +1,9 @@
-import { validatePrintImageQuality, validatePrintLayout } from "./printLayout";
+import { applyPriceVisibilityToCard } from "./priceVisibility";
+import {
+  maxProductsPerProductPage,
+  validatePrintImageQuality,
+  validatePrintLayout,
+} from "./printLayout";
 import type { PrintTemplateId } from "./printTemplates";
 import { getPrintTemplate } from "./printTemplates";
 import type {
@@ -82,13 +87,16 @@ export function buildPrintComposition(args: {
       page += 1;
     }
 
-    const products = entries.map((e) => e.card);
-    const pagesNeeded = Math.max(1, Math.ceil(products.length / template.productsPerPage));
+    const governedProducts = entries.map((e) =>
+      applyPriceVisibilityToCard(e.card, e.item.price_visibility),
+    );
+    const perPage = Math.min(
+      template.productsPerPage,
+      maxProductsPerProductPage(template.cardLayout),
+    );
+    const pagesNeeded = Math.max(1, Math.ceil(governedProducts.length / perPage));
     for (let p = 0; p < pagesNeeded; p++) {
-      const slice = products.slice(
-        p * template.productsPerPage,
-        (p + 1) * template.productsPerPage,
-      );
+      const slice = governedProducts.slice(p * perPage, (p + 1) * perPage);
       sections.push({
         kind: "product",
         category,

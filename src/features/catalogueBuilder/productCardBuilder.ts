@@ -11,7 +11,7 @@ import {
   mapPricingRules,
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
-import { resolveProductCardHeroUrl } from "@/lib/productImage";
+import { resolveProductCardHeroMeta } from "@/lib/productImage";
 import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 import { evaluateCataloguePublishability } from "./cataloguePublishability";
 import { applyPriceVisibilityToCard } from "./priceVisibility";
@@ -90,6 +90,8 @@ export function buildCatalogueProductCard(args: BuildProductCardArgs): Catalogue
     catalogueVersionStatus: args.catalogueVersionStatus ?? null,
   });
 
+  const heroMeta = resolveProductCardHeroMeta(product, args.mediaRows ?? []);
+
   const base: CatalogueProductCard = {
     productId: product.id,
     name: item.display_name_override?.trim() || productDisplayName(product),
@@ -100,7 +102,7 @@ export function buildCatalogueProductCard(args: BuildProductCardArgs): Catalogue
       (product.short_description as string | null) ||
       (product.description as string | null) ||
       null,
-    imageUrl: resolveProductCardHeroUrl(product, args.mediaRows ?? []),
+    imageUrl: heroMeta.url,
     mrp,
     sellingPrice,
     moqLabel: moqLabelFromProduct(product, moqRules, args.channel),
@@ -108,8 +110,8 @@ export function buildCatalogueProductCard(args: BuildProductCardArgs): Catalogue
     publishable: pub.publishable,
     blockers: pub.blockers,
     imageApproved: mediaReadiness.canPublishMedia,
-    imageWidthPx: (product.hero_image_width_px as number | null) ?? null,
-    imageHeightPx: (product.hero_image_height_px as number | null) ?? null,
+    imageWidthPx: heroMeta.widthPx,
+    imageHeightPx: heroMeta.heightPx,
   };
 
   return applyPriceVisibilityToCard(base, item.price_visibility);

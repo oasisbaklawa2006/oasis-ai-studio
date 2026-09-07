@@ -50,13 +50,7 @@ function addPageFooter(doc: jsPDF, page: number, total: number, hash?: string) {
 function renderCover(doc: jsPDF, title: string, subtitle?: string) {
   const box = contentBoxMm();
   doc.setFillColor(245, 240, 230);
-  doc.rect(
-    0,
-    0,
-    PRINT_PAGE.widthMm + 2 * PRINT_PAGE.bleedMm,
-    PRINT_PAGE.heightMm + 2 * PRINT_PAGE.bleedMm,
-    "F",
-  );
+  doc.rect(0, 0, PRINT_PAGE.mediaWidthMm, PRINT_PAGE.mediaHeightMm, "F");
   doc.setFontSize(28);
   doc.setTextColor(40, 30, 20);
   doc.text(title, box.left, box.top + 60, { maxWidth: box.width });
@@ -159,6 +153,33 @@ function renderProductPage(
   });
 }
 
+function applyDeterministicPdfMetadata(
+  doc: jsPDF,
+  snapshot?: Pick<PrintCatalogueSnapshot, "contentHash" | "versionNumber" | "createdAt">,
+  title?: string,
+) {
+  const createdAt = snapshot?.createdAt ?? "1970-01-01T00:00:00.000Z";
+  const hash = snapshot?.contentHash ?? "preview";
+  const fileId = hash
+    .replace(/^fnv1a-/, "")
+    .padStart(32, "0")
+    .slice(0, 32);
+
+  doc.setProperties({
+    title: title ?? "Oasis Print Catalogue",
+    subject: "Oasis Baklawa Print Catalogue",
+    creator: "Oasis Catalogue AI Studio",
+    keywords: `snapshot:${hash};v${snapshot?.versionNumber ?? 0}`,
+  });
+
+  if (typeof doc.setCreationDate === "function") {
+    doc.setCreationDate(new Date(createdAt));
+  }
+  if (typeof doc.setFileId === "function") {
+    doc.setFileId(fileId);
+  }
+}
+
 /**
  * Deterministic production PDF from a frozen print composition.
  * Uses snapshot metadata when provided for reproducible regeneration.
@@ -168,12 +189,12 @@ export async function exportPrintCataloguePdf(input: PrintPdfExportInput): Promi
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: PRINT_PAGE.format,
+    format: [PRINT_PAGE.mediaWidthMm, PRINT_PAGE.mediaHeightMm],
   });
 
   for (let idx = 0; idx < input.composition.sections.length; idx++) {
     const section = input.composition.sections[idx];
-    if (idx > 0) doc.addPage();
+    if (idx > 0) doc.addPage([PRINT_PAGE.mediaWidthMm, PRINT_PAGE.mediaHeightMm]);
 
     switch (section.kind) {
       case "cover":
@@ -200,15 +221,9 @@ export async function exportPrintCataloguePdf(input: PrintPdfExportInput): Promi
     addPageFooter(doc, i, total, input.snapshot?.contentHash);
   }
 
-  // Deterministic metadata — creation date from snapshot, not wall clock
-  doc.setProperties({
-    title: input.composition.collectionTitle,
-    subject: "Oasis Baklawa Print Catalogue",
-    creator: "Oasis Catalogue AI Studio",
-    keywords: `snapshot:${input.snapshot?.contentHash ?? "preview"};v${input.snapshot?.versionNumber ?? 0}`,
-  });
+  applyDeterministicPdfMetadata(doc, input.snapshot, input.composition.collectionTitle);
 
-  return doc.output("blob", { filename: `${input.composition.collectionTitle}.pdf` });
+  return doc.output("blob");
 }
 
 /**

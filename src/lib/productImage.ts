@@ -22,7 +22,10 @@ export const PRODUCT_MEDIA_ROLES = [
   "source_pdf_page",
 ] as const;
 
-export { MEDIA_TYPE_LABELS, mediaTypeLabel } from "@/features/productAuthority/productMediaPersistence";
+export {
+  MEDIA_TYPE_LABELS,
+  mediaTypeLabel,
+} from "@/features/productAuthority/productMediaPersistence";
 
 export type ProductMediaRole = (typeof PRODUCT_MEDIA_ROLES)[number];
 
@@ -64,13 +67,11 @@ export function isApprovedHeroMediaRow(row: ProductHeroMediaRow): boolean {
 
 /** Latest approved hero_image by created_at (desc). Never uses raw_photo or other types. */
 export function latestApprovedHeroUrlFromMediaRows(rows: ProductHeroMediaRow[]): string | null {
-  const heroes = rows
-    .filter(isApprovedHeroMediaRow)
-    .sort((a, b) => {
-      const ta = Date.parse(a.created_at ?? "") || 0;
-      const tb = Date.parse(b.created_at ?? "") || 0;
-      return tb - ta;
-    });
+  const heroes = rows.filter(isApprovedHeroMediaRow).sort((a, b) => {
+    const ta = Date.parse(a.created_at ?? "") || 0;
+    const tb = Date.parse(b.created_at ?? "") || 0;
+    return tb - ta;
+  });
   return trimUrl(heroes[0]?.file_url);
 }
 
@@ -82,13 +83,58 @@ export function resolveProductCardHeroUrl(
   product: ProductImageRow | null | undefined,
   mediaRows: ProductHeroMediaRow[] = [],
 ): string | null {
-  const fromMedia = latestApprovedHeroUrlFromMediaRows(mediaRows);
-  if (fromMedia) return fromMedia;
+  return resolveProductCardHeroMeta(product, mediaRows).url;
+}
+
+export type ProductCardHeroMeta = {
+  url: string | null;
+  widthPx: number | null;
+  heightPx: number | null;
+  source: "media_row" | "product_column" | null;
+};
+
+type ProductHeroDimensionRow = ProductImageRow & {
+  hero_image_width_px?: number | null;
+  hero_image_height_px?: number | null;
+};
+
+/**
+ * Resolve hero URL and dimensions from the same authoritative source.
+ * Media-row heroes do not carry dimensions in schema — dimensions are null until Core provides them.
+ * Product-column heroes may use stored width/height when the URL matches.
+ */
+export function resolveProductCardHeroMeta(
+  product: ProductHeroDimensionRow | null | undefined,
+  mediaRows: ProductHeroMediaRow[] = [],
+): ProductCardHeroMeta {
+  const heroes = mediaRows.filter(isApprovedHeroMediaRow).sort((a, b) => {
+    const ta = Date.parse(a.created_at ?? "") || 0;
+    const tb = Date.parse(b.created_at ?? "") || 0;
+    return tb - ta;
+  });
+
+  const fromMedia = trimUrl(heroes[0]?.file_url);
+  if (fromMedia) {
+    return { url: fromMedia, widthPx: null, heightPx: null, source: "media_row" };
+  }
 
   const heroCol = trimUrl(product?.hero_image_url);
-  if (heroCol) return heroCol;
+  const imageCol = trimUrl(product?.image_url);
+  const url = heroCol ?? imageCol;
+  if (!url) {
+    return { url: null, widthPx: null, heightPx: null, source: null };
+  }
 
-  return trimUrl(product?.image_url);
+  const productW = product?.hero_image_width_px ?? null;
+  const productH = product?.hero_image_height_px ?? null;
+  const urlMatchesProductColumn = url === heroCol || url === imageCol;
+
+  return {
+    url,
+    widthPx: urlMatchesProductColumn ? productW : null,
+    heightPx: urlMatchesProductColumn ? productH : null,
+    source: "product_column",
+  };
 }
 
 /** Unified hero URL — Central writes `image_url`; AI Studio media uploader writes `hero_image_url`. */

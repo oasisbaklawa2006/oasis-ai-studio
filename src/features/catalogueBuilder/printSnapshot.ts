@@ -32,12 +32,50 @@ function stableStringify(value: unknown): string {
   return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
 }
 
+function hashableCard(c: CatalogueProductCard) {
+  return {
+    productId: c.productId,
+    name: c.name,
+    sku: c.sku,
+    category: c.category,
+    description: c.description,
+    mrp: c.mrp,
+    sellingPrice: c.sellingPrice,
+    moqLabel: c.moqLabel,
+    priceVisibilityMode: c.priceVisibilityMode,
+    priceLabel: c.priceLabel,
+    imageUrl: c.imageUrl,
+    imageApproved: c.imageApproved,
+    imageWidthPx: c.imageWidthPx,
+    imageHeightPx: c.imageHeightPx,
+  };
+}
+
+function hashableComposition(composition: PrintComposition) {
+  return {
+    collectionId: composition.collectionId,
+    collectionTitle: composition.collectionTitle,
+    templateId: composition.templateId,
+    variant: composition.variant,
+    productCount: composition.productCount,
+    contentsEntries: composition.contentsEntries,
+    sections: composition.sections.map((s) => ({
+      kind: s.kind,
+      title: s.title,
+      category: s.category,
+      pageNumber: s.pageNumber,
+      products: s.products?.map(hashableCard),
+    })),
+  };
+}
+
 /** Deterministic FNV-1a hash for reproducibility checks. */
 export function hashPrintSnapshotContent(input: {
   collection: CatalogueCollectionRow;
   items: CatalogueCollectionItemRow[];
   cards: CatalogueProductCard[];
   templateId: PrintTemplateId;
+  composition: PrintComposition;
 }): string {
   const payload = stableStringify({
     collection: {
@@ -55,17 +93,9 @@ export function hashPrintSnapshotContent(input: {
       is_featured: i.is_featured,
       catalogue_version_id: i.catalogue_version_id,
     })),
-    cards: input.cards.map((c) => ({
-      productId: c.productId,
-      name: c.name,
-      sku: c.sku,
-      category: c.category,
-      mrp: c.mrp,
-      sellingPrice: c.sellingPrice,
-      priceVisibilityMode: c.priceVisibilityMode,
-      imageUrl: c.imageUrl,
-    })),
+    cards: input.cards.map(hashableCard),
     templateId: input.templateId,
+    composition: hashableComposition(input.composition),
   });
 
   let hash = 0x811c9dc5;
@@ -96,6 +126,7 @@ export function createPrintCatalogueSnapshot(args: {
     items: args.items,
     cards: args.cards,
     templateId: args.templateId,
+    composition: args.composition,
   });
 
   return {
@@ -120,6 +151,7 @@ export function verifySnapshotIntegrity(snapshot: PrintCatalogueSnapshot): boole
     items: snapshot.items,
     cards: snapshot.cards,
     templateId: snapshot.templateId,
+    composition: snapshot.composition,
   });
   return expected === snapshot.contentHash;
 }

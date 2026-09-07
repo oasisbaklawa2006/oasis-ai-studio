@@ -232,14 +232,24 @@ export async function reorderCollectionItems(
 
   try {
     for (const item of updated) {
-      await authorityDb
+      const { data, error } = await authorityDb
         .from("catalogue_collection_items")
         .update({ sort_order: item.sort_order })
-        .eq("id", item.id);
+        .eq("id", item.id)
+        .select("id");
+      if (error) {
+        throw new Error(`Failed to reorder collection item: ${error.message}`);
+      }
+      if (!data?.length) {
+        throw new Error(`Failed to reorder collection item ${item.id}: no rows updated`);
+      }
     }
     return;
-  } catch {
-    /* fall through */
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("Failed to reorder")) {
+      throw err;
+    }
+    /* fall through to local fallback */
   }
 
   assertLocalCatalogueFallbackWrite("reorderCollectionItems");

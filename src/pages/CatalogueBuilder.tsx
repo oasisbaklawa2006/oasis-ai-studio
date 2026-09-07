@@ -8,7 +8,6 @@ import {
   MessageCircle,
   Plus,
   RefreshCw,
-  Share2,
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -16,7 +15,6 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { PageHeader } from "@/components/PageHeader";
-import { SharePanel } from "@/components/SharePanel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,9 +30,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   addProductToCollection,
-  buildShareUrlPlaceholder,
   createCollection,
-  createShareLinkPlaceholder,
   getCollectionsPersistenceSource,
   listCollectionItems,
   listCollections,
@@ -95,6 +91,9 @@ const COLLECTION_TYPE_LABELS: Record<CatalogueCollectionType, string> = {
   seasonal_catalogue: "Seasonal Catalogue",
 };
 
+/** Public `/c/:token` resolver is not deployed — share links remain gated. */
+const PUBLIC_SHARE_RESOLVER_ENABLED = false;
+
 export default function CatalogueBuilder() {
   const [collections, setCollections] = useState<CatalogueCollectionRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -109,7 +108,6 @@ export default function CatalogueBuilder() {
   const [templateId, setTemplateId] = useState<PrintTemplateId>("b2b_classic");
   const [addProductId, setAddProductId] = useState("");
   const [whatsappText, setWhatsappText] = useState<string | null>(null);
-  const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [snapshots, setSnapshots] = useState<ReturnType<typeof listPrintSnapshots>>([]);
   const prevActiveIdRef = useRef<string | null>(null);
@@ -129,6 +127,9 @@ export default function CatalogueBuilder() {
         fetchProductsForMasterList({ showArchived: false }),
         fetchProductAuthorityBundle(),
       ]);
+      if (prodRes.error) {
+        throw new Error(prodRes.error);
+      }
       setCollections(cols);
       setProducts(
         prodRes.products.filter((p) => productVisibleInActiveView(p)) as Array<
@@ -140,6 +141,8 @@ export default function CatalogueBuilder() {
         if (current && cols.some((c) => c.id === current)) return current;
         return cols[0]?.id ?? null;
       });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to load catalogue builder data");
     } finally {
       setLoading(false);
     }
@@ -150,17 +153,25 @@ export default function CatalogueBuilder() {
   }, [refresh]);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (!activeId) {
       setItems([]);
       setSnapshots([]);
       setWhatsappText(null);
-      setShareUrl(null);
       return;
     }
+
+    setItems([]);
     setWhatsappText(null);
-    setShareUrl(null);
-    void listCollectionItems(activeId).then(setItems);
+    void listCollectionItems(activeId).then((next) => {
+      if (!cancelled) setItems(next);
+    });
     setSnapshots(listPrintSnapshots(activeId));
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeId]);
 
   useEffect(() => {
@@ -257,8 +268,12 @@ export default function CatalogueBuilder() {
     const swap = idx + direction;
     if (swap < 0 || swap >= ids.length) return;
     [ids[idx], ids[swap]] = [ids[swap], ids[idx]];
-    await reorderCollectionItems(activeId, ids);
-    setItems(await listCollectionItems(activeId));
+    try {
+      await reorderCollectionItems(activeId, ids);
+      setItems(await listCollectionItems(activeId));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not reorder products");
+    }
   };
 
   const handlePriceVisibility = async (
@@ -276,17 +291,14 @@ export default function CatalogueBuilder() {
       generateWhatsAppMiniCatalogueText({
         title: activeCollection.title,
         products: productCards,
-        shareUrl,
       }),
     );
   };
 
-  const handleShareUrl = async () => {
-    if (!activeId || !activeCollection) return;
-    const link = await createShareLinkPlaceholder(activeId, "view");
-    const url = buildShareUrlPlaceholder(link.share_token);
-    setShareUrl(url);
-    toast.success("Share link created (placeholder until public resolver is deployed)");
+  const handleShareUrl = () => {
+    toast.info(
+      "Public share links are gated until the governed /c/:token resolver is deployed in Central.",
+    );
   };
 
   const compatibleTemplates = useMemo(
@@ -500,9 +512,14 @@ export default function CatalogueBuilder() {
                         <MessageCircle className="h-4 w-4 mr-1" />
                         WhatsApp preview
                       </Button>
-                      <Button variant="outline" size="sm" onClick={handleShareUrl}>
-                        <Share2 className="h-4 w-4 mr-1" />
-                        Share URL
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleShareUrl}
+                        disabled={!PUBLIC_SHARE_RESOLVER_ENABLED}
+                        title="Public share resolver not deployed"
+                      >
+                        Share URL (gated)
                       </Button>
                       <Button
                         size="sm"
@@ -576,7 +593,6 @@ export default function CatalogueBuilder() {
                   <TabsTrigger value="products">Products ({productCards.length})</TabsTrigger>
                   <TabsTrigger value="preview">Composition preview</TabsTrigger>
                   {whatsappText && <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>}
-                  {shareUrl && <TabsTrigger value="share">Share</TabsTrigger>}
                 </TabsList>
 
                 <TabsContent value="products" className="space-y-3 mt-4">
@@ -720,12 +736,6 @@ export default function CatalogueBuilder() {
                       value={whatsappText}
                       className="font-mono text-sm"
                     />
-                  </TabsContent>
-                )}
-
-                {shareUrl && (
-                  <TabsContent value="share" className="mt-4">
-                    <SharePanel url={shareUrl} title={activeCollection.title} />
                   </TabsContent>
                 )}
               </Tabs>

@@ -157,6 +157,23 @@ describe("printLayout", () => {
     const layout = validatePrintLayout({ productCount: 0, imagesWithIssues: 0, hasCover: true });
     expect(layout.ok).toBe(false);
   });
+
+  it("blocks export when image quality gates fail", () => {
+    const layout = validatePrintLayout({ productCount: 2, imagesWithIssues: 1, hasCover: true });
+    expect(layout.ok).toBe(false);
+    expect(layout.issues.some((i) => i.includes("image-quality"))).toBe(true);
+  });
+
+  it("requires dimensions for production DPI verification", () => {
+    const result = validatePrintImageQuality({
+      imageUrl: "https://cdn.example/hero.jpg",
+      widthPx: null,
+      heightPx: null,
+      approved: true,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.issues.some((i) => i.includes("dimensions unknown"))).toBe(true);
+  });
 });
 
 describe("printComposition", () => {
@@ -193,7 +210,7 @@ describe("printComposition", () => {
   });
 
   it("validates composition image quality", () => {
-    const cards = [baseCard({ imageWidthPx: 500, imageHeightPx: 500 })];
+    const cards = [baseCard({ imageWidthPx: 500, imageHeightPx: 500, imageApproved: true })];
     const composition = buildPrintComposition({
       collection: baseCollection,
       items: [baseItem("p1", 0)],
@@ -202,6 +219,23 @@ describe("printComposition", () => {
     });
     const validation = validateCompositionForPrint(composition, cards);
     expect(validation.imageIssues.length).toBeGreaterThan(0);
+    expect(validation.ok).toBe(false);
+  });
+
+  it("enforces item price_visibility in composed product sections", () => {
+    const items = [baseItem("p1", 0, "hidden")];
+    const cards = [baseCard({ sellingPrice: 1000, mrp: 1200 })];
+    const composition = buildPrintComposition({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+    });
+    const productSection = composition.sections.find((s) => s.kind === "product");
+    const composed = productSection?.products?.[0];
+    expect(composed?.priceVisibilityMode).toBe("hidden");
+    expect(composed?.sellingPrice).toBeNull();
+    expect(formatPriceForExport(composed!)).toBe("—");
   });
 });
 
@@ -209,17 +243,25 @@ describe("printSnapshot", () => {
   it("produces deterministic content hash for same inputs", () => {
     const items = [baseItem("p1", 0, "hidden")];
     const cards = [applyPriceVisibilityToCard(baseCard(), "hidden")];
+    const composition = buildPrintComposition({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+    });
     const hashA = hashPrintSnapshotContent({
       collection: baseCollection,
       items,
       cards,
       templateId: "b2b_classic",
+      composition,
     });
     const hashB = hashPrintSnapshotContent({
       collection: baseCollection,
       items,
       cards,
       templateId: "b2b_classic",
+      composition,
     });
     expect(hashA).toBe(hashB);
     expect(hashA).toMatch(/^fnv1a-/);
@@ -230,19 +272,60 @@ describe("printSnapshot", () => {
     const itemsHidden = [baseItem("p1", 0, "hidden")];
     const cardsVisible = [applyPriceVisibilityToCard(baseCard(), "visible")];
     const cardsHidden = [applyPriceVisibilityToCard(baseCard(), "hidden")];
+    const compositionVisible = buildPrintComposition({
+      collection: baseCollection,
+      items: itemsVisible,
+      cards: cardsVisible,
+      templateId: "b2b_classic",
+    });
+    const compositionHidden = buildPrintComposition({
+      collection: baseCollection,
+      items: itemsHidden,
+      cards: cardsHidden,
+      templateId: "b2b_classic",
+    });
     const hashVisible = hashPrintSnapshotContent({
       collection: baseCollection,
       items: itemsVisible,
       cards: cardsVisible,
       templateId: "b2b_classic",
+      composition: compositionVisible,
     });
     const hashHidden = hashPrintSnapshotContent({
       collection: baseCollection,
       items: itemsHidden,
       cards: cardsHidden,
       templateId: "b2b_classic",
+      composition: compositionHidden,
     });
     expect(hashVisible).not.toBe(hashHidden);
+  });
+
+  it("detects tampered composition during integrity check", () => {
+    const items = [baseItem("p1", 0)];
+    const cards = [baseCard()];
+    const composition = buildPrintComposition({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+    });
+    const snapshot = createPrintCatalogueSnapshot({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+      composition,
+    });
+    const tampered = {
+      ...snapshot,
+      composition: {
+        ...snapshot.composition,
+        collectionTitle: "Tampered Title",
+      },
+    };
+    expect(verifySnapshotIntegrity(tampered)).toBe(false);
+    expect(() => regenerateFromSnapshot(tampered)).toThrow(/integrity/i);
   });
 
   it("supports reproducible regeneration from snapshot", () => {

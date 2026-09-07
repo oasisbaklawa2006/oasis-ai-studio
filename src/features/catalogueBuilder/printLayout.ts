@@ -1,12 +1,14 @@
-/** Print production constants — A4 with 3mm bleed (ISO 12647-2 common practice). */
+/** Print production constants — A4 trim with 3mm bleed (ISO 12647-2 common practice). */
 export const PRINT_PAGE = {
   format: "a4" as const,
-  widthMm: 210,
-  heightMm: 297,
-  bleedMm: 3,
-  safeMarginMm: 12,
   trimWidthMm: 210,
   trimHeightMm: 297,
+  bleedMm: 3,
+  safeMarginMm: 12,
+  /** Full media box width including bleed (for jsPDF page size). */
+  mediaWidthMm: 210 + 2 * 3,
+  /** Full media box height including bleed (for jsPDF page size). */
+  mediaHeightMm: 297 + 2 * 3,
 };
 
 export const MIN_PRINT_DPI = 300;
@@ -56,6 +58,10 @@ export function validatePrintImageQuality(
   const w = input.widthPx ?? null;
   const h = input.heightPx ?? null;
 
+  if (input.imageUrl && (w == null || h == null)) {
+    issues.push("Image dimensions unknown — cannot verify print DPI for production export");
+  }
+
   if (w != null && w < MIN_IMAGE_WIDTH_PX) {
     issues.push(`Image width ${w}px below minimum ${MIN_IMAGE_WIDTH_PX}px`);
   }
@@ -87,8 +93,8 @@ export function validatePrintLayout(args: {
   }
 
   if (args.imagesWithIssues > 0) {
-    warnings.push(
-      `${args.imagesWithIssues} product(s) fail image-quality gates — export may omit images`,
+    issues.push(
+      `${args.imagesWithIssues} product(s) fail image-quality gates — resolve before production export`,
     );
   }
 
@@ -102,6 +108,17 @@ export function validatePrintLayout(args: {
   }
 
   return { ok: issues.length === 0, issues, warnings };
+}
+
+/** Maximum product cards that fit vertically on one product page for a layout. */
+export function maxProductsPerProductPage(layout: "standard" | "hero" | "compact"): number {
+  const box = contentBoxMm();
+  const available = box.bottom - box.top - 10;
+  const cardH = layout === "hero" ? 70 : layout === "compact" ? 36 : 48;
+  const rowGap = 6;
+  const cols = layout === "hero" ? 1 : layout === "compact" ? 2 : 1;
+  const rows = Math.max(1, Math.floor(available / (cardH + rowGap)));
+  return rows * cols;
 }
 
 /** Bleed-inclusive coordinates for jsPDF (mm). */
