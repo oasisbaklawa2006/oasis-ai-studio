@@ -1,6 +1,32 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { CatalogueProductCard } from "./types";
+import { formatPriceForExport } from "./priceVisibility";
+import {
+  bleedBoxMm,
+  contentBoxMm,
+  type PdfPageBoxMm,
+  PRINT_PAGE,
+  printPageFormatMm,
+  trimBoxMm,
+} from "./printLayout";
+import type { PrintCatalogueSnapshot } from "./printSnapshot";
+import { getPrintTemplate, type PrintTemplateId } from "./printTemplates";
+import type { CatalogueProductCard, PrintComposition } from "./types";
+
+/** FNV-1a over PDF bytes for reproducibility regression tests. */
+export async function hashPdfBlob(blob: Blob): Promise<string> {
+  const buf =
+    typeof blob.arrayBuffer === "function"
+      ? await blob.arrayBuffer()
+      : await new Response(blob).arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < bytes.length; i++) {
+    hash ^= bytes[i];
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
 
 export type PdfExportInput = {
   title: string;
@@ -8,8 +34,286 @@ export type PdfExportInput = {
   products: CatalogueProductCard[];
 };
 
+export type PrintPdfExportInput = {
+  composition: PrintComposition;
+  templateId: PrintTemplateId;
+  snapshot?: Pick<PrintCatalogueSnapshot, "contentHash" | "versionNumber" | "createdAt">;
+  companyName?: string;
+};
+
+function addPageFooter(doc: jsPDF, page: number, total: number, hash?: string) {
+  const h = doc.internal.pageSize.getHeight();
+  doc.setFontSize(7);
+  doc.setTextColor(120);
+  const hashSuffix = hash ? ` · ${hash}` : "";
+  doc.text(
+    `Oasis Baklawa · Print Catalogue · Page ${page} of ${total}${hashSuffix}`,
+    PRINT_PAGE.bleedMm + PRINT_PAGE.safeMarginMm,
+    h - PRINT_PAGE.bleedMm - 4,
+  );
+  doc.setTextColor(0);
+}
+
+function renderCover(doc: jsPDF, title: string, subtitle?: string) {
+  const box = contentBoxMm();
+  doc.setFillColor(245, 240, 230);
+  doc.rect(0, 0, PRINT_PAGE.mediaWidthMm, PRINT_PAGE.mediaHeightMm, "F");
+  doc.setFontSize(28);
+  doc.setTextColor(40, 30, 20);
+  doc.text(title, box.left, box.top + 60, { maxWidth: box.width });
+  if (subtitle) {
+    doc.setFontSize(12);
+    doc.setTextColor(80, 70, 60);
+    doc.text(subtitle, box.left, box.top + 80, { maxWidth: box.width });
+  }
+  doc.setFontSize(10);
+  doc.text("Oasis Baklawa", box.left, box.bottom - 20);
+  doc.setTextColor(0);
+}
+
+function renderCompanyIntro(doc: jsPDF, text: string) {
+  const box = contentBoxMm();
+  doc.setFontSize(16);
+  doc.text("Company Introduction", box.left, box.top + 10);
+  doc.setFontSize(10);
+  const lines = doc.splitTextToSize(text, box.width);
+  doc.text(lines, box.left, box.top + 24);
+}
+
+function renderContents(doc: jsPDF, entries: Array<{ title: string; page: number }>) {
+  const box = contentBoxMm();
+  doc.setFontSize(16);
+  doc.text("Contents", box.left, box.top + 10);
+  doc.setFontSize(10);
+  let y = box.top + 22;
+  for (const entry of entries) {
+    if (y > box.bottom - 10) break;
+    doc.text(entry.title, box.left, y);
+    doc.text(String(entry.page), box.right - 10, y, { align: "right" });
+    y += 7;
+  }
+}
+
+function renderCategoryDivider(doc: jsPDF, category: string) {
+  const box = contentBoxMm();
+  doc.setFillColor(230, 220, 200);
+  doc.rect(box.left, box.top + 20, box.width, 14, "F");
+  doc.setFontSize(14);
+  doc.setTextColor(50, 40, 30);
+  doc.text(category, box.left + 4, box.top + 30);
+  doc.setTextColor(0);
+}
+
+function renderProductCard(
+  doc: jsPDF,
+  product: CatalogueProductCard,
+  x: number,
+  y: number,
+  w: number,
+  layout: "standard" | "hero" | "compact",
+) {
+  const imgSize = layout === "hero" ? 50 : layout === "compact" ? 22 : 32;
+  if (product.imageUrl) {
+    try {
+      doc.addImage(product.imageUrl, "JPEG", x, y, imgSize, imgSize);
+    } catch {
+      /* CORS or missing image */
+    }
+  }
+
+  const textX = product.imageUrl ? x + imgSize + 4 : x;
+  const textW = w - (product.imageUrl ? imgSize + 4 : 0);
+  doc.setFontSize(layout === "compact" ? 9 : 11);
+  doc.text(product.name.slice(0, 50), textX, y + 5, { maxWidth: textW });
+  doc.setFontSize(8);
+  const price = formatPriceForExport(product);
+  const meta = [
+    product.sku ? `SKU: ${product.sku}` : null,
+    price !== "—" ? price : null,
+    product.moqLabel ? `MOQ: ${product.moqLabel}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  if (meta) doc.text(meta, textX, y + 11, { maxWidth: textW });
+  if (product.description && layout !== "compact") {
+    const desc = doc.splitTextToSize(product.description.slice(0, 120), textW);
+    doc.text(desc, textX, y + 16);
+  }
+}
+
+function renderProductPage(
+  doc: jsPDF,
+  products: CatalogueProductCard[],
+  layout: "standard" | "hero" | "compact",
+) {
+  const box = contentBoxMm();
+  const cols = layout === "hero" ? 1 : layout === "compact" ? 2 : 1;
+  const cardH = layout === "hero" ? 70 : layout === "compact" ? 36 : 48;
+  const cardW = box.width / cols - 4;
+
+  products.forEach((product, idx) => {
+    const col = idx % cols;
+    const row = Math.floor(idx / cols);
+    const x = box.left + col * (cardW + 4);
+    const y = box.top + 10 + row * (cardH + 6);
+    renderProductCard(doc, product, x, y, cardW, layout);
+  });
+}
+
+/** Canonical UTC PDF date string — timezone-independent for byte-stable output. */
+export function isoToCanonicalPdfUtcDate(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `D:${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
+    `${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}+00'00'`
+  );
+}
+
+/** Derive a valid 32-char lowercase hex FileID from any seed (jsPDF rejects non-hex). */
+export function deriveDeterministicPdfFileId(seed: string): string {
+  const hexOnly = seed.replace(/^fnv1a-/, "").replace(/[^a-fA-F0-9]/g, "");
+  if (/^[a-fA-F0-9]{32}$/.test(hexOnly)) {
+    return hexOnly.toLowerCase();
+  }
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  const derived = (hash >>> 0).toString(16).padStart(8, "0");
+  const combined = (hexOnly + derived.repeat(4)).toLowerCase();
+  return combined.slice(0, 32).padEnd(32, "0");
+}
+
+function toInternalPageBox(box: PdfPageBoxMm, scaleFactor: number) {
+  return {
+    bottomLeftX: box.bottomLeftX * scaleFactor,
+    bottomLeftY: box.bottomLeftY * scaleFactor,
+    topRightX: box.topRightX * scaleFactor,
+    topRightY: box.topRightY * scaleFactor,
+  };
+}
+
+/** Stamp Trim/Bleed/Crop boxes so prepress sees true 210×297 trim inside 216×303 media. */
+export function applyPrintProductionPageBoxes(doc: jsPDF): void {
+  const scaleFactor = doc.internal.scaleFactor;
+  const trim = toInternalPageBox(trimBoxMm(), scaleFactor);
+  const bleed = toInternalPageBox(bleedBoxMm(), scaleFactor);
+  const total = doc.getNumberOfPages();
+  for (let page = 1; page <= total; page++) {
+    const { pageContext } = doc.getPageInfo(page);
+    pageContext.trimBox = trim;
+    pageContext.bleedBox = bleed;
+    pageContext.cropBox = trim;
+  }
+}
+
+const PT_TO_MM = 25.4 / 72;
+
+/** Parse first page Media/Trim box sizes from PDF bytes (regression helper). */
+export function parsePdfPageBoxesMm(pdfBytes: Uint8Array): {
+  media: { widthMm: number; heightMm: number };
+  trim: { widthMm: number; heightMm: number; offsetMm: number };
+} | null {
+  const text = new TextDecoder("latin1").decode(pdfBytes);
+  const mediaMatch = text.match(/\/MediaBox\s*\[([^\]]+)\]/);
+  const trimMatch = text.match(/\/TrimBox\s*\[([^\]]+)\]/);
+  if (!mediaMatch || !trimMatch) return null;
+
+  const parseBox = (raw: string) => raw.trim().split(/\s+/).map(Number);
+  const media = parseBox(mediaMatch[1]);
+  const trim = parseBox(trimMatch[1]);
+  if (media.length < 4 || trim.length < 4) return null;
+
+  return {
+    media: {
+      widthMm: (media[2] - media[0]) * PT_TO_MM,
+      heightMm: (media[3] - media[1]) * PT_TO_MM,
+    },
+    trim: {
+      widthMm: (trim[2] - trim[0]) * PT_TO_MM,
+      heightMm: (trim[3] - trim[1]) * PT_TO_MM,
+      offsetMm: trim[0] * PT_TO_MM,
+    },
+  };
+}
+
+function applyDeterministicPdfMetadata(
+  doc: jsPDF,
+  snapshot?: Pick<PrintCatalogueSnapshot, "contentHash" | "versionNumber" | "createdAt">,
+  title?: string,
+) {
+  const createdAt = snapshot?.createdAt ?? "1970-01-01T00:00:00.000Z";
+  const hash = snapshot?.contentHash ?? "preview";
+  const fileId = deriveDeterministicPdfFileId(hash);
+  const pdfDate = isoToCanonicalPdfUtcDate(createdAt);
+
+  doc.setProperties({
+    title: title ?? "Oasis Print Catalogue",
+    subject: "Oasis Baklawa Print Catalogue",
+    creator: "Oasis Catalogue AI Studio",
+    keywords: `snapshot:${hash};v${snapshot?.versionNumber ?? 0}`,
+  });
+
+  if (typeof doc.setCreationDate === "function") {
+    doc.setCreationDate(pdfDate);
+  }
+  if (typeof doc.setFileId === "function") {
+    doc.setFileId(fileId);
+  }
+}
+
 /**
- * Basic stable PDF catalogue — no advanced brochure layout yet.
+ * Deterministic production PDF from a frozen print composition.
+ * Uses snapshot metadata when provided for reproducible regeneration.
+ */
+export async function exportPrintCataloguePdf(input: PrintPdfExportInput): Promise<Blob> {
+  const template = getPrintTemplate(input.templateId);
+  const pageFormat = printPageFormatMm();
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: pageFormat,
+  });
+
+  for (let idx = 0; idx < input.composition.sections.length; idx++) {
+    const section = input.composition.sections[idx];
+    if (idx > 0) doc.addPage(pageFormat);
+
+    switch (section.kind) {
+      case "cover":
+        renderCover(doc, input.composition.collectionTitle, input.composition.variant);
+        break;
+      case "company_intro":
+        renderCompanyIntro(doc, section.title ?? "");
+        break;
+      case "contents":
+        renderContents(doc, input.composition.contentsEntries);
+        break;
+      case "category_divider":
+        renderCategoryDivider(doc, section.title ?? section.category ?? "");
+        break;
+      case "product":
+        renderProductPage(doc, section.products ?? [], template.cardLayout);
+        break;
+    }
+  }
+
+  const total = doc.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    addPageFooter(doc, i, total, input.snapshot?.contentHash);
+  }
+
+  applyPrintProductionPageBoxes(doc);
+  applyDeterministicPdfMetadata(doc, input.snapshot, input.composition.collectionTitle);
+
+  return doc.output("blob");
+}
+
+/**
+ * Basic stable PDF catalogue — legacy list export for quick previews.
  */
 export async function exportCataloguePdf(input: PdfExportInput): Promise<Blob> {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -47,7 +351,7 @@ export async function exportCataloguePdf(input: PdfExportInput): Promise<Blob> {
     const meta = [
       product.sku ? `SKU: ${product.sku}` : null,
       product.category ? product.category : null,
-      product.sellingPrice != null ? `Price: ₹${product.sellingPrice}` : null,
+      formatPriceForExport(product) !== "—" ? formatPriceForExport(product) : null,
       product.moqLabel ? `MOQ: ${product.moqLabel}` : null,
     ]
       .filter(Boolean)
@@ -68,7 +372,7 @@ export async function exportCataloguePdf(input: PdfExportInput): Promise<Blob> {
       p.name,
       p.sku ?? "—",
       p.category ?? "—",
-      p.sellingPrice != null ? `₹${p.sellingPrice}` : p.mrp != null ? `MRP ₹${p.mrp}` : "—",
+      formatPriceForExport(p),
       p.moqLabel ?? "—",
     ]),
     styles: { fontSize: 8 },
@@ -86,6 +390,8 @@ export async function exportCataloguePdf(input: PdfExportInput): Promise<Blob> {
       doc.internal.pageSize.getHeight() - 8,
     );
   }
+
+  applyDeterministicPdfMetadata(doc, undefined, input.title);
 
   return doc.output("blob");
 }

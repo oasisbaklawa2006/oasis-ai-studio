@@ -1,14 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
 import {
-  assertLocalCatalogueFallbackWrite,
-  isLocalCatalogueFallbackReadEnabled,
-} from "@/lib/catalogueAuthority/localStoragePolicy";
-import {
   getCollectionsPersistenceSource,
   setCollectionsLoadFailure,
   setCollectionsPersistenceSource,
 } from "@/lib/catalogueAuthority/dataSource";
+import {
+  assertLocalCatalogueFallbackWrite,
+  isLocalCatalogueFallbackReadEnabled,
+} from "@/lib/catalogueAuthority/localStoragePolicy";
 import { diagnoseSupabaseFailure } from "@/lib/supabase/diagnostics";
 import type {
   CatalogueCollectionItemRow,
@@ -21,7 +21,30 @@ const COLLECTIONS_KEY = "oasis_catalogue_collections";
 const ITEMS_KEY = "oasis_catalogue_collection_items";
 const SHARES_KEY = "oasis_catalogue_share_links";
 
-const authorityDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
+const authorityDb =
+  supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
+
+type CatalogueCollectionItemInsert =
+  ExtendedDatabase["public"]["Tables"]["catalogue_collection_items"]["Insert"];
+
+/** Map an in-memory collection item to a typed Supabase upsert row (Insert contract). */
+function collectionItemUpsertRow(
+  item: CatalogueCollectionItemRow,
+  sortOrder: number,
+): CatalogueCollectionItemInsert {
+  return {
+    id: item.id,
+    collection_id: item.collection_id,
+    product_id: item.product_id,
+    sort_order: sortOrder,
+    catalogue_version_id: item.catalogue_version_id,
+    display_name_override: item.display_name_override,
+    description_override: item.description_override,
+    price_visibility: item.price_visibility,
+    is_featured: item.is_featured,
+    created_at: item.created_at,
+  };
+}
 
 function readLocal<T>(key: string): T[] {
   try {
@@ -219,26 +242,52 @@ export async function removeProductFromCollection(
   writeLocal(ITEMS_KEY, all);
 }
 
+/** Validate that orderedProductIds is an exact permutation of collection item product IDs. */
+export function validateCollectionReorderPermutation(
+  items: CatalogueCollectionItemRow[],
+  orderedProductIds: string[],
+): void {
+  if (orderedProductIds.length !== items.length) {
+    throw new Error("Reorder rejected: product count mismatch");
+  }
+  if (new Set(orderedProductIds).size !== orderedProductIds.length) {
+    throw new Error("Reorder rejected: duplicate product IDs in reorder request");
+  }
+  const current = new Set(items.map((i) => i.product_id));
+  if (orderedProductIds.some((id) => !current.has(id))) {
+    throw new Error("Reorder rejected: product IDs must match collection items exactly");
+  }
+}
+
 export async function reorderCollectionItems(
   collectionId: string,
   orderedProductIds: string[],
 ): Promise<void> {
   const items = await listCollectionItems(collectionId);
+  validateCollectionReorderPermutation(items, orderedProductIds);
+
   const updated = items.map((item) => ({
     ...item,
     sort_order: orderedProductIds.indexOf(item.product_id),
   }));
 
+  const originalSortOrders = new Map(items.map((item) => [item.id, item.sort_order]));
+
   try {
-    for (const item of updated) {
-      await authorityDb
-        .from("catalogue_collection_items")
-        .update({ sort_order: item.sort_order })
-        .eq("id", item.id);
+    const upsertRows = updated.map((item) => collectionItemUpsertRow(item, item.sort_order));
+    const { error } = await authorityDb
+      .from("catalogue_collection_items")
+      .upsert(upsertRows, { onConflict: "id" });
+    if (error) {
+      throw new Error(`Failed to reorder collection items: ${error.message}`);
     }
     return;
-  } catch {
-    /* fall through */
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("Failed to reorder")) {
+      await rollbackCollectionSortOrders(items, originalSortOrders);
+      throw err;
+    }
+    /* fall through to local fallback */
   }
 
   assertLocalCatalogueFallbackWrite("reorderCollectionItems");
@@ -246,6 +295,60 @@ export async function reorderCollectionItems(
     (i) => i.collection_id !== collectionId,
   );
   writeLocal(ITEMS_KEY, [...all, ...updated]);
+}
+
+async function rollbackCollectionSortOrders(
+  items: CatalogueCollectionItemRow[],
+  originalSortOrders: Map<string, number>,
+): Promise<void> {
+  const rows = items.map((item) =>
+    collectionItemUpsertRow(item, originalSortOrders.get(item.id) ?? item.sort_order),
+  );
+  if (!rows.length) return;
+  try {
+    await authorityDb.from("catalogue_collection_items").upsert(rows, { onConflict: "id" });
+  } catch {
+    /* best-effort rollback */
+  }
+}
+
+export async function updateCollectionItem(
+  collectionId: string,
+  productId: string,
+  patch: Partial<
+    Pick<
+      CatalogueCollectionItemRow,
+      | "price_visibility"
+      | "display_name_override"
+      | "description_override"
+      | "is_featured"
+      | "catalogue_version_id"
+    >
+  >,
+): Promise<CatalogueCollectionItemRow> {
+  const items = await listCollectionItems(collectionId);
+  const existing = items.find((i) => i.product_id === productId);
+  if (!existing) throw new Error("Collection item not found");
+
+  const updated: CatalogueCollectionItemRow = { ...existing, ...patch };
+
+  try {
+    const { data, error } = await authorityDb
+      .from("catalogue_collection_items")
+      .update(patch)
+      .eq("id", existing.id)
+      .select("*")
+      .single();
+    if (!error && data) return data as CatalogueCollectionItemRow;
+  } catch {
+    /* fall through */
+  }
+
+  assertLocalCatalogueFallbackWrite("updateCollectionItem");
+  const all = readLocal<CatalogueCollectionItemRow>(ITEMS_KEY).filter((i) => i.id !== existing.id);
+  all.push(updated);
+  writeLocal(ITEMS_KEY, all);
+  return updated;
 }
 
 export async function createShareLinkPlaceholder(

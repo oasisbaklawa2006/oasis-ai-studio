@@ -1,3 +1,4 @@
+import { formatPriceSegmentForShare } from "./priceVisibility";
 import type { CatalogueProductCard } from "./types";
 
 export function generateWhatsAppMiniCatalogueText(args: {
@@ -5,21 +6,12 @@ export function generateWhatsAppMiniCatalogueText(args: {
   products: CatalogueProductCard[];
   shareUrl?: string | null;
 }): string {
-  const lines: string[] = [
-    `*${args.title}*`,
-    "Oasis Baklawa — curated catalogue",
-    "",
-  ];
+  const lines: string[] = [`*${args.title}*`, "Oasis Baklawa — curated catalogue", ""];
 
   for (const p of args.products.slice(0, 12)) {
-    const price =
-      p.sellingPrice != null
-        ? `₹${p.sellingPrice}`
-        : p.mrp != null
-          ? `MRP ₹${p.mrp}`
-          : "Price on request";
+    const segment = formatPriceSegmentForShare(p);
     lines.push(`• *${p.name}*${p.sku ? ` (${p.sku})` : ""}`);
-    lines.push(`  ${price}${p.moqLabel ? ` · MOQ ${p.moqLabel}` : ""}`);
+    if (segment) lines.push(`  ${segment}`);
     if (p.imageUrl) lines.push(`  ${p.imageUrl}`);
     lines.push("");
   }
