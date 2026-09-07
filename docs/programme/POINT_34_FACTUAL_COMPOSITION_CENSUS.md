@@ -97,7 +97,7 @@ Mission Control correction: **Core already owns** `products.ingredients`, `produ
 | Approval-aware composition readiness | `labelReadiness.test.ts` — per-field AI/category warn regressions incl. shelf/storage |
 | Snapshot approval gating | `catalogueSnapshot.test.ts` — pending vs approved factual_composition |
 | Point 34 canonical unit tests | `productFactualCompositionCanonical.test.ts` |
-| `npm test` | **975/975 PASS** (rebased on #200 main `512f529`, head `TBD`) |
+| `npm test` | **975/975 PASS** (rebased on #200 main `512f529`, head `66d6cdf`) |
 | `npm run typecheck` | PASS |
 | `npm run build` | PASS |
 | `npm run check:boundaries` | PASS |
