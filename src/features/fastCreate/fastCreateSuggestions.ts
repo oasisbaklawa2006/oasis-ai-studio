@@ -1,5 +1,9 @@
 import type { GovernedAiProvenance } from "@/features/governedAiExtraction";
 import { enrichFastCreateWithGovernedAi } from "@/features/governedAiExtraction";
+import {
+  buildHeuristicNamingSuggestions,
+  type GovernedNamingProvenance,
+} from "@/features/governedProductNaming";
 import { applyCategoryDefaults } from "@/features/productDefaults/applyDefaults";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import {
@@ -37,18 +41,11 @@ export type FastCreateSuggestions = {
   complianceFieldMeta?: ComplianceFieldMetaMap;
   /** Provider/runtime provenance for governed enrichment rounds. */
   extractionProvenance?: GovernedAiProvenance[];
+  /** Point 48 naming/description provenance — review-only, never publication truth. */
+  namingProvenance?: GovernedNamingProvenance;
   /** Review-only AI alias suggestions — never persisted until explicitly approved. */
   pendingAiAliases?: AliasSeed[];
 };
-
-function buildDescription(name: string, category: string, productType: string): string {
-  return `Premium Oasis ${productType || category} — ${name}. Crafted with quality ingredients for wholesale and retail catalogue use.`;
-}
-
-function buildShortDescription(name: string, productType: string): string {
-  const short = name.split(/[/,|]/)[0]?.trim() || name;
-  return `${short} — signature ${productType || "Oasis"} product.`;
-}
 
 function searchKeywordsFromForm(name: string, category: string, aliases: AliasSeed[]): string[] {
   const base = [name, category, ...aliases.map((a) => a.alias)];
@@ -66,9 +63,21 @@ export function buildHeuristicSuggestions(
 
   const category = String(formPatch.category ?? "");
   const productType = String(formPatch.product_type ?? "");
-  formPatch.short_name = productName.split(/[/,|]/)[0]?.trim() || productName.trim();
-  formPatch.description = buildDescription(productName, category, productType);
-  formPatch.short_description = buildShortDescription(productName, productType);
+  const naming = buildHeuristicNamingSuggestions({
+    product_name: productName.trim(),
+    category,
+    product_type: productType,
+    pack_size: formPatch.pack_size ? String(formPatch.pack_size) : null,
+    description: formPatch.description ? String(formPatch.description) : null,
+    short_description: formPatch.short_description ? String(formPatch.short_description) : null,
+  });
+  if (naming.ok) {
+    if (naming.suggestions.short_name) formPatch.short_name = naming.suggestions.short_name;
+    if (naming.suggestions.description) formPatch.description = naming.suggestions.description;
+    if (naming.suggestions.short_description) {
+      formPatch.short_description = naming.suggestions.short_description;
+    }
+  }
   formPatch.allergen_warnings =
     formPatch.allergen_warnings ||
     "Contains nuts, gluten, and dairy. May contain traces of sesame and soy.";
@@ -104,6 +113,7 @@ export function buildHeuristicSuggestions(
       aiCompliance: false,
       aiAliases: false,
     },
+    namingProvenance: naming.provenance,
   };
 }
 

@@ -131,3 +131,14 @@ describe("validateAiCatalogueContent", () => {
     expect(result2.ok).toBe(false);
   });
 });
+
+describe("governed catalogue copy grounding (Point 48)", () => {
+  const validPayload = Object.fromEntries(
+    CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, `Cashew Pyramid Baklawa — ${k}`]),
+  );
+
+  it("accepts fact-grounded structured output", () => {
+    const schema = validateAiCatalogueContent(validPayload);
+    expect(schema.ok).toBe(true);
+  });
+});

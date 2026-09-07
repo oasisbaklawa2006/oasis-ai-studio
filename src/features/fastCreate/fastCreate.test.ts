@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildHeuristicSuggestions } from "./fastCreateSuggestions";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { seedAliasesFromName } from "@/features/productLanguage/aliasSeedRules";
+import { buildHeuristicSuggestions } from "./fastCreateSuggestions";
 
 describe("fastCreateSuggestions", () => {
   it("applies category defaults and heuristic aliases", () => {
@@ -15,9 +15,15 @@ describe("fastCreateSuggestions", () => {
     expect(result.sources.defaults).toBe(true);
   });
 
-  it("builds description from product name", () => {
+  it("builds description from product name without ungoverned marketing filler", () => {
     const result = buildHeuristicSuggestions("Premium Dates Box", "dates_chocolate");
     expect(String(result.formPatch.description)).toContain("Premium Dates Box");
+    expect(String(result.formPatch.description).toLowerCase()).not.toContain(
+      "crafted with quality ingredients",
+    );
+    expect(String(result.formPatch.short_description).toLowerCase()).not.toContain("signature");
+    expect(result.namingProvenance?.service).toBe("heuristic");
+    expect(result.namingProvenance?.fail_closed).toBe(false);
   });
 });
 
