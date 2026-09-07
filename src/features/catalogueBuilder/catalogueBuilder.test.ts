@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { evaluateCataloguePublishability } from "./cataloguePublishability";
-import { generateWhatsAppMiniCatalogueText } from "./whatsappPreview";
-import { exportCataloguePdf } from "./pdfExport";
-import { applyPriceVisibilityToCard } from "./priceVisibility";
 import { selectApprovedImageUrlsForCentral } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
+import { evaluateCataloguePublishability } from "./cataloguePublishability";
+import { exportCataloguePdf } from "./pdfExport";
+import { applyPriceVisibilityToCard } from "./priceVisibility";
 import type { CatalogueProductCard } from "./types";
+import { generateWhatsAppMiniCatalogueText } from "./whatsappPreview";
 
 vi.mock("@/integrations/supabase/client", () => {
   const reject = { data: null, error: { message: "mock" } };
@@ -77,6 +77,7 @@ describe("catalogueBuilder", () => {
         isFeatured: false,
         publishable: true,
         blockers: [],
+        priceVisibilityMode: "hidden",
       },
       "hidden",
     );
@@ -86,6 +87,7 @@ describe("catalogueBuilder", () => {
     });
     expect(text).not.toContain("₹1000");
     expect(text).not.toContain("MRP");
+    expect(text).toContain("MOQ 5 kg");
   });
 
   it("generates WhatsApp preview text", () => {

@@ -1,16 +1,21 @@
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import {
+  mediaAssetsFromSources,
+  productMediaContextFromForm,
+} from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
+import { productDisplayName } from "@/features/productMaster/productListModel";
+import {
+  type MoqRuleRow,
+  mapMoqRules,
+  mapPricingRules,
+  type PricingRuleRow,
+} from "@/features/productTruth/channelAuthorityMappers";
+import { resolveProductCardHeroUrl } from "@/lib/productImage";
+import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 import { evaluateCataloguePublishability } from "./cataloguePublishability";
 import { applyPriceVisibilityToCard } from "./priceVisibility";
 import type { CatalogueCollectionItemRow, CatalogueProductCard } from "./types";
-import { resolveProductCardHeroUrl } from "@/lib/productImage";
-import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
-import {
-  mapMoqRules,
-  mapPricingRules,
-  type MoqRuleRow,
-  type PricingRuleRow,
-} from "@/features/productTruth/channelAuthorityMappers";
-import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
-import { productDisplayName } from "@/features/productMaster/productListModel";
 
 function moqLabelFromProduct(
   product: Record<string, unknown>,
@@ -39,10 +44,14 @@ function moqLabelFromProduct(
   return null;
 }
 
-function pickApprovedPrices(prices: ReturnType<typeof mapPricingRules>) {
+function pickApprovedPrices(prices: ReturnType<typeof mapPricingRules>, channel?: string | null) {
   const approved = prices.filter((p) => p.priceStatus === "approved");
+  const normalizedChannel = channel?.toLowerCase().trim() || null;
   const mrp = approved.find((p) => p.channel.toLowerCase() === "mrp");
   const selling =
+    (normalizedChannel
+      ? approved.find((p) => p.channel.toLowerCase() === normalizedChannel)
+      : null) ??
     approved.find((p) => p.channel.toLowerCase() === "b2b") ??
     approved.find((p) => p.channel.toLowerCase() !== "mrp");
   return {
@@ -65,8 +74,12 @@ export function buildCatalogueProductCard(args: BuildProductCardArgs): Catalogue
   const { product, item } = args;
   const prices = mapPricingRules(args.pricingRows ?? []);
   const moqRules = mapMoqRules(args.moqRows ?? []);
-  const { mrp, sellingPrice } = pickApprovedPrices(prices);
+  const { mrp, sellingPrice } = pickApprovedPrices(prices, args.channel);
   const complianceApproved = deriveComplianceApprovedForReadiness(product);
+  const mediaReadiness = evaluateMediaReadiness(
+    productMediaContextFromForm(product),
+    mediaAssetsFromSources({ form: product, productMediaRows: args.mediaRows }),
+  );
 
   const pub = evaluateCataloguePublishability({
     form: product,
@@ -94,6 +107,7 @@ export function buildCatalogueProductCard(args: BuildProductCardArgs): Catalogue
     isFeatured: item.is_featured,
     publishable: pub.publishable,
     blockers: pub.blockers,
+    imageApproved: mediaReadiness.canPublishMedia,
     imageWidthPx: (product.hero_image_width_px as number | null) ?? null,
     imageHeightPx: (product.hero_image_height_px as number | null) ?? null,
   };

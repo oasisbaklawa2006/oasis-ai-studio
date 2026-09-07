@@ -1,10 +1,13 @@
-import { evaluateProductReadiness, productTruthInputFromForm } from "@/features/productTruth/productReadiness";
-import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import {
   mediaAssetsFromSources,
-  productMediaContextFromForm,
   type ProductMediaRow,
+  productMediaContextFromForm,
 } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
+import {
+  evaluateProductReadiness,
+  productTruthInputFromForm,
+} from "@/features/productTruth/productReadiness";
 import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 
 export type CataloguePublishabilityResult = {

@@ -50,7 +50,10 @@ export function applyPriceVisibilityToCard(
 }
 
 export function formatPriceForExport(
-  card: CatalogueProductCard & { priceVisibilityMode?: PriceVisibilityMode; priceLabel?: string | null },
+  card: CatalogueProductCard & {
+    priceVisibilityMode?: PriceVisibilityMode;
+    priceLabel?: string | null;
+  },
   mode?: PriceVisibilityMode,
 ): string {
   const effectiveMode = mode ?? card.priceVisibilityMode ?? "visible";
@@ -58,4 +61,30 @@ export function formatPriceForExport(
   if (display.priceLabel) return display.priceLabel;
   if (display.inquiryLabel) return display.inquiryLabel;
   return "—";
+}
+
+/** Guard export paths — hidden/inquiry modes must never emit numeric price tokens. */
+export function exportTextContainsPriceLeak(text: string, cards: CatalogueProductCard[]): boolean {
+  for (const card of cards) {
+    const mode = card.priceVisibilityMode ?? "visible";
+    if (mode === "visible") continue;
+    const tokens = [card.sellingPrice, card.mrp]
+      .filter((v): v is number => v != null)
+      .map((v) => `₹${v}`);
+    for (const token of tokens) {
+      if (text.includes(token)) return true;
+    }
+  }
+  return false;
+}
+
+/** WhatsApp/share-safe price segment — omits hidden prices entirely. */
+export function formatPriceSegmentForShare(card: CatalogueProductCard): string {
+  const mode = card.priceVisibilityMode ?? "visible";
+  if (mode === "hidden") {
+    return card.moqLabel ? `MOQ ${card.moqLabel}` : "";
+  }
+  const price = formatPriceForExport(card);
+  if (price === "—") return card.moqLabel ? `MOQ ${card.moqLabel}` : "";
+  return card.moqLabel ? `${price} · MOQ ${card.moqLabel}` : price;
 }

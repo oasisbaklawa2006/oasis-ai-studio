@@ -11,7 +11,7 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
@@ -43,23 +43,27 @@ import {
   updateCollectionItem,
 } from "@/features/catalogueBuilder/collectionStore";
 import {
+  downloadCataloguePdf,
+  exportPrintCataloguePdf,
+} from "@/features/catalogueBuilder/pdfExport";
+import {
   buildPrintComposition,
   validateCompositionForPrint,
 } from "@/features/catalogueBuilder/printComposition";
 import {
-  defaultTemplateForCollectionType,
-  getPrintTemplate,
-  PRINT_TEMPLATES,
-  type PrintTemplateId,
-} from "@/features/catalogueBuilder/printTemplates";
-import {
   createPrintCatalogueSnapshot,
   listPrintSnapshots,
+  regenerateFromSnapshot,
   savePrintSnapshot,
 } from "@/features/catalogueBuilder/printSnapshot";
-import { downloadCataloguePdf, exportPrintCataloguePdf } from "@/features/catalogueBuilder/pdfExport";
+import {
+  compatibleTemplatesForCollection,
+  defaultTemplateForCollectionType,
+  getPrintTemplate,
+  isTemplateCompatibleWithCollection,
+  type PrintTemplateId,
+} from "@/features/catalogueBuilder/printTemplates";
 import { buildCatalogueProductCard } from "@/features/catalogueBuilder/productCardBuilder";
-import { generateWhatsAppMiniCatalogueText } from "@/features/catalogueBuilder/whatsappPreview";
 import {
   CATALOGUE_COLLECTION_TYPES,
   type CatalogueCollectionItemRow,
@@ -67,13 +71,17 @@ import {
   type CatalogueCollectionType,
   type CatalogueProductCard,
 } from "@/features/catalogueBuilder/types";
-import { getCollectionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
-import { resolveProductCardHeroUrl } from "@/lib/productImage";
+import { generateWhatsAppMiniCatalogueText } from "@/features/catalogueBuilder/whatsappPreview";
 import {
   fetchProductAuthorityBundle,
   fetchProductsForMasterList,
 } from "@/features/productMaster/productListFetch";
-import { productDisplayName, productVisibleInActiveView } from "@/features/productMaster/productListModel";
+import {
+  productDisplayName,
+  productVisibleInActiveView,
+} from "@/features/productMaster/productListModel";
+import { getCollectionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
+import { resolveProductCardHeroUrl } from "@/lib/productImage";
 
 const COLLECTION_TYPE_LABELS: Record<CatalogueCollectionType, string> = {
   b2b_catalogue: "B2B Catalogue",
@@ -104,8 +112,12 @@ export default function CatalogueBuilder() {
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [snapshots, setSnapshots] = useState<ReturnType<typeof listPrintSnapshots>>([]);
+  const prevActiveIdRef = useRef<string | null>(null);
 
-  const activeCollection = collections.find((c) => c.id === activeId) ?? null;
+  const activeCollection = useMemo(
+    () => collections.find((c) => c.id === activeId) ?? null,
+    [collections, activeId],
+  );
   const persistenceSource = getCollectionsPersistenceSource();
   const loadFailure = getCollectionsLoadFailure();
 
@@ -124,11 +136,14 @@ export default function CatalogueBuilder() {
         >,
       );
       setAuthorityBundle(bundle);
-      if (!activeId && cols.length) setActiveId(cols[0].id);
+      setActiveId((current) => {
+        if (current && cols.some((c) => c.id === current)) return current;
+        return cols[0]?.id ?? null;
+      });
     } finally {
       setLoading(false);
     }
-  }, [activeId]);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -137,17 +152,24 @@ export default function CatalogueBuilder() {
   useEffect(() => {
     if (!activeId) {
       setItems([]);
+      setSnapshots([]);
+      setWhatsappText(null);
+      setShareUrl(null);
       return;
     }
-    listCollectionItems(activeId).then(setItems);
+    setWhatsappText(null);
+    setShareUrl(null);
+    void listCollectionItems(activeId).then(setItems);
     setSnapshots(listPrintSnapshots(activeId));
   }, [activeId]);
 
   useEffect(() => {
-    if (activeCollection) {
+    if (!activeCollection) return;
+    if (prevActiveIdRef.current !== activeCollection.id) {
       setTemplateId(defaultTemplateForCollectionType(activeCollection.catalogue_type));
+      prevActiveIdRef.current = activeCollection.id;
     }
-  }, [activeCollection?.id, activeCollection?.catalogue_type]);
+  }, [activeCollection]);
 
   const productCards: CatalogueProductCard[] = useMemo(() => {
     if (!authorityBundle) return [];
@@ -267,8 +289,26 @@ export default function CatalogueBuilder() {
     toast.success("Share link created (placeholder until public resolver is deployed)");
   };
 
+  const compatibleTemplates = useMemo(
+    () =>
+      activeCollection ? compatibleTemplatesForCollection(activeCollection.catalogue_type) : [],
+    [activeCollection],
+  );
+
+  const templateCompatible = activeCollection
+    ? isTemplateCompatibleWithCollection(templateId, activeCollection.catalogue_type)
+    : true;
+
   const handleExportPdf = async () => {
     if (!composition || !activeCollection) return;
+    if (printValidation && !printValidation.ok) {
+      toast.error("Resolve print validation blockers before exporting production PDF");
+      return;
+    }
+    if (!templateCompatible) {
+      toast.error("Selected template is not compatible with this collection variant");
+      return;
+    }
     setExporting(true);
     try {
       const existing = listPrintSnapshots(activeCollection.id);
@@ -283,9 +323,10 @@ export default function CatalogueBuilder() {
       savePrintSnapshot(snapshot);
       setSnapshots(listPrintSnapshots(activeCollection.id));
 
+      const frozen = regenerateFromSnapshot(snapshot);
       const blob = await exportPrintCataloguePdf({
-        composition,
-        templateId,
+        composition: frozen.composition,
+        templateId: frozen.templateId,
         snapshot,
       });
       downloadCataloguePdf(blob, `${activeCollection.slug}-v${snapshot.versionNumber}.pdf`);
@@ -365,18 +406,24 @@ export default function CatalogueBuilder() {
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                 />
-                <Select value={newType} onValueChange={(v) => setNewType(v as CatalogueCollectionType)}>
+                <Select
+                  value={newType}
+                  onValueChange={(v) => setNewType(v as CatalogueCollectionType)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {CATALOGUE_COLLECTION_TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>{COLLECTION_TYPE_LABELS[t]}</SelectItem>
+                      <SelectItem key={t} value={t}>
+                        {COLLECTION_TYPE_LABELS[t]}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 <Button className="w-full" size="sm" onClick={handleCreateCollection}>
-                  <Plus className="h-4 w-4 mr-1" />Create collection
+                  <Plus className="h-4 w-4 mr-1" />
+                  Create collection
                 </Button>
               </div>
             </CardContent>
@@ -392,7 +439,9 @@ export default function CatalogueBuilder() {
                   <div key={s.snapshotId} className="rounded border p-2">
                     <div className="font-medium">v{s.versionNumber}</div>
                     <div className="text-muted-foreground font-mono">{s.contentHash}</div>
-                    <div className="text-muted-foreground">{new Date(s.createdAt).toLocaleString()}</div>
+                    <div className="text-muted-foreground">
+                      {new Date(s.createdAt).toLocaleString()}
+                    </div>
                   </div>
                 ))}
               </CardContent>
@@ -413,33 +462,58 @@ export default function CatalogueBuilder() {
                 <CardHeader>
                   <CardTitle>{activeCollection.title}</CardTitle>
                   <CardDescription>
-                    {COLLECTION_TYPE_LABELS[activeCollection.catalogue_type]} · {items.length} products
+                    {COLLECTION_TYPE_LABELS[activeCollection.catalogue_type]} · {items.length}{" "}
+                    products
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="text-xs text-muted-foreground mb-1 block">Print template</label>
-                      <Select value={templateId} onValueChange={(v) => setTemplateId(v as PrintTemplateId)}>
+                      <span className="text-xs text-muted-foreground mb-1 block">
+                        Print template
+                      </span>
+                      <Select
+                        value={templateId}
+                        onValueChange={(v) => setTemplateId(v as PrintTemplateId)}
+                      >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.values(PRINT_TEMPLATES).map((t) => (
-                            <SelectItem key={t.id} value={t.id}>{t.label}</SelectItem>
+                          {compatibleTemplates.map((t) => (
+                            <SelectItem key={t.id} value={t.id}>
+                              {t.label}
+                            </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                       <p className="text-xs text-muted-foreground mt-1">{template.description}</p>
+                      {!templateCompatible && (
+                        <p className="text-xs text-warning mt-1">
+                          Template variant mismatch — select a compatible template for this
+                          collection type.
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-2 items-end">
                       <Button variant="outline" size="sm" onClick={handleWhatsAppPreview}>
-                        <MessageCircle className="h-4 w-4 mr-1" />WhatsApp preview
+                        <MessageCircle className="h-4 w-4 mr-1" />
+                        WhatsApp preview
                       </Button>
                       <Button variant="outline" size="sm" onClick={handleShareUrl}>
-                        <Share2 className="h-4 w-4 mr-1" />Share URL
+                        <Share2 className="h-4 w-4 mr-1" />
+                        Share URL
                       </Button>
-                      <Button size="sm" onClick={handleExportPdf} disabled={exporting || !productCards.length}>
+                      <Button
+                        size="sm"
+                        onClick={handleExportPdf}
+                        disabled={
+                          exporting ||
+                          !productCards.length ||
+                          !printValidation?.ok ||
+                          !templateCompatible
+                        }
+                      >
                         {exporting ? (
                           <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                         ) : (
@@ -481,10 +555,14 @@ export default function CatalogueBuilder() {
                   </CardHeader>
                   <CardContent className="text-sm space-y-1">
                     {printValidation.issues.map((issue) => (
-                      <p key={issue} className="text-destructive">{issue}</p>
+                      <p key={issue} className="text-destructive">
+                        {issue}
+                      </p>
                     ))}
                     {printValidation.warnings.map((w) => (
-                      <p key={w} className="text-warning">{w}</p>
+                      <p key={w} className="text-warning">
+                        {w}
+                      </p>
                     ))}
                     {printValidation.ok && !printValidation.warnings.length && (
                       <p className="text-success">Ready for production PDF export.</p>
@@ -504,7 +582,8 @@ export default function CatalogueBuilder() {
                 <TabsContent value="products" className="space-y-3 mt-4">
                   {productCards.length === 0 && (
                     <p className="text-sm text-muted-foreground">
-                      Add published products from the master list. Products reference Core truth — no duplicate data.
+                      Add published products from the master list. Products reference Core truth —
+                      no duplicate data.
                     </p>
                   )}
                   {items
@@ -514,7 +593,10 @@ export default function CatalogueBuilder() {
                       const card = productCards.find((c) => c.productId === item.product_id);
                       const product = products.find((p) => p.id === item.product_id);
                       const hero = product
-                        ? resolveProductCardHeroUrl(product, authorityBundle?.mediaByProduct[item.product_id])
+                        ? resolveProductCardHeroUrl(
+                            product,
+                            authorityBundle?.mediaByProduct[item.product_id],
+                          )
                         : null;
                       return (
                         <Card key={item.id}>
@@ -537,13 +619,25 @@ export default function CatalogueBuilder() {
                                   </p>
                                 </div>
                                 <div className="flex gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => moveProduct(item.product_id, -1)}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => moveProduct(item.product_id, -1)}
+                                  >
                                     <ArrowUp className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => moveProduct(item.product_id, 1)}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => moveProduct(item.product_id, 1)}
+                                  >
                                     <ArrowDown className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleRemove(item.product_id)}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleRemove(item.product_id)}
+                                  >
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 </div>
@@ -592,15 +686,23 @@ export default function CatalogueBuilder() {
                       <CardHeader>
                         <CardTitle className="text-base">Section outline</CardTitle>
                         <CardDescription>
-                          {composition.sections.length} sections · {composition.productCount} products · template {template.label}
+                          {composition.sections.length} sections · {composition.productCount}{" "}
+                          products · template {template.label}
                         </CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-2 text-sm">
-                        {composition.sections.map((s, i) => (
-                          <div key={i} className="flex justify-between border-b py-1">
+                        {composition.sections.map((s) => (
+                          <div
+                            key={`${s.kind}-${s.pageNumber ?? 0}-${s.title ?? s.category ?? ""}`}
+                            className="flex justify-between border-b py-1"
+                          >
                             <span>
-                              <Badge variant="outline" className="mr-2 text-[10px]">{s.kind}</Badge>
-                              {s.title ?? s.category ?? (s.products?.length ? `${s.products.length} products` : "")}
+                              <Badge variant="outline" className="mr-2 text-[10px]">
+                                {s.kind}
+                              </Badge>
+                              {s.title ??
+                                s.category ??
+                                (s.products?.length ? `${s.products.length} products` : "")}
                             </span>
                             <span className="text-muted-foreground">p.{s.pageNumber}</span>
                           </div>
@@ -612,7 +714,12 @@ export default function CatalogueBuilder() {
 
                 {whatsappText && (
                   <TabsContent value="whatsapp" className="mt-4">
-                    <Textarea readOnly rows={12} value={whatsappText} className="font-mono text-sm" />
+                    <Textarea
+                      readOnly
+                      rows={12}
+                      value={whatsappText}
+                      className="font-mono text-sm"
+                    />
                   </TabsContent>
                 )}
 

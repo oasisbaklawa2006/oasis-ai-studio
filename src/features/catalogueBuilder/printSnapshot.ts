@@ -83,6 +83,9 @@ export function createPrintCatalogueSnapshot(args: {
   templateId: PrintTemplateId;
   composition: PrintComposition;
   existingVersions?: PrintCatalogueSnapshot[];
+  /** Fixed timestamp for deterministic regeneration tests. */
+  createdAt?: string;
+  snapshotId?: string;
 }): PrintCatalogueSnapshot {
   const versions = args.existingVersions ?? [];
   const versionNumber =
@@ -97,16 +100,45 @@ export function createPrintCatalogueSnapshot(args: {
 
   return {
     schema: PRINT_SNAPSHOT_SCHEMA,
-    snapshotId: crypto.randomUUID(),
+    snapshotId: args.snapshotId ?? crypto.randomUUID(),
     collectionId: args.collection.id,
     versionNumber,
-    createdAt: new Date().toISOString(),
+    createdAt: args.createdAt ?? new Date().toISOString(),
     collection: args.collection,
     items: args.items,
     cards: args.cards,
     templateId: args.templateId,
     composition: args.composition,
     contentHash,
+  };
+}
+
+/** Recompute hash from frozen snapshot payload — detects drift before regeneration. */
+export function verifySnapshotIntegrity(snapshot: PrintCatalogueSnapshot): boolean {
+  const expected = hashPrintSnapshotContent({
+    collection: snapshot.collection,
+    items: snapshot.items,
+    cards: snapshot.cards,
+    templateId: snapshot.templateId,
+  });
+  return expected === snapshot.contentHash;
+}
+
+/** Regenerate export inputs from a frozen authoritative snapshot. */
+export function regenerateFromSnapshot(snapshot: PrintCatalogueSnapshot): {
+  composition: PrintComposition;
+  cards: CatalogueProductCard[];
+  templateId: PrintTemplateId;
+  contentHash: string;
+} {
+  if (!verifySnapshotIntegrity(snapshot)) {
+    throw new Error("Snapshot integrity check failed — source data has drifted");
+  }
+  return {
+    composition: snapshot.composition,
+    cards: snapshot.cards,
+    templateId: snapshot.templateId,
+    contentHash: snapshot.contentHash,
   };
 }
 

@@ -103,3 +103,25 @@ export function templatesForVariant(variant: PrintCatalogueVariant): PrintTempla
 export function getPrintTemplate(id: PrintTemplateId): PrintTemplateConfig {
   return PRINT_TEMPLATES[id];
 }
+
+export function collectionVariantForType(
+  catalogueType: CatalogueCollectionType,
+): PrintCatalogueVariant {
+  return getPrintTemplate(defaultTemplateForCollectionType(catalogueType)).variant;
+}
+
+export function isTemplateCompatibleWithCollection(
+  templateId: PrintTemplateId,
+  catalogueType: CatalogueCollectionType,
+): boolean {
+  const expected = collectionVariantForType(catalogueType);
+  return getPrintTemplate(templateId).variant === expected;
+}
+
+/** Templates allowed for a collection type — enforces client-variant isolation. */
+export function compatibleTemplatesForCollection(
+  catalogueType: CatalogueCollectionType,
+): PrintTemplateConfig[] {
+  const variant = collectionVariantForType(catalogueType);
+  return templatesForVariant(variant);
+}

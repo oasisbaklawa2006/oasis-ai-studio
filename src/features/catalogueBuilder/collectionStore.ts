@@ -1,14 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
 import {
-  assertLocalCatalogueFallbackWrite,
-  isLocalCatalogueFallbackReadEnabled,
-} from "@/lib/catalogueAuthority/localStoragePolicy";
-import {
   getCollectionsPersistenceSource,
   setCollectionsLoadFailure,
   setCollectionsPersistenceSource,
 } from "@/lib/catalogueAuthority/dataSource";
+import {
+  assertLocalCatalogueFallbackWrite,
+  isLocalCatalogueFallbackReadEnabled,
+} from "@/lib/catalogueAuthority/localStoragePolicy";
 import { diagnoseSupabaseFailure } from "@/lib/supabase/diagnostics";
 import type {
   CatalogueCollectionItemRow,
@@ -21,7 +21,8 @@ const COLLECTIONS_KEY = "oasis_catalogue_collections";
 const ITEMS_KEY = "oasis_catalogue_collection_items";
 const SHARES_KEY = "oasis_catalogue_share_links";
 
-const authorityDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
+const authorityDb =
+  supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
 
 function readLocal<T>(key: string): T[] {
   try {

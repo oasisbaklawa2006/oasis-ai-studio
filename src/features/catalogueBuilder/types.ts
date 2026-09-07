@@ -64,6 +64,8 @@ export type CatalogueProductCard = {
   isFeatured: boolean;
   publishable: boolean;
   blockers: string[];
+  /** Approved hero media present — separate from full publishability gate. */
+  imageApproved?: boolean;
   /** Optional image dimensions for print-quality validation. */
   imageWidthPx?: number | null;
   imageHeightPx?: number | null;
@@ -72,7 +74,12 @@ export type CatalogueProductCard = {
   priceLabel?: string | null;
 };
 
-export type PrintSectionKind = "cover" | "company_intro" | "contents" | "category_divider" | "product";
+export type PrintSectionKind =
+  | "cover"
+  | "company_intro"
+  | "contents"
+  | "category_divider"
+  | "product";
 
 export type PrintCompositionSection = {
   kind: PrintSectionKind;

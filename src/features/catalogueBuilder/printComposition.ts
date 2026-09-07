@@ -1,6 +1,6 @@
+import { validatePrintImageQuality, validatePrintLayout } from "./printLayout";
 import type { PrintTemplateId } from "./printTemplates";
 import { getPrintTemplate } from "./printTemplates";
-import { validatePrintImageQuality, validatePrintLayout } from "./printLayout";
 import type {
   CatalogueCollectionItemRow,
   CatalogueCollectionRow,
@@ -16,7 +16,10 @@ const COMPANY_INTRO =
 function groupByCategory(
   cards: Array<{ card: CatalogueProductCard; item: CatalogueCollectionItemRow }>,
 ): Map<string, Array<{ card: CatalogueProductCard; item: CatalogueCollectionItemRow }>> {
-  const map = new Map<string, Array<{ card: CatalogueProductCard; item: CatalogueCollectionItemRow }>>();
+  const map = new Map<
+    string,
+    Array<{ card: CatalogueProductCard; item: CatalogueCollectionItemRow }>
+  >();
   for (const entry of cards) {
     const cat = entry.card.category?.trim() || "Uncategorised";
     const list = map.get(cat) ?? [];
@@ -35,11 +38,10 @@ export function buildPrintComposition(args: {
   const template = getPrintTemplate(args.templateId);
   const itemByProduct = new Map(args.items.map((i) => [i.product_id, i]));
   const ordered = args.cards
-    .map((card) => ({
-      card,
-      item: itemByProduct.get(card.productId)!,
-    }))
-    .filter((e) => e.item)
+    .flatMap((card) => {
+      const item = itemByProduct.get(card.productId);
+      return item ? [{ card, item }] : [];
+    })
     .sort((a, b) => a.item.sort_order - b.item.sort_order);
 
   const sections: PrintCompositionSection[] = [];
@@ -141,7 +143,7 @@ export function validateCompositionForPrint(
       imageUrl: card.imageUrl,
       widthPx: card.imageWidthPx,
       heightPx: card.imageHeightPx,
-      approved: card.publishable,
+      approved: card.imageApproved ?? false,
     });
     if (!result.ok) {
       imagesWithIssues += 1;

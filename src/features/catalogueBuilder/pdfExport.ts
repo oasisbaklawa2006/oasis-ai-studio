@@ -2,9 +2,24 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { formatPriceForExport } from "./priceVisibility";
 import { contentBoxMm, PRINT_PAGE } from "./printLayout";
-import { getPrintTemplate, type PrintTemplateId } from "./printTemplates";
 import type { PrintCatalogueSnapshot } from "./printSnapshot";
+import { getPrintTemplate, type PrintTemplateId } from "./printTemplates";
 import type { CatalogueProductCard, PrintComposition } from "./types";
+
+/** FNV-1a over PDF bytes for reproducibility regression tests. */
+export async function hashPdfBlob(blob: Blob): Promise<string> {
+  const buf =
+    typeof blob.arrayBuffer === "function"
+      ? await blob.arrayBuffer()
+      : await new Response(blob).arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < bytes.length; i++) {
+    hash ^= bytes[i];
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
+}
 
 export type PdfExportInput = {
   title: string;
@@ -35,7 +50,13 @@ function addPageFooter(doc: jsPDF, page: number, total: number, hash?: string) {
 function renderCover(doc: jsPDF, title: string, subtitle?: string) {
   const box = contentBoxMm();
   doc.setFillColor(245, 240, 230);
-  doc.rect(0, 0, PRINT_PAGE.widthMm + 2 * PRINT_PAGE.bleedMm, PRINT_PAGE.heightMm + 2 * PRINT_PAGE.bleedMm, "F");
+  doc.rect(
+    0,
+    0,
+    PRINT_PAGE.widthMm + 2 * PRINT_PAGE.bleedMm,
+    PRINT_PAGE.heightMm + 2 * PRINT_PAGE.bleedMm,
+    "F",
+  );
   doc.setFontSize(28);
   doc.setTextColor(40, 30, 20);
   doc.text(title, box.left, box.top + 60, { maxWidth: box.width });
@@ -58,10 +79,7 @@ function renderCompanyIntro(doc: jsPDF, text: string) {
   doc.text(lines, box.left, box.top + 24);
 }
 
-function renderContents(
-  doc: jsPDF,
-  entries: Array<{ title: string; page: number }>,
-) {
+function renderContents(doc: jsPDF, entries: Array<{ title: string; page: number }>) {
   const box = contentBoxMm();
   doc.setFontSize(16);
   doc.text("Contents", box.left, box.top + 10);

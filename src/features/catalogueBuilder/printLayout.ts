@@ -33,10 +33,7 @@ export type PrintLayoutValidation = {
 };
 
 /** Estimate effective DPI for a hero image at the printed card size. */
-export function estimateEffectiveDpi(
-  widthPx: number,
-  printWidthMm: number,
-): number {
+export function estimateEffectiveDpi(widthPx: number, printWidthMm: number): number {
   const printWidthIn = printWidthMm / 25.4;
   return Math.round(widthPx / printWidthIn);
 }
@@ -95,8 +92,7 @@ export function validatePrintLayout(args: {
     );
   }
 
-  const contentWidth =
-    PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
+  const contentWidth = PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
   if (contentWidth < 40) {
     issues.push("Safe area leaves insufficient content width");
   }
@@ -112,9 +108,7 @@ export function validatePrintLayout(args: {
 export function contentBoxMm() {
   const left = PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm;
   const top = PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm;
-  const width =
-    PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
-  const height =
-    PRINT_PAGE.trimHeightMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
+  const width = PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
+  const height = PRINT_PAGE.trimHeightMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm);
   return { left, top, width, height, bottom: top + height, right: left + width };
 }

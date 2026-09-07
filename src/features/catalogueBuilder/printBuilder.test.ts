@@ -1,15 +1,33 @@
 import { describe, expect, it } from "vitest";
+import { exportPrintCataloguePdf, hashPdfBlob } from "./pdfExport";
+import {
+  applyPriceVisibilityToCard,
+  exportTextContainsPriceLeak,
+  formatPriceForExport,
+  formatPriceSegmentForShare,
+  resolvePriceDisplay,
+} from "./priceVisibility";
 import { buildPrintComposition, validateCompositionForPrint } from "./printComposition";
 import { validatePrintImageQuality, validatePrintLayout } from "./printLayout";
-import { applyPriceVisibilityToCard, formatPriceForExport, resolvePriceDisplay } from "./priceVisibility";
 import {
   createPrintCatalogueSnapshot,
   hashPrintSnapshotContent,
+  regenerateFromSnapshot,
   snapshotsAreReproducible,
+  verifySnapshotIntegrity,
 } from "./printSnapshot";
-import { defaultTemplateForCollectionType, getPrintTemplate } from "./printTemplates";
-import { exportPrintCataloguePdf } from "./pdfExport";
-import type { CatalogueCollectionItemRow, CatalogueCollectionRow, CatalogueProductCard } from "./types";
+import {
+  compatibleTemplatesForCollection,
+  defaultTemplateForCollectionType,
+  getPrintTemplate,
+  isTemplateCompatibleWithCollection,
+} from "./printTemplates";
+import type {
+  CatalogueCollectionItemRow,
+  CatalogueCollectionRow,
+  CatalogueProductCard,
+} from "./types";
+import { generateWhatsAppMiniCatalogueText } from "./whatsappPreview";
 
 const baseCollection: CatalogueCollectionRow = {
   id: "col-1",
@@ -25,7 +43,11 @@ const baseCollection: CatalogueCollectionRow = {
   updated_at: "2026-01-01T00:00:00Z",
 };
 
-const baseItem = (productId: string, sort: number, visibility: "visible" | "hidden" | "inquiry" = "visible"): CatalogueCollectionItemRow => ({
+const baseItem = (
+  productId: string,
+  sort: number,
+  visibility: "visible" | "hidden" | "inquiry" = "visible",
+): CatalogueCollectionItemRow => ({
   id: `item-${productId}`,
   collection_id: "col-1",
   product_id: productId,
@@ -62,6 +84,14 @@ describe("printTemplates", () => {
     expect(defaultTemplateForCollectionType("qr_exhibition_catalogue")).toBe("exhibition_hero");
     expect(getPrintTemplate("exhibition_hero").defaultPriceVisibility).toBe("inquiry");
   });
+
+  it("isolates template variants per collection type", () => {
+    expect(isTemplateCompatibleWithCollection("b2b_classic", "b2b_catalogue")).toBe(true);
+    expect(isTemplateCompatibleWithCollection("exhibition_hero", "b2b_catalogue")).toBe(false);
+    const b2bTemplates = compatibleTemplatesForCollection("b2b_catalogue");
+    expect(b2bTemplates.every((t) => t.variant === "b2b")).toBe(true);
+    expect(b2bTemplates.some((t) => t.id === "exhibition_hero")).toBe(false);
+  });
 });
 
 describe("priceVisibility", () => {
@@ -82,6 +112,21 @@ describe("priceVisibility", () => {
 
   it("shows approved price when visible", () => {
     expect(formatPriceForExport(baseCard(), "visible")).toBe("₹1000");
+  });
+
+  it("does not leak hidden prices into WhatsApp preview", () => {
+    const hidden = applyPriceVisibilityToCard(baseCard(), "hidden");
+    const text = generateWhatsAppMiniCatalogueText({ title: "Test", products: [hidden] });
+    expect(exportTextContainsPriceLeak(text, [hidden])).toBe(false);
+    expect(text).not.toContain("₹1000");
+    expect(text).not.toContain("MRP");
+  });
+
+  it("omits price segment entirely for hidden mode in share text", () => {
+    const hidden = applyPriceVisibilityToCard(baseCard(), "hidden");
+    expect(formatPriceSegmentForShare(hidden)).toBe("MOQ 5 kg");
+    const noMoq = applyPriceVisibilityToCard(baseCard({ moqLabel: null }), "hidden");
+    expect(formatPriceSegmentForShare(noMoq)).toBe("");
   });
 });
 
@@ -136,10 +181,7 @@ describe("printComposition", () => {
 
   it("respects product ordering without duplicating truth", () => {
     const items = [baseItem("p2", 0), baseItem("p1", 1)];
-    const cards = [
-      baseCard({ productId: "p1" }),
-      baseCard({ productId: "p2", name: "Second" }),
-    ];
+    const cards = [baseCard({ productId: "p1" }), baseCard({ productId: "p2", name: "Second" })];
     const composition = buildPrintComposition({
       collection: baseCollection,
       items,
@@ -218,6 +260,8 @@ describe("printSnapshot", () => {
       cards,
       templateId: "b2b_classic",
       composition,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      snapshotId: "snap-test-1",
     });
     const snapB = createPrintCatalogueSnapshot({
       collection: baseCollection,
@@ -226,9 +270,15 @@ describe("printSnapshot", () => {
       templateId: "b2b_classic",
       composition,
       existingVersions: [{ ...snapA, versionNumber: 1 }],
+      createdAt: "2026-01-01T00:00:00.000Z",
+      snapshotId: "snap-test-2",
     });
+    expect(verifySnapshotIntegrity(snapA)).toBe(true);
     expect(snapshotsAreReproducible(snapA, { ...snapA, versionNumber: 2 })).toBe(true);
     expect(snapB.versionNumber).toBe(2);
+    const regen = regenerateFromSnapshot(snapA);
+    expect(regen.contentHash).toBe(snapA.contentHash);
+    expect(regen.templateId).toBe("b2b_classic");
   });
 });
 
@@ -248,9 +298,48 @@ describe("printPdfExport", () => {
       cards,
       templateId: "b2b_classic",
       composition,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      snapshotId: "pdf-snap-1",
     });
-    const blob = await exportPrintCataloguePdf({ composition, templateId: "b2b_classic", snapshot });
+    const blob = await exportPrintCataloguePdf({
+      composition,
+      templateId: "b2b_classic",
+      snapshot,
+    });
     expect(blob.size).toBeGreaterThan(1000);
     expect(blob.type).toBe("application/pdf");
+  });
+
+  it("produces identical PDF hash for same frozen snapshot", async () => {
+    const items = [baseItem("p1", 0, "hidden")];
+    const cards = [applyPriceVisibilityToCard(baseCard(), "hidden")];
+    const composition = buildPrintComposition({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+    });
+    const snapshot = createPrintCatalogueSnapshot({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+      composition,
+      createdAt: "2026-01-01T00:00:00.000Z",
+      snapshotId: "pdf-snap-repro",
+    });
+    const frozen = regenerateFromSnapshot(snapshot);
+    const blobA = await exportPrintCataloguePdf({
+      composition: frozen.composition,
+      templateId: frozen.templateId,
+      snapshot,
+    });
+    const blobB = await exportPrintCataloguePdf({
+      composition: frozen.composition,
+      templateId: frozen.templateId,
+      snapshot,
+    });
+    const [hashA, hashB] = await Promise.all([hashPdfBlob(blobA), hashPdfBlob(blobB)]);
+    expect(hashA).toBe(hashB);
   });
 });
