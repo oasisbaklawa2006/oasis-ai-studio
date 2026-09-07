@@ -48,6 +48,10 @@ export type ProductHeroMediaRow = {
   file_url?: string | null;
   status?: string | null;
   created_at?: string | null;
+  /** Authoritative pixel width for the media-row file (when Core provides it). */
+  width_px?: number | null;
+  /** Authoritative pixel height for the media-row file (when Core provides it). */
+  height_px?: number | null;
 };
 
 const NON_HERO_MEDIA_STATUSES = new Set(["deleted", "rejected", "archived"]);
@@ -98,9 +102,14 @@ type ProductHeroDimensionRow = ProductImageRow & {
   hero_image_height_px?: number | null;
 };
 
+function normalizePx(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+  return Math.round(value);
+}
+
 /**
  * Resolve hero URL and dimensions from the same authoritative source.
- * Media-row heroes do not carry dimensions in schema — dimensions are null until Core provides them.
+ * Media-row heroes use width_px/height_px from the selected row when present.
  * Product-column heroes may use stored width/height when the URL matches.
  */
 export function resolveProductCardHeroMeta(
@@ -113,9 +122,15 @@ export function resolveProductCardHeroMeta(
     return tb - ta;
   });
 
-  const fromMedia = trimUrl(heroes[0]?.file_url);
+  const heroRow = heroes[0];
+  const fromMedia = trimUrl(heroRow?.file_url);
   if (fromMedia) {
-    return { url: fromMedia, widthPx: null, heightPx: null, source: "media_row" };
+    return {
+      url: fromMedia,
+      widthPx: normalizePx(heroRow?.width_px),
+      heightPx: normalizePx(heroRow?.height_px),
+      source: "media_row",
+    };
   }
 
   const heroCol = trimUrl(product?.hero_image_url);

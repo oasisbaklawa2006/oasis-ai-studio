@@ -220,33 +220,49 @@ export async function removeProductFromCollection(
   writeLocal(ITEMS_KEY, all);
 }
 
+/** Validate that orderedProductIds is an exact permutation of collection item product IDs. */
+export function validateCollectionReorderPermutation(
+  items: CatalogueCollectionItemRow[],
+  orderedProductIds: string[],
+): void {
+  if (orderedProductIds.length !== items.length) {
+    throw new Error("Reorder rejected: product count mismatch");
+  }
+  if (new Set(orderedProductIds).size !== orderedProductIds.length) {
+    throw new Error("Reorder rejected: duplicate product IDs in reorder request");
+  }
+  const current = new Set(items.map((i) => i.product_id));
+  if (orderedProductIds.some((id) => !current.has(id))) {
+    throw new Error("Reorder rejected: product IDs must match collection items exactly");
+  }
+}
+
 export async function reorderCollectionItems(
   collectionId: string,
   orderedProductIds: string[],
 ): Promise<void> {
   const items = await listCollectionItems(collectionId);
+  validateCollectionReorderPermutation(items, orderedProductIds);
+
   const updated = items.map((item) => ({
     ...item,
     sort_order: orderedProductIds.indexOf(item.product_id),
   }));
 
+  const originalSortOrders = new Map(items.map((item) => [item.id, item.sort_order]));
+
   try {
-    for (const item of updated) {
-      const { data, error } = await authorityDb
-        .from("catalogue_collection_items")
-        .update({ sort_order: item.sort_order })
-        .eq("id", item.id)
-        .select("id");
-      if (error) {
-        throw new Error(`Failed to reorder collection item: ${error.message}`);
-      }
-      if (!data?.length) {
-        throw new Error(`Failed to reorder collection item ${item.id}: no rows updated`);
-      }
+    const { error } = await authorityDb.from("catalogue_collection_items").upsert(
+      updated.map((item) => ({ id: item.id, sort_order: item.sort_order })),
+      { onConflict: "id" },
+    );
+    if (error) {
+      throw new Error(`Failed to reorder collection items: ${error.message}`);
     }
     return;
   } catch (err) {
     if (err instanceof Error && err.message.startsWith("Failed to reorder")) {
+      await rollbackCollectionSortOrders(originalSortOrders);
       throw err;
     }
     /* fall through to local fallback */
@@ -257,6 +273,21 @@ export async function reorderCollectionItems(
     (i) => i.collection_id !== collectionId,
   );
   writeLocal(ITEMS_KEY, [...all, ...updated]);
+}
+
+async function rollbackCollectionSortOrders(
+  originalSortOrders: Map<string, number>,
+): Promise<void> {
+  const rows = [...originalSortOrders.entries()].map(([id, sort_order]) => ({
+    id,
+    sort_order,
+  }));
+  if (!rows.length) return;
+  try {
+    await authorityDb.from("catalogue_collection_items").upsert(rows, { onConflict: "id" });
+  } catch {
+    /* best-effort rollback */
+  }
 }
 
 export async function updateCollectionItem(

@@ -153,6 +153,32 @@ function renderProductPage(
   });
 }
 
+/** Canonical UTC PDF date string — timezone-independent for byte-stable output. */
+export function isoToCanonicalPdfUtcDate(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    `D:${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}` +
+    `${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}+00'00'`
+  );
+}
+
+/** Derive a valid 32-char lowercase hex FileID from any seed (jsPDF rejects non-hex). */
+export function deriveDeterministicPdfFileId(seed: string): string {
+  const hexOnly = seed.replace(/^fnv1a-/, "").replace(/[^a-fA-F0-9]/g, "");
+  if (/^[a-fA-F0-9]{32}$/.test(hexOnly)) {
+    return hexOnly.toLowerCase();
+  }
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  const derived = (hash >>> 0).toString(16).padStart(8, "0");
+  const combined = (hexOnly + derived.repeat(4)).toLowerCase();
+  return combined.slice(0, 32).padEnd(32, "0");
+}
+
 function applyDeterministicPdfMetadata(
   doc: jsPDF,
   snapshot?: Pick<PrintCatalogueSnapshot, "contentHash" | "versionNumber" | "createdAt">,
@@ -160,10 +186,8 @@ function applyDeterministicPdfMetadata(
 ) {
   const createdAt = snapshot?.createdAt ?? "1970-01-01T00:00:00.000Z";
   const hash = snapshot?.contentHash ?? "preview";
-  const fileId = hash
-    .replace(/^fnv1a-/, "")
-    .padStart(32, "0")
-    .slice(0, 32);
+  const fileId = deriveDeterministicPdfFileId(hash);
+  const pdfDate = isoToCanonicalPdfUtcDate(createdAt);
 
   doc.setProperties({
     title: title ?? "Oasis Print Catalogue",
@@ -173,7 +197,7 @@ function applyDeterministicPdfMetadata(
   });
 
   if (typeof doc.setCreationDate === "function") {
-    doc.setCreationDate(new Date(createdAt));
+    doc.setCreationDate(pdfDate);
   }
   if (typeof doc.setFileId === "function") {
     doc.setFileId(fileId);
@@ -304,6 +328,8 @@ export async function exportCataloguePdf(input: PdfExportInput): Promise<Blob> {
       doc.internal.pageSize.getHeight() - 8,
     );
   }
+
+  applyDeterministicPdfMetadata(doc, undefined, input.title);
 
   return doc.output("blob");
 }

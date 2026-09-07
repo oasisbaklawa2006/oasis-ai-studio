@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { exportPrintCataloguePdf, hashPdfBlob } from "./pdfExport";
+import {
+  deriveDeterministicPdfFileId,
+  exportCataloguePdf,
+  exportPrintCataloguePdf,
+  hashPdfBlob,
+  isoToCanonicalPdfUtcDate,
+} from "./pdfExport";
 import {
   applyPriceVisibilityToCard,
   exportTextContainsPriceLeak,
@@ -8,7 +14,12 @@ import {
   resolvePriceDisplay,
 } from "./priceVisibility";
 import { buildPrintComposition, validateCompositionForPrint } from "./printComposition";
-import { validatePrintImageQuality, validatePrintLayout } from "./printLayout";
+import {
+  contentBoxMm,
+  PRINT_PAGE,
+  validatePrintImageQuality,
+  validatePrintLayout,
+} from "./printLayout";
 import {
   createPrintCatalogueSnapshot,
   hashPrintSnapshotContent,
@@ -365,6 +376,39 @@ describe("printSnapshot", () => {
   });
 });
 
+describe("printLayout bleed", () => {
+  it("uses trim plus 3mm bleed on each edge for media box", () => {
+    expect(PRINT_PAGE.mediaWidthMm).toBe(216);
+    expect(PRINT_PAGE.mediaHeightMm).toBe(303);
+    expect(PRINT_PAGE.mediaWidthMm).toBe(PRINT_PAGE.trimWidthMm + 2 * PRINT_PAGE.bleedMm);
+    expect(PRINT_PAGE.mediaHeightMm).toBe(PRINT_PAGE.trimHeightMm + 2 * PRINT_PAGE.bleedMm);
+  });
+
+  it("positions content inside bleed and safe margins", () => {
+    const box = contentBoxMm();
+    expect(box.left).toBe(PRINT_PAGE.bleedMm + PRINT_PAGE.safeMarginMm);
+    expect(box.top).toBe(PRINT_PAGE.bleedMm + PRINT_PAGE.safeMarginMm);
+    expect(box.width).toBe(
+      PRINT_PAGE.trimWidthMm - 2 * (PRINT_PAGE.safeMarginMm + PRINT_PAGE.bleedMm),
+    );
+  });
+});
+
+describe("deterministicPdfMetadata", () => {
+  it("formats canonical UTC PDF date strings", () => {
+    expect(isoToCanonicalPdfUtcDate("1970-01-01T00:00:00.000Z")).toBe("D:19700101000000+00'00'");
+    expect(isoToCanonicalPdfUtcDate("2026-01-01T12:30:45.000Z")).toBe("D:20260101123045+00'00'");
+  });
+
+  it("derives valid 32-char hex file IDs from preview and hash seeds", () => {
+    const previewId = deriveDeterministicPdfFileId("preview");
+    expect(previewId).toMatch(/^[a-f0-9]{32}$/);
+    const hashId = deriveDeterministicPdfFileId("fnv1a-deadbeef");
+    expect(hashId).toMatch(/^[a-f0-9]{32}$/);
+    expect(deriveDeterministicPdfFileId("preview")).toBe(previewId);
+  });
+});
+
 describe("printPdfExport", () => {
   it("generates deterministic production PDF blob", async () => {
     const items = [baseItem("p1", 0, "hidden")];
@@ -420,6 +464,55 @@ describe("printPdfExport", () => {
     const blobB = await exportPrintCataloguePdf({
       composition: frozen.composition,
       templateId: frozen.templateId,
+      snapshot,
+    });
+    const [hashA, hashB] = await Promise.all([hashPdfBlob(blobA), hashPdfBlob(blobB)]);
+    expect(hashA).toBe(hashB);
+  });
+
+  it("produces identical hash for no-snapshot preview exports", async () => {
+    const cards = [applyPriceVisibilityToCard(baseCard(), "hidden")];
+    const blobA = await exportCataloguePdf({
+      title: "Preview Catalogue",
+      products: cards,
+    });
+    const blobB = await exportCataloguePdf({
+      title: "Preview Catalogue",
+      products: cards,
+    });
+    const [hashA, hashB] = await Promise.all([hashPdfBlob(blobA), hashPdfBlob(blobB)]);
+    expect(hashA).toBe(hashB);
+  });
+
+  it("uses deterministic metadata seeds for production snapshots", async () => {
+    const items = [baseItem("p1", 0)];
+    const cards = [baseCard()];
+    const composition = buildPrintComposition({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+    });
+    const snapshot = createPrintCatalogueSnapshot({
+      collection: baseCollection,
+      items,
+      cards,
+      templateId: "b2b_classic",
+      composition,
+      createdAt: "2026-06-15T18:45:30.000Z",
+      snapshotId: "pdf-tz-stable",
+    });
+    expect(isoToCanonicalPdfUtcDate(snapshot.createdAt)).toBe("D:20260615184530+00'00'");
+    expect(deriveDeterministicPdfFileId(snapshot.contentHash)).toMatch(/^[a-f0-9]{32}$/);
+
+    const blobA = await exportPrintCataloguePdf({
+      composition,
+      templateId: "b2b_classic",
+      snapshot,
+    });
+    const blobB = await exportPrintCataloguePdf({
+      composition,
+      templateId: "b2b_classic",
       snapshot,
     });
     const [hashA, hashB] = await Promise.all([hashPdfBlob(blobA), hashPdfBlob(blobB)]);

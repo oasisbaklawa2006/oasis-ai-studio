@@ -272,6 +272,7 @@ export default function CatalogueBuilder() {
       await reorderCollectionItems(activeId, ids);
       setItems(await listCollectionItems(activeId));
     } catch (e) {
+      setItems(await listCollectionItems(activeId));
       toast.error(e instanceof Error ? e.message : "Could not reorder products");
     }
   };
