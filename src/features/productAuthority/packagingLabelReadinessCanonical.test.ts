@@ -6,7 +6,6 @@ import {
   evaluateHierarchyLabelReadiness,
   evaluatePackagingLabelReadiness,
   evaluatePackagingTypeAuthority,
-  POINT_37_REMAINING_CORE_DEPENDENCIES,
 } from "./packagingLabelReadinessCanonical";
 
 const PACKAGING_AUTHORITY: PackagingTaxonomyAuthority = {
