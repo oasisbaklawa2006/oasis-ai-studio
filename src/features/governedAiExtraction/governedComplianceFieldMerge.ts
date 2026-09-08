@@ -172,5 +172,5 @@ export function mergeComplianceMetaMaps(
 }
 
 export function fieldMetaRequiresApproval(meta: ComplianceFieldMeta | undefined): boolean {
-  return meta?.source === "ai_suggestion" && !meta.approved;
+  return (meta?.source === "ai_suggestion" || meta?.source === "category_rule") && !meta.approved;
 }

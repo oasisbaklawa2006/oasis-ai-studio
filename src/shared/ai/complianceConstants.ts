@@ -3,11 +3,15 @@ export const COMPLIANCE_SENSITIVE_FIELDS = [
   "hsn_code",
   "gst_rate",
   "shelf_life_days",
+  "frozen_shelf_life_days",
+  "post_processing_shelf_life_days",
   "ingredients",
   "allergen_warnings",
   "nutritional_info",
   "nutrition_facts",
   "storage_instructions",
+  "temperature_requirement",
+  "thawing_instruction",
   "country_of_origin",
   "legal_claims",
   "export_compliance_notes",
@@ -16,8 +20,7 @@ export const COMPLIANCE_SENSITIVE_FIELDS = [
 
 export type ComplianceSensitiveField = (typeof COMPLIANCE_SENSITIVE_FIELDS)[number];
 
-export const AI_COMPLIANCE_UI_DISCLAIMER =
-  "AI suggestion only. Manual approval required.";
+export const AI_COMPLIANCE_UI_DISCLAIMER = "AI suggestion only. Manual approval required.";
 
 export const AI_COMPLIANCE_LEGAL_DISCLAIMER =
   "AI suggestion only. Final GST/HSN must be approved manually by authorized user.";

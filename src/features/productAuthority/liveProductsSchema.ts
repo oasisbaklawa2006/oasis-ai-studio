@@ -61,6 +61,10 @@ export const CENTRAL_COMPAT_PRODUCT_COLUMNS = [
   "fssai_licence_number",
   "country_of_origin",
   "label_manufacturer_details",
+  /** Core product composition authority — present on live Central `products`, absent from Studio migrations. */
+  "ingredients",
+  "allergen_warnings",
+  "nutrition_facts",
 ] as const;
 
 export type CentralCompatProductColumn = (typeof CENTRAL_COMPAT_PRODUCT_COLUMNS)[number];

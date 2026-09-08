@@ -12,6 +12,11 @@ import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
 import { serializePackagingHierarchyForSnapshot } from "@/features/productTruth/packagingHierarchyCanonical";
 import {
+  factualCompositionDraftPayload,
+  factualCompositionFormForSnapshot,
+  serializeFactualCompositionForSnapshot,
+} from "@/features/productTruth/productFactualCompositionCanonical";
+import {
   evaluateProductReadiness,
   productTruthInputFromForm,
 } from "@/features/productTruth/productReadiness";
@@ -62,14 +67,15 @@ function complianceFields(input: SnapshotGeneratorInput): CatalogueSnapshotJson[
   const gstStatus: GstClassificationStatus = manuallyApproved
     ? "approved"
     : "manual_review_required";
+  const factual = factualCompositionDraftPayload(input.form);
 
   return {
     status: manuallyApproved ? "approved" : "manual_review_required",
     gst_classification_status: gstStatus,
     gst_hsn: manuallyApproved ? str(input.form.hsn_code) : null,
     gst_rate: manuallyApproved ? ((input.form.gst_rate as string | number | null) ?? null) : null,
-    ingredients: str(input.form.ingredients),
-    allergen_warnings: str(input.form.allergen_information ?? input.form.allergen_warnings),
+    ingredients: manuallyApproved ? factual.ingredients : null,
+    allergen_warnings: manuallyApproved ? factual.allergen_information : null,
     manually_approved: manuallyApproved,
   };
 }
@@ -98,6 +104,10 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
   const hero = approvedImages[0] ?? str(input.form.hero_image_url);
 
   const packagingHierarchy = serializePackagingHierarchyForSnapshot(input.form);
+  const manuallyApproved = !!input.complianceApproved && !input.complianceMetaPending;
+  const factualComposition = serializeFactualCompositionForSnapshot(
+    factualCompositionFormForSnapshot(input.form, manuallyApproved),
+  );
   const primaryPack = packagingHierarchy.primary_pack;
   const masterCarton = packagingHierarchy.master_carton;
 
@@ -170,6 +180,7 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
     },
     packaging_hierarchy: packagingHierarchy,
     packaging_label_readiness: point37.snapshot,
+    factual_composition: factualComposition,
     channel_rules: input.moqRules ?? [],
     pricing_rules: input.prices ?? [],
     media: {

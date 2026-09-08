@@ -119,12 +119,60 @@ describe("catalogueSnapshot", () => {
     expect(snap.packaging_label_readiness.schema).toBe("point37_v2");
     expect(snap.packaging_label_readiness.live_legal_fields).toHaveLength(3);
     expect(snap.packaging_label_readiness.ready_for_label_design).toBe(false);
+    expect(snap.factual_composition.schema).toBe("point34_v1");
+    expect(snap.factual_composition.point37_label_authority).toBe(true);
     expect(snap.channel_rules).toHaveLength(1);
     expect(snap.pricing_rules).toHaveLength(1);
     expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);
     expect(snap.language_intelligence).toBeTruthy();
     expect(snap.language_intelligence.schema_available).toBe(false);
     expect(snap.language_intelligence.official_name).toBe("Cashew Pyramid");
+  });
+
+  it("suppresses unapproved factual composition values in snapshot preview", () => {
+    const snap = generateCatalogueSnapshot({
+      form: {
+        ...baseForm,
+        ingredients: "AI invented recipe",
+        shelf_life_days: 90,
+        storage_instructions: "Category-rule default",
+      },
+      productId: String(baseForm.id),
+      complianceApproved: false,
+      complianceMetaPending: true,
+      prices: approvedPrices,
+      moqRules,
+    });
+    const ingredients = snap.factual_composition.fields.find((f) => f.key === "ingredients");
+    const shelf = snap.factual_composition.fields.find((f) => f.key === "shelf_life_days");
+    expect(ingredients?.review_state).toBe("unknown");
+    expect(ingredients?.value).toBeNull();
+    expect(shelf?.review_state).toBe("unknown");
+    expect(shelf?.value).toBeNull();
+    expect(snap.compliance.ingredients).toBeNull();
+  });
+
+  it("includes approved factual composition values when compliance is manually approved", () => {
+    const snap = generateCatalogueSnapshot({
+      form: {
+        ...baseForm,
+        ingredients: "Cashew, sugar, clarified butter",
+        shelf_life_days: 60,
+        storage_instructions: "Store cool and dry",
+      },
+      productId: String(baseForm.id),
+      complianceApproved: true,
+      complianceMetaPending: false,
+      prices: approvedPrices,
+      moqRules,
+    });
+    const ingredients = snap.factual_composition.fields.find((f) => f.key === "ingredients");
+    const shelf = snap.factual_composition.fields.find((f) => f.key === "shelf_life_days");
+    expect(ingredients?.review_state).toBe("known");
+    expect(ingredients?.value).toBe("Cashew, sugar, clarified butter");
+    expect(shelf?.review_state).toBe("known");
+    expect(shelf?.value).toBe(60);
+    expect(snap.compliance.ingredients).toBe("Cashew, sugar, clarified butter");
   });
 
   it("includes durable product_aliases in snapshot preview", () => {

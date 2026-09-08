@@ -1,15 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { buildHeuristicSuggestions } from "./fastCreateSuggestions";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { seedAliasesFromName } from "@/features/productLanguage/aliasSeedRules";
+import { buildHeuristicSuggestions } from "./fastCreateSuggestions";
 
 describe("fastCreateSuggestions", () => {
-  it("applies category defaults and heuristic aliases", () => {
+  it("applies category defaults and heuristic aliases without inventing ingredients/allergens", () => {
     const result = buildHeuristicSuggestions("Cashew Pyramid Baklawa", "baklawa");
     expect(result.formPatch.hsn_code).toBe("19059090");
     expect(result.formPatch.gst_rate).toBe("18");
     expect(result.formPatch.main_department).toBe("ready_goods_store");
     expect(result.formPatch.production_department).toBe("arabic_sweets");
+    expect(result.formPatch.ingredients).toBeUndefined();
+    expect(result.formPatch.allergen_warnings).toBeUndefined();
+    expect(result.complianceFieldMeta?.shelf_life_days?.source).toBe("category_rule");
+    expect(result.complianceFieldMeta?.storage_instructions?.source).toBe("category_rule");
     expect(result.aliases.length).toBeGreaterThan(0);
     expect(result.whatsappKeywords.length).toBeGreaterThan(0);
     expect(result.sources.defaults).toBe(true);

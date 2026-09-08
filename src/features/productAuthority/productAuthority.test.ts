@@ -182,7 +182,20 @@ describe("productSchemaAdapter", () => {
     expect(mrpRule?.uom).toBe("KG");
   });
 
-  it("strips unknown fields", () => {
+  it("persists approved composition fields on products row", () => {
+    const payload = formToDbProductPayload({
+      product_name: "Test",
+      sku: "OAS-AS-BKL-0001-0001",
+      ingredients: "cashew, sugar",
+      allergen_warnings: "nuts",
+      nutritional_info: "Per 100g draft",
+    });
+    expect(payload.ingredients).toBe("cashew, sugar");
+    expect(payload.allergen_warnings).toBe("nuts");
+    expect(payload.nutrition_facts).toBe("Per 100g draft");
+  });
+
+  it("strips unknown legacy fields but keeps composition columns", () => {
     const { payload, stripped } = stripUnknownProductFields({
       product_name: "Test",
       ingredients: "nuts",
@@ -191,7 +204,7 @@ describe("productSchemaAdapter", () => {
       department: "x",
     });
     expect(payload.product_name).toBe("Test");
-    expect(stripped).toContain("ingredients");
+    expect(payload.ingredients).toBe("nuts");
     expect(stripped).toContain("visible_in_catalog");
     expect(stripped).toContain("department");
   });

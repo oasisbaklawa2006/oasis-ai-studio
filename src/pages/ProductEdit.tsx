@@ -69,7 +69,6 @@ import {
   buildDimensionsText,
   dbRowToProductForm,
   formatProductSaveError,
-  formToDbProductPayload,
   productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
@@ -85,6 +84,11 @@ import {
   mapPricingRules,
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
+import { productEditDirectProductsRow } from "@/features/productTruth/productEditFactualCompositionPersistence";
+import {
+  factualCompositionDraftPayload,
+  factualCompositionSaveValidation,
+} from "@/features/productTruth/productFactualCompositionCanonical";
 import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
 import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 import {
@@ -631,8 +635,6 @@ const dbProductToForm = (data: Record<string, unknown>): Record<string, unknown>
   };
 };
 
-const formToProductRow = (form: Record<string, unknown>) => formToDbProductPayload(form);
-
 const pickComplianceBaseline = (form: Record<string, unknown>) => {
   const baseline: Record<string, unknown> = {};
   for (const field of COMPLIANCE_SENSITIVE_FIELDS) {
@@ -751,7 +753,9 @@ const ProductEdit = () => {
 
   const complianceMetaPending = useMemo(
     () =>
-      Object.values(complianceMetaMap).some((m) => m?.source === "ai_suggestion" && !m?.approved),
+      Object.values(complianceMetaMap).some(
+        (m) => (m?.source === "ai_suggestion" || m?.source === "category_rule") && !m?.approved,
+      ),
     [complianceMetaMap],
   );
 
@@ -913,7 +917,10 @@ const ProductEdit = () => {
 
   // Deliberately separate from readinessSnapshot/catalogue readiness above — see
   // labelReadiness.ts docblock for why they must never be merged into one toggle.
-  const labelReadiness = useMemo(() => computeLabelReadiness(form), [form]);
+  const labelReadiness = useMemo(
+    () => computeLabelReadiness(form, { complianceMetaMap, roles }),
+    [form, complianceMetaMap, roles],
+  );
 
   const packagingLabelReadiness = useMemo(
     () =>
@@ -1466,6 +1473,14 @@ const ProductEdit = () => {
 
     setLoading(true);
 
+    const factualValidation = factualCompositionSaveValidation(form);
+    if (!factualValidation.ok) {
+      setLoading(false);
+      setSubmitError(factualValidation.message);
+      toast.error(factualValidation.message);
+      return;
+    }
+
     const payload: Record<string, unknown> = {
       ...form,
       bom_required: isPackingAssembly || !!form.bom_required,
@@ -1514,7 +1529,18 @@ const ProductEdit = () => {
         return;
       }
 
-      const productRow = formToProductRow(safePayload);
+      let productRow: Record<string, unknown>;
+      try {
+        productRow = productEditDirectProductsRow(safePayload);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Invalid factual composition for products save.";
+        setLoading(false);
+        setSubmitError(message);
+        toast.error(message);
+        return;
+      }
+
       const validation = validateProductSavePayload(productRow, isNew ? "create" : "update");
       if (!validation.ok) {
         const message = productSaveValidationMessage(validation);
@@ -1525,7 +1551,7 @@ const ProductEdit = () => {
       }
 
       // productRow is a dynamically-assembled Record<string, unknown> (built from the free-form
-      // form state via formToProductRow/formToDbProductPayload), not the generated Insert/Update
+      // form state via productEditDirectProductsRow/formToDbProductPayload), not the generated Insert/Update
       // row shape, so the generated client's excess-property check rejects it structurally even
       // though validateProductSavePayload() above already vetted its actual columns.
       const res = isNew
@@ -1664,12 +1690,7 @@ const ProductEdit = () => {
         },
         compliance: appendLiveLegalFieldsToContributorCompliance(
           {
-            ingredients: payload.ingredients,
-            allergen_information: payload.allergen_warnings || "Suggested — please review",
-            nutritional_information:
-              payload.nutritional_info || payload.nutrition_facts || "Draft placeholder only",
-            shelf_life_days: payload.shelf_life_days,
-            storage_instructions: payload.storage_instructions,
+            ...factualCompositionDraftPayload(payload),
             manufactured_by: "TCF Chocolates and Gifts Pvt Ltd",
             production_unit: "10/62 Kirti Nagar Industrial Area, New Delhi 110015",
             customer_care: "Call +91-9999792959 | E-Mail: help@oasisbaklawa.com",
@@ -2759,8 +2780,8 @@ const ProductEdit = () => {
                   <div className="sm:col-span-3">
                     <Field label="Ingredients">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Label Designer will use
-                        structured ingredient tables.
+                        Approval-gated — persists to products.ingredients when saved with compliance
+                        approval.
                       </p>
                       <Textarea
                         rows={2}
@@ -2774,8 +2795,8 @@ const ProductEdit = () => {
                   <div className="sm:col-span-3">
                     <Field label="Allergen warnings">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Use Labels / Ingredients for
-                        durable allergen data.
+                        Approval-gated — persists to products.allergen_warnings when saved with
+                        compliance approval.
                       </p>
                       <Textarea
                         rows={2}
@@ -2789,8 +2810,9 @@ const ProductEdit = () => {
                   <div className="sm:col-span-3">
                     <Field label="Nutritional information">
                       <p className="text-[11px] text-muted-foreground mb-1">
-                        UI-only draft — not saved on the product row. Nutrition panels will be owned
-                        by Label Designer.
+                        {isContributorMode
+                          ? "Draft only — submitted for compliance approval before product persistence."
+                          : "Approval-gated — persists to products.nutrition_facts when saved with compliance approval."}
                       </p>
                       <Textarea
                         rows={3}

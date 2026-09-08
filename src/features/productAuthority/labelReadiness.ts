@@ -5,25 +5,21 @@
  * They must never be merged into one toggle — a product can be catalogue-ready while
  * legally required label data is still missing.
  *
- * Only `identity`, `quantity`, and `shelf_storage` are scored from real, actually-persisted
- * product fields. Ingredients, allergen warnings, and nutritional info are deliberately
- * NOT scored as pass/warn/missing here, even though `products.ingredients` /
- * `allergen_warnings` / `nutritional_info` exist as columns — `formToDbProductPayload`
- * (productSchemaAdapter.ts) intentionally excludes them from every save, per its own
- * comment: "Compliance text fields (ingredients, allergens) are UI-only until
- * label/nutrition tables own them." Scoring them as real data would be misleading, since
- * whatever staff types into the Full Editor for these three fields today is never actually
- * saved. They're reported as `dataGaps` with severity "not_persisted", not scored.
- *
- * FSSAI licence number, batch/lot number, mfg/best-before dates, veg/non-veg indicator,
- * structured net quantity, serving size, and claims fields without a live Core column are
- * reported as `dataGaps` with severity "no_column".
+ * Scores identity, quantity, shelf/storage, product-composition text (Point 34), and
+ * live legal-label columns (Point 37 recert). Remaining label-grade fields without a live
+ * Core column are reported as `dataGaps` with severity "no_column".
  *
  * Live @ Core #Point37 recert (release run `34034910469` @ `9c93fc32`):
  * `fssai_licence_number`, `country_of_origin`, `label_manufacturer_details` — scored via
  * `legal_label_fields` category; persisted through `formToDbProductPayload` compat columns.
  */
 import { hasNumericInput, hasText } from "@/features/catalogueAiStudio/catalogueFieldUtils";
+import { normalizeNutritionText } from "@/features/productTruth/productFactualCompositionCanonical";
+import {
+  type ComplianceFieldMetaMap,
+  isComplianceFieldApproved,
+} from "@/shared/ai/complianceApproval";
+import type { ComplianceSensitiveField } from "@/shared/ai/complianceConstants";
 import {
   buildLiveLegalLabelCategory,
   evaluateLiveLegalLabelFields,
@@ -72,9 +68,27 @@ export interface LabelReadinessProductInput {
   fssai_licence_number?: string | null;
   country_of_origin?: string | null;
   label_manufacturer_details?: string | null;
+  /** Point 34 factual composition — persisted on products row when approved. */
+  ingredients?: string | null;
+  allergen_warnings?: string | null;
+  nutritional_info?: string | null;
+  nutrition_facts?: string | null;
+}
+
+export interface LabelReadinessOptions {
+  complianceMetaMap?: ComplianceFieldMetaMap;
+  roles?: string[];
 }
 
 const NUTRITION_REVIEW_NOTICE = "Draft nutrition data — requires compliance review.";
+
+function isCompositionFieldApproved(
+  field: ComplianceSensitiveField,
+  options?: LabelReadinessOptions,
+): boolean {
+  if (!options?.complianceMetaMap) return true;
+  return isComplianceFieldApproved(field, options.complianceMetaMap, options.roles ?? []);
+}
 
 function buildIdentity(p: LabelReadinessProductInput): LabelReadinessCategory {
   if (!hasText(p.product_name) || !hasText(p.category)) {
@@ -127,7 +141,10 @@ function buildQuantity(p: LabelReadinessProductInput): LabelReadinessCategory {
   };
 }
 
-function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategory {
+function buildShelfStorage(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
   const hasShelf = hasNumericInput(p.shelf_life_days);
   const hasStorage = hasText(p.storage_instructions);
   if (!hasShelf && !hasStorage) {
@@ -150,6 +167,23 @@ function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategor
       nextAction: !hasShelf ? "Set Shelf Life (days)." : "Set Storage Instructions.",
     };
   }
+  const shelfPendingApproval = hasShelf && !isCompositionFieldApproved("shelf_life_days", options);
+  const storagePendingApproval =
+    hasStorage && !isCompositionFieldApproved("storage_instructions", options);
+  if (shelfPendingApproval || storagePendingApproval) {
+    return {
+      key: "shelf_storage",
+      label: "Shelf Life / Storage",
+      state: "warn",
+      detail:
+        shelfPendingApproval && storagePendingApproval
+          ? "Shelf life and storage instructions are pending compliance approval and will not persist on save."
+          : shelfPendingApproval
+            ? "Shelf life is pending compliance approval and will not persist on save."
+            : "Storage instructions are pending compliance approval and will not persist on save.",
+      nextAction: "Approve shelf life and storage instructions before save.",
+    };
+  }
   return {
     key: "shelf_storage",
     label: "Shelf Life / Storage",
@@ -159,25 +193,104 @@ function buildShelfStorage(p: LabelReadinessProductInput): LabelReadinessCategor
   };
 }
 
-const DATA_GAPS: LabelDataGap[] = [
-  {
+function buildIngredients(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
+  if (!hasText(p.ingredients)) {
+    return {
+      key: "ingredients",
+      label: "Ingredient Declaration",
+      state: "missing",
+      detail: "No ingredient declaration set.",
+      nextAction: "Set Ingredients and approve before save.",
+    };
+  }
+  if (!isCompositionFieldApproved("ingredients", options)) {
+    return {
+      key: "ingredients",
+      label: "Ingredient Declaration",
+      state: "warn",
+      detail: "Ingredient text is pending compliance approval and will not persist on save.",
+      nextAction: "Approve ingredients before save.",
+    };
+  }
+  return {
     key: "ingredients",
     label: "Ingredient Declaration",
-    severity: "not_persisted",
-    note: "products.ingredients exists but formToDbProductPayload excludes it from every save — UI-only until a label/nutrition table owns it.",
-  },
-  {
+    state: "pass",
+    detail: "Ingredient text is set.",
+    nextAction: null,
+  };
+}
+
+function buildAllergens(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
+  if (!hasText(p.allergen_warnings)) {
+    return {
+      key: "allergen_warnings",
+      label: "Allergen Declaration",
+      state: "missing",
+      detail: "No allergen warnings set.",
+      nextAction: "Set Allergen warnings and approve before save.",
+    };
+  }
+  if (!isCompositionFieldApproved("allergen_warnings", options)) {
+    return {
+      key: "allergen_warnings",
+      label: "Allergen Declaration",
+      state: "warn",
+      detail: "Allergen warnings are pending compliance approval and will not persist on save.",
+      nextAction: "Approve allergen warnings before save.",
+    };
+  }
+  return {
     key: "allergen_warnings",
     label: "Allergen Declaration",
-    severity: "not_persisted",
-    note: "products.allergen_warnings exists but formToDbProductPayload excludes it from every save — UI-only until a label/nutrition table owns it.",
-  },
-  {
+    state: "pass",
+    detail: "Allergen warnings are set.",
+    nextAction: null,
+  };
+}
+
+function buildNutrition(
+  p: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessCategory {
+  const nutrition = normalizeNutritionText(p);
+  if (!nutrition) {
+    return {
+      key: "nutrition",
+      label: "Nutrition Information",
+      state: "missing",
+      detail: "No nutrition information set.",
+      nextAction: "Set Nutrition and approve before save.",
+    };
+  }
+  const nutritionApproved =
+    isCompositionFieldApproved("nutritional_info", options) &&
+    isCompositionFieldApproved("nutrition_facts", options);
+  if (!nutritionApproved) {
+    return {
+      key: "nutrition",
+      label: "Nutrition Information",
+      state: "warn",
+      detail: "Nutrition information is pending compliance approval and will not persist on save.",
+      nextAction: "Approve nutrition before save.",
+    };
+  }
+  return {
     key: "nutrition",
     label: "Nutrition Information",
-    severity: "not_persisted",
-    note: `products.nutritional_info exists but formToDbProductPayload excludes it from every save. ${NUTRITION_REVIEW_NOTICE}`,
-  },
+    state: "pass",
+    detail: NUTRITION_REVIEW_NOTICE,
+    nextAction: null,
+  };
+}
+
+const DATA_GAPS: LabelDataGap[] = [
   {
     key: "batch_lot_number",
     label: "Batch / Lot Number",
@@ -226,21 +339,25 @@ export function getLabelDataGaps(): LabelDataGap[] {
   return DATA_GAPS;
 }
 
-export function computeLabelReadiness(product: LabelReadinessProductInput): LabelReadinessResult {
+export function computeLabelReadiness(
+  product: LabelReadinessProductInput,
+  options?: LabelReadinessOptions,
+): LabelReadinessResult {
   const liveLegalResults = evaluateLiveLegalLabelFields(product);
   const categories = [
     buildIdentity(product),
     buildQuantity(product),
-    buildShelfStorage(product),
+    buildShelfStorage(product, options),
     buildLiveLegalLabelCategory(liveLegalResults),
+    buildIngredients(product, options),
+    buildAllergens(product, options),
+    buildNutrition(product, options),
   ];
 
   const dataGaps = getLabelDataGaps();
   const hasMissing = categories.some((c) => c.state === "missing");
   const hasWarn = categories.some((c) => c.state === "warn");
 
-  // Ingredients/allergens/nutrition are never truly persisted today; remaining legally mandatory
-  // fields without a live column still cap status at Draft. See module docblock.
   let overallStatus: LabelOverallStatus;
   if (hasMissing || dataGaps.length > 0) {
     overallStatus = "Draft";

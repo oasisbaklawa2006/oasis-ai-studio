@@ -1,4 +1,9 @@
 import { describe, expect, it } from "vitest";
+import {
+  createAiSuggestionFieldMeta,
+  createCategoryRuleFieldMeta,
+  createManualFieldMeta,
+} from "@/shared/ai/complianceApproval";
 import { computeLabelReadiness, getLabelDataGaps } from "./labelReadiness";
 
 const COMPLETE_INPUT = {
@@ -34,17 +39,28 @@ describe("computeLabelReadiness", () => {
     expect(shelf?.state).toBe("pass");
   });
 
-  it("reports ingredients/allergens/nutrition as not_persisted data gaps, not scored categories", () => {
+  it("scores composition fields as categories when present on form", () => {
+    const result = computeLabelReadiness({
+      ...COMPLETE_INPUT,
+      ingredients: "Cashew, sugar",
+      allergen_warnings: "Contains nuts",
+      nutritional_info: "Per 100g draft",
+    });
+    expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("pass");
+    expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("pass");
+    expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("pass");
+  });
+
+  it("flags missing composition fields as scored categories, not not_persisted gaps", () => {
     const result = computeLabelReadiness(COMPLETE_INPUT);
-    expect(result.categories.some((c) => c.key === "ingredients")).toBe(false);
-    expect(result.categories.some((c) => c.key === "nutrition")).toBe(false);
-    const gapKeys = result.dataGaps.map((g) => g.key);
-    expect(gapKeys).toContain("ingredients");
-    expect(gapKeys).toContain("allergen_warnings");
-    expect(gapKeys).toContain("nutrition");
-    for (const key of ["ingredients", "allergen_warnings", "nutrition"]) {
-      expect(result.dataGaps.find((g) => g.key === key)?.severity).toBe("not_persisted");
-    }
+    expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("missing");
+    expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("missing");
+    expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("missing");
+    expect(result.dataGaps.every((g) => g.severity === "no_column")).toBe(true);
+    const dataGapKeys = result.dataGaps.map((gap) => gap.key);
+    expect(dataGapKeys).not.toContain("ingredients");
+    expect(dataGapKeys).not.toContain("allergen_warnings");
+    expect(dataGapKeys).not.toContain("nutrition");
   });
 
   // Full Editor's `form` state binds net_weight_g/shelf_life_days to <Input> elements,
@@ -115,5 +131,87 @@ describe("computeLabelReadiness", () => {
     });
     const legal = result.categories.find((c) => c.key === "legal_label_fields");
     expect(legal?.state).toBe("warn");
+  });
+
+  describe("approval-aware composition readiness (Point 34)", () => {
+    const compositionInput = {
+      ...COMPLETE_INPUT,
+      ingredients: "Cashew, sugar",
+      allergen_warnings: "Contains nuts",
+      nutritional_info: "Per 100g draft",
+    };
+
+    it("warns for unapproved AI ingredients", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { ingredients: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved AI allergens", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { allergen_warnings: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved AI nutrition", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { nutritional_info: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved category-rule nutrition", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: { nutritional_info: createCategoryRuleFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("warn");
+    });
+
+    it("passes when composition fields are manually approved", () => {
+      const result = computeLabelReadiness(compositionInput, {
+        complianceMetaMap: {
+          ingredients: createManualFieldMeta(),
+          allergen_warnings: createManualFieldMeta(),
+          nutritional_info: createManualFieldMeta(),
+        },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "ingredients")?.state).toBe("pass");
+      expect(result.categories.find((c) => c.key === "allergen_warnings")?.state).toBe("pass");
+      expect(result.categories.find((c) => c.key === "nutrition")?.state).toBe("pass");
+    });
+
+    it("warns for unapproved AI shelf_life_days when populated", () => {
+      const result = computeLabelReadiness(COMPLETE_INPUT, {
+        complianceMetaMap: { shelf_life_days: createAiSuggestionFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("warn");
+    });
+
+    it("warns for unapproved category-rule storage_instructions when populated", () => {
+      const result = computeLabelReadiness(COMPLETE_INPUT, {
+        complianceMetaMap: { storage_instructions: createCategoryRuleFieldMeta() },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("warn");
+    });
+
+    it("passes shelf/storage when both fields are manually approved", () => {
+      const result = computeLabelReadiness(COMPLETE_INPUT, {
+        complianceMetaMap: {
+          shelf_life_days: createManualFieldMeta(),
+          storage_instructions: createManualFieldMeta(),
+        },
+        roles: ["catalogue_contributor"],
+      });
+      expect(result.categories.find((c) => c.key === "shelf_storage")?.state).toBe("pass");
+    });
   });
 });

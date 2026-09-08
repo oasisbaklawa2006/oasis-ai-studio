@@ -17,6 +17,10 @@ import {
   resolveProductDimensionsCmText,
 } from "@/features/productAuthority/shippingDimensions";
 import { enrichPackFormFromDbRow } from "@/features/productTruth/packagingHierarchyCanonical";
+import {
+  factualCompositionFromDbRow,
+  factualCompositionToDbPayload,
+} from "@/features/productTruth/productFactualCompositionCanonical";
 import type { Database } from "@/integrations/supabase/types";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 
@@ -43,6 +47,7 @@ export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
 /** Columns safe to send on insert/update per generated Studio types. */
 export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
   Object.keys({
+    allergen_warnings: true,
     approximate_piece_weight_g: true,
     avg_qty_per_tray_g: true,
     b2b_price: true,
@@ -81,6 +86,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     hsn_code: true,
     id: true,
     import_confidence: true,
+    ingredients: true,
     increment_uom: true,
     increment_value: true,
     is_active: true,
@@ -100,6 +106,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     moq_value: true,
     mrp: true,
     net_weight_g: true,
+    nutrition_facts: true,
     operational_notes: true,
     pack_size: true,
     packaging_code: true,
@@ -337,7 +344,8 @@ export function formatProductSaveError(error: unknown): string {
 
 /**
  * UI form → products row (Studio canonical columns only).
- * Compliance text fields (ingredients, allergens) are UI-only until label/nutrition tables own them.
+ * Product composition text fields map to Core `products` columns (approval-gated).
+ * UI `nutritional_info` writes to `nutrition_facts` (Central compat column).
  */
 export function formToDbProductPayload(form: Record<string, unknown>): Record<string, unknown> {
   const hero = (form.hero_image_url as string) ?? null;
@@ -396,12 +404,11 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     pack_size: form.pack_size ?? null,
     net_weight_g: toNum(form.net_weight_g),
     gross_weight_g: toNum(form.gross_weight_g),
-    shelf_life_days: toNum(form.shelf_life_days),
+    ...factualCompositionToDbPayload(form),
     lead_time_days: toNum(form.lead_time_days),
     fssai_licence_number: form.fssai_licence_number ?? null,
     country_of_origin: form.country_of_origin ?? null,
     label_manufacturer_details: form.label_manufacturer_details ?? null,
-    storage_instructions: form.storage_instructions ?? null,
     hsn_code: form.hsn_code ?? null,
     gst_rate: toNum(form.gst_rate),
     currency: form.currency ?? "INR",
@@ -465,10 +472,6 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     bom_required: toBool(form.bom_required, false),
     pricing_notes: form.pricing_notes ?? null,
     operational_notes: form.operational_notes ?? null,
-    frozen_shelf_life_days: toNum(form.frozen_shelf_life_days),
-    post_processing_shelf_life_days: toNum(form.post_processing_shelf_life_days),
-    temperature_requirement: form.temperature_requirement ?? null,
-    thawing_instruction: form.thawing_instruction ?? null,
     material_type: form.material_type ?? form.material ?? null,
     color_finish_notes: form.color_finish_notes ?? null,
     label_status: form.label_status ?? null,
@@ -520,12 +523,10 @@ export function dbRowToProductForm(
     production_department: toBlank(data.production_department),
     net_weight_g: toBlank(data.net_weight_g ?? data.net_weight_grams),
     gross_weight_g: toBlank(data.gross_weight_g ?? data.gross_weight_grams),
-    shelf_life_days: toBlank(data.shelf_life_days),
     lead_time_days: toBlank(data.lead_time_days),
     fssai_licence_number: toBlank(data.fssai_licence_number),
     country_of_origin: toBlank(data.country_of_origin),
     label_manufacturer_details: toBlank(data.label_manufacturer_details),
-    storage_instructions: toBlank(data.storage_instructions),
     hsn_code: toBlank(data.hsn_code),
     gst_rate: toBlank(data.gst_rate ?? data.gst_percentage),
     mrp: toBlank(data.mrp),
@@ -552,9 +553,7 @@ export function dbRowToProductForm(
     dimension_h_cm: toBlank(data.dimension_h_cm),
     carton_dimensions_cm: toBlank(data.carton_dimensions_cm),
     cbm: toBlank(data.cbm),
-    // UI-only compliance text (not persisted on products row)
-    ingredients: toBlank(data.ingredients),
-    allergen_warnings: toBlank(data.allergen_warnings),
-    nutritional_info: data.nutritional_info ?? data.nutrition_facts ?? "",
+    // Factual composition fields loaded via canonical adapter (Point 34)
+    ...factualCompositionFromDbRow(data),
   };
 }

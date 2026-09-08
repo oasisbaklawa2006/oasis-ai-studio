@@ -20,6 +20,7 @@ import {
 } from "@/features/productAuthority/skuGuard";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
+import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
 import { supabase } from "@/integrations/supabase/client";
 import { insertProductAliases, type ProductAliasInsertInput } from "@/lib/aliasSchemaAdapter";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
@@ -201,10 +202,7 @@ export async function saveFastCreateProduct(
           {
             hsn_code: form.hsn_code,
             gst_rate: form.gst_rate,
-            shelf_life_days: form.shelf_life_days,
-            ingredients: form.ingredients,
-            allergen_warnings: form.allergen_warnings,
-            storage_instructions: form.storage_instructions,
+            ...factualCompositionDraftPayload(form),
           },
           form,
         ),
