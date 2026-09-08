@@ -6,7 +6,7 @@
 
 ## 1. Exact AI main SHA
 
-```
+```text
 fad395d1865e163b07863cb123789f3b5a441dec
 ```
 
