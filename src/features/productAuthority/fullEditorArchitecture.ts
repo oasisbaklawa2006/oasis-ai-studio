@@ -208,7 +208,8 @@ export function resolveFullEditorSavePath(input: FullEditorSaveBoundaryInput): F
     return {
       kind: "blocked",
       allowed: false,
-      reason: "Save blocked — product identity is still loading or conflicts with the open session.",
+      reason:
+        "Save blocked — product identity is still loading or conflicts with the open session.",
     };
   }
 
@@ -265,12 +266,13 @@ export type FullEditorTabStateResult = {
  * Tab orchestration contract: deep-link `?tab=` wins on navigation; otherwise persisted tab;
  * unknown tabs fail closed to `identity`.
  */
-export function resolveFullEditorTabState(input: FullEditorTabStateInput): FullEditorTabStateResult {
+export function resolveFullEditorTabState(
+  input: FullEditorTabStateInput,
+): FullEditorTabStateResult {
   const deepLinkTab = input.rawDeepLinkTab ? resolveProductEditTab(input.rawDeepLinkTab) : null;
   const persisted = input.persistedTab ? resolveProductEditTab(input.persistedTab) : null;
   const initialTab = deepLinkTab ?? persisted ?? "identity";
-  const shouldApplyDeepLink =
-    !!deepLinkTab && input.appliedLocationKey !== input.locationKey;
+  const shouldApplyDeepLink = !!deepLinkTab && input.appliedLocationKey !== input.locationKey;
   return { initialTab, deepLinkTab, shouldApplyDeepLink };
 }
 

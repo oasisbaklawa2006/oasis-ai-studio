@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFullEditorCreatePath,
+  buildFullEditorEditPath,
   FULL_EDITOR_CANONICAL_ROUTES,
   FULL_EDITOR_NON_AUTHORITATIVE_ROUTES,
   FULL_EDITOR_TAB_DOMAIN_OWNERSHIP,
-  buildFullEditorCreatePath,
-  buildFullEditorEditPath,
   fullEditorFormDraftKey,
   fullEditorTabForReadinessCategory,
   fullEditorTabStorageKey,

@@ -697,7 +697,6 @@ const ProductEdit = () => {
     locationKey: location.key,
     appliedLocationKey: "",
   });
-  const deepLinkTab = tabState.deepLinkTab;
   const [tab, setTab] = useState<string>(() => tabState.initialTab);
 
   // Bugbot-caught (twice): the initializer above only seeds `tab` on first mount, so a later
@@ -1794,17 +1793,15 @@ const ProductEdit = () => {
 
   if (editorIdentity.kind === "invalid") {
     return (
-      <>
-        <PageHeader
-          title="Product unavailable"
-          subtitle={editorIdentity.reason}
-          actions={
-            <Button variant="outline" onClick={() => nav("/products")}>
-              Back to products
-            </Button>
-          }
-        />
-      </>
+      <PageHeader
+        title="Product unavailable"
+        subtitle={editorIdentity.reason}
+        actions={
+          <Button variant="outline" onClick={() => nav("/products")}>
+            Back to products
+          </Button>
+        }
+      />
     );
   }
 
