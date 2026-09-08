@@ -1,16 +1,16 @@
 # Point 31 — Full Editor Architecture Canonical Closure Census
 
-**Issue:** #459 · **Baseline:** `main` @ `6f8e16417dcef2323d833072d23a92a32b87a833` (2026-09-06)  
+**Issue:** #459 · **Baseline:** `main` @ `fad395d1865e163b07863cb123789f3b5a441dec` (post-Point34 #197, 2026-09-08)  
 **Classification:** **INDEPENDENT IMPLEMENTATION GAP** — architecture/integration boundaries only  
 **Scope boundary:** Does not absorb Point32 product/variant hierarchy, Point33 pack/carton/pallet, Point34 compliance fields, Points35–40 workflow/data semantics, or Points41–47 media execution.
 
 ## 1. Exact AI main SHA
 
 ```
-6f8e16417dcef2323d833072d23a92a32b87a833
+fad395d1865e163b07863cb123789f3b5a441dec
 ```
 
-Latest commit: `POINT35 — Dimensions / weight / CBM canonical completion audit + closure (#147)`
+Latest commit: `POINT34 — ingredients / allergens / shelf-life / storage canonical closure (#197)`
 
 ## 2. Route census
 
@@ -192,3 +192,7 @@ Point 31 provides the shell and ownership map only — field validation rules re
 ## 15. Gate state
 
 `PR MERGED != Point31 CLEARED` — editor runtime/mobile UAT reconciliation remains a downstream programme gate.
+
+## 16. Rebase reconciliation (post-Point34 #197)
+
+Rebased onto `fad395d` with **no merge conflicts**. Point31 save-boundary wiring (`resolveFullEditorSavePath`) runs **before** Point34 factual-composition gates (`factualCompositionSaveValidation`, `productEditDirectProductsRow`) — architecture boundary only; Point34 authority not duplicated.

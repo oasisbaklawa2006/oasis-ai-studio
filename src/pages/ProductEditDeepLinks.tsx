@@ -1,8 +1,5 @@
 import { Navigate, useParams } from "react-router-dom";
-import {
-  FULL_EDITOR_CANONICAL_ROUTES,
-  resolveFullEditorIdentity,
-} from "@/features/productAuthority/fullEditorArchitecture";
+import { resolveFullEditorIdentity } from "@/features/productAuthority/fullEditorArchitecture";
 import {
   productAliasesDeepLink,
   productMediaDeepLink,
@@ -28,5 +25,3 @@ export function ProductAliasesDeepLink() {
   if (!productId) return <Navigate to="/products" replace />;
   return <Navigate to={productAliasesDeepLink(productId)} replace />;
 }
-
-export { FULL_EDITOR_CANONICAL_ROUTES };
