@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildStagedEntryRows,
-  CATALOGUE_SOURCE_PRODUCT_CREATION_AUTHORITY,
-} from "./repository";
+import { buildStagedEntryRows, CATALOGUE_SOURCE_PRODUCT_CREATION_AUTHORITY } from "./repository";
 
 describe("catalogue source intake boundary", () => {
   it("has no product-creation authority", () => {
