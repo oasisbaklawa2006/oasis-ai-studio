@@ -15,6 +15,7 @@ const ApprovalInbox = lazy(() => import("./pages/ApprovalInbox"));
 const Auth = lazy(() => import("./pages/Auth"));
 const CatalogueBuilder = lazy(() => import("./pages/CatalogueBuilder"));
 const CatalogueProductStudio = lazy(() => import("./pages/CatalogueProductStudio"));
+const CatalogueSourceIntake = lazy(() => import("./pages/CatalogueSourceIntake"));
 const Category1ImportStaging = lazy(() => import("./pages/Category1ImportStaging"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const DataCorrection = lazy(() => import("./pages/DataCorrection"));
@@ -142,10 +143,7 @@ const App = () => (
                     path="/catalogues"
                     element={
                       <RoleGate page="catalogues">
-                        <CapabilityUnavailable
-                          title="Catalogues"
-                          capability="the governed catalogues table"
-                        />
+                        <CatalogueSourceIntake />
                       </RoleGate>
                     }
                   />
