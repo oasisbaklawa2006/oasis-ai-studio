@@ -4,14 +4,15 @@
  * call, no network I/O, no product mutation. Output is a first-pass draft only; operators edit,
  * save, and copy it manually.
  */
+
+import { MISSING_FIELD_PLACEHOLDER_PREFIX } from "@/features/productAuthority/deferredDetailContract";
 import type {
   CatalogueDraftContent,
   CatalogueDraftContentKey,
-  CatalogueDraftPrompts,
   CatalogueDraftPromptKey,
+  CatalogueDraftPrompts,
 } from "./catalogueDraftTypes";
 import { hasNumber, hasText } from "./catalogueFieldUtils";
-import { MISSING_FIELD_PLACEHOLDER_PREFIX } from "@/features/productAuthority/deferredDetailContract";
 import { isMissingFieldOnlyMessage } from "./missingFieldMessage";
 
 export interface DraftBlockMeta {
@@ -21,14 +22,42 @@ export interface DraftBlockMeta {
 }
 
 export const DRAFT_BLOCK_META: DraftBlockMeta[] = [
-  { key: "catalogue_title", label: "Catalogue title", hint: "Short buyer-facing title for listings." },
-  { key: "short_description", label: "Short description", hint: "One-line summary for cards/search results." },
+  {
+    key: "catalogue_title",
+    label: "Catalogue title",
+    hint: "Short buyer-facing title for listings.",
+  },
+  {
+    key: "short_description",
+    label: "Short description",
+    hint: "One-line summary for cards/search results.",
+  },
   { key: "long_description", label: "Long description", hint: "Fuller catalogue detail copy." },
-  { key: "b2b_sales_copy", label: "B2B sales copy", hint: "Wholesale-facing pitch with pricing/MOQ context." },
-  { key: "export_catalogue_copy", label: "Export catalogue copy", hint: "HSN/GST/weight-oriented copy for export documentation." },
-  { key: "whatsapp_product_message", label: "WhatsApp product message", hint: "Draft message text only — this studio never sends WhatsApp messages." },
-  { key: "hindi_description", label: "Hindi product description", hint: "Genuine Hindi-language copy (Devanagari script) — not Hinglish, not a certified translation; review before use." },
-  { key: "storage_shelf_life_copy", label: "Storage / shelf-life copy", hint: "Handling and shelf-life note." },
+  {
+    key: "b2b_sales_copy",
+    label: "B2B sales copy",
+    hint: "Wholesale-facing pitch with pricing/MOQ context.",
+  },
+  {
+    key: "export_catalogue_copy",
+    label: "Export catalogue copy",
+    hint: "HSN/GST/weight-oriented copy for export documentation.",
+  },
+  {
+    key: "whatsapp_product_message",
+    label: "WhatsApp product message",
+    hint: "Draft message text only — this studio never sends WhatsApp messages.",
+  },
+  {
+    key: "hindi_description",
+    label: "Hindi product description",
+    hint: "Genuine Hindi-language copy (Devanagari script) — not Hinglish, not a certified translation; review before use.",
+  },
+  {
+    key: "storage_shelf_life_copy",
+    label: "Storage / shelf-life copy",
+    hint: "Handling and shelf-life note.",
+  },
 ];
 
 export interface PromptBlockMeta {
@@ -39,10 +68,26 @@ export interface PromptBlockMeta {
 
 export const IMAGE_PROMPT_BLOCK_META: PromptBlockMeta[] = [
   { key: "hero_image_prompt", label: "Hero image prompt", hint: "Primary catalogue hero shot." },
-  { key: "square_image_prompt", label: "Square image prompt", hint: "1:1 crop for grid/listing thumbnails." },
-  { key: "closeup_image_prompt", label: "Close-up image prompt", hint: "Texture/detail close-up shot." },
-  { key: "packaging_image_prompt", label: "Packaging image prompt", hint: "Retail/export packaging shot." },
-  { key: "lifestyle_image_prompt", label: "Lifestyle image prompt", hint: "In-context / serving-suggestion shot." },
+  {
+    key: "square_image_prompt",
+    label: "Square image prompt",
+    hint: "1:1 crop for grid/listing thumbnails.",
+  },
+  {
+    key: "closeup_image_prompt",
+    label: "Close-up image prompt",
+    hint: "Texture/detail close-up shot.",
+  },
+  {
+    key: "packaging_image_prompt",
+    label: "Packaging image prompt",
+    hint: "Retail/export packaging shot.",
+  },
+  {
+    key: "lifestyle_image_prompt",
+    label: "Lifestyle image prompt",
+    hint: "In-context / serving-suggestion shot.",
+  },
 ];
 
 export interface DraftProductInput {
@@ -80,14 +125,16 @@ interface DisplayPrice {
 }
 
 function getDisplayPrice(p: DraftProductInput): DisplayPrice | null {
-  if (hasNumber(p.b2b_price)) return { label: "B2B price", amount: p.b2b_price! };
-  if (hasNumber(p.mrp)) return { label: "MRP", amount: p.mrp! };
+  if (hasNumber(p.b2b_price)) return { label: "B2B price", amount: Number(p.b2b_price) };
+  if (hasNumber(p.mrp)) return { label: "MRP", amount: Number(p.mrp) };
   return null;
 }
 
 function moqLabel(p: DraftProductInput): string | null {
-  if (hasText(p.moq_text)) return p.moq_text!.trim();
-  if (hasNumber(p.moq_value)) return `${p.moq_value}${hasText(p.moq_uom) ? ` ${p.moq_uom}` : ""}`;
+  if (hasText(p.moq_text)) return String(p.moq_text).trim();
+  if (hasNumber(p.moq_value)) {
+    return `${p.moq_value}${hasText(p.moq_uom) ? ` ${p.moq_uom}` : ""}`;
+  }
   return null;
 }
 
@@ -100,9 +147,9 @@ function catalogueTitle(p: DraftProductInput): string {
 function shortDescription(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
   const category = hasText(p.category) ? p.category : "product";
-  if (hasText(p.short_description)) return p.short_description!.trim();
+  if (hasText(p.short_description)) return String(p.short_description).trim();
   if (hasText(p.description)) {
-    const firstSentence = p.description!.split(/(?<=[.!?])\s/)[0].trim();
+    const firstSentence = String(p.description).split(/(?<=[.!?])\s/)[0].trim();
     return firstSentence || `${p.product_name} — ${category}.`;
   }
   return `${p.product_name} — ${category}. Add a product description for richer catalogue copy.`;
@@ -113,12 +160,12 @@ function longDescription(p: DraftProductInput): string {
   const lines: string[] = [];
   lines.push(
     hasText(p.description)
-      ? p.description!.trim()
+      ? String(p.description).trim()
       : `${p.product_name} is listed under ${hasText(p.category) ? p.category : "the catalogue"}. Add a product description for full detail copy.`,
   );
   if (hasText(p.pack_size) || hasNumber(p.net_weight_g)) {
     const weightPart = hasNumber(p.net_weight_g) ? `${p.net_weight_g}g` : "";
-    const packPart = hasText(p.pack_size) ? p.pack_size! : "";
+    const packPart = hasText(p.pack_size) ? String(p.pack_size) : "";
     lines.push(`Pack: ${[packPart, weightPart].filter(Boolean).join(" · ") || "not set"}.`);
   }
   if (hasText(p.subcategory)) lines.push(`Subcategory: ${p.subcategory}.`);
@@ -138,9 +185,11 @@ function b2bSalesCopy(p: DraftProductInput): string {
 
 function exportCatalogueCopy(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  const parts: string[] = [p.product_name!];
+  const parts: string[] = [String(p.product_name)];
   parts.push(hasText(p.hsn_code) ? `HSN ${p.hsn_code}` : MISSING_FIELD("HSN Code"));
-  parts.push(typeof p.gst_rate === "number" ? `GST ${p.gst_rate}%` : MISSING_FIELD("GST Rate"));
+  parts.push(
+    typeof p.gst_rate === "number" ? `GST ${p.gst_rate}%` : MISSING_FIELD("GST Rate"),
+  );
   if (hasNumber(p.net_weight_g)) parts.push(`Net wt ${p.net_weight_g}g`);
   return parts.join(" · ");
 }
@@ -151,7 +200,8 @@ function whatsappProductMessage(p: DraftProductInput): string {
   if (!price) {
     return `Hi! We have *${p.product_name}* available. ${MISSING_FIELD("a price (MRP or B2B price)")} Reply to know more.`;
   }
-  const uomPart = price.label === "B2B price" && hasText(p.b2b_uom) ? `/${p.b2b_uom}` : "";
+  const uomPart =
+    price.label === "B2B price" && hasText(p.b2b_uom) ? `/${p.b2b_uom}` : "";
   return `Hi! We have *${p.product_name}* available — ${price.label} ₹${price.amount}${uomPart}. Reply to know more.`;
 }
 
@@ -159,7 +209,9 @@ function hindiDescription(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
   const category = hasText(p.category) ? p.category : "उत्पाद";
   const price = getDisplayPrice(p);
-  const priceLine = price ? ` ${price.label === "B2B price" ? "B2B कीमत" : "MRP"} ₹${price.amount} है।` : "";
+  const priceLine = price
+    ? ` ${price.label === "B2B price" ? "B2B कीमत" : "MRP"} ₹${price.amount} है।`
+    : "";
   return `${p.product_name} अब उपलब्ध है (${category})।${priceLine} अधिक जानकारी के लिए संपर्क करें।\n(सरल हिंदी ड्राफ्ट — प्रमाणित अनुवाद नहीं है, भेजने से पहले जाँच लें।)`;
 }
 
@@ -171,8 +223,12 @@ function storageShelfLifeCopy(p: DraftProductInput): string {
   const hasShelf = hasNumber(p.shelf_life_days);
   const hasStorage = hasText(p.storage_instructions) || hasText(p.temperature_requirement);
   if (!hasShelf && !hasStorage) return MISSING_FIELD("Shelf Life and Storage Instructions");
-  const shelf = hasShelf ? `Shelf life: ${p.shelf_life_days} days.` : MISSING_FIELD("Shelf Life");
-  const storageText = [p.storage_instructions, p.temperature_requirement].filter(hasText).join(" · ");
+  const shelf = hasShelf
+    ? `Shelf life: ${p.shelf_life_days} days.`
+    : MISSING_FIELD("Shelf Life");
+  const storageText = [p.storage_instructions, p.temperature_requirement]
+    .filter(hasText)
+    .join(" · ");
   const storage = hasStorage ? `Store: ${storageText}.` : MISSING_FIELD("Storage Instructions");
   return `${shelf} ${storage}`;
 }
@@ -192,14 +248,15 @@ export function generateCatalogueDraftContent(product: DraftProductInput): Catal
 
 function packagingFragment(p: DraftProductInput): string {
   const parts: string[] = [];
-  if (hasText(p.pack_size)) parts.push(p.pack_size!);
+  if (hasText(p.pack_size)) parts.push(String(p.pack_size));
   if (hasNumber(p.net_weight_g)) parts.push(`${p.net_weight_g}g net`);
   return parts.length > 0 ? parts.join(", ") : "packaging not yet set";
 }
 
 function heroImagePrompt(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  return `Studio product photo of ${p.product_name}, ${hasText(p.category) ? p.category!.toLowerCase() : "product"}, centered on a clean neutral background, soft even lighting, catalogue hero shot, high detail, no text overlay.`;
+  const category = hasText(p.category) ? String(p.category).toLowerCase() : "product";
+  return `Studio product photo of ${p.product_name}, ${category}, centered on a clean neutral background, soft even lighting, catalogue hero shot, high detail, no text overlay.`;
 }
 
 function squareImagePrompt(p: DraftProductInput): string {
@@ -219,7 +276,7 @@ function packagingImagePrompt(p: DraftProductInput): string {
 
 function lifestyleImagePrompt(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
-  const category = hasText(p.category) ? p.category!.toLowerCase() : "product";
+  const category = hasText(p.category) ? String(p.category).toLowerCase() : "product";
   return `Lifestyle serving-suggestion photo of ${p.product_name}, styled as a ${category} on a table setting, natural daylight, warm inviting tone, no text overlay.`;
 }
 
