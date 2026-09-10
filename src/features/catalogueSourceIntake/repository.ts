@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-
 import { supabase } from "@/integrations/supabase/client";
 import type {
   CatalogueSourceBatchRow,
@@ -84,7 +83,9 @@ function assertSameSourceIdentity(
   }
 }
 
-async function findBatchByDedupeKey(dedupeKey: string): Promise<CatalogueSourceBatchRow | null> {
+async function findBatchByDedupeKey(
+  dedupeKey: string,
+): Promise<CatalogueSourceBatchRow | null> {
   const { data, error } = await intakeDb
     .from("catalogue_source_batches")
     .select("*")
@@ -103,7 +104,9 @@ export async function listCatalogueSourceBatches(): Promise<CatalogueSourceBatch
   return data ?? [];
 }
 
-export async function listCatalogueSourceEntries(batchId: string): Promise<CatalogueSourceEntryRow[]> {
+export async function listCatalogueSourceEntries(
+  batchId: string,
+): Promise<CatalogueSourceEntryRow[]> {
   const { data, error } = await intakeDb
     .from("catalogue_source_entries")
     .select("*")
