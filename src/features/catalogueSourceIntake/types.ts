@@ -69,7 +69,10 @@ export type CatalogueSourceAuditRow = {
   created_at: string;
 };
 
-type BatchInsert = Omit<CatalogueSourceBatchRow, "id" | "imported_at" | "created_at" | "updated_at"> & {
+type BatchInsert = Omit<
+  CatalogueSourceBatchRow,
+  "id" | "imported_at" | "created_at" | "updated_at"
+> & {
   id?: string;
   imported_at?: string;
   created_at?: string;
