@@ -83,9 +83,7 @@ function assertSameSourceIdentity(
   }
 }
 
-async function findBatchByDedupeKey(
-  dedupeKey: string,
-): Promise<CatalogueSourceBatchRow | null> {
+async function findBatchByDedupeKey(dedupeKey: string): Promise<CatalogueSourceBatchRow | null> {
   const { data, error } = await intakeDb
     .from("catalogue_source_batches")
     .select("*")
@@ -163,12 +161,10 @@ export async function stageCatalogueSourceBatch(input: StageCatalogueSourceBatch
   }
 
   const rows = buildStagedEntryRows(batch.id, input.entries);
-  const { error: entryError } = await intakeDb
-    .from("catalogue_source_entries")
-    .upsert(rows, {
-      onConflict: "batch_id,source_entry_key",
-      ignoreDuplicates: true,
-    });
+  const { error: entryError } = await intakeDb.from("catalogue_source_entries").upsert(rows, {
+    onConflict: "batch_id,source_entry_key",
+    ignoreDuplicates: true,
+  });
   if (entryError) throw new Error(entryError.message);
 
   let finalBatch = batch;
