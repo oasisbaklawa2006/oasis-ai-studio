@@ -79,6 +79,10 @@ import {
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
+import {
+  releaseSingleFlight,
+  tryAcquireSingleFlight,
+} from "@/features/productAuthority/saveSingleFlight";
 import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
@@ -745,6 +749,7 @@ const ProductEdit = () => {
   );
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
+  const saveInFlightRef = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
   const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
   const draftKey = fullEditorFormDraftKey(editorIdentity);
@@ -1494,8 +1499,6 @@ const ProductEdit = () => {
       return;
     }
 
-    setLoading(true);
-
     const factualValidation = factualCompositionSaveValidation(form);
     if (!factualValidation.ok) {
       setLoading(false);
@@ -1791,6 +1794,15 @@ const ProductEdit = () => {
     }
   };
 
+  const handleSave = () => {
+    if (!tryAcquireSingleFlight(saveInFlightRef)) return;
+    setLoading(true);
+    void save().finally(() => {
+      releaseSingleFlight(saveInFlightRef);
+      setLoading(false);
+    });
+  };
+
   if (editorIdentity.kind === "invalid") {
     return (
       <PageHeader
@@ -1835,7 +1847,7 @@ const ProductEdit = () => {
             >
               Back
             </Button>
-            <Button onClick={save} disabled={loading || productFetchPending}>
+            <Button onClick={handleSave} disabled={loading || productFetchPending}>
               {loading ? "Saving…" : isContributorMode ? "Submit Draft" : "Save"}
             </Button>
           </>
