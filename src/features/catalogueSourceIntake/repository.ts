@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   CatalogueSourceBatchRow,
+  CatalogueSourceBatchStatus,
   CatalogueSourceDatabase,
   CatalogueSourceEntryInput,
   CatalogueSourceEntryRow,
@@ -11,6 +12,11 @@ import type {
 
 const intakeDb = supabase as unknown as SupabaseClient<CatalogueSourceDatabase>;
 const UNIQUE_VIOLATION = "23505";
+const TERMINAL_BATCH_STATUSES = new Set<CatalogueSourceBatchStatus>([
+  "REVIEWED",
+  "ARCHIVED",
+  "FAILED",
+]);
 
 export const CATALOGUE_SOURCE_PRODUCT_CREATION_AUTHORITY = false as const;
 
@@ -81,6 +87,40 @@ function assertSameSourceIdentity(
       `Catalogue source dedupe key ${input.dedupeKey.trim()} already belongs to a different source identity.`,
     );
   }
+}
+
+function isTerminalBatchStatus(status: CatalogueSourceBatchStatus): boolean {
+  return TERMINAL_BATCH_STATUSES.has(status);
+}
+
+/**
+ * Core-authority prerequisite for true atomicity:
+ * `stage_catalogue_source_batch_v1(batch, entries[], status, audit_event)` must persist
+ * batch + entries + status transition + audit log in one database transaction/RPC.
+ * Client-side sequencing cannot guarantee all-or-nothing semantics.
+ */
+export const CORE_ATOMIC_STAGE_CATALOGUE_SOURCE_BATCH_RPC =
+  "stage_catalogue_source_batch_v1" as const;
+
+async function resolveTerminalReplay(
+  batch: CatalogueSourceBatchRow,
+  rows: EntryInsert[],
+): Promise<{ batch: CatalogueSourceBatchRow; entriesSubmitted: number } | null> {
+  if (!isTerminalBatchStatus(batch.status)) return null;
+
+  const existing = await listCatalogueSourceEntries(batch.id);
+  const existingKeys = new Set(existing.map((entry) => entry.source_entry_key));
+  const submittedKeys = rows.map((row) => row.source_entry_key);
+
+  for (const key of submittedKeys) {
+    if (!existingKeys.has(key)) {
+      throw new Error(
+        `Catalogue source batch ${batch.dedupe_key} is ${batch.status} and cannot accept new entries. Create a new revision batch instead.`,
+      );
+    }
+  }
+
+  return { batch, entriesSubmitted: 0 };
 }
 
 async function findBatchByDedupeKey(dedupeKey: string): Promise<CatalogueSourceBatchRow | null> {
@@ -161,6 +201,12 @@ export async function stageCatalogueSourceBatch(input: StageCatalogueSourceBatch
   }
 
   const rows = buildStagedEntryRows(batch.id, input.entries);
+
+  if (!created) {
+    const terminalReplay = await resolveTerminalReplay(batch, rows);
+    if (terminalReplay) return terminalReplay;
+  }
+
   const { error: entryError } = await intakeDb.from("catalogue_source_entries").upsert(rows, {
     onConflict: "batch_id,source_entry_key",
     ignoreDuplicates: true,

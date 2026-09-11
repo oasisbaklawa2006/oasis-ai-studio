@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { buildStagedEntryRows, CATALOGUE_SOURCE_PRODUCT_CREATION_AUTHORITY } from "./repository";
+import {
+  buildStagedEntryRows,
+  CATALOGUE_SOURCE_PRODUCT_CREATION_AUTHORITY,
+  CORE_ATOMIC_STAGE_CATALOGUE_SOURCE_BATCH_RPC,
+} from "./repository";
 
 describe("catalogue source intake boundary", () => {
   it("has no product-creation authority", () => {
@@ -67,5 +71,9 @@ describe("catalogue source intake boundary", () => {
     expect(() => buildStagedEntryRows("batch-1", [])).toThrow(
       "At least one catalogue source entry is required.",
     );
+  });
+
+  it("documents the Core RPC required for atomic batch staging", () => {
+    expect(CORE_ATOMIC_STAGE_CATALOGUE_SOURCE_BATCH_RPC).toBe("stage_catalogue_source_batch_v1");
   });
 });
