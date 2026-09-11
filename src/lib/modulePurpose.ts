@@ -7,7 +7,7 @@ export const MODULE_PURPOSES: Record<string, string> = {
   "/media": "Review and manage governed product imagery and media-readiness evidence.",
   "/tags": "Manage the controlled product tag catalogue when its production backend is available.",
   "/catalogues":
-    "Manage governed catalogues and client-facing catalogue records when persistence is available.",
+    "Stage and inspect catalogue source documents as review evidence. This workspace cannot create products, approve prices or publish website commerce.",
   "/admin/catalogue-builder":
     "Assemble products into curated collections and export catalogue material after backend approval.",
   "/admin/catalogue-product-studio":
