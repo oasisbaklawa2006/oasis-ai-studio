@@ -352,6 +352,16 @@ export type ProductGovernanceRpc = {
     };
     Returns: CatalogueAuthorityTableDefinitions["whatsapp_intelligence_knowledge_snapshots"]["Row"];
   };
+  stage_catalogue_source_batch_v1: {
+    Args: {
+      p_payload: Record<string, unknown>;
+    };
+    Returns: {
+      batch: Record<string, unknown>;
+      entries_submitted: number;
+      created: boolean;
+    };
+  };
 };
 
 export type ExtendedDatabase = Database & {
