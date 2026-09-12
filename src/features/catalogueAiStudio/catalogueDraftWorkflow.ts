@@ -1,7 +1,15 @@
 /**
  * Pure workflow rules for Catalogue Product AI Studio drafts.
  * No I/O — status transitions and editability only. Persistence lives in catalogueDraftRepository.ts.
+ *
+ * Point 38: delegates transition authority to `productWorkflowState.ts`.
  */
+
+import {
+  canPerformWorkflowAction,
+  isWorkflowExternallyDistributable,
+  mapCatalogueDraftStatus,
+} from "@/features/productWorkflow/productWorkflowState";
 import { exportBundleHasMissingFieldPlaceholder } from "./catalogueContentGenerators";
 import type { CatalogueDraftContent, CatalogueDraftStatus } from "./catalogueDraftTypes";
 
@@ -12,16 +20,53 @@ export const STATUS_LABEL: Record<CatalogueDraftStatus, string> = {
   REJECTED: "Rejected",
 };
 
+function draftPhase(status: CatalogueDraftStatus): ReturnType<typeof mapCatalogueDraftStatus> {
+  return mapCatalogueDraftStatus(status);
+}
+
 export function canSubmitForReview(status: CatalogueDraftStatus): boolean {
-  return status === "DRAFT";
+  return canPerformWorkflowAction({
+    domain: "catalogue_ai_studio_draft",
+    fromPhase: draftPhase(status),
+    action: "submit",
+    actorRole: "contributor",
+  });
 }
 
 export function canApprove(status: CatalogueDraftStatus): boolean {
-  return status === "UNDER_REVIEW";
+  return canPerformWorkflowAction({
+    domain: "catalogue_ai_studio_draft",
+    fromPhase: draftPhase(status),
+    action: "approve",
+    actorRole: "reviewer",
+  });
 }
 
 export function canReject(status: CatalogueDraftStatus): boolean {
-  return status === "UNDER_REVIEW";
+  return canPerformWorkflowAction({
+    domain: "catalogue_ai_studio_draft",
+    fromPhase: draftPhase(status),
+    action: "reject",
+    actorRole: "reviewer",
+  });
+}
+
+export function canSaveDraft(status: CatalogueDraftStatus | null): boolean {
+  return canPerformWorkflowAction({
+    domain: "catalogue_ai_studio_draft",
+    fromPhase: mapCatalogueDraftStatus(status),
+    action: "save",
+    actorRole: "contributor",
+  });
+}
+
+export function canCreateNewVersion(status: CatalogueDraftStatus): boolean {
+  return canPerformWorkflowAction({
+    domain: "catalogue_ai_studio_draft",
+    fromPhase: draftPhase(status),
+    action: "create_new_version",
+    actorRole: "contributor",
+  });
 }
 
 /**
@@ -37,5 +82,8 @@ export function isExportBundleDistributable(
   status: CatalogueDraftStatus | null,
   content: CatalogueDraftContent,
 ): boolean {
-  return status === "APPROVED" && !exportBundleHasMissingFieldPlaceholder(content);
+  const phase = mapCatalogueDraftStatus(status);
+  return (
+    isWorkflowExternallyDistributable(phase) && !exportBundleHasMissingFieldPlaceholder(content)
+  );
 }

@@ -4,6 +4,22 @@
  * Ported from the wrong-repo reference implementation (Oasis-Baklawa-Central PR #225),
  * including the Bugbot-verified safety fixes for status-guarded transitions and conflict messaging.
  */
+
+import {
+  assertCorrectionResubmissionAllowed,
+  assertRejectionReasonRequired,
+  assertTerminalSnapshotNotMutatedInPlace,
+  buildPredecessorLinkage,
+  buildRejectAuditMetadata,
+} from "@/features/productWorkflow/productCorrectionContract";
+import {
+  buildProductVersionHistory,
+  type ProductVersionHistoryReadModel,
+} from "@/features/productWorkflow/productVersionHistory";
+import {
+  assertValidWorkflowTransition,
+  mapCatalogueDraftStatus,
+} from "@/features/productWorkflow/productWorkflowState";
 import { supabase } from "@/integrations/supabase/client";
 import type {
   CatalogueDraftAuditRow,
@@ -20,7 +36,8 @@ const UNDER_REVIEW_BLOCKED_MESSAGE =
 
 const STATUS_CHANGED_MESSAGE = "Draft status changed. Reload and try again.";
 
-const SAVE_CONFLICT_MESSAGE = "Another draft was saved for this product. Reload latest draft and try again.";
+const SAVE_CONFLICT_MESSAGE =
+  "Another draft was saved for this product. Reload latest draft and try again.";
 
 type DraftContentAndPrompts = Record<CatalogueDraftContentKey, string> &
   Partial<Record<CatalogueDraftPromptKey, string>> & {
@@ -80,6 +97,51 @@ export async function fetchDraftAuditLog(draftId: string): Promise<CatalogueDraf
   return data ?? [];
 }
 
+/** All draft versions for a product, ascending by version_number (Point 40 read path). */
+export async function fetchAllDraftVersions(productId: string): Promise<CatalogueDraftRow[]> {
+  const { data, error } = await supabase
+    .from("catalogue_ai_studio_drafts")
+    .select("*")
+    .eq("product_id", productId)
+    .order("version_number", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Audit rows for multiple draft ids — grouped by draft_id (Point 40 read path). */
+export async function fetchAuditLogsForDraftIds(
+  draftIds: string[],
+): Promise<Map<string, CatalogueDraftAuditRow[]>> {
+  const grouped = new Map<string, CatalogueDraftAuditRow[]>();
+  if (draftIds.length === 0) return grouped;
+
+  const { data, error } = await supabase
+    .from("catalogue_ai_studio_draft_audit_log")
+    .select("*")
+    .in("draft_id", draftIds)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+
+  for (const row of data ?? []) {
+    const list = grouped.get(row.draft_id) ?? [];
+    list.push(row);
+    grouped.set(row.draft_id, list);
+  }
+  return grouped;
+}
+
+/**
+ * Canonical Point 40 read model — reads existing Core audit rows; never mutates history.
+ * Returns an empty, valid model when no drafts exist yet.
+ */
+export async function fetchProductVersionHistory(
+  productId: string,
+): Promise<ProductVersionHistoryReadModel> {
+  const drafts = await fetchAllDraftVersions(productId);
+  const auditByDraftId = await fetchAuditLogsForDraftIds(drafts.map((d) => d.id));
+  return buildProductVersionHistory({ productId, drafts, auditByDraftId });
+}
+
 async function insertAudit(
   draftId: string,
   action: string,
@@ -112,11 +174,21 @@ export async function saveDraft(params: {
 }): Promise<CatalogueDraftRow> {
   const latest = await fetchLatestDraft(params.productId);
 
+  if (latest) {
+    assertValidWorkflowTransition({
+      domain: "catalogue_ai_studio_draft",
+      fromPhase: mapCatalogueDraftStatus(latest.status as CatalogueDraftStatus),
+      action: "save",
+      actorRole: "contributor",
+    });
+  }
+
   if (latest && latest.status === "UNDER_REVIEW") {
     throw new Error(UNDER_REVIEW_BLOCKED_MESSAGE);
   }
 
   if (latest && latest.status === "DRAFT") {
+    assertTerminalSnapshotNotMutatedInPlace(latest.status as CatalogueDraftStatus);
     const { data, error } = await supabase
       .from("catalogue_ai_studio_drafts")
       .update({ ...params.content })
@@ -128,6 +200,13 @@ export async function saveDraft(params: {
     if (!data) throw new Error(STATUS_CHANGED_MESSAGE);
     await insertAudit(data.id, "SAVE_DRAFT", "DRAFT", "DRAFT", params.actorId);
     return data;
+  }
+
+  if (latest) {
+    assertCorrectionResubmissionAllowed({
+      fromStatus: latest.status as CatalogueDraftStatus,
+      actorRole: "contributor",
+    });
   }
 
   const nextVersion = latest ? latest.version_number + 1 : 1;
@@ -147,18 +226,20 @@ export async function saveDraft(params: {
       // Re-check what actually exists now — a concurrent submit-for-review and a concurrent
       // first-save/version conflict are different situations and must not share one message.
       const recheck = await fetchLatestDraft(params.productId).catch(() => null);
-      if (recheck && recheck.status === "UNDER_REVIEW") throw new Error(UNDER_REVIEW_BLOCKED_MESSAGE);
+      if (recheck && recheck.status === "UNDER_REVIEW")
+        throw new Error(UNDER_REVIEW_BLOCKED_MESSAGE);
       throw new Error(SAVE_CONFLICT_MESSAGE);
     }
     throw new Error(error.message);
   }
-  // Carry the previous version's rejection reason forward onto the new version's own audit
-  // entry — the audit log is scoped to a single draft_id (see fetchDraftAuditLog), so without
-  // this, "why was the prior version rejected" becomes invisible the moment a new version starts.
-  const versionMetadata =
-    latest?.status === "REJECTED" && latest.rejection_reason
-      ? { previous_version_rejection_reason: latest.rejection_reason }
-      : undefined;
+  const versionMetadata = latest
+    ? buildPredecessorLinkage({
+        predecessorDraftId: latest.id,
+        predecessorVersionNumber: latest.version_number,
+        predecessorStatus: latest.status as CatalogueDraftStatus,
+        rejectionReason: latest.rejection_reason,
+      })
+    : undefined;
   await insertAudit(
     data.id,
     latest ? "CREATE_NEW_VERSION" : "CREATE_DRAFT",
@@ -170,7 +251,25 @@ export async function saveDraft(params: {
   return data;
 }
 
-export async function submitDraftForReview(draftId: string, actorId: string | null): Promise<CatalogueDraftRow> {
+export async function submitDraftForReview(
+  draftId: string,
+  actorId: string | null,
+): Promise<CatalogueDraftRow> {
+  const existing = await supabase
+    .from("catalogue_ai_studio_drafts")
+    .select("status")
+    .eq("id", draftId)
+    .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message);
+  if (existing.data) {
+    assertValidWorkflowTransition({
+      domain: "catalogue_ai_studio_draft",
+      fromPhase: mapCatalogueDraftStatus(existing.data.status as CatalogueDraftStatus),
+      action: "submit",
+      actorRole: "contributor",
+    });
+  }
+
   const { data, error } = await supabase
     .from("catalogue_ai_studio_drafts")
     .update({ status: "UNDER_REVIEW" })
@@ -184,7 +283,25 @@ export async function submitDraftForReview(draftId: string, actorId: string | nu
   return data;
 }
 
-export async function approveDraft(draftId: string, actorId: string | null): Promise<CatalogueDraftRow> {
+export async function approveDraft(
+  draftId: string,
+  actorId: string | null,
+): Promise<CatalogueDraftRow> {
+  const existing = await supabase
+    .from("catalogue_ai_studio_drafts")
+    .select("status")
+    .eq("id", draftId)
+    .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message);
+  if (existing.data) {
+    assertValidWorkflowTransition({
+      domain: "catalogue_ai_studio_draft",
+      fromPhase: mapCatalogueDraftStatus(existing.data.status as CatalogueDraftStatus),
+      action: "approve",
+      actorRole: "reviewer",
+    });
+  }
+
   const { data, error } = await supabase
     .from("catalogue_ai_studio_drafts")
     .update({
@@ -208,13 +325,31 @@ export async function rejectDraft(
   actorId: string | null,
   reason: string,
 ): Promise<CatalogueDraftRow> {
+  assertRejectionReasonRequired(reason);
+
+  const existing = await supabase
+    .from("catalogue_ai_studio_drafts")
+    .select("status")
+    .eq("id", draftId)
+    .maybeSingle();
+  if (existing.error) throw new Error(existing.error.message);
+  if (existing.data) {
+    assertValidWorkflowTransition({
+      domain: "catalogue_ai_studio_draft",
+      fromPhase: mapCatalogueDraftStatus(existing.data.status as CatalogueDraftStatus),
+      action: "reject",
+      actorRole: "reviewer",
+    });
+  }
+
+  const normalizedReason = reason.trim();
   const { data, error } = await supabase
     .from("catalogue_ai_studio_drafts")
     .update({
       status: "REJECTED",
       reviewed_by: actorId,
       reviewed_at: new Date().toISOString(),
-      rejection_reason: reason,
+      rejection_reason: normalizedReason,
     })
     .eq("id", draftId)
     .eq("status", "UNDER_REVIEW")
@@ -222,6 +357,13 @@ export async function rejectDraft(
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error(STATUS_CHANGED_MESSAGE);
-  await insertAudit(draftId, "REJECT", "UNDER_REVIEW", "REJECTED", actorId, { rejection_reason: reason });
+  await insertAudit(
+    draftId,
+    "REJECT",
+    "UNDER_REVIEW",
+    "REJECTED",
+    actorId,
+    buildRejectAuditMetadata(normalizedReason),
+  );
   return data;
 }
