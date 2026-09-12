@@ -100,7 +100,7 @@ export const validateMediaFile = (
   allowedTypes: readonly string[] = ALLOWED_MEDIA_MIME_TYPES,
 ): string | null => {
   if (file.size > MAX_MEDIA_FILE_SIZE_BYTES) {
-    return `"${file.name}" is too large (max ${Math.floor(MAX_MEDIA_FILE_SIZE_BYTES / (1024 * 1024))}MB).`;
+    return `"${file.name}" is too large (max 50 MiB).`;
   }
   if (!allowedTypes.includes(file.type)) {
     return `"${file.name}" has an unsupported file type (${file.type || "unknown"}).`;
