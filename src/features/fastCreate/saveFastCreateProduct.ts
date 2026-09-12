@@ -19,6 +19,7 @@ import {
   skuPackagingSegment,
 } from "@/features/productAuthority/skuGuard";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
+import { assertNoBlockingProductCollisions } from "@/features/productGovernance/productDuplicateContract";
 import type { AliasSeed } from "@/features/productLanguage/aliasSeedRules";
 import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
 import { supabase } from "@/integrations/supabase/client";
@@ -161,6 +162,11 @@ export async function saveFastCreateProduct(
     if (skuGuard.ok === false) {
       throw new Error(skuGuard.reason);
     }
+
+    await assertNoBlockingProductCollisions({
+      sku: productRow.sku as string,
+      barcode: intakeBarcode,
+    });
 
     const res = await supabase
       .from("products")
