@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  type AiFieldTracking,
   advanceAiFieldTracking,
   buildAiGenerationProvenance,
   isAiGenerationBlockedByIdentity,
   mergeAiGeneratedContent,
+  type RestoredAiGeneration,
   readPersistedAiGenerationProvenance,
   restoreAiGenerationState,
-  type AiFieldTracking,
 } from "./catalogueAiGenerationMerge";
 import {
   CATALOGUE_DRAFT_CONTENT_KEYS,
@@ -17,17 +18,34 @@ import {
 } from "./catalogueDraftTypes";
 import type { ReadinessCategory, ReadinessResult } from "./catalogueProductReadiness";
 
-function content(fill: string, overrides: Partial<CatalogueDraftContent> = {}): CatalogueDraftContent {
-  const base = Object.fromEntries(CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, fill])) as CatalogueDraftContent;
+function content(
+  fill: string,
+  overrides: Partial<CatalogueDraftContent> = {},
+): CatalogueDraftContent {
+  const base = Object.fromEntries(
+    CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, fill]),
+  ) as CatalogueDraftContent;
   return { ...base, ...overrides };
 }
 
 function prompts(): CatalogueDraftPrompts {
-  return Object.fromEntries(CATALOGUE_DRAFT_PROMPT_KEYS.map((k) => [k, "prompt"])) as CatalogueDraftPrompts;
+  return Object.fromEntries(
+    CATALOGUE_DRAFT_PROMPT_KEYS.map((k) => [k, "prompt"]),
+  ) as CatalogueDraftPrompts;
 }
 
 function tracking(overrides: Partial<AiFieldTracking>): AiFieldTracking {
-  return { watchedFields: [], lockedHumanEditedFields: [], lockedPreservedFields: [], ...overrides };
+  return {
+    watchedFields: [],
+    lockedHumanEditedFields: [],
+    lockedPreservedFields: [],
+    ...overrides,
+  };
+}
+
+function requireRestored(restored: RestoredAiGeneration | null): RestoredAiGeneration {
+  if (!restored) throw new Error("expected restored AI generation state");
+  return restored;
 }
 
 function category(key: string, state: ReadinessCategory["state"]): ReadinessCategory {
@@ -44,7 +62,9 @@ describe("isAiGenerationBlockedByIdentity", () => {
   });
 
   it("blocks when the identity category itself is missing", () => {
-    expect(isAiGenerationBlockedByIdentity(readiness([category("identity", "missing")]))).toBe(true);
+    expect(isAiGenerationBlockedByIdentity(readiness([category("identity", "missing")]))).toBe(
+      true,
+    );
   });
 
   it(
@@ -141,6 +161,17 @@ describe("advanceAiFieldTracking", () => {
 });
 
 describe("buildAiGenerationProvenance", () => {
+  it("records catalogue-ai-copy as the governed service for new provenance", () => {
+    const ai = content("ai generated");
+    const provenance = buildAiGenerationProvenance(
+      ai,
+      ai,
+      tracking({ watchedFields: ["catalogue_title"] }),
+      "Informational",
+    );
+    expect(provenance.service).toBe("catalogue-ai-copy");
+  });
+
   it("classifies an untouched watched field as fields_ai_generated", () => {
     const ai = content("ai generated");
     const provenance = buildAiGenerationProvenance(
@@ -212,7 +243,11 @@ describe("readPersistedAiGenerationProvenance", () => {
     expect(readPersistedAiGenerationProvenance(null)).toBeNull();
     expect(readPersistedAiGenerationProvenance({})).toBeNull();
     expect(readPersistedAiGenerationProvenance({ ai_generation: null })).toBeNull();
-    expect(readPersistedAiGenerationProvenance({ ai_generation: { fields_ai_generated: ["catalogue_title"] } })).toBeNull();
+    expect(
+      readPersistedAiGenerationProvenance({
+        ai_generation: { fields_ai_generated: ["catalogue_title"] },
+      }),
+    ).toBeNull();
   });
 
   it(
@@ -255,6 +290,7 @@ describe("readPersistedAiGenerationProvenance", () => {
       };
       const result = readPersistedAiGenerationProvenance(snapshot);
       expect(result).not.toBeNull();
+      expect(result?.service).toBe("catalogue-ai-copy");
       expect(result?.tone).toBe("Premium");
       expect(result?.fields_ai_generated).toEqual(["catalogue_title", "short_description"]);
       expect(result?.fields_human_edited_after_generation).toEqual(["long_description"]);
@@ -279,7 +315,9 @@ describe("readPersistedAiGenerationProvenance", () => {
 describe("restoreAiGenerationState", () => {
   it("returns null when there is no source_snapshot, no ai_generation blob, or one missing the service marker", () => {
     expect(restoreAiGenerationState("p1", content("template"), prompts(), null)).toBeNull();
-    expect(restoreAiGenerationState("p1", content("template"), prompts(), { some_other_key: 1 })).toBeNull();
+    expect(
+      restoreAiGenerationState("p1", content("template"), prompts(), { some_other_key: 1 }),
+    ).toBeNull();
     expect(
       restoreAiGenerationState("p1", content("template"), prompts(), {
         ai_generation: { fields_ai_generated: ["catalogue_title"] },
@@ -352,40 +390,61 @@ describe("end-to-end: reload-and-save cycle (restoreAiGenerationState + buildAiG
   const loaded = content("saved text", { catalogue_title: "operator's prior edit" });
 
   it("an unchanged reload-then-save keeps a human-edited field human-edited, never ai_generated", () => {
-    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
+    const restored = requireRestored(
+      restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot),
+    );
     expect(restored).not.toBeNull();
     // No new edit — final content is exactly what was loaded.
-    const provenance = buildAiGenerationProvenance(loaded, restored!.baseline.content, restored!.tracking, "Premium");
+    const provenance = buildAiGenerationProvenance(
+      loaded,
+      restored.baseline.content,
+      restored.tracking,
+      "Premium",
+    );
     expect(provenance.fields_human_edited_after_generation).toEqual(["catalogue_title"]);
     expect(provenance.fields_ai_generated).toEqual(["short_description"]);
     expect(provenance.fields_ai_generated).not.toContain("catalogue_title");
   });
 
   it("a further edit after reload keeps the field human-edited (trivially — it's still different)", () => {
-    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
+    const restored = requireRestored(
+      restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot),
+    );
     const finalAfterFurtherEdit = { ...loaded, catalogue_title: "operator's newest edit" };
     const provenance = buildAiGenerationProvenance(
       finalAfterFurtherEdit,
-      restored!.baseline.content,
-      restored!.tracking,
+      restored.baseline.content,
+      restored.tracking,
       "Premium",
     );
     expect(provenance.fields_human_edited_after_generation).toContain("catalogue_title");
   });
 
   it("an untouched AI-generated (watched) field remains ai_generated after reload-then-save", () => {
-    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
-    const provenance = buildAiGenerationProvenance(loaded, restored!.baseline.content, restored!.tracking, "Premium");
+    const restored = requireRestored(
+      restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot),
+    );
+    const provenance = buildAiGenerationProvenance(
+      loaded,
+      restored.baseline.content,
+      restored.tracking,
+      "Premium",
+    );
     expect(provenance.fields_ai_generated).toContain("short_description");
   });
 
   it("a watched field edited after reload correctly transitions to human_edited_after_generation", () => {
-    const restored = restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot);
-    const finalWithWatchedFieldEdited = { ...loaded, short_description: "operator rewrote this after reload" };
+    const restored = requireRestored(
+      restoreAiGenerationState("p1", loaded, prompts(), persistedSnapshot),
+    );
+    const finalWithWatchedFieldEdited = {
+      ...loaded,
+      short_description: "operator rewrote this after reload",
+    };
     const provenance = buildAiGenerationProvenance(
       finalWithWatchedFieldEdited,
-      restored!.baseline.content,
-      restored!.tracking,
+      restored.baseline.content,
+      restored.tracking,
       "Premium",
     );
     expect(provenance.fields_human_edited_after_generation).toContain("short_description");
