@@ -10,6 +10,14 @@
  */
 
 import type { ReadinessCategoryLike } from "@/features/productAuthority/buildMeter";
+import {
+  createDeferredDetailField,
+  DEFERRED_DETAIL_CONTRACT_VERSION,
+  type DeferredDetailField,
+  type DeferredDetailManifest,
+  fieldStateFromValue,
+  serializeDeferredDetailManifest,
+} from "@/features/productAuthority/deferredDetailContract";
 import { labelStarterFromPack } from "@/features/productAuthority/packLogic";
 import type { SaleType } from "@/features/productAuthority/saleType";
 import {
@@ -229,4 +237,116 @@ export function fastCreateFormPatchFromDraft(
   if (draft.intakeBarcode) patch.intake_barcode = draft.intakeBarcode;
 
   return patch;
+}
+
+/** Build manifest from Fast Create draft — encodes operator deferrals vs unknown gaps. */
+export function deferredDetailManifestFromFastCreateDraft(
+  draft: FastCreateDraftSnapshot,
+): DeferredDetailManifest {
+  const req = getSaleTypeRequirements(draft.saleType, { b2bEnabled: draft.b2bEnabled });
+  const now = new Date().toISOString();
+  const fields: DeferredDetailField[] = [];
+
+  const push = (field: DeferredDetailField) => fields.push(field);
+
+  push(
+    createDeferredDetailField(
+      "product_name",
+      fieldStateFromValue(draft.productName) === "known" ? "known" : "unknown",
+      {
+        reason: "Product name is required at draft creation.",
+        blockingStages: ["draft_creation", "approval", "publication"],
+        provenance: { source: "operator", recorded_at: now },
+      },
+    ),
+  );
+
+  push(
+    createDeferredDetailField("sku", draft.resolvedSku ? "known" : "deferred", {
+      reason: "SKU finalized during admin approval.",
+      deferredUntilStage: "approval",
+      blockingStages: ["approval", "publication"],
+      provenance: { source: "system", recorded_at: now },
+    }),
+  );
+
+  if (req.requiresPackaging) {
+    push(
+      createDeferredDetailField("packaging", draft.packagingCode ? "known" : "unknown", {
+        reason: "Packaging type required for this sale type.",
+        blockingStages: ["draft_creation", "approval", "publication"],
+        provenance: { source: "operator", recorded_at: now },
+      }),
+    );
+  }
+
+  if (req.requiresQtyPerPack) {
+    const qtyState = fieldStateFromValue(draft.qtyPerPack ? Number(draft.qtyPerPack) : null);
+    push(
+      createDeferredDetailField("qty_per_pack", qtyState, {
+        reason: "Pieces per pack required for this sale type.",
+        blockingStages: ["draft_creation", "approval", "publication"],
+        provenance: { source: "operator", recorded_at: now },
+      }),
+    );
+  }
+
+  if (req.requiresMrp) {
+    const mrpState = fieldStateFromValue(draft.mrp ? Number(draft.mrp) : null);
+    push(
+      createDeferredDetailField("mrp", mrpState, {
+        reason: "MRP required for this sale type.",
+        blockingStages: ["draft_creation", "approval", "publication"],
+        provenance: { source: "operator", recorded_at: now },
+      }),
+    );
+  }
+
+  if (req.requiresB2bPrice) {
+    const b2bState = fieldStateFromValue(draft.b2bPrice ? Number(draft.b2bPrice) : null);
+    push(
+      createDeferredDetailField("b2b_price", b2bState, {
+        reason: "B2B price required for this sale type.",
+        blockingStages: ["draft_creation", "approval", "publication"],
+        provenance: { source: "operator", recorded_at: now },
+      }),
+    );
+  }
+
+  if (req.requiresHeroImage) {
+    push(
+      createDeferredDetailField("hero_image", draft.heroUrl ? "known" : "unknown", {
+        reason: "Hero image required for this sale type.",
+        blockingStages: ["draft_creation", "approval", "publication"],
+        provenance: { source: "operator", recorded_at: now },
+      }),
+    );
+  }
+
+  if (req.requiresExportFields) {
+    push(
+      createDeferredDetailField("export_fields", "deferred", {
+        reason: "Export details completed in Full Editor.",
+        deferredUntilStage: "publication",
+        blockingStages: ["publication"],
+        provenance: { source: "system", recorded_at: now },
+      }),
+    );
+  }
+
+  return { contract_version: DEFERRED_DETAIL_CONTRACT_VERSION, fields };
+}
+
+/** Point 53 — deferred-detail manifest for session handoff and contributor payloads. */
+export function fastCreateDeferredDetailManifest(
+  draft: FastCreateDraftSnapshot,
+): DeferredDetailManifest {
+  return deferredDetailManifestFromFastCreateDraft(draft);
+}
+
+/** Serialized deferred-detail for embedding in form patch / draft payload metadata. */
+export function fastCreateDeferredDetailPayload(
+  draft: FastCreateDraftSnapshot,
+): Record<string, unknown> {
+  return serializeDeferredDetailManifest(deferredDetailManifestFromFastCreateDraft(draft));
 }

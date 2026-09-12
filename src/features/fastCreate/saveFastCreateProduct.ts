@@ -6,6 +6,7 @@ import {
   withReviewedIntakeBarcode,
 } from "@/features/fastCreate/fastCreateIntakeBarcode";
 import { getPersistableFastCreateAliases } from "@/features/governedAiExtraction/fastCreateEnrichment";
+import type { DeferredDetailManifest } from "@/features/productAuthority/deferredDetailContract";
 import {
   formatProductSaveError,
   formToDbProductPayload,
@@ -88,6 +89,8 @@ export type FastCreateSaveInput = {
   extraFormPatch?: Record<string, unknown>;
   /** Sale type selected in Fast Create — used to guard product_class defaulting. */
   saleType?: SaleType;
+  /** Point 53 — deferred-detail manifest for contributor draft payload. */
+  deferredDetail?: DeferredDetailManifest | Record<string, unknown>;
 };
 
 export async function saveFastCreateProduct(
@@ -217,6 +220,7 @@ export async function saveFastCreateProduct(
         sku_draft: {
           note: "SKU must be finalized via generate_oasis_sku during admin approval — DRAFT-* blocked.",
         },
+        ...(input.deferredDetail ? { deferred_fields: input.deferredDetail } : {}),
       },
       intakeBarcode,
     );

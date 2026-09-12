@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { evaluateTransitionGate } from "@/features/productAuthority/deferredDetailContract";
 import {
+  deferredDetailManifestFromFastCreateDraft,
   emptyFastCreateDraft,
   FAST_CREATE_DRAFT_STORAGE_KEY,
   type FastCreateDraftSnapshot,
+  fastCreateDeferredDetailPayload,
   fastCreateFormPatchFromDraft,
   fastCreateReadinessCategories,
   fastCreateReadinessScore,
@@ -100,6 +103,62 @@ describe("fastCreateFormPatchFromDraft — Full Editor handoff", () => {
     const patch = fastCreateFormPatchFromDraft({ ...misr15Draft(), mrp: "", b2bPrice: "0" });
     expect(patch).not.toHaveProperty("mrp");
     expect(patch).not.toHaveProperty("b2b_price");
+  });
+});
+
+describe("fastCreateDeferredDetailPayload — Point 53 handoff", () => {
+  it("serializes SKU as deferred until approval", () => {
+    const payload = fastCreateDeferredDetailPayload(emptyFastCreateDraft());
+    const sku = (payload.fields as Array<{ field_key: string; state: string }>).find(
+      (f) => f.field_key === "sku",
+    );
+    expect(sku?.state).toBe("deferred");
+  });
+
+  it("marks export fields deferred until publication for export sale type", () => {
+    const payload = fastCreateDeferredDetailPayload({
+      ...emptyFastCreateDraft(),
+      saleType: "export",
+    });
+    const exportField = (payload.fields as Array<{ field_key: string; state: string }>).find(
+      (f) => f.field_key === "export_fields",
+    );
+    expect(exportField?.state).toBe("deferred");
+  });
+
+  it("marks SKU as deferred until approval, not unknown", () => {
+    const manifest = deferredDetailManifestFromFastCreateDraft(emptyFastCreateDraft());
+    const sku = manifest.fields.find((f) => f.field_key === "sku");
+    expect(sku?.state).toBe("deferred");
+    expect(sku?.deferred_until_stage).toBe("approval");
+    expect(evaluateTransitionGate(manifest, "draft_creation").allowed).toBe(false);
+  });
+
+  it("export sale type defers export_fields until publication only", () => {
+    const manifest = deferredDetailManifestFromFastCreateDraft({
+      ...emptyFastCreateDraft(),
+      saleType: "export",
+      productName: "Export Box",
+    });
+    const exportField = manifest.fields.find((f) => f.field_key === "export_fields");
+    expect(exportField?.state).toBe("deferred");
+    expect(exportField?.deferred_until_stage).toBe("publication");
+    expect(evaluateTransitionGate(manifest, "approval").allowed).toBe(false);
+  });
+
+  it("complete retail draft passes draft_creation and publication gates", () => {
+    const manifest = deferredDetailManifestFromFastCreateDraft({
+      ...emptyFastCreateDraft(),
+      productName: "Misr 15",
+      saleType: "retail_ready_pack",
+      packagingCode: "PAPERBOX",
+      qtyPerPack: "6",
+      mrp: "450",
+      heroUrl: "https://x/hero.jpg",
+      resolvedSku: "OAS-SKU-001",
+    });
+    expect(evaluateTransitionGate(manifest, "draft_creation").allowed).toBe(true);
+    expect(evaluateTransitionGate(manifest, "publication").allowed).toBe(true);
   });
 });
 

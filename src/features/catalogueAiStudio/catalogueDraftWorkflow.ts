@@ -2,6 +2,14 @@
  * Pure workflow rules for Catalogue Product AI Studio drafts.
  * No I/O — status transitions and editability only. Persistence lives in catalogueDraftRepository.ts.
  */
+
+import {
+  type DeferredDetailManifest,
+  deferredDetailFromCatalogueContent,
+  evaluateTransitionGate,
+  parseDeferredDetailManifest,
+  type WorkflowStage,
+} from "@/features/productAuthority/deferredDetailContract";
 import { exportBundleHasMissingFieldPlaceholder } from "./catalogueContentGenerators";
 import type { CatalogueDraftContent, CatalogueDraftStatus } from "./catalogueDraftTypes";
 
@@ -36,6 +44,48 @@ export function canReject(status: CatalogueDraftStatus): boolean {
 export function isExportBundleDistributable(
   status: CatalogueDraftStatus | null,
   content: CatalogueDraftContent,
+  deferredDetail?: DeferredDetailManifest | null,
 ): boolean {
-  return status === "APPROVED" && !exportBundleHasMissingFieldPlaceholder(content);
+  if (status !== "APPROVED") return false;
+  if (exportBundleHasMissingFieldPlaceholder(content)) return false;
+  const manifest =
+    deferredDetail ??
+    ({
+      contract_version: 1,
+      fields: deferredDetailFromCatalogueContent(content),
+    } as DeferredDetailManifest);
+  return evaluateTransitionGate(manifest, "publication").allowed;
+}
+
+/** Fail-closed approval gate — blocks when deferred/unknown/pending fields remain. */
+export function canApproveWithDeferredDetail(
+  status: CatalogueDraftStatus,
+  content: CatalogueDraftContent,
+  sourceSnapshot?: Record<string, unknown> | null,
+): boolean {
+  if (!canApprove(status)) return false;
+  const persisted = sourceSnapshot
+    ? parseDeferredDetailManifest(sourceSnapshot.deferred_detail)
+    : null;
+  const manifest: DeferredDetailManifest = persisted ?? {
+    contract_version: 1,
+    fields: deferredDetailFromCatalogueContent(content),
+  };
+  return evaluateTransitionGate(manifest, "approval").allowed;
+}
+
+/** Evaluate transition gate for an arbitrary workflow stage using content + optional snapshot. */
+export function evaluateCatalogueDraftTransition(
+  stage: WorkflowStage,
+  content: CatalogueDraftContent,
+  sourceSnapshot?: Record<string, unknown> | null,
+) {
+  const persisted = sourceSnapshot
+    ? parseDeferredDetailManifest(sourceSnapshot.deferred_detail)
+    : null;
+  const manifest: DeferredDetailManifest = persisted ?? {
+    contract_version: 1,
+    fields: deferredDetailFromCatalogueContent(content),
+  };
+  return evaluateTransitionGate(manifest, stage);
 }
