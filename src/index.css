@@ -6,7 +6,7 @@
 
 @layer base {
   :root {
-    /* Warm ivory background, Bateel-style */
+    /* Warm ivory background, luxury catalogue */
     --background: 38 38% 97%;
     --foreground: 185 40% 12%;
 
@@ -100,7 +100,7 @@
   .badge-soft {
     @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
   }
-  /* Bateel-style luxury catalogue product card */
+  /* Luxury catalogue product card */
   .luxe-card {
     @apply bg-card rounded-2xl overflow-hidden border border-border/60 transition-all;
     box-shadow: 0 1px 2px hsl(38 30% 20% / 0.03);
