@@ -269,8 +269,8 @@ describe("saveFastCreateProduct — governed draft only", () => {
       }),
     ).rejects.toThrow(/SKU already exists/i);
 
-    expect(
-      rpcMock.mock.calls.some(([fn]) => fn === "submit_catalogue_product_draft_v1"),
-    ).toBe(false);
+    expect(rpcMock.mock.calls.some(([fn]) => fn === "submit_catalogue_product_draft_v1")).toBe(
+      false,
+    );
   });
 });
