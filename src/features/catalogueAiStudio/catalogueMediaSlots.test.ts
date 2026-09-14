@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   catalogueBenchmarkGovernance,
   catalogueBenchmarkGovernanceView,
+  catalogueDerivativeOutput,
+  catalogueDerivativeOutputView,
   catalogueEvaluateQaReadiness,
+  catalogueExecuteMockDerivativeTransform,
   catalogueExactProductEnhancement,
   catalogueExactProductEnhancementView,
   catalogueGuidedCaptureView,
@@ -16,6 +19,8 @@ import {
   catalogueRequiredMediaSlots,
   catalogueRunAutomatedQaChecks,
   catalogueValidateCaptureHandoff,
+  catalogueValidateDerivativePersistenceHandoff,
+  catalogueValidateDerivativeTransformOutput,
   catalogueValidateEnhancementHandoff,
   catalogueValidateEnhancementInstruction,
   catalogueValidateImagePromptInstruction,
@@ -242,6 +247,140 @@ describe("catalogueImageQaValidation", () => {
     expect(disposition.ok).toBe(true);
     if (!disposition.ok) return;
     expect(disposition.audit.schema).toBe("point46_audit_v1");
+  });
+});
+
+describe("catalogueDerivativeOutput", () => {
+  const product = { productId: "p1", category: "Baklawa", subcategory: "Pyramid" };
+  const candidate = {
+    mediaRef: "mock://qa/approved-001",
+    origin: "capture" as const,
+    productId: "p1",
+    sourceMediaId: "media-001",
+    sourceContentHash: "sha256:qahash",
+    readinessSlot: "primary_image" as const,
+    uploaderType: "hero_image",
+    metadata: {
+      mimeType: "image/jpeg",
+      widthPx: 3000,
+      heightPx: 4000,
+      fileSizeBytes: 2_000_000,
+    },
+  };
+
+  it("resolves Point 47 derivative contract from approved Point 46 QA source", () => {
+    const qaResolved = catalogueImageQaValidation(product, candidate);
+    expect(qaResolved.ok).toBe(true);
+    if (!qaResolved.ok) return;
+
+    const checks = catalogueRunAutomatedQaChecks(qaResolved.contract);
+    const disposition = catalogueRecordQaDisposition(qaResolved.contract, checks, {
+      disposition: "approved",
+      reviewer: {
+        reviewerId: "reviewer-1",
+        role: "media_qa_reviewer",
+        authorizedAt: new Date(0).toISOString(),
+      },
+    });
+    expect(disposition.ok).toBe(true);
+    if (!disposition.ok) return;
+
+    const resolved = catalogueDerivativeOutput(
+      product,
+      {
+        approvedMediaId: "media-approved-001",
+        approvedMediaRef: candidate.mediaRef,
+        sourceMediaId: candidate.sourceMediaId,
+        sourceContentHash: candidate.sourceContentHash,
+        productId: candidate.productId,
+        readinessSlot: candidate.readinessSlot,
+        uploaderType: candidate.uploaderType,
+        familyKey: "baklawa_small_sweets",
+      },
+      disposition.audit,
+      "web_hero_webp",
+    );
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.contract.schema).toBe("point47_v1");
+    expect(resolved.contract.profile.mimeType).toBe("image/webp");
+  });
+
+  it("view surfaces contract and resolution errors", () => {
+    const okView = catalogueDerivativeOutputView(
+      product,
+      {
+        approvedMediaId: "media-approved-001",
+        approvedMediaRef: candidate.mediaRef,
+        sourceMediaId: candidate.sourceMediaId,
+        sourceContentHash: candidate.sourceContentHash,
+        productId: candidate.productId,
+        readinessSlot: candidate.readinessSlot,
+        uploaderType: candidate.uploaderType,
+        familyKey: "baklawa_small_sweets",
+      },
+      {
+        schema: "point46_audit_v1",
+        candidateMediaRef: candidate.mediaRef,
+        productId: candidate.productId,
+        readinessSlot: candidate.readinessSlot,
+        origin: "capture",
+        disposition: "pending_review",
+        automatedChecks: [],
+        recordedAt: new Date(0).toISOString(),
+      },
+      "web_hero_webp",
+    );
+    expect(okView.contract).toBeNull();
+    expect(okView.resolutionError).toContain("approved disposition");
+  });
+
+  it("runs mock transform and persistence handoff through adapter", () => {
+    const qaResolved = catalogueImageQaValidation(product, candidate);
+    expect(qaResolved.ok).toBe(true);
+    if (!qaResolved.ok) return;
+
+    const checks = catalogueRunAutomatedQaChecks(qaResolved.contract);
+    const disposition = catalogueRecordQaDisposition(qaResolved.contract, checks, {
+      disposition: "approved",
+      reviewer: {
+        reviewerId: "reviewer-1",
+        role: "media_qa_reviewer",
+        authorizedAt: new Date(0).toISOString(),
+      },
+    });
+    expect(disposition.ok).toBe(true);
+    if (!disposition.ok) return;
+
+    const resolved = catalogueDerivativeOutput(
+      product,
+      {
+        approvedMediaId: "media-approved-001",
+        approvedMediaRef: candidate.mediaRef,
+        sourceMediaId: candidate.sourceMediaId,
+        sourceContentHash: candidate.sourceContentHash,
+        productId: candidate.productId,
+        readinessSlot: candidate.readinessSlot,
+        uploaderType: candidate.uploaderType,
+        familyKey: "baklawa_small_sweets",
+      },
+      disposition.audit,
+      "print_ready_jpeg",
+    );
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+
+    const output = catalogueExecuteMockDerivativeTransform(resolved.contract);
+    expect("ok" in output).toBe(false);
+    if ("ok" in output) return;
+
+    const provenance = catalogueValidateDerivativeTransformOutput(resolved.contract, output);
+    expect(provenance.ok).toBe(true);
+
+    const handoff = catalogueValidateDerivativePersistenceHandoff(resolved.contract, output, {
+      persistenceResult: { ok: true, storagePath: output.storagePath },
+    });
+    expect(handoff.ok).toBe(true);
   });
 });
 

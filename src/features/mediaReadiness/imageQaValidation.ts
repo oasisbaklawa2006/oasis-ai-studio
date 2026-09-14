@@ -800,10 +800,10 @@ export function buildImageQaValidationCensus(
       "product_media schema has no qa_audit_ref column — audit carried in contract layer only",
       "No integration with productMediaPersistence status transitions",
       "Real-image human QA UAT not performed — fixtures/mocks only",
-      "Point 47 derivative encoding not implemented",
+      "Point 47 derivative contract implemented in derivativeOutputContract.ts — persistence/UI integration still pending",
     ],
     downstreamPoints: {
-      point47: "Photography output formats / derivative encoding — separate",
+      point47: "Photography output formats / derivative encoding — derivativeOutputContract.ts",
     },
   };
 }
