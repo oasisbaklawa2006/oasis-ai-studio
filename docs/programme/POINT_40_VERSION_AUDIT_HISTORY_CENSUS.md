@@ -14,7 +14,7 @@
 | Point 39 head | `65fdbf046` | **Mandatory predecessor #2** — POINT39 correction/resubmission (#161) |
 | Point 40 branch | `cursor/point40-version-audit-history-d71a` | Built from `65fdbf046` — **must not merge before #157 and #161** |
 
-```
+```text
 6f8e164 (main, POINT35)
    └── bd36a735 (POINT38 #157) ← mandatory predecessor #1
           └── 65fdbf046 (POINT39 #161) ← mandatory predecessor #2
