@@ -4,9 +4,11 @@
 
 - Point: 26
 - Title: Audit and stabilise AI Studio's current repository state
-- Status: IN PROGRESS (closure-lane census refreshed 2026-09-03)
-- Baseline: current `main` after PR #133 (Point 28 similar-product detection)
-- Baseline commit: `8556bdd43fba43423f54f7dd11daed0c417f0548`
+- Status: CLOSURE EVIDENCE REFRESH (inference census + provenance contract — 2026-09-06)
+- Baseline: current `main` after PR #147 (Point 35)
+- Baseline commit: `6f8e16417dcef2323d833072d23a92a32b87a833`
+- Inference census: `docs/programme/POINT_26_INFERENCE_AUDIT_CENSUS.md`
+- Certification: `npm run certify:point26-inference-audit`
 - Parallel closure matrix: `docs/programme/CLOSURE_LANE_POINTS_26_27_31_33_MATRIX.md`
 
 ## Duplication decision

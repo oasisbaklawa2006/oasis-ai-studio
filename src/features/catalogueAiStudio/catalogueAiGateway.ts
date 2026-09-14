@@ -7,6 +7,12 @@
  */
 
 import { supabase } from "@/integrations/supabase/client";
+import {
+  CATALOGUE_AI_COPY_SERVICE,
+  extractInferenceProvenanceFromPayload,
+  type InferenceOperationProvenance,
+  isGovernedCatalogueCopyResponse,
+} from "@/shared/ai/inferenceProvenance";
 import type { CatalogueDraftContent, CatalogueDraftContentKey } from "./catalogueDraftTypes";
 import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
 
@@ -136,7 +142,7 @@ export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidati
 }
 
 export type CatalogueAiGenerationResult =
-  | { ok: true; content: CatalogueDraftContent }
+  | { ok: true; content: CatalogueDraftContent; provenance: InferenceOperationProvenance }
   | { ok: false; reason: string };
 
 /**
@@ -202,8 +208,17 @@ export async function generateCatalogueContentDraft(
   }
 
   const payload = await resp.json().catch(() => null);
-  if (payload?.ok !== true || payload.human_review_required !== true) {
+  if (!isGovernedCatalogueCopyResponse(payload)) {
     return { ok: false, reason: "AI response could not be parsed as structured content." };
   }
-  return validateAiCatalogueContent(payload.content);
+  const validated = validateAiCatalogueContent(payload.content);
+  if (!validated.ok) return validated;
+  const provenance = extractInferenceProvenanceFromPayload(payload, {
+    service: CATALOGUE_AI_COPY_SERVICE,
+    human_review_required: true,
+    suggestion_only: true,
+    provider_status: "ok",
+    fail_closed: false,
+  });
+  return { ok: true, content: validated.content, provenance };
 }
