@@ -80,7 +80,7 @@ export function diagnoseSupabaseFailure(
 
   if (
     lower.includes("could not find the function") ||
-    lower.includes("function") && lower.includes("does not exist") ||
+    (lower.includes("function") && lower.includes("does not exist")) ||
     code === "PGRST202"
   ) {
     const rpcMatch = message.match(/function\s+([^\s(]+)/i);
@@ -201,8 +201,20 @@ export function formatSupabaseDiagnostic(error: unknown, context: string): strin
 
   const formatted = formatSupabaseFailure(failure);
 
-  if (/duplicate key.*uq_product_pricing_rules_product_channel|uq_price_rule_product_channel/i.test(failure.message)) {
+  if (
+    /duplicate key.*uq_product_pricing_rules_product_channel|uq_price_rule_product_channel/i.test(
+      failure.message,
+    )
+  ) {
     return "Pricing for this channel already exists. Updating existing row.";
+  }
+
+  if (/duplicate key.*products_sku_unique|unique constraint.*\(sku\)/i.test(failure.message)) {
+    return "SKU already exists. Use a different SKU or open the existing product.";
+  }
+
+  if (/duplicate key.*uq_.*barcode|unique constraint.*\(barcode\)/i.test(failure.message)) {
+    return "Barcode already belongs to another product. Use a different barcode or open the existing product.";
   }
 
   return formatted;

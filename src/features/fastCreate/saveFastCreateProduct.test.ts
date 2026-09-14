@@ -27,6 +27,12 @@ vi.mock("@/integrations/supabase/client", () => {
   };
 });
 
+const assertNoBlockingProductCollisionsMock = vi.hoisted(() => vi.fn(async () => undefined));
+
+vi.mock("@/features/productGovernance/productDuplicateContract", () => ({
+  assertNoBlockingProductCollisions: assertNoBlockingProductCollisionsMock,
+}));
+
 vi.mock("@/shared/auth/centralPermissions", () => ({
   canWriteProductsDirectly: async (roles?: string[]) =>
     !!roles?.some((r) => ["super_admin", "owner", "admin", "product_manager"].includes(r)),
@@ -215,5 +221,33 @@ describe("saveFastCreateProduct — internal sale type never becomes sellable (D
       "catalogue_claim_intake_barcode",
       expect.objectContaining({ p_barcode: "5901234123457" }),
     );
+    expect(assertNoBlockingProductCollisionsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        barcode: "5901234123457",
+        sku: expect.any(String),
+      }),
+    );
+  });
+});
+
+describe("saveFastCreateProduct — duplicate detection contract", () => {
+  beforeEach(() => {
+    rpcMock.mockClear();
+    assertNoBlockingProductCollisionsMock.mockClear();
+    assertNoBlockingProductCollisionsMock.mockResolvedValue(undefined);
+  });
+
+  it("fails closed when pre-save duplicate probe blocks", async () => {
+    assertNoBlockingProductCollisionsMock.mockRejectedValueOnce(
+      new Error("SKU already exists: Alpha (OAS-001)."),
+    );
+    await expect(
+      saveFastCreateProduct({
+        suggestions: minimalSuggestions,
+        heroUrl: null,
+        roles: ["owner"],
+        categoryKey: "other",
+      }),
+    ).rejects.toThrow(/SKU already exists/i);
   });
 });

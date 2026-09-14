@@ -1,14 +1,11 @@
+import {
+  normalizeNamePackKey,
+  normalizeProductName,
+  normalizeProductSku,
+  productCollisionLabel,
+} from "@/features/productGovernance/productDuplicateContract";
 import { supabase } from "@/integrations/supabase/client";
-import type { Category1AuthorityRow, DuplicateMatch, StagedCategory1Row } from "./types";
-
-function normSku(sku: string | null | undefined): string | null {
-  const v = sku?.trim().toLowerCase();
-  return v || null;
-}
-
-function normNamePack(row: Category1AuthorityRow): string {
-  return `${row.product_name.trim().toLowerCase()}|${(row.pack_size ?? "").trim().toLowerCase()}`;
-}
+import type { DuplicateMatch, StagedCategory1Row } from "./types";
 
 export function detectInFileDuplicates(staged: StagedCategory1Row[]): {
   rowIndex: number;
@@ -20,13 +17,13 @@ export function detectInFileDuplicates(staged: StagedCategory1Row[]): {
 
   for (const entry of staged) {
     const dupes: DuplicateMatch[] = [];
-    const sku = normSku(entry.row.sku);
+    const sku = normalizeProductSku(entry.row.sku);
     if (sku) {
       const first = skuMap.get(sku);
       if (first != null) {
         dupes.push({
           kind: "in_file_sku",
-          matchedValue: entry.row.sku!,
+          matchedValue: entry.row.sku ?? sku,
           matchedRowIndex: first,
         });
       } else {
@@ -34,8 +31,8 @@ export function detectInFileDuplicates(staged: StagedCategory1Row[]): {
       }
     }
 
-    const np = normNamePack(entry.row);
-    if (entry.row.product_name) {
+    const np = normalizeNamePackKey(entry.row.product_name, entry.row.pack_size);
+    if (np) {
       const first = namePackMap.get(np);
       if (first != null) {
         dupes.push({
@@ -65,36 +62,42 @@ type ExistingProduct = {
 };
 
 function productLabel(p: ExistingProduct): string {
-  const name = p.product_name ?? p.name ?? "Unnamed";
-  return p.sku ? `${name} (${p.sku})` : name;
+  return productCollisionLabel(p);
+}
+
+function stagedSkuValues(staged: StagedCategory1Row[]): string[] {
+  const seen = new Set<string>();
+  const values: string[] = [];
+  for (const entry of staged) {
+    const trimmed = entry.row.sku?.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    values.push(trimmed);
+  }
+  return values;
 }
 
 /**
  * Read-only duplicate check against master `products` — no writes.
+ * Exact SKU collisions fail closed; name/pack matches remain review-only warnings.
  */
 export async function detectExistingProductDuplicates(
   staged: StagedCategory1Row[],
 ): Promise<StagedCategory1Row[]> {
-  const skus = [
-    ...new Set(
-      staged.map((s) => normSku(s.row.sku)).filter((s): s is string => !!s),
-    ),
-  ];
+  const skuValues = stagedSkuValues(staged);
 
   let existing: ExistingProduct[] = [];
 
-  if (skus.length) {
+  if (skuValues.length) {
     const { data: bySku } = await (supabase as any)
       .from("products")
       .select("id, sku, name, pack_size")
-      .in("sku", skus);
+      .in("sku", skuValues);
 
     existing = [...(bySku ?? [])];
   }
 
-  const names = [
-    ...new Set(staged.map((s) => s.row.product_name.trim()).filter(Boolean)),
-  ];
+  const names = [...new Set(staged.map((s) => s.row.product_name.trim()).filter(Boolean))];
 
   for (const name of names.slice(0, 25)) {
     const { data: byName } = await (supabase as any)
@@ -111,9 +114,9 @@ export async function detectExistingProductDuplicates(
   const nameIndex = new Map<string, ExistingProduct[]>();
 
   for (const p of existing) {
-    const sku = normSku(p.sku);
+    const sku = normalizeProductSku(p.sku);
     if (sku) skuIndex.set(sku, p);
-    const name = (p.product_name ?? p.name ?? "").trim().toLowerCase();
+    const name = normalizeProductName(p.product_name ?? p.name);
     if (name) {
       const list = nameIndex.get(name) ?? [];
       list.push(p);
@@ -125,24 +128,24 @@ export async function detectExistingProductDuplicates(
     const duplicates = [...entry.duplicates];
     const issues = [...entry.issues];
 
-    const sku = normSku(entry.row.sku);
-    if (sku && skuIndex.has(sku)) {
-      const match = skuIndex.get(sku)!;
+    const sku = normalizeProductSku(entry.row.sku);
+    const match = sku ? skuIndex.get(sku) : undefined;
+    if (match) {
       duplicates.push({
         kind: "existing_sku",
-        matchedValue: entry.row.sku!,
+        matchedValue: entry.row.sku ?? sku,
         existingProductId: match.id,
         existingLabel: productLabel(match),
       });
       issues.push({
-        level: "warning",
+        level: "error",
         code: "duplicate_existing_sku",
         message: `SKU already exists: ${productLabel(match)}`,
       });
     }
 
-    const nameKey = entry.row.product_name.trim().toLowerCase();
-    const nameMatches = nameIndex.get(nameKey) ?? [];
+    const nameKey = normalizeProductName(entry.row.product_name);
+    const nameMatches = nameKey ? (nameIndex.get(nameKey) ?? []) : [];
     const packMatch = nameMatches.find(
       (p) =>
         (p.pack_size ?? "").trim().toLowerCase() ===

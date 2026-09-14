@@ -1,25 +1,15 @@
+import {
+  normalizeProductBarcode,
+  normalizeProductName,
+  normalizeProductSku,
+  productCollisionLabel,
+} from "./productDuplicateContract";
 import type { ProductDuplicateSignal, ProductGovernanceRow, ProductLabelBarcodeRow } from "./types";
 
 const SIMILAR_NAME_THRESHOLD = 0.82;
 
 export function productGovernanceLabel(p: ProductGovernanceRow): string {
-  const name = p.product_name ?? p.name ?? "Unnamed product";
-  return p.sku ? `${name} (${p.sku})` : name;
-}
-
-function normSku(sku: string | null | undefined): string | null {
-  const v = sku?.trim().toLowerCase();
-  return v || null;
-}
-
-function normName(name: string | null | undefined): string | null {
-  const v = name?.trim().toLowerCase();
-  return v || null;
-}
-
-function normBarcode(barcode: string | null | undefined): string | null {
-  const v = barcode?.trim();
-  return v || null;
+  return productCollisionLabel(p);
 }
 
 function similarityTokens(name: string): string[] {
@@ -104,7 +94,7 @@ export function detectProductMasterDuplicates(
   const barcodeIndex = new Map<string, { productId: string; barcode: string }>();
 
   for (const row of labelRows) {
-    const barcode = normBarcode(row.barcode);
+    const barcode = normalizeProductBarcode(row.barcode);
     if (!barcode || !row.product_id) continue;
     if (!barcodeIndex.has(barcode)) {
       barcodeIndex.set(barcode, { productId: row.product_id, barcode });
@@ -112,7 +102,7 @@ export function detectProductMasterDuplicates(
   }
 
   for (const p of products) {
-    const sku = normSku(p.sku);
+    const sku = normalizeProductSku(p.sku);
     if (sku) {
       const existing = skuIndex.get(sku);
       if (existing) {
@@ -133,7 +123,7 @@ export function detectProductMasterDuplicates(
       }
     }
 
-    const name = normName(p.product_name ?? p.name);
+    const name = normalizeProductName(p.product_name ?? p.name);
     if (name) {
       const matches = nameIndex.get(name) ?? [];
       for (const other of matches) {
@@ -157,12 +147,12 @@ export function detectProductMasterDuplicates(
 
   for (const [i, left] of products.entries()) {
     const leftName = left.product_name ?? left.name;
-    const leftExact = normName(leftName);
+    const leftExact = normalizeProductName(leftName);
     if (!leftExact) continue;
 
     for (const right of products.slice(i + 1)) {
       const rightName = right.product_name ?? right.name;
-      const rightExact = normName(rightName);
+      const rightExact = normalizeProductName(rightName);
       if (!rightExact || leftExact === rightExact) continue;
 
       const similarity = productNameSimilarity(leftName, rightName);
@@ -185,7 +175,7 @@ export function detectProductMasterDuplicates(
 
   for (const p of products) {
     const label = labelRows.find((r) => r.product_id === p.id);
-    const barcode = normBarcode(label?.barcode);
+    const barcode = normalizeProductBarcode(label?.barcode);
     if (!barcode) continue;
     const hit = barcodeIndex.get(barcode);
     if (!hit || hit.productId === p.id) continue;
