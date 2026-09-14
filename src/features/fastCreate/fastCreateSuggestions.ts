@@ -1,17 +1,20 @@
 import type { GovernedAiProvenance } from "@/features/governedAiExtraction";
 import { enrichFastCreateWithGovernedAi } from "@/features/governedAiExtraction";
 import {
+  type GovernedMultilingualProvenance,
+  governedAliasSeedsFromSource,
+} from "@/features/governedMultilingual";
+import {
   buildHeuristicNamingSuggestions,
   GOVERNED_NAMING_PROMPT_VERSION,
   type GovernedNamingProvenance,
 } from "@/features/governedProductNaming";
-import {
-  governedAliasSeedsFromSource,
-  type GovernedMultilingualProvenance,
-} from "@/features/governedMultilingual";
 import { applyCategoryDefaults } from "@/features/productDefaults/applyDefaults";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import { type AliasSeed, whatsappKeywordsFromAliases } from "@/features/productLanguage/aliasSeedRules";
+import {
+  type AliasSeed,
+  whatsappKeywordsFromAliases,
+} from "@/features/productLanguage/aliasSeedRules";
 import { CATEGORY_RULE_DEFERRED_FACTUAL_FIELDS } from "@/features/productTruth/productFactualCompositionCanonical";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -108,8 +111,10 @@ export function buildHeuristicSuggestions(
     description: formPatch.description ? String(formPatch.description) : null,
     short_description: formPatch.short_description ? String(formPatch.short_description) : null,
     source_version: GOVERNED_NAMING_PROMPT_VERSION,
-    approved_short_description: naming.ok ? naming.suggestions.short_description ?? null : null,
-    approved_description: naming.ok ? naming.suggestions.description ?? null : null,
+    approved_short_description: naming.ok
+      ? (naming.suggestions.short_description ?? null)
+      : null,
+    approved_description: naming.ok ? (naming.suggestions.description ?? null) : null,
   };
   const governedAliases = governedAliasSeedsFromSource(multilingualSource);
   const aliases = governedAliases.ok ? governedAliases.aliases : [];
