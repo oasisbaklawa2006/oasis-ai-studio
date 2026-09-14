@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
 import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 import { FastCreateIntakePanel } from "@/components/FastCreateIntakePanel";
+import { MobileProductCreateBanner } from "@/components/MobileProductCreateBanner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
@@ -347,6 +348,7 @@ const FastCreateProduct = () => {
   return (
     <>
       <CatalogueWriteModeBanner />
+      <MobileProductCreateBanner draft={draft} />
       {bucketStatus && (
         <div className="mb-4 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
           <strong>Media bucket:</strong> {bucketStatus}
@@ -530,7 +532,7 @@ const FastCreateProduct = () => {
           )}
 
           {(requirements.requiresMrp || requirements.requiresB2bPrice) && (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {requirements.requiresMrp && (
                 <div className="space-y-2">
                   <Label>MRP (₹)</Label>
@@ -574,6 +576,7 @@ const FastCreateProduct = () => {
                   <input
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     className="hidden"
                     disabled={uploading}
                     onChange={(e) => onPickImage(e.target.files?.[0] ?? null)}
@@ -594,7 +597,7 @@ const FastCreateProduct = () => {
           )}
 
           <div className="rounded-md border border-dashed p-3 text-sm space-y-1">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-muted-foreground">Structured SKU (before save)</span>
               <Button
                 type="button"
@@ -652,6 +655,7 @@ const FastCreateProduct = () => {
               type="button"
               disabled={!readyToCreate || saving}
               onClick={create}
+              data-testid="fast-create-submit-draft"
               title={readyToCreate ? undefined : `Missing: ${missingRequired.join(", ")}`}
             >
               {saving ? (

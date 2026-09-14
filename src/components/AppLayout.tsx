@@ -18,6 +18,7 @@ import {
   Tags,
   Upload,
   Wand2,
+  Zap,
   Wrench,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -41,6 +42,7 @@ type NavItem = {
 const nav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, page: "dashboard" },
   { to: "/products", label: "Products", icon: Package, page: "products" },
+  { to: "/products/new/fast", label: "Fast Create", icon: Zap, page: "products" },
   { to: "/admin/import/category-1", label: "Cat 1 Import", icon: Upload, page: "category1_import" },
   { to: "/media", label: "Media Library", icon: Image, page: "media" },
   { to: "/tags", label: "Tags", icon: Tags, page: "tags" },
