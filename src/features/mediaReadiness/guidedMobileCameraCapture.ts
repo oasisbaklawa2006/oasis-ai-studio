@@ -640,7 +640,7 @@ export function buildGuidedMobileCaptureCensus(
       "Desktop-only assumptions: camera and gallery buttons shown equally without capability gating",
     ],
     downstreamPoints: {
-      point45: "Photo enhancement — separate",
+      point45: "src/features/mediaReadiness/exactProductEnhancement.ts",
       point46: "Photography QA scoring — separate",
       point47: "Photography output formats — separate",
     },

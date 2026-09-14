@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   catalogueBenchmarkGovernance,
   catalogueBenchmarkGovernanceView,
+  catalogueExactProductEnhancement,
+  catalogueExactProductEnhancementView,
   catalogueGuidedCaptureView,
   catalogueGuidedMobileCapture,
   catalogueMediaTabDeepLink,
@@ -9,6 +11,8 @@ import {
   cataloguePhotographyFamilyView,
   catalogueRequiredMediaSlots,
   catalogueValidateCaptureHandoff,
+  catalogueValidateEnhancementHandoff,
+  catalogueValidateEnhancementInstruction,
   catalogueValidateImagePromptInstruction,
 } from "./catalogueMediaSlots";
 
@@ -99,6 +103,74 @@ describe("catalogueGuidedMobileCapture", () => {
       source: "guided_camera",
     });
     expect(handoff.ok).toBe(true);
+  });
+});
+
+describe("catalogueExactProductEnhancement", () => {
+  const product = { productId: "p1", category: "Baklawa", subcategory: "Pyramid" };
+  const source = {
+    sourceMediaId: "media-001",
+    contentHash: "sha256:testhash",
+    uploaderType: "hero_image",
+  };
+
+  it("resolves Point 45 exact-product enhancement via Point 42/43/44 chain", () => {
+    const resolved = catalogueExactProductEnhancement(product, source);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+    expect(resolved.contract.schema).toBe("point45_v1");
+    expect(resolved.contract.sourceBinding.readinessSlot).toBe("primary_image");
+  });
+
+  it("view surfaces contract and resolution errors", () => {
+    const okView = catalogueExactProductEnhancementView(product, source);
+    expect(okView.contract?.sourceBinding.sourceMediaId).toBe("media-001");
+    expect(okView.resolutionError).toBeNull();
+
+    const failView = catalogueExactProductEnhancementView(
+      { category: "Baklawa" },
+      source,
+    );
+    expect(failView.contract).toBeNull();
+    expect(failView.resolutionError).toContain("Product identity");
+  });
+
+  it("rejects forbidden enhancement instructions through adapter", () => {
+    const result = catalogueValidateEnhancementInstruction(
+      "regenerate the packaging label",
+      product,
+    );
+    expect(result.ok).toBe(false);
+  });
+
+  it("validates enhancement handoff as pending_review through adapter", () => {
+    const resolved = catalogueExactProductEnhancement(product, source);
+    expect(resolved.ok).toBe(true);
+    if (!resolved.ok) return;
+
+    const handoff = catalogueValidateEnhancementHandoff(resolved.contract, {
+      candidateMediaRef: "mock://candidate",
+      provenance: {
+        providerName: "mock",
+        policySchema: "point45_v1",
+        sourceContentHash: source.contentHash,
+        sourceMediaId: source.sourceMediaId,
+        productId: product.productId!,
+        readinessSlot: "primary_image",
+        requestedOperations: ["lighting_balance"],
+        preservationAttestation: {
+          packagingTextPreserved: true,
+          productGeometryPreserved: true,
+          pieceCountPreserved: true,
+          logoArtworkPreserved: true,
+          productColorPreserved: true,
+        },
+        executedAt: new Date(0).toISOString(),
+      },
+    });
+    expect(handoff.ok).toBe(true);
+    if (!handoff.ok) return;
+    expect(handoff.candidate.status).toBe("pending_review");
   });
 });
 

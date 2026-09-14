@@ -18,6 +18,14 @@ import {
   resolveControlledPhotographyFamily,
 } from "@/features/mediaReadiness/controlledPhotographyFamilies";
 import {
+  type ExactProductEnhancementContract,
+  type ExactProductEnhancementResolution,
+  resolveExactProductEnhancement,
+  validateEnhancementHandoff,
+  validateEnhancementOperatorInstruction,
+  validateEnhancementProviderOutput,
+} from "@/features/mediaReadiness/exactProductEnhancement";
+import {
   type GuidedMobileCaptureContract,
   type GuidedMobileCaptureResolution,
   resolveGuidedMobileCapture,
@@ -178,4 +186,64 @@ export function catalogueValidateCaptureHandoff(
   },
 ): ReturnType<typeof validateCaptureHandoff> {
   return validateCaptureHandoff(contract, handoff);
+}
+
+/** Point 45 exact-product enhancement contract — fail-closed via Point 42/43/44 chain + source binding. */
+export function catalogueExactProductEnhancement(
+  product: ProductMediaContext,
+  source: {
+    sourceMediaId: string;
+    contentHash: string;
+    uploaderType: string;
+    targetReadinessSlot?: MediaAssetType;
+  },
+): ExactProductEnhancementResolution {
+  return resolveExactProductEnhancement(product, source);
+}
+
+export type CatalogueExactProductEnhancementView = {
+  contract: ExactProductEnhancementContract | null;
+  resolutionError: string | null;
+};
+
+/** Human-readable exact-product enhancement view for Catalogue Studio Media tab. */
+export function catalogueExactProductEnhancementView(
+  product: ProductMediaContext,
+  source: {
+    sourceMediaId: string;
+    contentHash: string;
+    uploaderType: string;
+    targetReadinessSlot?: MediaAssetType;
+  },
+): CatalogueExactProductEnhancementView {
+  const resolved = resolveExactProductEnhancement(product, source);
+  if (!resolved.ok) {
+    return { contract: null, resolutionError: resolved.message };
+  }
+  return { contract: resolved.contract, resolutionError: null };
+}
+
+/** Validate operator enhancement instruction against Point 45 policy — fail-closed. */
+export function catalogueValidateEnhancementInstruction(
+  instruction: string,
+  product: ProductMediaContext,
+): ReturnType<typeof validateEnhancementOperatorInstruction> {
+  return validateEnhancementOperatorInstruction(instruction, product);
+}
+
+/** Validate enhancement provider output provenance — Point 45 fail-closed policy. */
+export function catalogueValidateEnhancementProvenance(
+  contract: ExactProductEnhancementContract,
+  output: Parameters<typeof validateEnhancementProviderOutput>[1],
+): ReturnType<typeof validateEnhancementProviderOutput> {
+  return validateEnhancementProviderOutput(contract, output);
+}
+
+/** Validate enhancement handoff — output remains pending_review for Point 46 QA. */
+export function catalogueValidateEnhancementHandoff(
+  contract: ExactProductEnhancementContract,
+  output: Parameters<typeof validateEnhancementHandoff>[1],
+  handoff?: Parameters<typeof validateEnhancementHandoff>[2],
+): ReturnType<typeof validateEnhancementHandoff> {
+  return validateEnhancementHandoff(contract, output, handoff);
 }
