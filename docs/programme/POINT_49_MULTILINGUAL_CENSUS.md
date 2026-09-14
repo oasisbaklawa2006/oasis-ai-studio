@@ -14,7 +14,7 @@
 ## Supported locales (governed matrix)
 
 | Code | Script | Role | Auto-generate | Review required |
-|------|--------|------|---------------|-----------------|
+| --- | --- | --- | --- | --- |
 | `en` | latin | source | Heuristic from Point48 facts | Yes |
 | `hi` | devanagari | target | Pending unless approved Hindi source | Yes |
 | `ar` | arabic | target | Alias seed rules only (no invented Arabic) | Yes |
@@ -24,7 +24,7 @@
 ## Generator census
 
 | # | Module / boundary | Output kinds | Provider | Language input | Provenance | Human review | Persistence target | Customer-facing consumption |
-|---|-------------------|--------------|----------|----------------|------------|--------------|-------------------|----------------------------|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `aliasSeedRules.ts` | `product_name_alias`, `regional_term`, `search_keyword` | **ungoverned heuristic** (pre-Point49) | Regex on `product_name` | None | Fast Create / AliasManager review | `product_aliases` after approval | Search, resolver, WhatsApp matching |
 | 2 | `aliasSeedRules.ts` (Point49) | same | **`governedMultilingual` heuristic** | Point48 `AuthoritativeMultilingualSource` only | `multilingualProvenance` | Review-required suggestions | Same — never auto-publish | Same |
 | 3 | `catalogueContentGenerators.ts` `hindiDescription` | `hindi_description` | **template** (pre-Point49) | English `product_name` embedded in Devanagari boilerplate | None | Studio operator edit | `catalogue_ai_studio_drafts` | Catalogue language tab |
@@ -41,7 +41,7 @@
 ## Language-wave files (offline production execution)
 
 | Script | Wave | Source tag | Status |
-|--------|------|------------|--------|
+| --- | --- | --- | --- |
 | `scripts/execute-wave2a-language.mjs` | 2A | `batch001_language_wave2a` | Executed in production (archival) |
 | `scripts/execute-wave2b-language.mjs` | 2B | `batch001_language_wave2b` | Executed in production (archival) |
 | `scripts/execute-wave2c-language.mjs` | 2C | `batch001_language_wave2c` | Executed in production (archival) |
@@ -51,7 +51,7 @@ Reports: `docs/LANGUAGE_WAVE2A_APPROVAL_REPORT.md`, `docs/LANGUAGE_WAVE2B_APPROV
 ## Gaps identified and remediated (this PR)
 
 | Issue | Location | Risk | Point49 action |
-|-------|----------|------|----------------|
+| --- | --- | --- | --- |
 | Hindi template presents English `product_name` inside Devanagari boilerplate as translated truth | `catalogueContentGenerators.ts` | Wrong-language claim | `resolveTemplateHindiDescription` — pending marker when no approved Hindi |
 | Alias seeds auto-derived without locale provenance or source version | `fastCreateSuggestions.ts`, `AliasManager.tsx` | Bypasses review; inconsistent names | `governedAliasSeedsFromSource` with `multilingualProvenance` |
 | No post-provider Hindi locale/script validator | `catalogueAiGateway.ts` | Latin "Hindi" could enter editor | `validateGovernedHindiDescription` after Point48 grounding gate |
@@ -94,7 +94,7 @@ Canonical module: `src/features/governedMultilingual/`
 ## Point 48 vs Point 49 vs Point 50 separation
 
 | Concern | Point | Module |
-|---------|-------|--------|
+| --- | --- | --- |
 | English naming/description factual grounding | 48 | `governedProductNaming` |
 | Multilingual names, aliases, selling points, locale descriptions | 49 | `governedMultilingual` |
 | Channel tone/adaptation (WhatsApp pitch, B2B voice, export framing) | 50 | `catalogueContentGenerators` channel keys (out of Point49) |
