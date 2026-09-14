@@ -300,7 +300,7 @@ export function buildPhotographyFamilyCensus(baselineSha: string): PhotographyFa
       "CSS luxury catalogue styling in src/index.css — no photo-governance overlap; Point 43 owns benchmark photography governance",
     downstreamPoints: {
       point43: "src/features/mediaReadiness/benchmarkPhotographyGovernance.ts",
-      point44: "Mobile camera capture — separate",
+      point44: "src/features/mediaReadiness/guidedMobileCameraCapture.ts",
       point45: "Photo enhancement — separate",
       point46: "Photography QA — separate",
       point47: "Photography outputs — separate",

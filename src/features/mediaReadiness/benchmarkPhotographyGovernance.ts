@@ -458,7 +458,7 @@ export function buildBenchmarkPhotographyGovernanceCensus(
         "CSS comments neutralized to 'luxury catalogue'; no Bateel in product authority, prompts, or buyer-facing copy",
     },
     downstreamPoints: {
-      point44: "Mobile camera capture — separate",
+      point44: "src/features/mediaReadiness/guidedMobileCameraCapture.ts",
       point45: "Photo enhancement — separate",
       point46: "Photography QA scoring — separate",
       point47: "Photography output formats — separate",

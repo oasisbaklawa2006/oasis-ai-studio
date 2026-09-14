@@ -17,10 +17,16 @@ import {
   type PhotographyFamilyResolution,
   resolveControlledPhotographyFamily,
 } from "@/features/mediaReadiness/controlledPhotographyFamilies";
+import {
+  type GuidedMobileCaptureContract,
+  type GuidedMobileCaptureResolution,
+  resolveGuidedMobileCapture,
+  validateCaptureHandoff,
+} from "@/features/mediaReadiness/guidedMobileCameraCapture";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { authoritativeMediaAssets } from "@/features/mediaReadiness/mediaAuthorityContract";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
-import type { ProductMediaContext } from "@/features/mediaReadiness/types";
+import type { MediaAssetType, ProductMediaContext } from "@/features/mediaReadiness/types";
 
 export type CatalogueMediaSlotStatus = "satisfied" | "missing" | "not_applicable";
 
@@ -127,4 +133,49 @@ export function catalogueValidateImagePromptInstruction(
   const resolved = resolveBenchmarkPhotographyGovernance(product);
   const familyKey = resolved.ok ? resolved.contract.familyKey : undefined;
   return validateBenchmarkOperatorInstruction(instruction, { familyKey });
+}
+
+/** Point 44 guided mobile capture contract — fail-closed via Point 42/43 chain + slot binding. */
+export function catalogueGuidedMobileCapture(
+  product: ProductMediaContext,
+  uploaderType: string,
+  targetReadinessSlot?: MediaAssetType,
+): GuidedMobileCaptureResolution {
+  return resolveGuidedMobileCapture(product, uploaderType, undefined, targetReadinessSlot);
+}
+
+export type CatalogueGuidedCaptureView = {
+  contract: GuidedMobileCaptureContract | null;
+  resolutionError: string | null;
+};
+
+/** Human-readable guided capture view for Catalogue Studio Media tab. */
+export function catalogueGuidedCaptureView(
+  product: ProductMediaContext,
+  uploaderType: string,
+  targetReadinessSlot?: MediaAssetType,
+): CatalogueGuidedCaptureView {
+  const resolved = resolveGuidedMobileCapture(
+    product,
+    uploaderType,
+    undefined,
+    targetReadinessSlot,
+  );
+  if (!resolved.ok) {
+    return { contract: null, resolutionError: resolved.message };
+  }
+  return { contract: resolved.contract, resolutionError: null };
+}
+
+/** Validate capture handoff before media persistence — Point 44 fail-closed policy. */
+export function catalogueValidateCaptureHandoff(
+  contract: GuidedMobileCaptureContract,
+  handoff: {
+    uploaderType: string;
+    mimeType: string;
+    source: "guided_camera" | "governed_gallery_fallback" | "desktop_gallery";
+    explicitFallbackAcknowledged?: boolean;
+  },
+): ReturnType<typeof validateCaptureHandoff> {
+  return validateCaptureHandoff(contract, handoff);
 }
