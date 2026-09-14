@@ -1,9 +1,9 @@
 export {
   buildHeuristicMultilingualSuggestions,
   detectWrongLanguagePresentation,
-  governedAliasSeedsFromSource,
   GOVERNED_MULTILINGUAL_DISCLAIMER,
   GOVERNED_MULTILINGUAL_PROMPT_VERSION,
+  governedAliasSeedsFromSource,
   PENDING_HINDI_DESCRIPTION_MARKER,
   PENDING_SELLING_POINT_MARKER,
   resolveLocale,
@@ -21,15 +21,15 @@ export {
   mockMultilingualProvider,
 } from "./governedMultilingualProvider";
 export {
-  MULTILINGUAL_LOCALE_SCRIPTS,
-  SUPPORTED_MULTILINGUAL_LOCALES,
   type AuthoritativeMultilingualSource,
   type GovernedMultilingualFieldSuggestion,
   type GovernedMultilingualProvenance,
   type GovernedMultilingualSuggestionResult,
   type LocaleResolutionResult,
+  MULTILINGUAL_LOCALE_SCRIPTS,
   type MultilingualAvailability,
   type MultilingualLocaleCode,
   type MultilingualReviewStatus,
   type MultilingualSuggestionKind,
+  SUPPORTED_MULTILINGUAL_LOCALES,
 } from "./types";
