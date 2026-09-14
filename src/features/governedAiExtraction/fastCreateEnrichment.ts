@@ -68,6 +68,17 @@ export function getPersistableFastCreateAliases(
   };
 }
 
+function degradedAliasProvenance(reason: string): GovernedAiProvenance {
+  return {
+    service: "oasis-ai-chat",
+    provider_status: "degraded",
+    used_heuristic_fallback: false,
+    fail_closed: true,
+    uncertainty_reason: reason,
+    invoked_at: new Date().toISOString(),
+  };
+}
+
 /**
  * Governed AI enrichment for Fast Create — compliance and alias suggestions remain
  * reviewable; canonical form values are never silently overwritten.
@@ -135,15 +146,21 @@ export async function enrichFastCreateWithGovernedAi(
   }
 
   try {
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token?.trim() ?? "";
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    if (supabaseUrl && anonKey) {
+
+    if (sessionError || !accessToken) {
+      provenance.push(degradedAliasProvenance("Authenticated staff session required for alias enrichment"));
+    } else if (!supabaseUrl) {
+      provenance.push(degradedAliasProvenance("Supabase URL unavailable"));
+    } else {
       const abortSignal = createAliasFetchAbortSignal();
       const resp = await fetch(`${supabaseUrl}/functions/v1/oasis-ai-chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${anonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         ...(abortSignal ? { signal: abortSignal } : {}),
         body: JSON.stringify({
@@ -173,25 +190,13 @@ export async function enrichFastCreateWithGovernedAi(
           next.sources.aiAliases = aliasExtraction.provenance.provider_status === "ok";
         }
       } else {
-        provenance.push({
-          service: "oasis-ai-chat",
-          provider_status: "degraded",
-          used_heuristic_fallback: false,
-          fail_closed: true,
-          uncertainty_reason: `Alias provider HTTP ${resp.status}`,
-          invoked_at: new Date().toISOString(),
-        });
+        provenance.push(degradedAliasProvenance(`Alias provider HTTP ${resp.status}`));
       }
     }
   } catch (e) {
-    provenance.push({
-      service: "oasis-ai-chat",
-      provider_status: "degraded",
-      used_heuristic_fallback: false,
-      fail_closed: true,
-      uncertainty_reason: e instanceof Error ? e.message : "Alias enrichment failed",
-      invoked_at: new Date().toISOString(),
-    });
+    provenance.push(
+      degradedAliasProvenance(e instanceof Error ? e.message : "Alias enrichment failed"),
+    );
   }
 
   next.extractionProvenance = [...(next.extractionProvenance ?? []), ...provenance];
