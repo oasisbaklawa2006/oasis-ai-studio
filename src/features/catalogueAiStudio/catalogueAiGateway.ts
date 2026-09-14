@@ -6,6 +6,10 @@
  * never fall back to it. The feature is disabled unless VITE_CATALOGUE_AI_ENABLED is exactly true.
  */
 
+import {
+  validateGovernedCatalogueCopy,
+  validateProviderReviewEnvelope,
+} from "@/features/governedProductNaming";
 import { supabase } from "@/integrations/supabase/client";
 import {
   CATALOGUE_AI_COPY_SERVICE,
@@ -208,11 +212,24 @@ export async function generateCatalogueContentDraft(
   }
 
   const payload = await resp.json().catch(() => null);
+  const envelopeCheck = validateProviderReviewEnvelope(payload);
+  if (!envelopeCheck.ok) {
+    return { ok: false, reason: envelopeCheck.reason };
+  }
   if (!isGovernedCatalogueCopyResponse(payload)) {
     return { ok: false, reason: "AI response could not be parsed as structured content." };
   }
-  const validated = validateAiCatalogueContent(payload.content);
-  if (!validated.ok) return validated;
+  const schemaCheck = validateAiCatalogueContent(payload.content);
+  if (!schemaCheck.ok) return schemaCheck;
+  const groundingCheck = validateGovernedCatalogueCopy(schemaCheck.content, {
+    product_name: facts.productName,
+    category: facts.category,
+    subcategory: facts.subcategory,
+    pack_size: facts.packSize,
+  });
+  if (!groundingCheck.ok) {
+    return { ok: false, reason: groundingCheck.reason };
+  }
   const provenance = extractInferenceProvenanceFromPayload(payload, {
     service: CATALOGUE_AI_COPY_SERVICE,
     human_review_required: true,
@@ -220,5 +237,5 @@ export async function generateCatalogueContentDraft(
     provider_status: "ok",
     fail_closed: false,
   });
-  return { ok: true, content: validated.content, provenance };
+  return { ok: true, content: groundingCheck.content, provenance };
 }
