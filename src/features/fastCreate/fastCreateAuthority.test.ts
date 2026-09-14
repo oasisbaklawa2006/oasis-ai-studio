@@ -40,12 +40,12 @@ describe("Point 27 Fast Create authority census", () => {
     );
   });
 
-  it("keeps fuzzy/similar-name detection review-only rather than auto-merging identity", () => {
+  it("keeps only exact SKU/barcode collisions blocking and all other duplicate kinds review-only", () => {
     const duplicateContract = readRepoFile(
       "src/features/productGovernance/productDuplicateContract.ts",
     );
-    expect(duplicateContract).toContain("similar_name");
-    expect(duplicateContract).toContain("review");
+    expect(duplicateContract).toContain('new Set<DuplicateKind>(["same_sku", "same_barcode"])');
+    expect(duplicateContract).toContain('return BLOCKING_KINDS.has(kind) ? "blocking" : "review"');
   });
 
   it("routes AI enrichment through governed extraction", () => {
