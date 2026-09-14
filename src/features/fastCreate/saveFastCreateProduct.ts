@@ -144,7 +144,9 @@ export function buildFastCreateGroupedDraftPayload(
  * Canonical Fast Create save — always submits a governed catalogue_product_drafts candidate.
  * Never writes master `products` directly; approval/publication remain in ApprovalInbox.
  */
-export async function saveFastCreateProduct(input: FastCreateSaveInput): Promise<FastCreateSaveResult> {
+export async function saveFastCreateProduct(
+  input: FastCreateSaveInput,
+): Promise<FastCreateSaveResult> {
   const form: Record<string, unknown> = {
     ...input.suggestions.formPatch,
     ...(input.extraFormPatch ?? {}),
