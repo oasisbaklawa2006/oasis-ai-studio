@@ -32,9 +32,6 @@ export async function requireFastCreateSku(
     const existingCheck = assertStructuredSkuForSave(trimmed);
     if (existingCheck.ok) {
       const skuPackaging = skuPackagingSegment(existingCheck.sku);
-      // Only reuse the existing SKU as-is when its own packaging segment still agrees with
-      // the operator's current selection — otherwise it's stale (packaging changed after this
-      // SKU was generated) and must be regenerated, not reused with mismatched preset codes.
       if (!packagingCode || skuPackaging === packagingCode) {
         return {
           sku: existingCheck.sku,
@@ -56,8 +53,6 @@ export async function requireFastCreateSku(
   }
 
   const check = assertStructuredSkuForSave(generated.sku);
-  // Explicit `=== false` (not `!check.ok`) — with strictNullChecks off in this project's
-  // tsconfig, boolean-negation doesn't narrow discriminated unions reliably.
   if (check.ok === false) {
     throw new Error(check.reason || FAST_CREATE_SKU_BLOCK_MESSAGE);
   }
@@ -72,19 +67,22 @@ export type FastCreateSaveInput = {
   heroUrl: string | null;
   roles: string[];
   categoryKey: FastCreateCategoryKey;
-  /** Pre-resolved SKU shown in UI before save (optional). */
   resolvedSku?: string | null;
-  /** Extra form fields from the Fast Create draft (sale-type patch, pack data, packaging). */
   extraFormPatch?: Record<string, unknown>;
-  /** Sale type selected in Fast Create — used to guard product_class defaulting. */
   saleType?: SaleType;
 };
 
-export type FastCreateSaveResult = {
-  draft: true;
-  draftId: string;
-  alreadyPending: boolean;
-};
+export type FastCreateSaveResult =
+  | {
+      draft: true;
+      draftId: string;
+      alreadyPending: boolean;
+    }
+  | {
+      /** @deprecated Compatibility shape for callers compiled before Point27. The canonical implementation never returns it. */
+      id: string;
+      sku: string;
+    };
 
 /** Build the grouped catalogue_product_drafts payload for Fast Create. */
 export function buildFastCreateGroupedDraftPayload(
