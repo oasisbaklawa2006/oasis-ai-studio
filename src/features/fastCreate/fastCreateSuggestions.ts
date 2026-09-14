@@ -2,15 +2,16 @@ import type { GovernedAiProvenance } from "@/features/governedAiExtraction";
 import { enrichFastCreateWithGovernedAi } from "@/features/governedAiExtraction";
 import {
   buildHeuristicNamingSuggestions,
+  GOVERNED_NAMING_PROMPT_VERSION,
   type GovernedNamingProvenance,
 } from "@/features/governedProductNaming";
+import {
+  governedAliasSeedsFromSource,
+  type GovernedMultilingualProvenance,
+} from "@/features/governedMultilingual";
 import { applyCategoryDefaults } from "@/features/productDefaults/applyDefaults";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
-import {
-  type AliasSeed,
-  seedAliasesFromName,
-  whatsappKeywordsFromAliases,
-} from "@/features/productLanguage/aliasSeedRules";
+import { type AliasSeed, whatsappKeywordsFromAliases } from "@/features/productLanguage/aliasSeedRules";
 import { CATEGORY_RULE_DEFERRED_FACTUAL_FIELDS } from "@/features/productTruth/productFactualCompositionCanonical";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -47,6 +48,8 @@ export type FastCreateSuggestions = {
   extractionProvenance?: GovernedAiProvenance[];
   /** Point 48 naming/description provenance — review-only, never publication truth. */
   namingProvenance?: GovernedNamingProvenance;
+  /** Point 49 multilingual provenance — review-only, never publication truth. */
+  multilingualProvenance?: GovernedMultilingualProvenance;
   /** Review-only AI alias suggestions — never persisted until explicitly approved. */
   pendingAiAliases?: AliasSeed[];
 };
@@ -82,6 +85,7 @@ export function buildHeuristicSuggestions(
       formPatch.short_description = naming.suggestions.short_description;
     }
   }
+
   // Point 34: never invent ingredients, allergens, or nutrition from category/name.
   delete formPatch.ingredients;
   delete formPatch.allergen_warnings;
@@ -96,7 +100,19 @@ export function buildHeuristicSuggestions(
     }
   }
 
-  const aliases = seedAliasesFromName(productName);
+  const multilingualSource = {
+    product_name: productName.trim(),
+    category,
+    product_type: productType,
+    pack_size: formPatch.pack_size ? String(formPatch.pack_size) : null,
+    description: formPatch.description ? String(formPatch.description) : null,
+    short_description: formPatch.short_description ? String(formPatch.short_description) : null,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    approved_short_description: naming.ok ? naming.suggestions.short_description ?? null : null,
+    approved_description: naming.ok ? naming.suggestions.description ?? null : null,
+  };
+  const governedAliases = governedAliasSeedsFromSource(multilingualSource);
+  const aliases = governedAliases.ok ? governedAliases.aliases : [];
   const whatsappKeywords = whatsappKeywordsFromAliases(aliases);
   const piecesPerKg = formPatch.pieces_per_kg ? Number(formPatch.pieces_per_kg) : null;
   const traysPerMasterCarton =
@@ -126,6 +142,7 @@ export function buildHeuristicSuggestions(
     },
     complianceFieldMeta,
     namingProvenance: naming.provenance,
+    multilingualProvenance: governedAliases.provenance,
   };
 }
 
