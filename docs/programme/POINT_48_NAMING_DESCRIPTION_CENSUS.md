@@ -12,7 +12,7 @@
 ## Generator census
 
 | # | Module / boundary | Fields | Provider | Language input | Provenance | Human review | Persistence target | Catalogue integration |
-|---|-------------------|--------|----------|----------------|------------|--------------|-------------------|----------------------|
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `catalogueContentGenerators.ts` | `catalogue_title`, `short_description`, `long_description`, B2B/export/WhatsApp/Hindi/storage | **template/heuristic** (local, no network) | Uses existing product fields only | None (deterministic template) | Operator edits in Catalogue Product AI Studio before save | `catalogue_ai_studio_drafts` content columns | Primary local draft bootstrap |
 | 2 | `catalogueAiGateway.ts` → `catalogue-ai-copy` edge | Same 8 catalogue copy keys | **catalogue-ai-copy** Edge Function (governed; env-gated `VITE_CATALOGUE_AI_ENABLED`) | Prompt built from `CatalogueAiSourceFacts` + tone | `source_snapshot.ai_generation` via `catalogueAiGenerationMerge.ts` | `human_review_required` envelope + studio review workflow | Draft row content + audit log | "Generate Complete Catalogue Draft" action |
 | 3 | `fastCreateSuggestions.ts` (pre-Point48) | `short_name`, `description`, `short_description` | **ungoverned heuristic** | Category defaults | None | Fast Create form review | `products` on explicit save | Fast Create intake |
@@ -31,7 +31,7 @@
 ### Ungoverned / unsafe paths (remediated in this PR)
 
 | Issue | Location | Risk | Point48 action |
-|-------|----------|------|----------------|
+| --- | --- | --- | --- |
 | Invented marketing copy ("Premium Oasis", "signature", "crafted with quality ingredients") | `fastCreateSuggestions.ts` | Unsupported superlatives / implied ingredients | Replaced with `buildHeuristicNamingSuggestions` |
 | Default allergen/ingredient strings without authoritative source | `fastCreateSuggestions.ts` | Factual hallucination (compliance) | **Flagged, not changed** — Point 30 compliance scope |
 | Provenance service mismatch (`oasis-ai-chat` marker vs `catalogue-ai-copy` gateway) | `catalogueAiGenerationMerge.ts` | Broken audit trail | Normalized to `catalogue-ai-copy`; legacy blobs still readable |
