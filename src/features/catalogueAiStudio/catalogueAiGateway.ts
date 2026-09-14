@@ -196,12 +196,14 @@ export async function generateCatalogueContentDraft(
   }
 
   const envelopeCheck = validateProviderReviewEnvelope(payload);
-  if (!envelopeCheck.ok) {
+  if (envelopeCheck.ok === false) {
     return { ok: false, reason: envelopeCheck.reason };
   }
 
   const schemaCheck = validateAiCatalogueContent(payload.content);
-  if (!schemaCheck.ok) return schemaCheck;
+  if (schemaCheck.ok === false) {
+    return { ok: false, reason: schemaCheck.reason };
+  }
 
   const groundingCheck = validateGovernedCatalogueCopy(schemaCheck.content, {
     product_name: facts.productName,
@@ -209,7 +211,7 @@ export async function generateCatalogueContentDraft(
     subcategory: facts.subcategory,
     pack_size: facts.packSize,
   });
-  if (!groundingCheck.ok) {
+  if (groundingCheck.ok === false) {
     return { ok: false, reason: groundingCheck.reason };
   }
 
