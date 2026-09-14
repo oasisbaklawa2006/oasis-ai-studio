@@ -13,7 +13,7 @@
 | Point 38 head | `bd36a735` | **Mandatory predecessor** — POINT38 workflow-state closure (#157) |
 | Point 39 branch | `cursor/point39-correction-resubmission-0714` | Built from `bd36a735` — **must not merge before #157** |
 
-```
+```text
 6f8e164 (main, POINT35)
    └── bd36a735 (POINT38 #157) ← mandatory predecessor
           └── cursor/point39-correction-resubmission-0714 (this PR)
