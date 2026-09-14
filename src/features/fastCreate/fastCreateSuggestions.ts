@@ -111,9 +111,7 @@ export function buildHeuristicSuggestions(
     description: formPatch.description ? String(formPatch.description) : null,
     short_description: formPatch.short_description ? String(formPatch.short_description) : null,
     source_version: GOVERNED_NAMING_PROMPT_VERSION,
-    approved_short_description: naming.ok
-      ? (naming.suggestions.short_description ?? null)
-      : null,
+    approved_short_description: naming.ok ? (naming.suggestions.short_description ?? null) : null,
     approved_description: naming.ok ? (naming.suggestions.description ?? null) : null,
   };
   const governedAliases = governedAliasSeedsFromSource(multilingualSource);
