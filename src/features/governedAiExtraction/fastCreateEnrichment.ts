@@ -151,7 +151,9 @@ export async function enrichFastCreateWithGovernedAi(
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 
     if (sessionError || !accessToken) {
-      provenance.push(degradedAliasProvenance("Authenticated staff session required for alias enrichment"));
+      provenance.push(
+        degradedAliasProvenance("Authenticated staff session required for alias enrichment"),
+      );
     } else if (!supabaseUrl) {
       provenance.push(degradedAliasProvenance("Supabase URL unavailable"));
     } else {
