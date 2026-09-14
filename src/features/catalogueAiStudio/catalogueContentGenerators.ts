@@ -198,9 +198,7 @@ function exportCatalogueCopy(p: DraftProductInput): string {
   if (!hasText(p.product_name)) return MISSING_FIELD("Product Name");
   const parts: string[] = [p.product_name];
   parts.push(hasText(p.hsn_code) ? `HSN ${p.hsn_code}` : MISSING_FIELD("HSN Code"));
-  parts.push(
-    typeof p.gst_rate === "number" ? `GST ${p.gst_rate}%` : MISSING_FIELD("GST Rate"),
-  );
+  parts.push(typeof p.gst_rate === "number" ? `GST ${p.gst_rate}%` : MISSING_FIELD("GST Rate"));
   if (hasNumber(p.net_weight_g)) parts.push(`Net wt ${p.net_weight_g}g`);
   return parts.join(" · ");
 }
@@ -211,8 +209,7 @@ function whatsappProductMessage(p: DraftProductInput): string {
   if (!price) {
     return `Hi! We have *${p.product_name}* available. ${MISSING_FIELD("a price (MRP or B2B price)")} Reply to know more.`;
   }
-  const uomPart =
-    price.label === "B2B price" && hasText(p.b2b_uom) ? `/${p.b2b_uom}` : "";
+  const uomPart = price.label === "B2B price" && hasText(p.b2b_uom) ? `/${p.b2b_uom}` : "";
   return `Hi! We have *${p.product_name}* available — ${price.label} ₹${price.amount}${uomPart}. Reply to know more.`;
 }
 
@@ -238,9 +235,7 @@ function storageShelfLifeCopy(p: DraftProductInput): string {
   const hasShelf = hasNumber(p.shelf_life_days);
   const hasStorage = hasText(p.storage_instructions) || hasText(p.temperature_requirement);
   if (!hasShelf && !hasStorage) return MISSING_FIELD("Shelf Life and Storage Instructions");
-  const shelf = hasShelf
-    ? `Shelf life: ${p.shelf_life_days} days.`
-    : MISSING_FIELD("Shelf Life");
+  const shelf = hasShelf ? `Shelf life: ${p.shelf_life_days} days.` : MISSING_FIELD("Shelf Life");
   const storageText = [p.storage_instructions, p.temperature_requirement]
     .filter(hasText)
     .join(" · ");
