@@ -5,7 +5,14 @@
  * state (`UNDER_REVIEW`) from two different operator perspectives (submitter vs. reviewer); rather
  * than invent a distinction the data model doesn't have, both filter aliases resolve to one
  * canonical status/label pair.
+ *
+ * Point 38: work-queue labels map to canonical `ProductWorkflowPhase` via `mapCatalogueDraftStatus`.
  */
+
+import {
+  mapCatalogueDraftStatus,
+  type ProductWorkflowPhase,
+} from "@/features/productWorkflow/productWorkflowState";
 import type { CatalogueDraftStatus } from "./catalogueDraftTypes";
 import type { ReadinessResult } from "./catalogueProductReadiness";
 
@@ -40,11 +47,28 @@ export interface WorkQueueClassificationInput {
   draftStatus: CatalogueDraftStatus | null;
 }
 
+/** Maps canonical Point 38 phase to operator work-queue label. */
+export function workQueueStatusFromPhase(phase: ProductWorkflowPhase): WorkQueueStatus {
+  switch (phase) {
+    case "submitted":
+      return "under_review";
+    case "rejected":
+      return "rejected";
+    case "approved":
+      return "approved";
+    case "draft":
+      return "draft";
+    case "pre_draft":
+      return "needs_truth";
+    default:
+      return "ready_for_generation";
+  }
+}
+
 export function classifyWorkQueueStatus(input: WorkQueueClassificationInput): WorkQueueStatus {
-  if (input.draftStatus === "UNDER_REVIEW") return "under_review";
-  if (input.draftStatus === "REJECTED") return "rejected";
-  if (input.draftStatus === "APPROVED") return "approved";
-  if (input.draftStatus === "DRAFT") return "draft";
+  if (input.draftStatus) {
+    return workQueueStatusFromPhase(mapCatalogueDraftStatus(input.draftStatus));
+  }
   if (input.readinessOverallLabel === "Not ready") return "needs_truth";
   return "ready_for_generation";
 }
