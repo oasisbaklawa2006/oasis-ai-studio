@@ -1,11 +1,30 @@
 import { describe, expect, it } from "vitest";
-import { exportBundleHasMissingFieldPlaceholder, generateCatalogueDraftContent } from "./catalogueContentGenerators";
+import {
+  exportBundleHasMissingFieldPlaceholder,
+  generateCatalogueDraftContent,
+} from "./catalogueContentGenerators";
 import { CATALOGUE_DRAFT_CONTENT_KEYS, type CatalogueDraftContent } from "./catalogueDraftTypes";
 
-function content(fill: string, overrides: Partial<CatalogueDraftContent> = {}): CatalogueDraftContent {
-  const base = Object.fromEntries(CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, fill])) as CatalogueDraftContent;
+function content(
+  fill: string,
+  overrides: Partial<CatalogueDraftContent> = {},
+): CatalogueDraftContent {
+  const base = Object.fromEntries(
+    CATALOGUE_DRAFT_CONTENT_KEYS.map((k) => [k, fill]),
+  ) as CatalogueDraftContent;
   return { ...base, ...overrides };
 }
+
+describe("generateCatalogueDraftContent hindi governance (Point 49)", () => {
+  it("emits an explicit pending marker instead of fake Hindi with embedded English product name", () => {
+    const generated = generateCatalogueDraftContent({
+      product_name: "Cashew Pyramid Baklawa",
+      category: "Baklawa",
+    });
+    expect(generated.hindi_description).toContain("pending");
+    expect(generated.hindi_description).not.toContain("Cashew Pyramid Baklawa");
+  });
+});
 
 describe("exportBundleHasMissingFieldPlaceholder (owner-smoke-test: Stage 5 export-bundle safety)", () => {
   it("returns false when every block is complete real copy", () => {
@@ -24,7 +43,8 @@ describe("exportBundleHasMissingFieldPlaceholder (owner-smoke-test: Stage 5 expo
     expect(
       exportBundleHasMissingFieldPlaceholder(
         content("ok", {
-          b2b_sales_copy: "Blackcurrant Ball is available for wholesale. Add missing field first: B2B price.",
+          b2b_sales_copy:
+            "Blackcurrant Ball is available for wholesale. Add missing field first: B2B price.",
         }),
       ),
     ).toBe(true);
