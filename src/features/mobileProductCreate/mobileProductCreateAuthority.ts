@@ -173,8 +173,9 @@ function metaStatusForField(
 ): DeferredFieldStatus {
   const entry = meta?.[field as keyof ComplianceFieldMetaMap];
   if (!entry) return "unknown";
-  if (entry.source === "ai_suggestion" || entry.approved === false) return "suggestion_only";
-  if (entry.source === "category_default") return "deferred";
+  if (entry.source === "ai_suggestion" || entry.approved === false) {
+    return entry.source === "category_rule" ? "deferred" : "suggestion_only";
+  }
   return "unknown";
 }
 
@@ -208,7 +209,7 @@ export function classifyDeferredFields(
         point53Note:
           status === "suggestion_only"
             ? "AI suggestion only — not catalogue truth until approved."
-            : "Category default — deferred to compliance review before publication.",
+            : "Category rule — deferred to compliance review before publication.",
       });
     }
   }
