@@ -26,6 +26,15 @@ import {
   validateEnhancementProviderOutput,
 } from "@/features/mediaReadiness/exactProductEnhancement";
 import {
+  type ImageQaCandidate,
+  type ImageQaValidationContract,
+  type ImageQaValidationResolution,
+  evaluateQaReadiness,
+  recordQaDisposition,
+  resolveImageQaValidation,
+  runAutomatedQaChecks,
+} from "@/features/mediaReadiness/imageQaValidation";
+import {
   type GuidedMobileCaptureContract,
   type GuidedMobileCaptureResolution,
   resolveGuidedMobileCapture,
@@ -246,4 +255,52 @@ export function catalogueValidateEnhancementHandoff(
   handoff?: Parameters<typeof validateEnhancementHandoff>[2],
 ): ReturnType<typeof validateEnhancementHandoff> {
   return validateEnhancementHandoff(contract, output, handoff);
+}
+
+/** Point 46 image QA validation contract — fail-closed via Point 42/43/44/45 chain. */
+export function catalogueImageQaValidation(
+  product: ProductMediaContext,
+  candidate: Omit<ImageQaCandidate, "familyKey"> & { familyKey?: ImageQaCandidate["familyKey"] },
+): ImageQaValidationResolution {
+  return resolveImageQaValidation(product, candidate);
+}
+
+export type CatalogueImageQaView = {
+  contract: ImageQaValidationContract | null;
+  resolutionError: string | null;
+};
+
+/** Human-readable image QA view for Catalogue Studio Media tab. */
+export function catalogueImageQaView(
+  product: ProductMediaContext,
+  candidate: Omit<ImageQaCandidate, "familyKey"> & { familyKey?: ImageQaCandidate["familyKey"] },
+): CatalogueImageQaView {
+  const resolved = resolveImageQaValidation(product, candidate);
+  if (!resolved.ok) {
+    return { contract: null, resolutionError: resolved.message };
+  }
+  return { contract: resolved.contract, resolutionError: null };
+}
+
+/** Run automated QA checks through adapter — evidence/scores only, no auto-approve. */
+export function catalogueRunAutomatedQaChecks(
+  contract: ImageQaValidationContract,
+): ReturnType<typeof runAutomatedQaChecks> {
+  return runAutomatedQaChecks(contract);
+}
+
+/** Evaluate QA readiness — ready for human review when all mandatory checks pass. */
+export function catalogueEvaluateQaReadiness(
+  checks: Parameters<typeof evaluateQaReadiness>[0],
+): ReturnType<typeof evaluateQaReadiness> {
+  return evaluateQaReadiness(checks);
+}
+
+/** Record governed QA disposition with audit — fail-closed on auto-approve and unauthorized reviewer. */
+export function catalogueRecordQaDisposition(
+  contract: ImageQaValidationContract,
+  checks: Parameters<typeof recordQaDisposition>[1],
+  request: Parameters<typeof recordQaDisposition>[2],
+): ReturnType<typeof recordQaDisposition> {
+  return recordQaDisposition(contract, checks, request);
 }

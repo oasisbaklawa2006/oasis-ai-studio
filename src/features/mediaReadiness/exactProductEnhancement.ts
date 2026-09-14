@@ -680,7 +680,7 @@ export function buildExactProductEnhancementCensus(
       "ProductMediaUploader has no enhancement entry point wired to Point 45 contract",
       "Catalogue Studio Media tab has no enhancement review-candidate UI",
       "product_media schema has no enhancement_provenance column — provenance carried in contract layer only",
-      "Point 46 QA scoring not implemented — candidates cannot be approved through this lane",
+      "Point 46 QA contract implemented in imageQaValidation.ts — persistence/UI integration still pending",
       "Point 47 derivative encoding not implemented — no resize/WebP pipeline",
     ],
     downstreamPoints: {
