@@ -297,9 +297,9 @@ export function buildPhotographyFamilyCensus(baselineSha: string): PhotographyFa
       mediaCompleteness: "src/features/mediaReadiness/mediaCompleteness.ts",
     },
     bateelOverlap:
-      "CSS-only Bateel styling in src/index.css — no photo-governance overlap; Point 43 owns Bateel governance",
+      "CSS luxury catalogue styling in src/index.css — no photo-governance overlap; Point 43 owns benchmark photography governance",
     downstreamPoints: {
-      point43: "Bateel photo governance — separate",
+      point43: "src/features/mediaReadiness/benchmarkPhotographyGovernance.ts",
       point44: "Mobile camera capture — separate",
       point45: "Photo enhancement — separate",
       point46: "Photography QA — separate",
