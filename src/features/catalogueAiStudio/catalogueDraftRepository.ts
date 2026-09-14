@@ -13,6 +13,10 @@ import {
   buildRejectAuditMetadata,
 } from "@/features/productWorkflow/productCorrectionContract";
 import {
+  buildProductVersionHistory,
+  type ProductVersionHistoryReadModel,
+} from "@/features/productWorkflow/productVersionHistory";
+import {
   assertValidWorkflowTransition,
   mapCatalogueDraftStatus,
 } from "@/features/productWorkflow/productWorkflowState";
@@ -91,6 +95,51 @@ export async function fetchDraftAuditLog(draftId: string): Promise<CatalogueDraf
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return data ?? [];
+}
+
+/** All draft versions for a product, ascending by version_number (Point 40 read path). */
+export async function fetchAllDraftVersions(productId: string): Promise<CatalogueDraftRow[]> {
+  const { data, error } = await supabase
+    .from("catalogue_ai_studio_drafts")
+    .select("*")
+    .eq("product_id", productId)
+    .order("version_number", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+/** Audit rows for multiple draft ids — grouped by draft_id (Point 40 read path). */
+export async function fetchAuditLogsForDraftIds(
+  draftIds: string[],
+): Promise<Map<string, CatalogueDraftAuditRow[]>> {
+  const grouped = new Map<string, CatalogueDraftAuditRow[]>();
+  if (draftIds.length === 0) return grouped;
+
+  const { data, error } = await supabase
+    .from("catalogue_ai_studio_draft_audit_log")
+    .select("*")
+    .in("draft_id", draftIds)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+
+  for (const row of data ?? []) {
+    const list = grouped.get(row.draft_id) ?? [];
+    list.push(row);
+    grouped.set(row.draft_id, list);
+  }
+  return grouped;
+}
+
+/**
+ * Canonical Point 40 read model — reads existing Core audit rows; never mutates history.
+ * Returns an empty, valid model when no drafts exist yet.
+ */
+export async function fetchProductVersionHistory(
+  productId: string,
+): Promise<ProductVersionHistoryReadModel> {
+  const drafts = await fetchAllDraftVersions(productId);
+  const auditByDraftId = await fetchAuditLogsForDraftIds(drafts.map((d) => d.id));
+  return buildProductVersionHistory({ productId, drafts, auditByDraftId });
 }
 
 async function insertAudit(

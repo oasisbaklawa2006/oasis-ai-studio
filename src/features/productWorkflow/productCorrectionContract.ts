@@ -6,7 +6,7 @@
  * rejection reasons, predecessor linkage, and governed new-version creation.
  *
  * Boundaries (not absorbed):
- * - Point 40 — version/audit history presentation
+ * - Point 40 — version/audit history read model (`productVersionHistory.ts`)
  * - Point 54 — publication (`published` / `synced`)
  */
 import type { CatalogueDraftStatus } from "@/features/catalogueAiStudio/catalogueDraftTypes";

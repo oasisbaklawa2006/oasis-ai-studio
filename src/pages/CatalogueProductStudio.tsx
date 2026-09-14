@@ -73,6 +73,7 @@ import {
   fetchDraftAuditLog,
   fetchLatestDraft,
   fetchLatestDraftStatuses,
+  fetchProductVersionHistory,
   rejectDraft,
   saveDraft,
   submitDraftForReview,
@@ -93,6 +94,10 @@ import {
   isExportBundleDistributable,
   STATUS_LABEL,
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
+import {
+  versionHistoryPhaseLabel,
+  type ProductVersionHistoryReadModel,
+} from "@/features/productWorkflow/productVersionHistory";
 import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
 import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
 import {
@@ -724,6 +729,9 @@ export default function CatalogueProductStudio() {
   // Persisted draft governance.
   const [persistedDraft, setPersistedDraft] = useState<CatalogueDraftRow | null>(null);
   const [auditLog, setAuditLog] = useState<CatalogueDraftAuditRow[]>([]);
+  const [versionHistory, setVersionHistory] = useState<ProductVersionHistoryReadModel | null>(
+    null,
+  );
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftBusy, setDraftBusy] = useState(false);
   const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
@@ -755,6 +763,7 @@ export default function CatalogueProductStudio() {
     if (!selected) {
       setPersistedDraft(null);
       setAuditLog([]);
+      setVersionHistory(null);
       setRejectReasonOpen(false);
       setRejectReason("");
       setEditorState(null);
@@ -765,6 +774,7 @@ export default function CatalogueProductStudio() {
     const productId = selected.id;
     setPersistedDraft(null);
     setAuditLog([]);
+    setVersionHistory(null);
     setRejectReasonOpen(false);
     setRejectReason("");
     setActorLabels({});
@@ -776,6 +786,7 @@ export default function CatalogueProductStudio() {
         if (cancelled || selectedIdRef.current !== productId) return;
         setPersistedDraft(row);
         patchDraftStatus(productId, (row?.status as CatalogueDraftStatus | undefined) ?? null);
+        const historyPromise = fetchProductVersionHistory(productId);
         if (row) {
           const mapped = mapRowToEditor(row);
           setEditorState({ productId, ...mapped });
@@ -791,8 +802,17 @@ export default function CatalogueProductStudio() {
           setAiGeneratedBaseline(restored?.baseline ?? null);
           setAiFieldTracking(restored?.tracking ?? null);
           setAiGeneratedTone(restored?.tone ?? null);
-          const log = await fetchDraftAuditLog(row.id);
-          if (!cancelled && selectedIdRef.current === productId) setAuditLog(log);
+          const [log, history] = await Promise.all([
+            fetchDraftAuditLog(row.id),
+            historyPromise,
+          ]);
+          if (!cancelled && selectedIdRef.current === productId) {
+            setAuditLog(log);
+            setVersionHistory(history);
+          }
+        } else {
+          const history = await historyPromise;
+          if (!cancelled && selectedIdRef.current === productId) setVersionHistory(history);
         }
       })
       .catch((err) => {
@@ -814,12 +834,14 @@ export default function CatalogueProductStudio() {
   // the wrong product.
   useEffect(() => {
     const productId = selected?.id ?? null;
-    if (!productId || (!persistedDraft && auditLog.length === 0)) return;
+    if (!productId || (!persistedDraft && auditLog.length === 0 && !versionHistory)) return;
     let cancelled = false;
     const ids = [
       persistedDraft?.created_by,
       persistedDraft?.reviewed_by,
       ...auditLog.map((entry) => entry.actor_id),
+      ...(versionHistory?.events.map((entry) => entry.actor_id) ?? []),
+      ...(versionHistory?.versions.flatMap((v) => [v.created_by, v.reviewed_by]) ?? []),
     ];
     fetchActorLabels(ids).then((labels) => {
       if (!cancelled && selectedIdRef.current === productId) {
@@ -829,7 +851,7 @@ export default function CatalogueProductStudio() {
     return () => {
       cancelled = true;
     };
-  }, [selected?.id, persistedDraft, auditLog]);
+  }, [selected?.id, persistedDraft, auditLog, versionHistory]);
 
   // Read-only product_media lookup for the Media tab's hero/approved-media preview. A separate,
   // independent data source from the draft workflow above — same selectedIdRef guard so a slow
@@ -1127,10 +1149,16 @@ export default function CatalogueProductStudio() {
 
   // Guarded by the expected product id so a refresh kicked off before a product switch can never
   // overwrite the new product's audit history with the previous draft's events.
-  const refreshAuditLog = async (draftId: string, expectedProductId: string) => {
+  const refreshVersionHistoryAndAudit = async (draftId: string, expectedProductId: string) => {
     try {
-      const log = await fetchDraftAuditLog(draftId);
-      if (selectedIdRef.current === expectedProductId) setAuditLog(log);
+      const [log, history] = await Promise.all([
+        fetchDraftAuditLog(draftId),
+        fetchProductVersionHistory(expectedProductId),
+      ]);
+      if (selectedIdRef.current === expectedProductId) {
+        setAuditLog(log);
+        setVersionHistory(history);
+      }
     } catch {
       // History is a convenience view — a refresh failure here should not block the workflow action.
     }
@@ -1215,7 +1243,7 @@ export default function CatalogueProductStudio() {
       setPersistedDraft(row);
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
-      await refreshAuditLog(row.id, productId);
+      await refreshVersionHistoryAndAudit(row.id, productId);
       toast.success(
         `Draft saved — v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`,
       );
@@ -1251,7 +1279,7 @@ export default function CatalogueProductStudio() {
       setAiGeneratedBaseline(restored?.baseline ?? null);
       setAiFieldTracking(restored?.tracking ?? null);
       setAiGeneratedTone(restored?.tone ?? null);
-      await refreshAuditLog(row.id, productId);
+      await refreshVersionHistoryAndAudit(row.id, productId);
       toast.success(
         `Loaded v${row.version_number} (${STATUS_LABEL[row.status as CatalogueDraftStatus]}).`,
       );
@@ -1300,7 +1328,7 @@ export default function CatalogueProductStudio() {
       setPersistedDraft(row);
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
-      await refreshAuditLog(row.id, productId);
+      await refreshVersionHistoryAndAudit(row.id, productId);
       toast.success("Submitted for review.");
     } catch (err) {
       if (selectedIdRef.current === productId)
@@ -1325,7 +1353,7 @@ export default function CatalogueProductStudio() {
       setPersistedDraft(row);
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
-      await refreshAuditLog(row.id, productId);
+      await refreshVersionHistoryAndAudit(row.id, productId);
       toast.success("Draft approved.");
     } catch (err) {
       if (selectedIdRef.current === productId)
@@ -1350,7 +1378,7 @@ export default function CatalogueProductStudio() {
       setPersistedDraft(row);
       patchDraftStatus(productId, row.status as CatalogueDraftStatus);
       setEditorState({ productId, ...mapRowToEditor(row) });
-      await refreshAuditLog(row.id, productId);
+      await refreshVersionHistoryAndAudit(row.id, productId);
       setRejectReasonOpen(false);
       setRejectReason("");
       toast.success("Draft rejected.");
@@ -1970,17 +1998,72 @@ export default function CatalogueProductStudio() {
                         <span className="flex items-center gap-2">
                           <History size={14} className="text-muted-foreground" />
                           <span className="text-xs font-semibold text-foreground">
-                            History / audit — v{currentPersistedDraft.version_number}
-                            {auditLog.length > 0 && ` (${auditLog.length})`}
+                            Version / audit history — v{currentPersistedDraft.version_number}
+                            {versionHistory && versionHistory.versions.length > 1
+                              ? ` of ${versionHistory.head_version_number}`
+                              : ""}
+                            {auditLog.length > 0 && ` (${auditLog.length} on this version)`}
                           </span>
                         </span>
                         {auditExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </button>
                       {auditExpanded && (
                         <>
+                          {versionHistory && !versionHistory.chain_valid && (
+                            <div className="mb-2 flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
+                              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                              <span>
+                                Version chain integrity check failed — history is read-only and may
+                                be incomplete. {versionHistory.chain_errors[0]}
+                              </span>
+                            </div>
+                          )}
+                          {versionHistory && versionHistory.versions.length > 1 && (
+                            <div className="mb-3 space-y-1">
+                              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                                Product version chain (immutable snapshots)
+                              </p>
+                              {versionHistory.versions.map((version) => (
+                                <div
+                                  key={version.draft_id}
+                                  className={`rounded-lg border px-3 py-2 text-[11px] ${
+                                    version.draft_id === currentPersistedDraft.id
+                                      ? "border-primary/40 bg-primary/5"
+                                      : "border-border"
+                                  }`}
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="font-semibold">
+                                      v{version.version_number}
+                                      {version.is_current ? " (current)" : ""}
+                                      {version.is_stale ? " (stale)" : ""}
+                                    </span>
+                                    <Badge variant="outline" className="text-[10px] h-5">
+                                      {versionHistoryPhaseLabel(version.status)}
+                                    </Badge>
+                                    <span className="text-muted-foreground">
+                                      {new Date(version.created_at).toLocaleString()}
+                                    </span>
+                                  </div>
+                                  {version.predecessor && (
+                                    <p className="mt-1 text-muted-foreground">
+                                      Predecessor: v{version.predecessor.predecessor_version_number}{" "}
+                                      ({version.predecessor.correction_kind.replace(/_/g, " ")})
+                                    </p>
+                                  )}
+                                  {version.rejection_reason && (
+                                    <p className="mt-1 text-foreground">
+                                      Rejection: {version.rejection_reason}
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <p className="text-[10px] text-muted-foreground mb-2">
-                            Scoped to this version only. Reasons from a prior rejected version, if
-                            any, carry forward into the "CREATE_NEW_VERSION" entry below.
+                            Audit events below are scoped to v{currentPersistedDraft.version_number}{" "}
+                            only. Prior rejection reasons carry forward into CREATE_NEW_VERSION on
+                            successor versions.
                           </p>
                           {auditLog.length === 0 ? (
                             <p className="text-xs text-muted-foreground py-2">
@@ -1989,9 +2072,16 @@ export default function CatalogueProductStudio() {
                           ) : (
                             <div className="space-y-1.5">
                               {auditLog.map((entry) => {
+                                const canonicalEvent = versionHistory?.events.find(
+                                  (e) => e.id === entry.id,
+                                );
                                 const reason =
+                                  canonicalEvent?.reason ??
                                   auditMetadataString(entry, "rejection_reason") ??
-                                  auditMetadataString(entry, "previous_version_rejection_reason");
+                                  auditMetadataString(
+                                    entry,
+                                    "previous_version_rejection_reason",
+                                  );
                                 return (
                                   <div
                                     key={entry.id}
@@ -2008,6 +2098,11 @@ export default function CatalogueProductStudio() {
                                         {new Date(entry.created_at).toLocaleString()}
                                       </span>
                                     </div>
+                                    {canonicalEvent && (
+                                      <p className="text-muted-foreground">
+                                        {canonicalEvent.change_summary}
+                                      </p>
+                                    )}
                                     <div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground">
                                       <span>
                                         {entry.actor_id
