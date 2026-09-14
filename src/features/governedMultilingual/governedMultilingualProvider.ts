@@ -1,9 +1,9 @@
-import type { AuthoritativeMultilingualSource } from "./types";
 import {
   buildHeuristicMultilingualSuggestions,
   validateMultilingualText,
   validateProviderMultilingualEnvelope,
 } from "./governedMultilingualContract";
+import type { AuthoritativeMultilingualSource } from "./types";
 
 export type MockMultilingualScenario =
   | "ok"
