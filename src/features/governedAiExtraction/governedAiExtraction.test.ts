@@ -310,8 +310,7 @@ describe("enrichFastCreateWithGovernedAi", () => {
 
     try {
       const enrichmentPromise = enrichFastCreateWithGovernedAi(base, "Pyramid Baklawa", "baklawa");
-      await Promise.resolve();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
       expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
       controller.abort();
 
