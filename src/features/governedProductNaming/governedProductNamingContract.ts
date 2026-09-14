@@ -122,7 +122,7 @@ export function buildHeuristicNamingSuggestions(
   facts: AuthoritativeProductFacts,
 ): GovernedNamingDescriptionResult {
   const identity = validateProductIdentity(facts);
-  if (!identity.ok) {
+  if (identity.ok === false) {
     return failClosed("heuristic", identity.reason);
   }
 
@@ -156,7 +156,7 @@ export function buildHeuristicNamingSuggestions(
 
   for (const value of Object.values(suggestions)) {
     const check = validateNamingText(value, facts);
-    if (!check.ok) {
+    if (check.ok === false) {
       return failClosed("heuristic", check.reason, { provider_status: "failed" });
     }
   }
@@ -193,7 +193,7 @@ export function validateGovernedCatalogueCopy(
   facts: AuthoritativeProductFacts,
 ): GovernedCatalogueCopyValidationResult {
   const identity = validateProductIdentity(facts);
-  if (!identity.ok) {
+  if (identity.ok === false) {
     return { ok: false, reason: identity.reason };
   }
 
@@ -204,7 +204,7 @@ export function validateGovernedCatalogueCopy(
       return { ok: false, reason: `AI response was missing or had an invalid value for: ${key}.` };
     }
     const check = validateNamingText(value, facts);
-    if (!check.ok) unsafeFields.push(key);
+    if (check.ok === false) unsafeFields.push(key);
   }
 
   if (unsafeFields.length > 0) {
@@ -231,7 +231,7 @@ export function validateProviderReviewEnvelope(
   if (row.human_review_required !== true) {
     return { ok: false, reason: "AI response missing required human_review_required marker." };
   }
-  if (row.suggestion_only === false || row.approved === true) {
+  if (row.suggestion_only !== true || row.approved !== false) {
     return { ok: false, reason: "AI response attempted to bypass review-only contract." };
   }
   return { ok: true };
