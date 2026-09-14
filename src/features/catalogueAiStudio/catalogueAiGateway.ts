@@ -6,6 +6,10 @@
  * never fall back to it. The feature is disabled unless VITE_CATALOGUE_AI_ENABLED is exactly true.
  */
 
+import {
+  validateGovernedCatalogueCopy,
+  validateProviderReviewEnvelope,
+} from "@/features/governedProductNaming";
 import { supabase } from "@/integrations/supabase/client";
 import {
   CATALOGUE_AI_COPY_SERVICE,
@@ -26,12 +30,6 @@ export interface CatalogueAiSourceFacts {
   shelfLifeDays?: number | null;
 }
 
-/**
- * Tone steers HOW the existing per-channel fields are written; it does not add new fields or
- * channels — the schema has one column per channel already (b2b_sales_copy, export_catalogue_copy,
- * whatsapp_product_message, catalogue_title/short/long_description), so a full channel/audience/tone
- * matrix would need new columns per variant, which is a schema change out of this PR's scope.
- */
 export const CATALOGUE_AI_TONES = [
   "Premium",
   "Informational",
@@ -49,11 +47,6 @@ export function mapCatalogueAiTone(tone: CatalogueAiTone): "premium" | "warm" | 
   return "warm";
 }
 
-/**
- * Structured-only prompt: the model is told exactly which facts it may use and instructed never to
- * invent price, ingredients, allergens, nutrition, tax/compliance, or shelf-life/storage specifics
- * beyond what's given here — those are separate, human-owned fields this studio never lets AI set.
- */
 export function buildCatalogueContentPrompt(
   facts: CatalogueAiSourceFacts,
   tone: CatalogueAiTone = DEFAULT_TONE,
@@ -96,7 +89,6 @@ export function buildCatalogueContentPrompt(
 
 export { parseChatCompletionStreamText } from "@/shared/ai/chatCompletionStream";
 
-/** Strips markdown code fences and extracts the first top-level JSON object, if any. */
 export function extractJsonObject(text: string): unknown | null {
   const withoutFences = text.replace(/```(?:json)?/gi, "").trim();
   const start = withoutFences.indexOf("{");
@@ -113,10 +105,6 @@ export type CatalogueAiValidationResult =
   | { ok: true; content: CatalogueDraftContent }
   | { ok: false; reason: string };
 
-/**
- * Structured-schema validation (A3 requirement: AI output must pass validation before entering
- * editor state; raw/malformed output must never be displayed as if it were genuine content).
- */
 export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidationResult {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     return { ok: false, reason: "AI response was not a JSON object." };
@@ -145,11 +133,6 @@ export type CatalogueAiGenerationResult =
   | { ok: true; content: CatalogueDraftContent; provenance: InferenceOperationProvenance }
   | { ok: false; reason: string };
 
-/**
- * Calls the dedicated catalogue-ai-copy edge function and returns validated catalogue content, or a
- * truthful failure reason. Never throws — every failure path (missing config, network error,
- * non-2xx response, unparsable/invalid content) returns `{ ok: false, reason }`.
- */
 export async function generateCatalogueContentDraft(
   facts: CatalogueAiSourceFacts,
   tone: CatalogueAiTone = DEFAULT_TONE,
@@ -209,10 +192,27 @@ export async function generateCatalogueContentDraft(
 
   const payload = await resp.json().catch(() => null);
   if (!isGovernedCatalogueCopyResponse(payload)) {
-    return { ok: false, reason: "AI response could not be parsed as structured content." };
+    return { ok: false, reason: "AI response could not be parsed as governed structured content." };
   }
-  const validated = validateAiCatalogueContent(payload.content);
-  if (!validated.ok) return validated;
+
+  const envelopeCheck = validateProviderReviewEnvelope(payload);
+  if (!envelopeCheck.ok) {
+    return { ok: false, reason: envelopeCheck.reason };
+  }
+
+  const schemaCheck = validateAiCatalogueContent(payload.content);
+  if (!schemaCheck.ok) return schemaCheck;
+
+  const groundingCheck = validateGovernedCatalogueCopy(schemaCheck.content, {
+    product_name: facts.productName,
+    category: facts.category,
+    subcategory: facts.subcategory,
+    pack_size: facts.packSize,
+  });
+  if (!groundingCheck.ok) {
+    return { ok: false, reason: groundingCheck.reason };
+  }
+
   const provenance = extractInferenceProvenanceFromPayload(payload, {
     service: CATALOGUE_AI_COPY_SERVICE,
     human_review_required: true,
@@ -220,5 +220,5 @@ export async function generateCatalogueContentDraft(
     provider_status: "ok",
     fail_closed: false,
   });
-  return { ok: true, content: validated.content, provenance };
+  return { ok: true, content: groundingCheck.content, provenance };
 }
