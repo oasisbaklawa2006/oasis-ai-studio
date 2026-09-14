@@ -121,9 +121,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
   useEffect(() => {
     void (async () => {
       const roleList = roles as Role[];
-      const hasDirect =
-        roleList.some((r) => DIRECT_ALIAS_ROLES.includes(r)) ||
-        (await canWriteMasterDirectly());
+      const hasDirect = roleList.some((r) => DIRECT_ALIAS_ROLES.includes(r)) || (await canWriteMasterDirectly());
       if (hasDirect) {
         setWriteMode("direct");
         return;
@@ -476,9 +474,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
             {canMutate && (
               <div className="grid sm:grid-cols-[1fr_120px_auto] gap-2 items-end">
                 <div>
-                  <Label className="text-xs">
-                    New {TERM_TYPE_LABELS[termType].toLowerCase()}
-                  </Label>
+                  <Label className="text-xs">New {TERM_TYPE_LABELS[termType].toLowerCase()}</Label>
                   <Input
                     value={draft.alias}
                     onChange={(e) => setDraft({ ...draft, alias: e.target.value })}
