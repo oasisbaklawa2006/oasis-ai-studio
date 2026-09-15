@@ -152,9 +152,7 @@ describe("Point51 mobile product-create authority", () => {
     expect(deriveMobileDraftWorkflowState({ ...draft, suggestions: baseSuggestions }, false)).toBe(
       "READY_FOR_GOVERNED_SUBMIT",
     );
-    expect(deriveMobileDraftWorkflowState(draft, true)).toBe(
-      "SUBMITTED_AWAITING_HUMAN_APPROVAL",
-    );
+    expect(deriveMobileDraftWorkflowState(draft, true)).toBe("SUBMITTED_AWAITING_HUMAN_APPROVAL");
   });
 
   it("classifies Point34 category-rule facts as deferred", () => {
@@ -182,9 +180,9 @@ describe("Point51 mobile product-create authority", () => {
       pendingAiAliases: [{ alias: "ai alias", alias_type: "search_term" }],
     };
     const entries = classifyDeferredFields(suggestions);
-    expect(entries.some((entry) => entry.field === "hsn_code" && entry.status === "suggestion_only")).toBe(
-      true,
-    );
+    expect(
+      entries.some((entry) => entry.field === "hsn_code" && entry.status === "suggestion_only"),
+    ).toBe(true);
     expect(entries.some((entry) => entry.field === "pending_ai_aliases")).toBe(true);
   });
 
