@@ -143,10 +143,12 @@ import {
 import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
+import { evaluateMobileApprovalAction } from "@/features/mobileApproval/mobileApprovalAuthority";
 import {
   getCachedProductMediaAuthority,
   subscribeToProductMediaAuthority,
 } from "@/features/productAuthority/productMediaMutationAuthority";
+import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { supabase } from "@/integrations/supabase/client";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
@@ -418,6 +420,7 @@ function ReadinessRow({
 
 export default function CatalogueProductStudio() {
   const { user } = useAuth();
+  const { isReviewer: isCatalogueReviewerRole } = useCatalogueReviewer();
   const nav = useNavigate();
   const [products, setProducts] = useState<CatalogueProductStudioProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1340,6 +1343,13 @@ export default function CatalogueProductStudio() {
 
   const handleApprove = async () => {
     if (!selected) return;
+    const gate = evaluateMobileApprovalAction("approve_copy_draft", {
+      isCatalogueReviewer: isCatalogueReviewerRole,
+    });
+    if (!gate.allowed) {
+      toast.error(gate.blockReason ?? "Approval blocked.");
+      return;
+    }
     if (!currentPersistedDraft || draftLoading) {
       toast.error("Draft is still loading. Please wait.");
       return;
@@ -1365,6 +1375,13 @@ export default function CatalogueProductStudio() {
 
   const handleReject = async () => {
     if (!selected || !rejectReason.trim()) return;
+    const gate = evaluateMobileApprovalAction("reject_copy_draft", {
+      isCatalogueReviewer: isCatalogueReviewerRole,
+    });
+    if (!gate.allowed) {
+      toast.error(gate.blockReason ?? "Rejection blocked.");
+      return;
+    }
     if (!currentPersistedDraft || draftLoading) {
       toast.error("Draft is still loading. Please wait.");
       return;
@@ -1908,6 +1925,7 @@ export default function CatalogueProductStudio() {
                           </Button>
                         )}
                       {currentPersistedDraft &&
+                        isCatalogueReviewerRole &&
                         canApprove(currentPersistedDraft.status as CatalogueDraftStatus) && (
                           <Button
                             type="button"
@@ -1920,6 +1938,7 @@ export default function CatalogueProductStudio() {
                           </Button>
                         )}
                       {currentPersistedDraft &&
+                        isCatalogueReviewerRole &&
                         canReject(currentPersistedDraft.status as CatalogueDraftStatus) &&
                         !rejectReasonOpen && (
                           <Button

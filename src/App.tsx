@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
 import { CapabilityUnavailable } from "@/components/CapabilityUnavailable";
+import { CatalogueReviewerGate } from "@/components/CatalogueReviewerGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGate } from "@/components/RoleGate";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -280,7 +281,14 @@ const App = () => (
                       </RoleGate>
                     }
                   />
-                  <Route path="/approvals" element={<ApprovalInbox />} />
+                  <Route
+                    path="/approvals"
+                    element={
+                      <CatalogueReviewerGate>
+                        <ApprovalInbox />
+                      </CatalogueReviewerGate>
+                    }
+                  />
                   <Route
                     path="/data-correction"
                     element={
