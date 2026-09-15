@@ -21,6 +21,7 @@ Point 49 governs multilingual product aliases, selling points and Hindi catalogu
 - Provider output must remain suggestion-only, unapproved and human-review-required.
 - Unsupported locales are rejected.
 - Hindi copy must use Devanagari and may not masquerade English product-name text as translated truth.
+- Arabic copy and aliases must contain Arabic script; Latin-only values cannot be accepted as Arabic truth.
 - Unapproved locale copy is represented as pending, not fabricated.
 - Selling points remain pending when no approved locale source exists.
 - Fast Create continues to preserve Point 34 factual-composition safeguards; Point 49 does not restore inferred ingredients, allergens or nutrition.
@@ -40,4 +41,4 @@ The closure is rebased onto the consolidated AI Studio main after Point 48 and P
 
 ## Completion boundary
 
-Software closure requires exact-head CI. Runtime multilingual review evidence remains a certification/UAT item. Point 50 owns channel-specific copy and remains separate.
+Software closure requires both green exact-head CI and green GitHub merge-ref/current-merge CI. The merge-ref/current-merge check is the integration authority for compatibility with the then-current `main`. Runtime multilingual review evidence remains a separate certification/UAT item. Point 50 owns channel-specific copy and remains separate.
