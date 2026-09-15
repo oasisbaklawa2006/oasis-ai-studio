@@ -3,7 +3,11 @@ import {
   validateMultilingualText,
   validateProviderMultilingualEnvelope,
 } from "./governedMultilingualContract";
-import type { AuthoritativeMultilingualSource } from "./types";
+import type {
+  AuthoritativeMultilingualSource,
+  MultilingualLocaleCode,
+  MultilingualSuggestionKind,
+} from "./types";
 
 export type MockMultilingualScenario =
   | "ok"
@@ -38,14 +42,29 @@ export function mockMultilingualProvider(
       ? hindiSuggestion.value
       : "समीक्षा के लिए हिंदी ड्राफ्ट — अनुमोदित स्रोत प्रतिलिपि आवश्यक।";
 
+  const baseByLocale: Record<"hi" | "ar" | "tr", string> = {
+    hi: baseHindi,
+    ar: "مسودة عربية للمراجعة — يلزم نص مصدر معتمد.",
+    tr: "İnceleme için Türkçe taslak — onaylı kaynak metin gerekli.",
+  };
+  const kindByLocale: Record<"hi" | "ar" | "tr", MultilingualSuggestionKind> = {
+    hi: "hindi_description",
+    ar: "regional_term",
+    tr: "regional_term",
+  };
+
   const valueByScenario: Record<MockMultilingualScenario, string> = {
-    ok: baseHindi,
-    missing_review_marker: baseHindi,
-    missing_source_version: baseHindi,
+    ok: baseByLocale[requestedLocale],
+    missing_review_marker: baseByLocale[requestedLocale],
+    missing_source_version: baseByLocale[requestedLocale],
     unsafe_superlative: "सर्वश्रेष्ठ काजू पिरामिड बकलावा",
     wrong_language_hindi: `${source.product_name} is available now.`,
-    unsupported_locale: baseHindi,
+    unsupported_locale: baseByLocale[requestedLocale],
   };
+
+  const responseLocale: MultilingualLocaleCode | "fr" =
+    scenario === "unsupported_locale" ? "fr" : requestedLocale;
+  const responseKind = kindByLocale[requestedLocale];
 
   const envelope: Record<string, unknown> = {
     ok: true,
@@ -53,11 +72,11 @@ export function mockMultilingualProvider(
     approved: false,
     human_review_required: scenario !== "missing_review_marker",
     source_version: scenario === "missing_source_version" ? "" : source.source_version,
-    locale: scenario === "unsupported_locale" ? "fr" : requestedLocale,
+    locale: responseLocale,
     suggestions: [
       {
-        kind: "hindi_description",
-        locale: requestedLocale,
+        kind: responseKind,
+        locale: responseLocale,
         value: valueByScenario[scenario],
       },
     ],
@@ -84,7 +103,7 @@ export function mockMultilingualProvider(
   }
 
   const text = valueByScenario[scenario];
-  const parseResult = validateMultilingualText(text, requestedLocale, source, "hindi_description");
+  const parseResult = validateMultilingualText(text, requestedLocale, source, responseKind);
   return { envelope, parseResult };
 }
 
