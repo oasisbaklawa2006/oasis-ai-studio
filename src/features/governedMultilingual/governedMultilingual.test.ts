@@ -63,6 +63,18 @@ describe("detectWrongLanguagePresentation", () => {
     ).toContain("Devanagari");
   });
 
+  it("flags Latin-only text mislabeled as a Hindi regional alias", () => {
+    expect(
+      detectWrongLanguagePresentation("Kaju Pyramid", "hi", BASE_SOURCE, "regional_term"),
+    ).toContain("Devanagari");
+  });
+
+  it("flags Latin-only text mislabeled as an Arabic regional alias", () => {
+    expect(
+      detectWrongLanguagePresentation("Kunafa", "ar", BASE_SOURCE, "regional_term"),
+    ).toContain("Arabic script");
+  });
+
   it("flags embedded English product_name in Hindi description copy", () => {
     expect(
       detectWrongLanguagePresentation(
@@ -95,6 +107,12 @@ describe("detectWrongLanguagePresentation", () => {
       ),
     ).toBeNull();
   });
+
+  it("allows Arabic-script Arabic copy", () => {
+    expect(
+      detectWrongLanguagePresentation("بقلاوة هرم الكاجو", "ar", BASE_SOURCE, "regional_term"),
+    ).toBeNull();
+  });
 });
 
 describe("resolveTemplateHindiDescription", () => {
@@ -113,6 +131,15 @@ describe("resolveTemplateHindiDescription", () => {
     });
     expect(row.availability).toBe("available");
     expect(row.value).toContain("काजू");
+  });
+
+  it("fails closed to pending when approved Hindi source is not valid Hindi", () => {
+    const row = resolveTemplateHindiDescription({
+      ...BASE_SOURCE,
+      approved_hindi_description: "Cashew Pyramid Baklawa available now",
+    });
+    expect(row.availability).toBe("pending");
+    expect(row.value).toBe(PENDING_HINDI_DESCRIPTION_MARKER);
   });
 });
 
@@ -140,7 +167,6 @@ describe("buildHeuristicMultilingualSuggestions", () => {
     expect(result.human_review_required).toBe(true);
     expect(result.provenance.source_version).toBe(GOVERNED_NAMING_PROMPT_VERSION);
     expect(result.provenance.source_identity).toContain("cashew pyramid");
-    expect(result.suggestions.some((s) => s.locale === "ar" && s.script === "arabic")).toBe(true);
     expect(result.suggestions.some((s) => s.kind === "hindi_description")).toBe(true);
   });
 
@@ -159,8 +185,18 @@ describe("governedAliasSeedsFromSource", () => {
     expect(result.ok).toBe(true);
     if (result.ok === false) return;
     expect(result.aliases.length).toBeGreaterThan(0);
-    expect(result.aliases.some((a) => a.language === "hi")).toBe(true);
+    expect(result.aliases.some((a) => a.language === "hi")).toBe(false);
     expect(result.provenance.service).toBe("heuristic");
+  });
+
+  it("retains genuine Arabic-script governed aliases", () => {
+    const result = governedAliasSeedsFromSource({
+      ...BASE_SOURCE,
+      product_name: "Kunafa",
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok === false) return;
+    expect(result.aliases.some((a) => a.language === "ar" && a.alias === "كنافة")).toBe(true);
   });
 });
 
@@ -173,6 +209,26 @@ describe("validateMultilingualText", () => {
       "hindi_description",
     );
     expect(result.ok).toBe(false);
+  });
+
+  it("checks the actual Hindi superlative token against source facts", () => {
+    const supported = validateMultilingualText(
+      "बेहतरीन बकलावा",
+      "hi",
+      { ...BASE_SOURCE, approved_short_description: "बेहतरीन बकलावा" },
+      "hindi_description",
+    );
+    expect(supported.ok).toBe(true);
+
+    const unsupported = validateMultilingualText(
+      "उत्कृष्ट बकलावा",
+      "hi",
+      BASE_SOURCE,
+      "hindi_description",
+    );
+    expect(unsupported.ok).toBe(false);
+    if (unsupported.ok === true) return;
+    expect(unsupported.reason).toContain("उत्कृष्ट");
   });
 });
 
@@ -189,24 +245,57 @@ describe("validateGovernedHindiDescription", () => {
 });
 
 describe("validateProviderMultilingualEnvelope", () => {
-  it("requires review markers and source_version", () => {
-    expect(
-      validateProviderMultilingualEnvelope({
-        ok: true,
-        human_review_required: true,
-        suggestion_only: true,
-        approved: false,
-        source_version: GOVERNED_NAMING_PROMPT_VERSION,
-      }).ok,
-    ).toBe(true);
+  const validEnvelope = {
+    ok: true,
+    human_review_required: true,
+    suggestion_only: true,
+    approved: false,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+  };
+
+  it("requires exact review markers and a non-empty string source_version", () => {
+    expect(validateProviderMultilingualEnvelope(validEnvelope).ok).toBe(true);
 
     expect(
       validateProviderMultilingualEnvelope({
-        ok: true,
+        ...validEnvelope,
         human_review_required: false,
-        suggestion_only: true,
-        approved: false,
-        source_version: GOVERNED_NAMING_PROMPT_VERSION,
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({
+        ...validEnvelope,
+        suggestion_only: undefined,
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({
+        ...validEnvelope,
+        suggestion_only: "true",
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({
+        ...validEnvelope,
+        approved: undefined,
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({
+        ...validEnvelope,
+        approved: "false",
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({
+        ...validEnvelope,
+        source_version: { version: GOVERNED_NAMING_PROMPT_VERSION },
+      }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({
+        ...validEnvelope,
+        source_version: 49,
       }).ok,
     ).toBe(false);
   });
@@ -233,6 +322,11 @@ describe("mockMultilingualProvider", () => {
   it("returns ok scenario with deterministic Hindi draft", () => {
     const { parseResult } = mockMultilingualProvider(BASE_SOURCE, "ok");
     expect(parseResult.ok).toBe(true);
+  });
+
+  it("returns locale-consistent Arabic and Turkish mock drafts", () => {
+    expect(mockMultilingualProvider(BASE_SOURCE, "ok", "ar").parseResult.ok).toBe(true);
+    expect(mockMultilingualProvider(BASE_SOURCE, "ok", "tr").parseResult.ok).toBe(true);
   });
 
   it("fails on missing review marker", () => {
