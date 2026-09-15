@@ -2,10 +2,8 @@ import {
   detectUnsafeNamingClaims,
   validateProductIdentity,
 } from "@/features/governedProductNaming";
-import { seedAliasesFromName, type AliasSeed } from "@/features/productLanguage/aliasSeedRules";
+import { type AliasSeed, seedAliasesFromName } from "@/features/productLanguage/aliasSeedRules";
 import {
-  MULTILINGUAL_LOCALE_SCRIPTS,
-  SUPPORTED_MULTILINGUAL_LOCALES,
   type AuthoritativeMultilingualSource,
   type GovernedMultilingualFieldSuggestion,
   type GovernedMultilingualProvenance,
@@ -13,9 +11,11 @@ import {
   type GovernedMultilingualSuggestionResult,
   type GovernedMultilingualValidationResult,
   type LocaleResolutionResult,
+  MULTILINGUAL_LOCALE_SCRIPTS,
   type MultilingualAvailability,
   type MultilingualLocaleCode,
   type MultilingualSuggestionKind,
+  SUPPORTED_MULTILINGUAL_LOCALES,
 } from "./types";
 
 export const GOVERNED_MULTILINGUAL_DISCLAIMER =
@@ -29,9 +29,9 @@ export const PENDING_SELLING_POINT_MARKER =
 const DEVANAGARI_PATTERN = /[\u0900-\u097F]/;
 const HINDI_SUPERLATIVE_PATTERN = /सर्वश्रेष्ठ|बेहतरीन|उत्कृष्ट/;
 const ARABIC_SCRIPT_PATTERN = /[\u0600-\u06FF]/;
-const LATIN_ASCII_PATTERN = /^[\x00-\x7F\s.,!?'"()\-–—:;*]+$/;
+const LATIN_ASCII_PATTERN = /^[A-Za-z0-9\s.,!?'"()\-–—:;*]+$/;
 
-function hasText(value: string | null | undefined): boolean {
+function hasText(value: string | null | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
 }
 
@@ -125,7 +125,7 @@ export function validateMultilingualSource(
   source: AuthoritativeMultilingualSource,
 ): { ok: true } | { ok: false; reason: string } {
   const identity = validateProductIdentity(source);
-  if (!identity.ok) return identity;
+  if (identity.ok === false) return identity;
   if (!hasText(source.source_version)) {
     return { ok: false, reason: "Missing source_version — Point48 copy revision must be pinned." };
   }
@@ -201,13 +201,13 @@ export function validateGovernedHindiDescription(
   source: AuthoritativeMultilingualSource,
 ): { ok: true; value: string } | { ok: false; reason: string } {
   if (hasText(source.approved_hindi_description)) {
-    const approved = source.approved_hindi_description!.trim();
+    const approved = source.approved_hindi_description.trim();
     const check = validateMultilingualText(approved, "hi", source, "hindi_description");
-    if (!check.ok) return { ok: false, reason: check.reason };
+    if (check.ok === false) return { ok: false, reason: check.reason };
     return { ok: true, value: approved };
   }
   const check = validateMultilingualText(text, "hi", source, "hindi_description");
-  if (!check.ok) return { ok: false, reason: check.reason };
+  if (check.ok === false) return { ok: false, reason: check.reason };
   return { ok: true, value: text.trim() };
 }
 
@@ -218,7 +218,7 @@ export function resolveTemplateHindiDescription(
     return suggestion(source, {
       kind: "hindi_description",
       locale: "hi",
-      value: source.approved_hindi_description!.trim(),
+      value: source.approved_hindi_description.trim(),
       availability: "available",
     });
   }
@@ -238,7 +238,7 @@ export function resolveSellingPointForLocale(
     return suggestion(source, {
       kind: "selling_point",
       locale: "en",
-      value: source.approved_short_description!.trim(),
+      value: source.approved_short_description.trim(),
       availability: "available",
     });
   }
@@ -246,7 +246,7 @@ export function resolveSellingPointForLocale(
     return suggestion(source, {
       kind: "selling_point",
       locale: "en",
-      value: source.short_description!.trim(),
+      value: source.short_description.trim(),
       availability: "available",
     });
   }
@@ -271,7 +271,7 @@ function aliasSeedsToSuggestions(
     seen.add(key);
     const kind = kindForAliasSeed(seed);
     const check = validateMultilingualText(seed.alias, locale, source, kind);
-    if (!check.ok) continue;
+    if (check.ok === false) continue;
     out.push({
       ...check.suggestion,
       kind,
@@ -287,7 +287,7 @@ export function buildHeuristicMultilingualSuggestions(
   requestedLocales: readonly MultilingualLocaleCode[] = SUPPORTED_MULTILINGUAL_LOCALES,
 ): GovernedMultilingualSuggestionResult {
   const sourceCheck = validateMultilingualSource(source);
-  if (!sourceCheck.ok) return failClosed("heuristic", source, sourceCheck.reason);
+  if (sourceCheck.ok === false) return failClosed("heuristic", source, sourceCheck.reason);
   for (const locale of requestedLocales) {
     const resolved = resolveLocale(locale);
     if (resolved.locale === "unsupported") {
@@ -319,7 +319,9 @@ export function governedAliasSeedsFromSource(
   | { ok: true; aliases: AliasSeed[]; provenance: GovernedMultilingualProvenance }
   | { ok: false; reason: string; provenance: GovernedMultilingualProvenance } {
   const result = buildHeuristicMultilingualSuggestions(source, ["en", "hi", "ar", "tr"]);
-  if (!result.ok) return { ok: false, reason: result.reason, provenance: result.provenance };
+  if (result.ok === false) {
+    return { ok: false, reason: result.reason, provenance: result.provenance };
+  }
   const aliases: AliasSeed[] = result.suggestions
     .filter((s) => s.kind !== "selling_point" && s.kind !== "hindi_description")
     .filter((s) => s.availability === "available")
@@ -343,7 +345,10 @@ export function validateProviderMultilingualEnvelope(
     return { ok: false, reason: "Multilingual generation service returned a failure envelope." };
   }
   if (row.human_review_required !== true) {
-    return { ok: false, reason: "Multilingual response missing required human_review_required marker." };
+    return {
+      ok: false,
+      reason: "Multilingual response missing required human_review_required marker.",
+    };
   }
   if (row.suggestion_only === false || row.approved === true) {
     return { ok: false, reason: "Multilingual response attempted to bypass review-only contract." };
