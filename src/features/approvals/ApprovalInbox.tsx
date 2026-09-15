@@ -4,6 +4,11 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  isMediaCatalogueApprovalAvailable,
+  isMediaDraftApprovalUiBlocked,
+  MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE,
+} from "@/features/mediaWorkspace/mediaCatalogueApprovalPolicy";
+import {
   blockPilotApprovalMessage,
   isDraftSku,
   isStructuredOasisSku,
@@ -257,6 +262,10 @@ export default function ApprovalInbox() {
       toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
       return;
     }
+    if (isMediaDraftApprovalUiBlocked(r.draftType)) {
+      toast.warning(MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE);
+      return;
+    }
     if (r.draftType === "product") {
       const sku =
         read(r.payload, "sku_draft.sku", "identity.sku", "sku") ??
@@ -343,6 +352,7 @@ export default function ApprovalInbox() {
             const isRejected = r.status === "rejected";
             const reviewFlags = getDisplayReviewFlags(r.payload);
             const flagsFromPayload = getReviewFlags(r.payload).length > 0;
+            const mediaApprovalBlocked = isMediaDraftApprovalUiBlocked(r.draftType);
 
             return (
               <div key={`${r.draftType}-${r.id}`} className="luxe-panel space-y-3">
@@ -477,6 +487,12 @@ export default function ApprovalInbox() {
                   </pre>
                 </details>
 
+                {isPending && mediaApprovalBlocked && (
+                  <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    {MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE}
+                  </div>
+                )}
+
                 {isPending && r.governedByCentral && (
                   <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                     Pricing and MOQ are Central/Core-governed commercial authority. This proposal is
@@ -502,9 +518,11 @@ export default function ApprovalInbox() {
                       >
                         Reject
                       </Button>
-                      <Button className="rounded-full" onClick={() => approve(r)}>
-                        Approve
-                      </Button>
+                      {!mediaApprovalBlocked && (
+                        <Button className="rounded-full" onClick={() => approve(r)}>
+                          Approve
+                        </Button>
+                      )}
                     </div>
                   </div>
                 )}
