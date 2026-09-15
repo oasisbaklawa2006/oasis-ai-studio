@@ -11,10 +11,14 @@ import {
 } from "./index";
 
 const invokeMock = vi.fn();
+const getSessionMock = vi.fn();
 const fetchMock = vi.fn();
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
+    auth: {
+      getSession: (...args: unknown[]) => getSessionMock(...args),
+    },
     functions: {
       invoke: (...args: unknown[]) => invokeMock(...args),
     },
@@ -23,6 +27,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 beforeEach(() => {
   invokeMock.mockReset();
+  getSessionMock.mockReset();
+  getSessionMock.mockResolvedValue({
+    data: { session: { access_token: "test-user-access-token" } },
+    error: null,
+  });
   fetchMock.mockReset();
   globalThis.fetch = fetchMock as typeof fetch;
   import.meta.env.VITE_SUPABASE_URL = "https://test-project.supabase.co";
@@ -301,8 +310,7 @@ describe("enrichFastCreateWithGovernedAi", () => {
 
     try {
       const enrichmentPromise = enrichFastCreateWithGovernedAi(base, "Pyramid Baklawa", "baklawa");
-      await Promise.resolve();
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
       expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
       controller.abort();
 
