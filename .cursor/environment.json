@@ -1,15 +1,22 @@
 {
-  "name": "Oasis AI Studio",
+  "name": "Oasis Appverse Workspace",
   "install": "bash scripts/cloud-agent-setup.sh",
+  "repositoryDependencies": [
+    "github.com/oasisbaklawa2006/oasis-baklawa",
+    "github.com/oasisbaklawa2006/Oasis-Baklawa-Central",
+    "github.com/oasisbaklawa2006/oasis-supabase-core",
+    "github.com/oasisbaklawa2006/oasis-trace"
+  ],
   "terminals": [
     {
       "name": "vite-dev",
-      "command": "npm run dev"
+      "command": "npm run dev",
+      "description": "AI Studio Vite dev server on http://localhost:8080 (browser testing)."
     }
   ],
   "ports": [
     {
-      "name": "Vite dev server",
+      "name": "AI Studio Vite dev server",
       "port": 8080
     }
   ]
