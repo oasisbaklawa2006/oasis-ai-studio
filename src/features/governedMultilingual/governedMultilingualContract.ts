@@ -157,8 +157,8 @@ export function detectWrongLanguagePresentation(
 ): string | null {
   const trimmed = text.trim();
   if (!trimmed) return "empty multilingual value";
-  if (locale === "hi" && kind === "hindi_description") {
-    if (PENDING_HINDI_DESCRIPTION_MARKER === trimmed) return null;
+  if (locale === "hi") {
+    if (kind === "hindi_description" && PENDING_HINDI_DESCRIPTION_MARKER === trimmed) return null;
     if (!DEVANAGARI_PATTERN.test(trimmed)) {
       return "Hindi locale content must use Devanagari script or explicit pending marker";
     }
@@ -166,13 +166,11 @@ export function detectWrongLanguagePresentation(
       return "Hindi locale must not embed English product_name as translated truth";
     }
   }
-  if (locale === "ar" && kind === "hindi_description" && !ARABIC_SCRIPT_PATTERN.test(trimmed)) {
+  if (locale === "ar" && !ARABIC_SCRIPT_PATTERN.test(trimmed)) {
     return "Arabic locale content must use Arabic script";
   }
-  if ((locale === "hi" || locale === "ar") && kind === "hindi_description") {
-    if (LATIN_ASCII_PATTERN.test(trimmed) && trimmed.length > 12) {
-      return "Non-Latin locale must not present Latin-only copy as translated truth";
-    }
+  if ((locale === "hi" || locale === "ar") && LATIN_ASCII_PATTERN.test(trimmed) && trimmed.length > 12) {
+    return "Non-Latin locale must not present Latin-only copy as translated truth";
   }
   return null;
 }
@@ -185,8 +183,9 @@ export function validateMultilingualText(
 ): GovernedMultilingualValidationResult {
   const wrongLanguage = detectWrongLanguagePresentation(text, locale, source, kind);
   if (wrongLanguage) return { ok: false, reason: wrongLanguage };
-  if (HINDI_SUPERLATIVE_PATTERN.test(text) && !factsBlob(source).includes("सर्वश्रेष्ठ")) {
-    return { ok: false, reason: "unsupported superlative: सर्वश्रेष्ठ" };
+  const hindiSuperlative = text.match(HINDI_SUPERLATIVE_PATTERN);
+  if (hindiSuperlative && !factsBlob(source).includes(hindiSuperlative[0].toLowerCase())) {
+    return { ok: false, reason: `unsupported superlative: ${hindiSuperlative[0]}` };
   }
   const unsafe = detectUnsafeNamingClaims(text, source);
   if (unsafe.length > 0) return { ok: false, reason: unsafe.join("; ") };
@@ -215,12 +214,16 @@ export function resolveTemplateHindiDescription(
   source: AuthoritativeMultilingualSource,
 ): GovernedMultilingualFieldSuggestion {
   if (hasText(source.approved_hindi_description)) {
-    return suggestion(source, {
-      kind: "hindi_description",
-      locale: "hi",
-      value: source.approved_hindi_description.trim(),
-      availability: "available",
-    });
+    const approved = source.approved_hindi_description.trim();
+    const check = validateMultilingualText(approved, "hi", source, "hindi_description");
+    if (check.ok) {
+      return suggestion(source, {
+        kind: "hindi_description",
+        locale: "hi",
+        value: approved,
+        availability: "available",
+      });
+    }
   }
   return suggestion(source, {
     kind: "hindi_description",
@@ -350,10 +353,10 @@ export function validateProviderMultilingualEnvelope(
       reason: "Multilingual response missing required human_review_required marker.",
     };
   }
-  if (row.suggestion_only === false || row.approved === true) {
+  if (row.suggestion_only !== true || row.approved !== false) {
     return { ok: false, reason: "Multilingual response attempted to bypass review-only contract." };
   }
-  if (!hasText(String(row.source_version ?? ""))) {
+  if (typeof row.source_version !== "string" || !hasText(row.source_version)) {
     return { ok: false, reason: "Multilingual response missing required source_version pin." };
   }
   return { ok: true };
