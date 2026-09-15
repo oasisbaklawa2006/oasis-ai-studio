@@ -121,7 +121,8 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
   useEffect(() => {
     void (async () => {
       const roleList = roles as Role[];
-      const hasDirect = roleList.some((r) => DIRECT_ALIAS_ROLES.includes(r)) || (await canWriteMasterDirectly());
+      const hasDirect =
+        roleList.some((r) => DIRECT_ALIAS_ROLES.includes(r)) || (await canWriteMasterDirectly());
       if (hasDirect) {
         setWriteMode("direct");
         return;
