@@ -6,6 +6,7 @@
       "src/**/*.{js,jsx,ts,tsx,json}",
       "scripts/**/*.{js,mjs,ts,json}",
       "e2e/**/*.{ts,tsx,json}",
+      ".cursor/**/*.json",
       "*.{js,mjs,ts,json}"
     ],
     "ignoreUnknown": true
