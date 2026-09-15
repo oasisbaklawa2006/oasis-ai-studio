@@ -225,12 +225,17 @@ export async function generateCatalogueContentDraft(
     return { ok: false, reason: "AI response could not be parsed as structured content." };
   }
 
-  const multilingualEnvelopeCheck = validateProviderMultilingualEnvelope({
-    ...payload,
-    source_version: GOVERNED_NAMING_PROMPT_VERSION,
-  });
+  const multilingualEnvelopeCheck = validateProviderMultilingualEnvelope(payload);
   if (multilingualEnvelopeCheck.ok === false) {
     return { ok: false, reason: multilingualEnvelopeCheck.reason };
+  }
+  if (
+    (payload as Record<string, unknown>).source_version !== GOVERNED_NAMING_PROMPT_VERSION
+  ) {
+    return {
+      ok: false,
+      reason: "Multilingual response used an unexpected source_version.",
+    };
   }
 
   const schemaCheck = validateAiCatalogueContent(payload.content);
