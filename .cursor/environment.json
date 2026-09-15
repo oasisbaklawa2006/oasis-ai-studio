@@ -1,0 +1,16 @@
+{
+  "name": "Oasis AI Studio",
+  "install": "bash scripts/cloud-agent-setup.sh",
+  "terminals": [
+    {
+      "name": "vite-dev",
+      "command": "npm run dev"
+    }
+  ],
+  "ports": [
+    {
+      "name": "Vite dev server",
+      "port": 8080
+    }
+  ]
+}
