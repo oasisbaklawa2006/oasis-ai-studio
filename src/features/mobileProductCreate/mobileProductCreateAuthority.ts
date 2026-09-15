@@ -173,8 +173,10 @@ function metaStatusForField(
 ): DeferredFieldStatus {
   const entry = meta?.[field as keyof ComplianceFieldMetaMap];
   if (!entry) return "unknown";
+  if (entry.approved === true) return "unknown";
+  if (entry.source === "category_rule") return "deferred";
   if (entry.source === "ai_suggestion" || entry.approved === false) {
-    return entry.source === "category_rule" ? "deferred" : "suggestion_only";
+    return "suggestion_only";
   }
   return "unknown";
 }
