@@ -13,13 +13,13 @@ export {
 } from "./governedChannelCopyContract";
 export {
   buildAuthoritativeChannelSource,
-  mockChannelCopyProvider,
   type MockChannelCopyScenario,
+  mockChannelCopyProvider,
 } from "./governedChannelCopyProvider";
 export {
+  type AuthoritativeChannelSource,
   CHANNEL_KEY_TO_CHANNEL,
   GOVERNED_CHANNEL_COPY_KEYS,
-  type AuthoritativeChannelSource,
   type GovernedChannel,
   type GovernedChannelCopyKey,
   type GovernedChannelCopyResult,
