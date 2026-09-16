@@ -169,7 +169,11 @@ export function detectWrongLanguagePresentation(
   if (locale === "ar" && !ARABIC_SCRIPT_PATTERN.test(trimmed)) {
     return "Arabic locale content must use Arabic script";
   }
-  if ((locale === "hi" || locale === "ar") && LATIN_ASCII_PATTERN.test(trimmed) && trimmed.length > 12) {
+  if (
+    (locale === "hi" || locale === "ar") &&
+    LATIN_ASCII_PATTERN.test(trimmed) &&
+    trimmed.length > 12
+  ) {
     return "Non-Latin locale must not present Latin-only copy as translated truth";
   }
   return null;

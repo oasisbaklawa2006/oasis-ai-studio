@@ -229,9 +229,7 @@ export async function generateCatalogueContentDraft(
   if (multilingualEnvelopeCheck.ok === false) {
     return { ok: false, reason: multilingualEnvelopeCheck.reason };
   }
-  if (
-    (payload as Record<string, unknown>).source_version !== GOVERNED_NAMING_PROMPT_VERSION
-  ) {
+  if ((payload as Record<string, unknown>).source_version !== GOVERNED_NAMING_PROMPT_VERSION) {
     return {
       ok: false,
       reason: "Multilingual response used an unexpected source_version.",

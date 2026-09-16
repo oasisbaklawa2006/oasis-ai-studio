@@ -70,9 +70,9 @@ describe("detectWrongLanguagePresentation", () => {
   });
 
   it("flags Latin-only text mislabeled as an Arabic regional alias", () => {
-    expect(
-      detectWrongLanguagePresentation("Kunafa", "ar", BASE_SOURCE, "regional_term"),
-    ).toContain("Arabic script");
+    expect(detectWrongLanguagePresentation("Kunafa", "ar", BASE_SOURCE, "regional_term")).toContain(
+      "Arabic script",
+    );
   });
 
   it("flags embedded English product_name in Hindi description copy", () => {
