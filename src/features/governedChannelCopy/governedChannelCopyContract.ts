@@ -67,7 +67,8 @@ export function detectChannelFactualDrift(
   const allowed = authorisedPrices(source);
   for (const match of text.matchAll(PRICE_PATTERN)) {
     const parsed = Number(match[1].replace(/,/g, ""));
-    if (!Number.isFinite(parsed) || !allowed.has(parsed)) reasons.push(`invented price: ${match[0]}`);
+    if (!Number.isFinite(parsed) || !allowed.has(parsed))
+      reasons.push(`invented price: ${match[0]}`);
   }
   return reasons;
 }
@@ -104,7 +105,8 @@ export function truncateChannelCopySafely(
     return { ok: false, reason: `Cannot truncate ${key} without losing approved identity.` };
   }
   const value = `${trimmed.slice(0, limit - 1).trimEnd()}…`;
-  if (!value.includes(name)) return { ok: false, reason: `Truncation removed approved product identity from ${key}.` };
+  if (!value.includes(name))
+    return { ok: false, reason: `Truncation removed approved product identity from ${key}.` };
   return { ok: true, value, truncated: true };
 }
 
@@ -120,8 +122,11 @@ function generateRaw(key: GovernedChannelCopyKey, source: AuthoritativeChannelSo
   const name = source.product_name.trim();
   switch (key) {
     case "b2b_sales_copy": {
-      const price = hasNumber(source.b2b_price) ? `B2B base ₹${source.b2b_price}` : "B2B price pending";
-      const unit = hasText(source.b2b_uom) && hasNumber(source.b2b_price) ? `/${source.b2b_uom.trim()}` : "";
+      const price = hasNumber(source.b2b_price)
+        ? `B2B base ₹${source.b2b_price}`
+        : "B2B price pending";
+      const unit =
+        hasText(source.b2b_uom) && hasNumber(source.b2b_price) ? `/${source.b2b_uom.trim()}` : "";
       const minimum = moq(source);
       return `${name} — ${price}${unit}.${minimum ? ` MOQ: ${minimum}.` : " MOQ pending."}`;
     }
@@ -141,7 +146,9 @@ function generateRaw(key: GovernedChannelCopyKey, source: AuthoritativeChannelSo
       return `Hi! *${name}* is available — ${price}. Reply to know more.`;
     }
     case "storage_shelf_life_copy": {
-      const shelf = hasNumber(source.shelf_life_days) ? `Shelf life: ${source.shelf_life_days} days.` : "Shelf life pending.";
+      const shelf = hasNumber(source.shelf_life_days)
+        ? `Shelf life: ${source.shelf_life_days} days.`
+        : "Shelf life pending.";
       const storage = [source.storage_instructions, source.temperature_requirement]
         .filter(hasText)
         .map((value) => value.trim())
@@ -169,24 +176,50 @@ function suggestion(
   };
 }
 
-export function buildHeuristicChannelSuggestions(source: AuthoritativeChannelSource): GovernedChannelCopyResult {
+export function buildHeuristicChannelSuggestions(
+  source: AuthoritativeChannelSource,
+): GovernedChannelCopyResult {
   const sourceCheck = validateChannelSource(source);
   if (sourceCheck.ok === false) {
-    return { ok: false, suggestion_only: true, approved: false, human_review_required: true, reason: sourceCheck.reason };
+    return {
+      ok: false,
+      suggestion_only: true,
+      approved: false,
+      human_review_required: true,
+      reason: sourceCheck.reason,
+    };
   }
   const suggestions: GovernedChannelFieldSuggestion[] = [];
   for (const key of GOVERNED_CHANNEL_COPY_KEYS) {
     const truncation = truncateChannelCopySafely(generateRaw(key, source), key, source);
     if (truncation.ok === false) {
-      return { ok: false, suggestion_only: true, approved: false, human_review_required: true, reason: truncation.reason };
+      return {
+        ok: false,
+        suggestion_only: true,
+        approved: false,
+        human_review_required: true,
+        reason: truncation.reason,
+      };
     }
     const validation = validateChannelCopyText(truncation.value, key, source);
     if (validation.ok === false) {
-      return { ok: false, suggestion_only: true, approved: false, human_review_required: true, reason: validation.reason };
+      return {
+        ok: false,
+        suggestion_only: true,
+        approved: false,
+        human_review_required: true,
+        reason: validation.reason,
+      };
     }
     suggestions.push(suggestion(key, truncation.value, source, truncation.truncated));
   }
-  return { ok: true, suggestion_only: true, approved: false, human_review_required: true, suggestions };
+  return {
+    ok: true,
+    suggestion_only: true,
+    approved: false,
+    human_review_required: true,
+    suggestions,
+  };
 }
 
 export function channelSuggestionsToContent(
@@ -215,7 +248,8 @@ export function validateGovernedChannelCopy(
 export function validateProviderChannelEnvelope(
   payload: unknown,
 ): { ok: true } | { ok: false; reason: string } {
-  if (!payload || typeof payload !== "object") return { ok: false, reason: "Invalid channel-copy envelope." };
+  if (!payload || typeof payload !== "object")
+    return { ok: false, reason: "Invalid channel-copy envelope." };
   const row = payload as Record<string, unknown>;
   if (row.ok !== true || row.human_review_required !== true) {
     return { ok: false, reason: "Channel-copy response is not review-governed." };
@@ -227,7 +261,10 @@ export function validateProviderChannelEnvelope(
     return { ok: false, reason: "Channel-copy response used an unexpected source_version." };
   }
   if (row.channel_prompt_version !== GOVERNED_CHANNEL_COPY_PROMPT_VERSION) {
-    return { ok: false, reason: "Channel-copy response used an unexpected channel_prompt_version." };
+    return {
+      ok: false,
+      reason: "Channel-copy response used an unexpected channel_prompt_version.",
+    };
   }
   return { ok: true };
 }
