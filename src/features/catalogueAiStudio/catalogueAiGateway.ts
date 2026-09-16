@@ -40,7 +40,13 @@ export interface CatalogueAiSourceFacts {
   shelfLifeDays?: number | null;
 }
 
-export const CATALOGUE_AI_TONES = ["Premium", "Informational", "Concise", "Sales-focused", "Technical"] as const;
+export const CATALOGUE_AI_TONES = [
+  "Premium",
+  "Informational",
+  "Concise",
+  "Sales-focused",
+  "Technical",
+] as const;
 export type CatalogueAiTone = (typeof CATALOGUE_AI_TONES)[number];
 const DEFAULT_TONE: CatalogueAiTone = "Informational";
 
@@ -108,7 +114,8 @@ export type CatalogueAiValidationResult =
   | { ok: false; reason: string };
 
 export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidationResult {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ok: false, reason: "AI response was not a JSON object." };
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    return { ok: false, reason: "AI response was not a JSON object." };
   const row = parsed as Record<string, unknown>;
   const content = {} as CatalogueDraftContent;
   const missingOrInvalid: string[] = [];
@@ -120,7 +127,11 @@ export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidati
     }
     content[key as CatalogueDraftContentKey] = value.trim();
   }
-  if (missingOrInvalid.length > 0) return { ok: false, reason: `AI response was missing or had an invalid value for: ${missingOrInvalid.join(", ")}.` };
+  if (missingOrInvalid.length > 0)
+    return {
+      ok: false,
+      reason: `AI response was missing or had an invalid value for: ${missingOrInvalid.join(", ")}.`,
+    };
   return { ok: true, content };
 }
 
@@ -135,18 +146,28 @@ export async function generateCatalogueContentDraft(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const enabled = import.meta.env.VITE_CATALOGUE_AI_ENABLED === "true";
-  if (!enabled) return { ok: false, reason: "Governed AI generation is not enabled in this environment." };
-  if (!supabaseUrl || !anonKey) return { ok: false, reason: "AI generation is not configured in this environment." };
+  if (!enabled)
+    return { ok: false, reason: "Governed AI generation is not enabled in this environment." };
+  if (!supabaseUrl || !anonKey)
+    return { ok: false, reason: "AI generation is not configured in this environment." };
 
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
-  if (sessionError || !accessToken) return { ok: false, reason: "Sign in with an authorized internal account to use AI generation." };
+  if (sessionError || !accessToken)
+    return {
+      ok: false,
+      reason: "Sign in with an authorized internal account to use AI generation.",
+    };
 
   let resp: Response;
   try {
     resp = await fetch(`${supabaseUrl}/functions/v1/catalogue-ai-copy`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}`, apikey: anonKey },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+      },
       body: JSON.stringify({
         productName: facts.productName,
         category: facts.category ?? undefined,
@@ -159,17 +180,26 @@ export async function generateCatalogueContentDraft(
       }),
     });
   } catch {
-    return { ok: false, reason: "Could not reach the AI generation service. Check connectivity and retry." };
+    return {
+      ok: false,
+      reason: "Could not reach the AI generation service. Check connectivity and retry.",
+    };
   }
-  if (!resp.ok) return { ok: false, reason: `AI generation service returned an error (status ${resp.status}).` };
+  if (!resp.ok)
+    return {
+      ok: false,
+      reason: `AI generation service returned an error (status ${resp.status}).`,
+    };
 
   const payload = await resp.json().catch(() => null);
   const envelopeCheck = validateProviderReviewEnvelope(payload);
   if (envelopeCheck.ok === false) return { ok: false, reason: envelopeCheck.reason };
-  if (!isGovernedCatalogueCopyResponse(payload)) return { ok: false, reason: "AI response could not be parsed as structured content." };
+  if (!isGovernedCatalogueCopyResponse(payload))
+    return { ok: false, reason: "AI response could not be parsed as structured content." };
 
   const multilingualEnvelopeCheck = validateProviderMultilingualEnvelope(payload);
-  if (multilingualEnvelopeCheck.ok === false) return { ok: false, reason: multilingualEnvelopeCheck.reason };
+  if (multilingualEnvelopeCheck.ok === false)
+    return { ok: false, reason: multilingualEnvelopeCheck.reason };
   if ((payload as Record<string, unknown>).source_version !== GOVERNED_NAMING_PROMPT_VERSION) {
     return { ok: false, reason: "Multilingual response used an unexpected source_version." };
   }
