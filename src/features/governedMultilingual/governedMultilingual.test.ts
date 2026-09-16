@@ -305,25 +305,29 @@ describe("mockMultilingualProvider", () => {
   it("returns locale-consistent Arabic and Turkish mock drafts", () => {
     const arabic = mockMultilingualProvider(BASE_SOURCE, "ok", "ar");
     expect(arabic.parseResult.ok).toBe(true);
-    expect(arabic.envelope.locale).toBe("ar");
-    expect(arabic.envelope.suggestions).toEqual([
-      {
-        kind: "regional_term",
-        locale: "ar",
-        value: "مسودة عربية للمراجعة — يلزم نص مصدر معتمد.",
-      },
-    ]);
+    expect(arabic.envelope).toMatchObject({
+      locale: "ar",
+      suggestions: [
+        {
+          kind: "regional_term",
+          locale: "ar",
+          value: "مسودة عربية للمراجعة — يلزم نص مصدر معتمد.",
+        },
+      ],
+    });
 
     const turkish = mockMultilingualProvider(BASE_SOURCE, "ok", "tr");
     expect(turkish.parseResult.ok).toBe(true);
-    expect(turkish.envelope.locale).toBe("tr");
-    expect(turkish.envelope.suggestions).toEqual([
-      {
-        kind: "regional_term",
-        locale: "tr",
-        value: "İnceleme için Türkçe taslak — onaylı kaynak metin gerekli.",
-      },
-    ]);
+    expect(turkish.envelope).toMatchObject({
+      locale: "tr",
+      suggestions: [
+        {
+          kind: "regional_term",
+          locale: "tr",
+          value: "İnceleme için Türkçe taslak — onaylı kaynak metin gerekli.",
+        },
+      ],
+    });
   });
 
   it("fails on missing review marker", () => {
