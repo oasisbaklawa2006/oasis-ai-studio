@@ -94,9 +94,9 @@ describe("Point50 governed channel copy", () => {
     const generated = buildHeuristicChannelSuggestions(SOURCE);
     expect(generated.ok).toBe(true);
     if (!generated.ok) return;
-    expect(validateGovernedChannelCopy(channelSuggestionsToContent(generated.suggestions), SOURCE).ok).toBe(
-      true,
-    );
+    expect(
+      validateGovernedChannelCopy(channelSuggestionsToContent(generated.suggestions), SOURCE).ok,
+    ).toBe(true);
   });
 
   it("never performs WhatsApp send or publication actions", () => {
