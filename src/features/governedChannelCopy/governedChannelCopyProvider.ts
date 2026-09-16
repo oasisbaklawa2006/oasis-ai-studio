@@ -23,13 +23,17 @@ export function buildAuthoritativeChannelSource(
 export function mockChannelCopyProvider(
   source: AuthoritativeChannelSource,
   scenario: MockChannelCopyScenario = "ok",
-): { envelope: Record<string, unknown>; parseResult: ReturnType<typeof validateGovernedChannelCopy> } {
+): {
+  envelope: Record<string, unknown>;
+  parseResult: ReturnType<typeof validateGovernedChannelCopy>;
+} {
   const generated = buildHeuristicChannelSuggestions(source);
   if (generated.ok === false) {
     return { envelope: { ok: false }, parseResult: { ok: false, reason: generated.reason } };
   }
   const content = channelSuggestionsToContent(generated.suggestions);
-  if (scenario === "invented_price") content.whatsapp_product_message = `${source.product_name} — ₹99999`;
+  if (scenario === "invented_price")
+    content.whatsapp_product_message = `${source.product_name} — ₹99999`;
   if (scenario === "unapproved_compliance_claim") {
     content.storage_shelf_life_copy = `${source.product_name}. FSSAI approved organic certified.`;
   }
