@@ -4,6 +4,7 @@ import {
   buildHeuristicChannelSuggestions,
   CHANNEL_COPY_CHARACTER_LIMITS,
   channelSuggestionsToContent,
+  GOVERNED_CHANNEL_COPY_PROMPT_VERSION,
   truncateChannelCopySafely,
   validateGovernedChannelCopy,
   validateProviderChannelEnvelope,
@@ -32,7 +33,7 @@ const VALID_PROVIDER_ENVELOPE = {
   suggestion_only: true,
   approved: false,
   source_version: GOVERNED_NAMING_PROMPT_VERSION,
-  channel_prompt_version: "point50-v1",
+  channel_prompt_version: GOVERNED_CHANNEL_COPY_PROMPT_VERSION,
 };
 
 describe("Point50 governed channel copy", () => {
@@ -60,25 +61,28 @@ describe("Point50 governed channel copy", () => {
   });
 
   it("rejects invented prices", () => {
-    const result = mockChannelCopyProvider(SOURCE, "invented_price");
-    expect(result.parseResult.ok).toBe(false);
+    expect(mockChannelCopyProvider(SOURCE, "invented_price").parseResult.ok).toBe(false);
   });
 
   it("rejects unapproved compliance claims", () => {
-    const result = mockChannelCopyProvider(SOURCE, "unapproved_compliance_claim");
-    expect(result.parseResult.ok).toBe(false);
+    expect(mockChannelCopyProvider(SOURCE, "unapproved_compliance_claim").parseResult.ok).toBe(false);
   });
 
   it("requires exact human-review provider markers", () => {
-    const result = mockChannelCopyProvider(SOURCE, "missing_review_marker");
-    expect(result.parseResult.ok).toBe(false);
+    expect(mockChannelCopyProvider(SOURCE, "missing_review_marker").parseResult.ok).toBe(false);
     expect(validateProviderChannelEnvelope(VALID_PROVIDER_ENVELOPE).ok).toBe(true);
-
     for (const key of ["human_review_required", "suggestion_only", "approved"] as const) {
       const malformed = { ...VALID_PROVIDER_ENVELOPE } as Record<string, unknown>;
       delete malformed[key];
       expect(validateProviderChannelEnvelope(malformed).ok).toBe(false);
     }
+  });
+
+  it("rejects stale provider contract versions", () => {
+    expect(validateProviderChannelEnvelope({ ...VALID_PROVIDER_ENVELOPE, source_version: "stale" }).ok).toBe(false);
+    expect(
+      validateProviderChannelEnvelope({ ...VALID_PROVIDER_ENVELOPE, channel_prompt_version: "stale" }).ok,
+    ).toBe(false);
   });
 
   it("fails closed on provider content above channel limits", () => {
@@ -102,18 +106,14 @@ describe("Point50 governed channel copy", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value).toContain(SOURCE.product_name);
-    expect(result.value.length).toBeLessThanOrEqual(
-      CHANNEL_COPY_CHARACTER_LIMITS.whatsapp_product_message,
-    );
+    expect(result.value.length).toBeLessThanOrEqual(CHANNEL_COPY_CHARACTER_LIMITS.whatsapp_product_message);
   });
 
   it("validates a complete generated channel payload", () => {
     const generated = buildHeuristicChannelSuggestions(SOURCE);
     expect(generated.ok).toBe(true);
     if (!generated.ok) return;
-    expect(
-      validateGovernedChannelCopy(channelSuggestionsToContent(generated.suggestions), SOURCE).ok,
-    ).toBe(true);
+    expect(validateGovernedChannelCopy(channelSuggestionsToContent(generated.suggestions), SOURCE).ok).toBe(true);
   });
 
   it("never performs WhatsApp send or publication actions", () => {
