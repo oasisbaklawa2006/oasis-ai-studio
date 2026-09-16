@@ -252,13 +252,30 @@ describe("validateProviderMultilingualEnvelope", () => {
 
   it("requires exact review markers and a non-empty string source_version", () => {
     expect(validateProviderMultilingualEnvelope(validEnvelope).ok).toBe(true);
-    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, human_review_required: false }).ok).toBe(false);
-    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, suggestion_only: undefined }).ok).toBe(false);
-    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, suggestion_only: "true" }).ok).toBe(false);
-    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, approved: undefined }).ok).toBe(false);
-    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, approved: "false" }).ok).toBe(false);
-    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, source_version: { version: GOVERNED_NAMING_PROMPT_VERSION } }).ok).toBe(false);
-    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, source_version: 49 }).ok).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({ ...validEnvelope, human_review_required: false }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({ ...validEnvelope, suggestion_only: undefined }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderMultilingualEnvelope({ ...validEnvelope, suggestion_only: "true" }).ok,
+    ).toBe(false);
+    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, approved: undefined }).ok).toBe(
+      false,
+    );
+    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, approved: "false" }).ok).toBe(
+      false,
+    );
+    expect(
+      validateProviderMultilingualEnvelope({
+        ...validEnvelope,
+        source_version: { version: GOVERNED_NAMING_PROMPT_VERSION },
+      }).ok,
+    ).toBe(false);
+    expect(validateProviderMultilingualEnvelope({ ...validEnvelope, source_version: 49 }).ok).toBe(
+      false,
+    );
   });
 });
 
