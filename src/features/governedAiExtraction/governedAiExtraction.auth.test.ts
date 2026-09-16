@@ -65,11 +65,7 @@ describe("oasis-ai-chat authenticated alias enrichment", () => {
       text: async () => "data: [DONE]",
     });
 
-    await enrichFastCreateWithGovernedAi(
-      buildBaseSuggestions(),
-      "Pyramid Baklawa",
-      "baklawa",
-    );
+    await enrichFastCreateWithGovernedAi(buildBaseSuggestions(), "Pyramid Baklawa", "baklawa");
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
