@@ -65,7 +65,9 @@ describe("Point50 governed channel copy", () => {
   });
 
   it("rejects unapproved compliance claims", () => {
-    expect(mockChannelCopyProvider(SOURCE, "unapproved_compliance_claim").parseResult.ok).toBe(false);
+    expect(mockChannelCopyProvider(SOURCE, "unapproved_compliance_claim").parseResult.ok).toBe(
+      false,
+    );
   });
 
   it("requires exact human-review provider markers", () => {
@@ -79,9 +81,14 @@ describe("Point50 governed channel copy", () => {
   });
 
   it("rejects stale provider contract versions", () => {
-    expect(validateProviderChannelEnvelope({ ...VALID_PROVIDER_ENVELOPE, source_version: "stale" }).ok).toBe(false);
     expect(
-      validateProviderChannelEnvelope({ ...VALID_PROVIDER_ENVELOPE, channel_prompt_version: "stale" }).ok,
+      validateProviderChannelEnvelope({ ...VALID_PROVIDER_ENVELOPE, source_version: "stale" }).ok,
+    ).toBe(false);
+    expect(
+      validateProviderChannelEnvelope({
+        ...VALID_PROVIDER_ENVELOPE,
+        channel_prompt_version: "stale",
+      }).ok,
     ).toBe(false);
   });
 
@@ -106,14 +113,18 @@ describe("Point50 governed channel copy", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value).toContain(SOURCE.product_name);
-    expect(result.value.length).toBeLessThanOrEqual(CHANNEL_COPY_CHARACTER_LIMITS.whatsapp_product_message);
+    expect(result.value.length).toBeLessThanOrEqual(
+      CHANNEL_COPY_CHARACTER_LIMITS.whatsapp_product_message,
+    );
   });
 
   it("validates a complete generated channel payload", () => {
     const generated = buildHeuristicChannelSuggestions(SOURCE);
     expect(generated.ok).toBe(true);
     if (!generated.ok) return;
-    expect(validateGovernedChannelCopy(channelSuggestionsToContent(generated.suggestions), SOURCE).ok).toBe(true);
+    expect(
+      validateGovernedChannelCopy(channelSuggestionsToContent(generated.suggestions), SOURCE).ok,
+    ).toBe(true);
   });
 
   it("never performs WhatsApp send or publication actions", () => {
