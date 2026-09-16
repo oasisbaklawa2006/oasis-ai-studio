@@ -81,6 +81,9 @@ export function validateChannelCopyText(
   source: AuthoritativeChannelSource,
 ): { ok: true } | { ok: false; reason: string } {
   if (!hasText(text)) return { ok: false, reason: `${key} is empty.` };
+  if (text.trim().length > CHANNEL_COPY_CHARACTER_LIMITS[key]) {
+    return { ok: false, reason: `${key} exceeds its character limit.` };
+  }
   const naming = validateNamingText(text, source);
   if (naming.ok === false) return naming;
   const drift = detectChannelFactualDrift(text, source);
@@ -255,7 +258,7 @@ export function validateProviderChannelEnvelope(
   if (row.ok !== true || row.human_review_required !== true) {
     return { ok: false, reason: "Channel-copy response is not review-governed." };
   }
-  if (row.suggestion_only === false || row.approved === true) {
+  if (row.suggestion_only !== true || row.approved !== false) {
     return { ok: false, reason: "Channel-copy response attempted to bypass human review." };
   }
   if (typeof row.source_version !== "string" || !row.source_version.trim()) {
