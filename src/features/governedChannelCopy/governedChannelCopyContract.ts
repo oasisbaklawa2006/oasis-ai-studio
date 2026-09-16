@@ -1,13 +1,13 @@
 import type { CatalogueDraftContent } from "@/features/catalogueAiStudio/catalogueDraftTypes";
+import { validateMultilingualSource } from "@/features/governedMultilingual";
 import {
   GOVERNED_NAMING_PROMPT_VERSION,
   validateNamingText,
 } from "@/features/governedProductNaming";
-import { validateMultilingualSource } from "@/features/governedMultilingual";
 import {
+  type AuthoritativeChannelSource,
   CHANNEL_KEY_TO_CHANNEL,
   GOVERNED_CHANNEL_COPY_KEYS,
-  type AuthoritativeChannelSource,
   type GovernedChannelCopyKey,
   type GovernedChannelCopyResult,
   type GovernedChannelCopyValidationResult,
@@ -122,8 +122,11 @@ function generateRaw(key: GovernedChannelCopyKey, source: AuthoritativeChannelSo
   const name = source.product_name.trim();
   switch (key) {
     case "b2b_sales_copy": {
-      const price = hasNumber(source.b2b_price) ? `B2B base ₹${source.b2b_price}` : "B2B price pending";
-      const unit = hasText(source.b2b_uom) && hasNumber(source.b2b_price) ? `/${source.b2b_uom.trim()}` : "";
+      const price = hasNumber(source.b2b_price)
+        ? `B2B base ₹${source.b2b_price}`
+        : "B2B price pending";
+      const unit =
+        hasText(source.b2b_uom) && hasNumber(source.b2b_price) ? `/${source.b2b_uom.trim()}` : "";
       const minimum = moq(source);
       return `${name} — ${price}${unit}.${minimum ? ` MOQ: ${minimum}.` : " MOQ pending."}`;
     }
@@ -211,7 +214,13 @@ export function buildHeuristicChannelSuggestions(
     }
     suggestions.push(suggestion(key, truncation.value, source, truncation.truncated));
   }
-  return { ok: true, suggestion_only: true, approved: false, human_review_required: true, suggestions };
+  return {
+    ok: true,
+    suggestion_only: true,
+    approved: false,
+    human_review_required: true,
+    suggestions,
+  };
 }
 
 export function channelSuggestionsToContent(
@@ -240,7 +249,8 @@ export function validateGovernedChannelCopy(
 export function validateProviderChannelEnvelope(
   payload: unknown,
 ): { ok: true } | { ok: false; reason: string } {
-  if (!payload || typeof payload !== "object") return { ok: false, reason: "Invalid channel-copy envelope." };
+  if (!payload || typeof payload !== "object")
+    return { ok: false, reason: "Invalid channel-copy envelope." };
   const row = payload as Record<string, unknown>;
   if (row.ok !== true || row.human_review_required !== true) {
     return { ok: false, reason: "Channel-copy response is not review-governed." };
