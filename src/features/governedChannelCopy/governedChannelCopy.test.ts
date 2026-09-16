@@ -26,6 +26,15 @@ const SOURCE = {
   storage_instructions: "Store in a cool dry place",
 };
 
+const VALID_PROVIDER_ENVELOPE = {
+  ok: true,
+  human_review_required: true,
+  suggestion_only: true,
+  approved: false,
+  source_version: GOVERNED_NAMING_PROMPT_VERSION,
+  channel_prompt_version: "point50-v1",
+};
+
 describe("Point50 governed channel copy", () => {
   it("generates all governed channels as review-only suggestions", () => {
     const result = buildHeuristicChannelSuggestions(SOURCE);
@@ -60,19 +69,27 @@ describe("Point50 governed channel copy", () => {
     expect(result.parseResult.ok).toBe(false);
   });
 
-  it("requires human-review provider markers", () => {
+  it("requires exact human-review provider markers", () => {
     const result = mockChannelCopyProvider(SOURCE, "missing_review_marker");
     expect(result.parseResult.ok).toBe(false);
-    expect(
-      validateProviderChannelEnvelope({
-        ok: true,
-        human_review_required: true,
-        suggestion_only: true,
-        approved: false,
-        source_version: GOVERNED_NAMING_PROMPT_VERSION,
-        channel_prompt_version: "point50-v1",
-      }).ok,
-    ).toBe(true);
+    expect(validateProviderChannelEnvelope(VALID_PROVIDER_ENVELOPE).ok).toBe(true);
+
+    for (const key of ["human_review_required", "suggestion_only", "approved"] as const) {
+      const malformed = { ...VALID_PROVIDER_ENVELOPE } as Record<string, unknown>;
+      delete malformed[key];
+      expect(validateProviderChannelEnvelope(malformed).ok).toBe(false);
+    }
+  });
+
+  it("fails closed on provider content above channel limits", () => {
+    const generated = buildHeuristicChannelSuggestions(SOURCE);
+    expect(generated.ok).toBe(true);
+    if (!generated.ok) return;
+    const content = channelSuggestionsToContent(generated.suggestions);
+    content.whatsapp_product_message = `${SOURCE.product_name} ${"x".repeat(
+      CHANNEL_COPY_CHARACTER_LIMITS.whatsapp_product_message,
+    )}`;
+    expect(validateGovernedChannelCopy(content, SOURCE).ok).toBe(false);
   });
 
   it("fails closed on a stale source version", () => {
