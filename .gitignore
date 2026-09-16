@@ -27,6 +27,9 @@ public/tesseract/
 .env.production
 .env.*.local
 
+# Supabase CLI local version-check cache (created when running `supabase` here)
+supabase/.temp/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
