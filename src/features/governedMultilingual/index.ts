@@ -1,0 +1,35 @@
+export {
+  buildHeuristicMultilingualSuggestions,
+  detectWrongLanguagePresentation,
+  GOVERNED_MULTILINGUAL_DISCLAIMER,
+  GOVERNED_MULTILINGUAL_PROMPT_VERSION,
+  governedAliasSeedsFromSource,
+  PENDING_HINDI_DESCRIPTION_MARKER,
+  PENDING_SELLING_POINT_MARKER,
+  resolveLocale,
+  resolveSellingPointForLocale,
+  resolveTemplateHindiDescription,
+  serializeMultilingualSuggestions,
+  validateGovernedHindiDescription,
+  validateMultilingualSource,
+  validateMultilingualText,
+  validateProviderMultilingualEnvelope,
+} from "./governedMultilingualContract";
+export {
+  buildAuthoritativeMultilingualSource,
+  type MockMultilingualScenario,
+  mockMultilingualProvider,
+} from "./governedMultilingualProvider";
+export {
+  type AuthoritativeMultilingualSource,
+  type GovernedMultilingualFieldSuggestion,
+  type GovernedMultilingualProvenance,
+  type GovernedMultilingualSuggestionResult,
+  type LocaleResolutionResult,
+  MULTILINGUAL_LOCALE_SCRIPTS,
+  type MultilingualAvailability,
+  type MultilingualLocaleCode,
+  type MultilingualReviewStatus,
+  type MultilingualSuggestionKind,
+  SUPPORTED_MULTILINGUAL_LOCALES,
+} from "./types";

@@ -7,6 +7,11 @@
  */
 
 import {
+  validateGovernedHindiDescription,
+  validateProviderMultilingualEnvelope,
+} from "@/features/governedMultilingual";
+import {
+  GOVERNED_NAMING_PROMPT_VERSION,
   validateGovernedCatalogueCopy,
   validateProviderReviewEnvelope,
 } from "@/features/governedProductNaming";
@@ -213,23 +218,49 @@ export async function generateCatalogueContentDraft(
 
   const payload = await resp.json().catch(() => null);
   const envelopeCheck = validateProviderReviewEnvelope(payload);
-  if (!envelopeCheck.ok) {
+  if (envelopeCheck.ok === false) {
     return { ok: false, reason: envelopeCheck.reason };
   }
   if (!isGovernedCatalogueCopyResponse(payload)) {
     return { ok: false, reason: "AI response could not be parsed as structured content." };
   }
+
+  const multilingualEnvelopeCheck = validateProviderMultilingualEnvelope(payload);
+  if (multilingualEnvelopeCheck.ok === false) {
+    return { ok: false, reason: multilingualEnvelopeCheck.reason };
+  }
+  if ((payload as Record<string, unknown>).source_version !== GOVERNED_NAMING_PROMPT_VERSION) {
+    return {
+      ok: false,
+      reason: "Multilingual response used an unexpected source_version.",
+    };
+  }
+
   const schemaCheck = validateAiCatalogueContent(payload.content);
-  if (!schemaCheck.ok) return schemaCheck;
+  if (schemaCheck.ok === false) {
+    return { ok: false, reason: schemaCheck.reason };
+  }
   const groundingCheck = validateGovernedCatalogueCopy(schemaCheck.content, {
     product_name: facts.productName,
     category: facts.category,
     subcategory: facts.subcategory,
     pack_size: facts.packSize,
   });
-  if (!groundingCheck.ok) {
+  if (groundingCheck.ok === false) {
     return { ok: false, reason: groundingCheck.reason };
   }
+
+  const hindiCheck = validateGovernedHindiDescription(groundingCheck.content.hindi_description, {
+    product_name: facts.productName,
+    category: facts.category,
+    subcategory: facts.subcategory,
+    pack_size: facts.packSize,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+  });
+  if (hindiCheck.ok === false) {
+    return { ok: false, reason: hindiCheck.reason };
+  }
+
   const provenance = extractInferenceProvenanceFromPayload(payload, {
     service: CATALOGUE_AI_COPY_SERVICE,
     human_review_required: true,
@@ -237,5 +268,12 @@ export async function generateCatalogueContentDraft(
     provider_status: "ok",
     fail_closed: false,
   });
-  return { ok: true, content: groundingCheck.content, provenance };
+  return {
+    ok: true,
+    content: {
+      ...groundingCheck.content,
+      hindi_description: hindiCheck.value,
+    },
+    provenance,
+  };
 }
