@@ -28,6 +28,7 @@ export const CHANNEL_COPY_CHARACTER_LIMITS: Record<GovernedChannelCopyKey, numbe
 const LEGAL_CLAIM_PATTERN =
   /\b(fssai approved|fda approved|organic certified|halal certified|kosher certified|gmp certified|iso \d+)\b/i;
 const PRICE_PATTERN = /₹\s*([\d,.]+)/g;
+const SHELF_LIFE_PATTERN = /\bshelf[\s-]*life\s*:?\s*(\d+)\s*days?\b/gi;
 
 function hasText(value: string | null | undefined): value is string {
   return typeof value === "string" && value.trim().length > 0;
@@ -35,6 +36,20 @@ function hasText(value: string | null | undefined): value is string {
 
 function hasNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function normalizeFactText(value: string): string {
+  return value
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function shelfLifeClaims(text: string): number[] {
+  return [...text.matchAll(SHELF_LIFE_PATTERN)]
+    .map((match) => Number(match[1]))
+    .filter((value) => Number.isFinite(value));
 }
 
 export function validateChannelSource(
@@ -70,7 +85,41 @@ export function detectChannelFactualDrift(
     if (!Number.isFinite(parsed) || !allowed.has(parsed))
       reasons.push(`invented price: ${match[0]}`);
   }
+
+  const shelfClaims = shelfLifeClaims(text);
+  for (const claim of shelfClaims) {
+    if (!hasNumber(source.shelf_life_days) || claim !== source.shelf_life_days) {
+      reasons.push(`shelf-life drift: ${claim} days`);
+    }
+  }
+
+  if (hasText(source.storage_instructions) && /\b(store|storage)\b/i.test(text)) {
+    const authoritativeStorage = normalizeFactText(source.storage_instructions);
+    if (!normalizeFactText(text).includes(authoritativeStorage)) {
+      reasons.push("storage instructions differ from authoritative source");
+    }
+  }
+
   return reasons;
+}
+
+function validateAuthoritativeStorageCopy(
+  text: string,
+  source: AuthoritativeChannelSource,
+): { ok: true } | { ok: false; reason: string } {
+  if (hasNumber(source.shelf_life_days)) {
+    const claims = shelfLifeClaims(text);
+    if (!claims.includes(source.shelf_life_days)) {
+      return { ok: false, reason: "Storage copy must retain the authoritative shelf life." };
+    }
+  }
+  if (hasText(source.storage_instructions)) {
+    const authoritativeStorage = normalizeFactText(source.storage_instructions);
+    if (!normalizeFactText(text).includes(authoritativeStorage)) {
+      return { ok: false, reason: "Storage copy must retain authoritative storage instructions." };
+    }
+  }
+  return { ok: true };
 }
 
 export function validateChannelCopyText(
@@ -86,6 +135,10 @@ export function validateChannelCopyText(
   if (naming.ok === false) return naming;
   const drift = detectChannelFactualDrift(text, source);
   if (drift.length) return { ok: false, reason: drift.join("; ") };
+  if (key === "storage_shelf_life_copy") {
+    const authoritativeFacts = validateAuthoritativeStorageCopy(text, source);
+    if (authoritativeFacts.ok === false) return authoritativeFacts;
+  }
   if (key === "whatsapp_product_message" && !text.includes(source.product_name.trim())) {
     return { ok: false, reason: "WhatsApp draft must retain the approved product name." };
   }
