@@ -7,6 +7,11 @@
  */
 
 import {
+  buildAuthoritativeChannelSource,
+  validateGovernedChannelCopy,
+  validateProviderChannelEnvelope,
+} from "@/features/governedChannelCopy";
+import {
   validateGovernedHindiDescription,
   validateProviderMultilingualEnvelope,
 } from "@/features/governedMultilingual";
@@ -35,12 +40,6 @@ export interface CatalogueAiSourceFacts {
   shelfLifeDays?: number | null;
 }
 
-/**
- * Tone steers HOW the existing per-channel fields are written; it does not add new fields or
- * channels — the schema has one column per channel already (b2b_sales_copy, export_catalogue_copy,
- * whatsapp_product_message, catalogue_title/short/long_description), so a full channel/audience/tone
- * matrix would need new columns per variant, which is a schema change out of this PR's scope.
- */
 export const CATALOGUE_AI_TONES = [
   "Premium",
   "Informational",
@@ -49,7 +48,6 @@ export const CATALOGUE_AI_TONES = [
   "Technical",
 ] as const;
 export type CatalogueAiTone = (typeof CATALOGUE_AI_TONES)[number];
-
 const DEFAULT_TONE: CatalogueAiTone = "Informational";
 
 export function mapCatalogueAiTone(tone: CatalogueAiTone): "premium" | "warm" | "concise" {
@@ -58,11 +56,6 @@ export function mapCatalogueAiTone(tone: CatalogueAiTone): "premium" | "warm" | 
   return "warm";
 }
 
-/**
- * Structured-only prompt: the model is told exactly which facts it may use and instructed never to
- * invent price, ingredients, allergens, nutrition, tax/compliance, or shelf-life/storage specifics
- * beyond what's given here — those are separate, human-owned fields this studio never lets AI set.
- */
 export function buildCatalogueContentPrompt(
   facts: CatalogueAiSourceFacts,
   tone: CatalogueAiTone = DEFAULT_TONE,
@@ -76,7 +69,6 @@ export function buildCatalogueContentPrompt(
     `storage_instructions: ${facts.storageInstructions ?? "(not set)"}`,
     `shelf_life_days: ${facts.shelfLifeDays ?? "(not set)"}`,
   ].join("\n");
-
   return [
     "You are writing wholesale/retail catalogue marketing copy for a bakery/confectionery brand called Oasis.",
     `Write in a ${tone} tone throughout.`,
@@ -105,7 +97,6 @@ export function buildCatalogueContentPrompt(
 
 export { parseChatCompletionStreamText } from "@/shared/ai/chatCompletionStream";
 
-/** Strips markdown code fences and extracts the first top-level JSON object, if any. */
 export function extractJsonObject(text: string): unknown | null {
   const withoutFences = text.replace(/```(?:json)?/gi, "").trim();
   const start = withoutFences.indexOf("{");
@@ -122,14 +113,9 @@ export type CatalogueAiValidationResult =
   | { ok: true; content: CatalogueDraftContent }
   | { ok: false; reason: string };
 
-/**
- * Structured-schema validation (A3 requirement: AI output must pass validation before entering
- * editor state; raw/malformed output must never be displayed as if it were genuine content).
- */
 export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidationResult {
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
     return { ok: false, reason: "AI response was not a JSON object." };
-  }
   const row = parsed as Record<string, unknown>;
   const content = {} as CatalogueDraftContent;
   const missingOrInvalid: string[] = [];
@@ -141,12 +127,11 @@ export function validateAiCatalogueContent(parsed: unknown): CatalogueAiValidati
     }
     content[key as CatalogueDraftContentKey] = value.trim();
   }
-  if (missingOrInvalid.length > 0) {
+  if (missingOrInvalid.length > 0)
     return {
       ok: false,
       reason: `AI response was missing or had an invalid value for: ${missingOrInvalid.join(", ")}.`,
     };
-  }
   return { ok: true, content };
 }
 
@@ -154,11 +139,6 @@ export type CatalogueAiGenerationResult =
   | { ok: true; content: CatalogueDraftContent; provenance: InferenceOperationProvenance }
   | { ok: false; reason: string };
 
-/**
- * Calls the dedicated catalogue-ai-copy edge function and returns validated catalogue content, or a
- * truthful failure reason. Never throws — every failure path (missing config, network error,
- * non-2xx response, unparsable/invalid content) returns `{ ok: false, reason }`.
- */
 export async function generateCatalogueContentDraft(
   facts: CatalogueAiSourceFacts,
   tone: CatalogueAiTone = DEFAULT_TONE,
@@ -166,21 +146,18 @@ export async function generateCatalogueContentDraft(
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
   const enabled = import.meta.env.VITE_CATALOGUE_AI_ENABLED === "true";
-  if (!enabled) {
+  if (!enabled)
     return { ok: false, reason: "Governed AI generation is not enabled in this environment." };
-  }
-  if (!supabaseUrl || !anonKey) {
+  if (!supabaseUrl || !anonKey)
     return { ok: false, reason: "AI generation is not configured in this environment." };
-  }
 
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const accessToken = sessionData.session?.access_token;
-  if (sessionError || !accessToken) {
+  if (sessionError || !accessToken)
     return {
       ok: false,
       reason: "Sign in with an authorized internal account to use AI generation.",
     };
-  }
 
   let resp: Response;
   try {
@@ -208,47 +185,34 @@ export async function generateCatalogueContentDraft(
       reason: "Could not reach the AI generation service. Check connectivity and retry.",
     };
   }
-
-  if (!resp.ok) {
+  if (!resp.ok)
     return {
       ok: false,
       reason: `AI generation service returned an error (status ${resp.status}).`,
     };
-  }
 
   const payload = await resp.json().catch(() => null);
   const envelopeCheck = validateProviderReviewEnvelope(payload);
-  if (envelopeCheck.ok === false) {
-    return { ok: false, reason: envelopeCheck.reason };
-  }
-  if (!isGovernedCatalogueCopyResponse(payload)) {
+  if (envelopeCheck.ok === false) return { ok: false, reason: envelopeCheck.reason };
+  if (!isGovernedCatalogueCopyResponse(payload))
     return { ok: false, reason: "AI response could not be parsed as structured content." };
-  }
 
   const multilingualEnvelopeCheck = validateProviderMultilingualEnvelope(payload);
-  if (multilingualEnvelopeCheck.ok === false) {
+  if (multilingualEnvelopeCheck.ok === false)
     return { ok: false, reason: multilingualEnvelopeCheck.reason };
-  }
   if ((payload as Record<string, unknown>).source_version !== GOVERNED_NAMING_PROMPT_VERSION) {
-    return {
-      ok: false,
-      reason: "Multilingual response used an unexpected source_version.",
-    };
+    return { ok: false, reason: "Multilingual response used an unexpected source_version." };
   }
 
   const schemaCheck = validateAiCatalogueContent(payload.content);
-  if (schemaCheck.ok === false) {
-    return { ok: false, reason: schemaCheck.reason };
-  }
+  if (schemaCheck.ok === false) return { ok: false, reason: schemaCheck.reason };
   const groundingCheck = validateGovernedCatalogueCopy(schemaCheck.content, {
     product_name: facts.productName,
     category: facts.category,
     subcategory: facts.subcategory,
     pack_size: facts.packSize,
   });
-  if (groundingCheck.ok === false) {
-    return { ok: false, reason: groundingCheck.reason };
-  }
+  if (groundingCheck.ok === false) return { ok: false, reason: groundingCheck.reason };
 
   const hindiCheck = validateGovernedHindiDescription(groundingCheck.content.hindi_description, {
     product_name: facts.productName,
@@ -257,9 +221,30 @@ export async function generateCatalogueContentDraft(
     pack_size: facts.packSize,
     source_version: GOVERNED_NAMING_PROMPT_VERSION,
   });
-  if (hindiCheck.ok === false) {
-    return { ok: false, reason: hindiCheck.reason };
-  }
+  if (hindiCheck.ok === false) return { ok: false, reason: hindiCheck.reason };
+
+  const channelSource = buildAuthoritativeChannelSource({
+    product_name: facts.productName,
+    category: facts.category,
+    subcategory: facts.subcategory,
+    pack_size: facts.packSize,
+    source_version: GOVERNED_NAMING_PROMPT_VERSION,
+    shelf_life_days: facts.shelfLifeDays,
+    storage_instructions: facts.storageInstructions,
+  });
+  const channelCheck = validateGovernedChannelCopy(
+    {
+      b2b_sales_copy: groundingCheck.content.b2b_sales_copy,
+      export_catalogue_copy: groundingCheck.content.export_catalogue_copy,
+      whatsapp_product_message: groundingCheck.content.whatsapp_product_message,
+      storage_shelf_life_copy: groundingCheck.content.storage_shelf_life_copy,
+    },
+    channelSource,
+  );
+  if (channelCheck.ok === false) return { ok: false, reason: channelCheck.reason };
+
+  const channelEnvelopeCheck = validateProviderChannelEnvelope(payload);
+  if (channelEnvelopeCheck.ok === false) return { ok: false, reason: channelEnvelopeCheck.reason };
 
   const provenance = extractInferenceProvenanceFromPayload(payload, {
     service: CATALOGUE_AI_COPY_SERVICE,
@@ -270,10 +255,7 @@ export async function generateCatalogueContentDraft(
   });
   return {
     ok: true,
-    content: {
-      ...groundingCheck.content,
-      hindi_description: hindiCheck.value,
-    },
+    content: { ...groundingCheck.content, hindi_description: hindiCheck.value },
     provenance,
   };
 }
