@@ -70,6 +70,30 @@ describe("Point50 governed channel copy", () => {
     );
   });
 
+  it("rejects provider shelf-life drift from the authoritative source", () => {
+    const generated = buildHeuristicChannelSuggestions(SOURCE);
+    expect(generated.ok).toBe(true);
+    if (!generated.ok) return;
+    const content = channelSuggestionsToContent(generated.suggestions);
+    content.storage_shelf_life_copy = content.storage_shelf_life_copy.replace(
+      "Shelf life: 105 days",
+      "Shelf life: 9999 days",
+    );
+    expect(validateGovernedChannelCopy(content, SOURCE).ok).toBe(false);
+  });
+
+  it("rejects provider storage instructions that drift from the authoritative source", () => {
+    const generated = buildHeuristicChannelSuggestions(SOURCE);
+    expect(generated.ok).toBe(true);
+    if (!generated.ok) return;
+    const content = channelSuggestionsToContent(generated.suggestions);
+    content.storage_shelf_life_copy = content.storage_shelf_life_copy.replace(
+      SOURCE.storage_instructions,
+      "Store frozen below -18C",
+    );
+    expect(validateGovernedChannelCopy(content, SOURCE).ok).toBe(false);
+  });
+
   it("requires exact human-review provider markers", () => {
     expect(mockChannelCopyProvider(SOURCE, "missing_review_marker").parseResult.ok).toBe(false);
     expect(validateProviderChannelEnvelope(VALID_PROVIDER_ENVELOPE).ok).toBe(true);
