@@ -172,7 +172,10 @@ export async function saveFastCreateProduct(
     saleType: input.saleType,
   });
 
-  if (!form.product_class && input.saleType) {\n    form.product_class = productClassForSaleType(input.saleType);\n  }\n  if (!form.product_class) form.product_class = "bulk_loose_product";
+  if (!form.product_class && input.saleType) {
+    form.product_class = productClassForSaleType(input.saleType);
+  }
+  if (!form.product_class) form.product_class = "bulk_loose_product";
   if (!form.main_department) form.main_department = "ready_goods_store";
 
   const skuResult = await requireFastCreateSku(
