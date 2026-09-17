@@ -6,7 +6,7 @@ import {
 } from "@/features/fastCreate/fastCreateIntakeBarcode";
 import { getPersistableFastCreateAliases } from "@/features/governedAiExtraction/fastCreateEnrichment";
 import { assertMobileProductCreateSaveAllowed } from "@/features/mobileProductCreate";
-import type { SaleType } from "@/features/productAuthority/saleType";
+import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
 import {
   assertStructuredSkuForSave,
   skuPackagingSegment,
@@ -172,7 +172,7 @@ export async function saveFastCreateProduct(
     saleType: input.saleType,
   });
 
-  if (!form.product_class) form.product_class = "bulk_loose_product";
+  if (!form.product_class && input.saleType) {\n    form.product_class = productClassForSaleType(input.saleType);\n  }\n  if (!form.product_class) form.product_class = "bulk_loose_product";
   if (!form.main_department) form.main_department = "ready_goods_store";
 
   const skuResult = await requireFastCreateSku(
