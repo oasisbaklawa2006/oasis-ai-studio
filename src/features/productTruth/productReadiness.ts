@@ -157,11 +157,11 @@ function evalPackaging(input: ProductTruthInput): DimensionStatus {
     note = complete
       ? undefined
       : (nonPieceChainMessages[0] ?? "Qty per pack missing");
-  } else if (input.weightOnlySelling) {
+  } else if (input.weightOnlySelling || input.pieceOnlySelling) {
     complete = nonPieceChainMessages.length === 0;
     note = complete
       ? undefined
-      : (nonPieceChainMessages[0] ?? "Weight-based packaging hierarchy invalid");
+      : (nonPieceChainMessages[0] ?? "Intrinsic-unit packaging hierarchy invalid");
   } else {
     complete = chain.valid && !!(input.packaging?.piecesPerKg || input.packaging?.gramsPerPiece);
     note = complete ? undefined : (chain.messages[0] ?? "Packaging conversion rules incomplete");
@@ -320,6 +320,11 @@ export function productTruthInputFromForm(
   const weightOnlySelling =
     configuredSellingUoms.length > 0 &&
     configuredSellingUoms.every((uom) => isWeightBasedSelling(uom));
+  const pieceOnlySelling =
+    configuredSellingUoms.length > 0 &&
+    configuredSellingUoms.every((uom) =>
+      new Set(["pc", "pcs", "piece", "pieces"]).has(uom.trim().toLowerCase()),
+    );
   const primaryUomNormalized = String(primaryUom ?? "")
     .trim()
     .toLowerCase();
@@ -366,6 +371,7 @@ export function productTruthInputFromForm(
     },
     packBasedSelling: isPackBasedSelling(primaryUom ?? retailUom ?? null),
     weightOnlySelling,
+    pieceOnlySelling,
     weightDefinedPack,
     packagingHierarchyValidation: buildCanonicalPackagingHierarchy(form).validation,
   };
