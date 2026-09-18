@@ -154,9 +154,7 @@ function evalPackaging(input: ProductTruthInput): DimensionStatus {
     complete =
       nonPieceChainMessages.length === 0 &&
       (!!input.packaging?.pcsPerPack || !!input.weightDefinedPack);
-    note = complete
-      ? undefined
-      : (nonPieceChainMessages[0] ?? "Qty per pack missing");
+    note = complete ? undefined : (nonPieceChainMessages[0] ?? "Qty per pack missing");
   } else if (input.weightOnlySelling || input.pieceOnlySelling) {
     complete = nonPieceChainMessages.length === 0;
     note = complete
