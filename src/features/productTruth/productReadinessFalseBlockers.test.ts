@@ -56,17 +56,17 @@ describe("packaging dimension — pack-based selling", () => {
     expect(packaging?.note).toBe("Qty per pack missing");
   });
 
-  it("weight-based products still require pieces/kg or grams/piece", () => {
+  it("pure weight selling uses intrinsic kg conversion without pieces/kg", () => {
     const input = productTruthInputFromForm({
       ...MISR15_FORM,
       primary_uom: "kg",
-      retail_uom: "kg",
+      retail_uom: "grams",
       b2b_uom: "kg",
       pcs_per_pack: "",
     });
     const result = evaluateProductReadiness(input);
     const packaging = result.dimensions.find((d) => d.dimension === "packaging_status");
-    expect(packaging?.complete).toBe(false);
+    expect(packaging?.complete).toBe(true);
   });
 
   it("blocks packaging readiness on Point 33 zero-quantity hierarchy errors", () => {
