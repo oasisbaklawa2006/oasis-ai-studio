@@ -542,6 +542,7 @@ export function dbRowToProductForm(
     approximate_piece_weight_g: toBlank(weightPerPiece),
     pieces_per_kg:
       data.pieces_per_kg ??
+      data.pcs_per_kg ??
       (weightPerPiece ? Number((1000 / Number(weightPerPiece)).toFixed(2)) : ""),
     moq_value: toBlank(data.moq_value ?? data.moq ?? data.moq_packs),
     moq_uom: toBlank(data.moq_uom ?? data.primary_uom ?? data.uom),
