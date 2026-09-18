@@ -1,4 +1,3 @@
-import { LIVE_CENTRAL_WRITE_ENABLED, buildCentralSyncPreviewBundle } from "./centralSyncPayload";
 import {
   approveCatalogueVersion,
   createCatalogueVersionDraft,
@@ -9,8 +8,9 @@ import {
   recordSyncPreviewEvent,
   updateCatalogueVersionSnapshot,
 } from "./catalogueVersionStore";
+import { buildCentralSyncPreviewBundle, LIVE_CENTRAL_WRITE_ENABLED } from "./centralSyncPayload";
 import { generateCatalogueSnapshot } from "./snapshotGenerator";
-import { validateSnapshotGate, validateSnapshotGateWithMedia } from "./snapshotValidation";
+import { validateSnapshotGateWithMedia } from "./snapshotValidation";
 import type {
   CatalogueSnapshotJson,
   CatalogueVersionRow,
@@ -165,4 +165,4 @@ export async function approveAndPreviewCentralSync(
   };
 }
 
-export { listCatalogueVersions, listSyncPreviewEvents, LIVE_CENTRAL_WRITE_ENABLED };
+export { LIVE_CENTRAL_WRITE_ENABLED, listCatalogueVersions, listSyncPreviewEvents };
