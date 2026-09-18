@@ -6,9 +6,9 @@ import {
 import { mapMoqRules, mapPricingRules } from "@/features/productTruth/channelAuthorityMappers";
 import { supabase } from "@/integrations/supabase/client";
 import { getAliasText } from "@/lib/aliasDisplay";
-import { queryProductAliasesForProducts } from "@/lib/aliasSchemaAdapter";
+import { queryProductAliasesForProductsResult } from "@/lib/aliasSchemaAdapter";
 import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
-import { previewCentralSync } from "./centralSyncPreviewService";
+import { prepareCatalogueVersionDraft } from "./centralSyncPreviewService";
 import type { SnapshotGeneratorInput } from "./types";
 
 export type BulkCatalogueDraftFailure = {
@@ -83,13 +83,16 @@ export async function prepareMissingCatalogueVersionDrafts(args?: {
   const products = productsResult.products;
   const missingIds = productIdsMissingImmutableVersion(
     products,
-    authority.catalogueApprovedByProduct,
+    authority.catalogueImmutableByProduct,
   );
   const missingSet = new Set(missingIds);
   const missingProducts = products.filter((product) => missingSet.has(product.id));
 
-  const aliasRows = await queryProductAliasesForProducts(supabase, missingIds);
-  const aliasesByProduct = groupAliasRows(aliasRows);
+  const aliasResult = await queryProductAliasesForProductsResult(supabase, missingIds);
+  if (aliasResult.error) {
+    throw new Error(`PRODUCT_ALIAS_AUTHORITY_UNAVAILABLE:${aliasResult.error.message}`);
+  }
+  const aliasesByProduct = groupAliasRows(aliasResult.data);
 
   let prepared = 0;
   const failures: BulkCatalogueDraftFailure[] = [];
@@ -111,7 +114,7 @@ export async function prepareMissingCatalogueVersionDrafts(args?: {
         languageAliasRows: aliasesByProduct[productId] ?? [],
         approvedBy: args?.preparedBy ?? null,
       };
-      await previewCentralSync(input);
+      await prepareCatalogueVersionDraft(input);
       prepared += 1;
     } catch (error) {
       failures.push({
