@@ -3,14 +3,11 @@ import {
   fetchProductAuthorityBundle,
   fetchProductsForMasterList,
 } from "@/features/productMaster/productListFetch";
-import {
-  mapMoqRules,
-  mapPricingRules,
-} from "@/features/productTruth/channelAuthorityMappers";
-import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
-import { queryProductAliasesForProducts } from "@/lib/aliasSchemaAdapter";
-import { getAliasText } from "@/lib/aliasDisplay";
+import { mapMoqRules, mapPricingRules } from "@/features/productTruth/channelAuthorityMappers";
 import { supabase } from "@/integrations/supabase/client";
+import { getAliasText } from "@/lib/aliasDisplay";
+import { queryProductAliasesForProducts } from "@/lib/aliasSchemaAdapter";
+import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 import { previewCentralSync } from "./centralSyncPreviewService";
 import type { SnapshotGeneratorInput } from "./types";
 
@@ -31,9 +28,7 @@ export function productIdsMissingImmutableVersion(
   products: Array<{ id: string }>,
   catalogueApprovedByProduct: Record<string, boolean>,
 ): string[] {
-  return products
-    .map((product) => product.id)
-    .filter((id) => !catalogueApprovedByProduct[id]);
+  return products.map((product) => product.id).filter((id) => !catalogueApprovedByProduct[id]);
 }
 
 function groupAliasRows(
@@ -43,9 +38,7 @@ function groupAliasRows(
   for (const row of rows) {
     const productId = String(row.product_id ?? "").trim();
     if (!productId) continue;
-    const alias = getAliasText(
-      row as { alias?: string | null; alias_text?: string | null },
-    );
+    const alias = getAliasText(row as { alias?: string | null; alias_text?: string | null });
     if (!alias) continue;
     const bucket = grouped[productId] ?? [];
     bucket.push({
@@ -53,8 +46,7 @@ function groupAliasRows(
       alias,
       alias_text: typeof row.alias_text === "string" ? row.alias_text : null,
       product_id: productId,
-      canonical_name:
-        typeof row.canonical_name === "string" ? row.canonical_name : null,
+      canonical_name: typeof row.canonical_name === "string" ? row.canonical_name : null,
       alias_type: typeof row.alias_type === "string" ? row.alias_type : null,
     });
     grouped[productId] = bucket;
