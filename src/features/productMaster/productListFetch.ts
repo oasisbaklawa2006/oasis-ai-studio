@@ -23,6 +23,7 @@ export type ProductAuthorityBundleResult = {
   pricingByProduct: Record<string, PricingRuleRow[]>;
   moqByProduct: Record<string, MoqRuleRow[]>;
   catalogueApprovedByProduct: Record<string, boolean>;
+  catalogueImmutableByProduct: Record<string, boolean>;
   labelRows: ProductLabelBarcodeRow[];
   hadErrors: boolean;
 };
@@ -49,6 +50,38 @@ export async function fetchActiveProductIdsForSearch(): Promise<Set<string> | nu
     if (productVisibleInActiveView(row)) ids.add(row.id);
   }
   return ids;
+}
+
+export function catalogueVersionAuthorityMaps(
+  rows: Array<{
+    product_id: string | null;
+    status: string | null;
+    version_number: number | null;
+  }>,
+): {
+  headImmutableByProduct: Record<string, boolean>;
+  anyImmutableByProduct: Record<string, boolean>;
+} {
+  const headImmutableByProduct: Record<string, boolean> = {};
+  const anyImmutableByProduct: Record<string, boolean> = {};
+
+  for (const row of rows) {
+    const productId = row.product_id;
+    if (!productId) continue;
+    const immutable = IMMUTABLE_VERSION_STATUSES.includes(
+      row.status as (typeof IMMUTABLE_VERSION_STATUSES)[number],
+    );
+    if (headImmutableByProduct[productId] === undefined) {
+      headImmutableByProduct[productId] = immutable;
+    }
+    if (immutable) {
+      anyImmutableByProduct[productId] = true;
+    } else if (anyImmutableByProduct[productId] === undefined) {
+      anyImmutableByProduct[productId] = false;
+    }
+  }
+
+  return { headImmutableByProduct, anyImmutableByProduct };
 }
 
 export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBundleResult> {
@@ -89,16 +122,13 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     if (r.approval_status === "approved") priceCounts[r.product_id].approved += 1;
   });
 
-  const approvedByProduct: Record<string, boolean> = {};
-  if (!versionsRes.error) {
-    for (const row of versionsRes.data ?? []) {
-      const pid = row.product_id as string | null;
-      if (!pid || approvedByProduct[pid] !== undefined) continue;
-      approvedByProduct[pid] = IMMUTABLE_VERSION_STATUSES.includes(
-        row.status as (typeof IMMUTABLE_VERSION_STATUSES)[number],
-      );
-    }
-  }
+  const { headImmutableByProduct, anyImmutableByProduct } = catalogueVersionAuthorityMaps(
+    (versionsRes.data ?? []) as Array<{
+      product_id: string | null;
+      status: string | null;
+      version_number: number | null;
+    }>,
+  );
 
   return {
     rules: rulesRes.data ?? [],
@@ -107,7 +137,8 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     mediaByProduct: groupRowsByProductId((mediaRes.data ?? []) as ProductMediaRow[]),
     pricingByProduct: groupRowsByProductId(pricingRows),
     moqByProduct: groupRowsByProductId(moqRows),
-    catalogueApprovedByProduct: approvedByProduct,
+    catalogueApprovedByProduct: headImmutableByProduct,
+    catalogueImmutableByProduct: anyImmutableByProduct,
     labelRows: [],
     hadErrors,
   };
