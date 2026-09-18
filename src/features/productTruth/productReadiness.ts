@@ -12,7 +12,10 @@ import {
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
-import { isPackBasedSelling } from "@/features/productAuthority/packLogic";
+import {
+  isPackBasedSelling,
+  isWeightBasedSelling,
+} from "@/features/productAuthority/packLogic";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { buildCanonicalPackagingHierarchy } from "./packagingHierarchyCanonical";
@@ -143,21 +146,38 @@ function evalPackaging(input: ProductTruthInput): DimensionStatus {
   }
 
   const chain = validateConversionRuleChain(input.packaging ?? {});
-  // Pack-based products (ready packs, boxes, jars) complete via pack contents —
-  // the chain's pcs ↔ kg requirement only applies to loose / weight-based selling.
-  const packChainMessages = chain.messages.filter((m) => !m.includes("pcs ↔ kg"));
-  const complete = input.packBasedSelling
-    ? packChainMessages.length === 0 && !!input.packaging?.pcsPerPack
-    : chain.valid && !!(input.packaging?.piecesPerKg || input.packaging?.gramsPerPiece);
+  // Standard kg/gram selling has an intrinsic conversion and needs no product-specific
+  // pcs/kg fact. Container packs can be piece-defined OR weight-defined; piece UOMs
+  // still require explicit piece truth and never borrow pack weight.
+  const nonPieceChainMessages = chain.messages.filter((m) => !m.includes("pcs ↔ kg"));
+  let complete = false;
+  let note: string | undefined;
+
+  if (input.packBasedSelling) {
+    complete =
+      nonPieceChainMessages.length === 0 &&
+      (!!input.packaging?.pcsPerPack || !!input.weightDefinedPack);
+    note = complete
+      ? undefined
+      : (nonPieceChainMessages[0] ?? "Qty per pack or governed pack weight missing");
+  } else if (input.weightOnlySelling) {
+    complete = nonPieceChainMessages.length === 0;
+    note = complete
+      ? undefined
+      : (nonPieceChainMessages[0] ?? "Weight-based packaging hierarchy invalid");
+  } else {
+    complete =
+      chain.valid && !!(input.packaging?.piecesPerKg || input.packaging?.gramsPerPiece);
+    note = complete
+      ? undefined
+      : (chain.messages[0] ?? "Packaging conversion rules incomplete");
+  }
+
   return {
     dimension: "packaging_status",
     badge: badgeFor(complete, { legacy: input.isLegacy }),
     complete,
-    note: complete
-      ? undefined
-      : input.packBasedSelling
-        ? (packChainMessages[0] ?? "Qty per pack missing")
-        : (chain.messages[0] ?? "Packaging conversion rules incomplete"),
+    note,
   };
 }
 
@@ -297,6 +317,28 @@ export function productTruthInputFromForm(
   const derivedStatus =
     opts?.derivedMediaStatus ?? deriveMediaStatusFromRows(mediaRows, { fallbackHeroUrl });
   const mediaContext = productMediaContextFromForm(form);
+  const primaryUom = (form.primary_uom as string) ?? null;
+  const retailUom = (form.retail_uom as string) ?? null;
+  const b2bUom = (form.b2b_uom as string) ?? null;
+  const configuredSellingUoms = [primaryUom, retailUom, b2bUom]
+    .map((uom) => String(uom ?? "").trim())
+    .filter(Boolean);
+  const weightOnlySelling =
+    configuredSellingUoms.length > 0 &&
+    configuredSellingUoms.every((uom) => isWeightBasedSelling(uom));
+  const primaryUomNormalized = String(primaryUom ?? "")
+    .trim()
+    .toLowerCase();
+  const packWeightG =
+    positiveNumOrNull(form.net_weight_g) ??
+    (() => {
+      const kg = positiveNumOrNull(form.primary_pack_weight_kg);
+      return kg == null ? null : kg * 1000;
+    })();
+  const weightDefinedPack =
+    new Set(["pack", "box", "tray", "jar", "tin", "pouch", "bag", "carton"]).has(
+      primaryUomNormalized,
+    ) && packWeightG != null;
 
   return {
     productId: (form.id as string) ?? null,
@@ -309,9 +351,9 @@ export function productTruthInputFromForm(
     ingredients: (form.ingredients as string) ?? null,
     complianceApproved: opts?.complianceApproved ?? false,
     complianceMetaPending: opts?.complianceMetaPending ?? false,
-    primaryUom: (form.primary_uom as string) ?? null,
-    retailUom: (form.retail_uom as string) ?? null,
-    b2bUom: (form.b2b_uom as string) ?? null,
+    primaryUom,
+    retailUom,
+    b2bUom,
     mainDepartment: (form.main_department as string) ?? null,
     productionDepartment: (form.production_department as string) ?? null,
     bomRequired: !!form.bom_required,
@@ -328,9 +370,9 @@ export function productTruthInputFromForm(
         positiveNumOrNull(form.b2b_price_inr),
       exportPrice: positiveNumOrNull(form.export_price),
     },
-    packBasedSelling: isPackBasedSelling(
-      (form.primary_uom as string) ?? (form.retail_uom as string) ?? null,
-    ),
+    packBasedSelling: isPackBasedSelling(primaryUom ?? retailUom ?? null),
+    weightOnlySelling,
+    weightDefinedPack,
     packagingHierarchyValidation: buildCanonicalPackagingHierarchy(form).validation,
   };
 }
