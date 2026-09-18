@@ -38,6 +38,8 @@ import {
   productDisplayName,
 } from "@/features/productMaster/productListModel";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
+import { useAuth } from "@/contexts/AuthContext";
+import { prepareMissingCatalogueVersionDrafts } from "@/features/catalogueSnapshot/bulkDraftPreparation";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose" },
@@ -108,6 +110,7 @@ const deptSummary = (p: any): string | null => {
 };
 
 const Products = () => {
+  const { user, roles } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [results, setResults] = useState<ProductSearchResult[] | null>(null);
   const [searchBasicFallback, setSearchBasicFallback] = useState(false);
@@ -146,6 +149,35 @@ const Products = () => {
   const [authorityReady, setAuthorityReady] = useState(false);
   const [readinessUnavailable, setReadinessUnavailable] = useState(false);
   const [productsLoadError, setProductsLoadError] = useState<string | null>(null);
+  const [bulkDraftPreparing, setBulkDraftPreparing] = useState(false);
+
+  const canPrepareCatalogueDrafts = roles.some((role) =>
+    ["owner", "admin", "product_manager", "catalogue_manager"].includes(role),
+  );
+
+  const prepareCatalogueDrafts = async () => {
+    if (bulkDraftPreparing || !canPrepareCatalogueDrafts) return;
+    setBulkDraftPreparing(true);
+    try {
+      const result = await prepareMissingCatalogueVersionDrafts({
+        preparedBy: user?.id ?? user?.email ?? null,
+      });
+      if (result.failed > 0) {
+        toast.warning(
+          `Prepared ${result.prepared}/${result.eligible} catalogue drafts; ${result.failed} failed. Review Product Truth blockers before approval.`,
+        );
+      } else {
+        toast.success(
+          `Prepared ${result.prepared} missing catalogue drafts. Immutable approvals were not changed.`,
+        );
+      }
+      reloadProducts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Bulk draft preparation failed");
+    } finally {
+      setBulkDraftPreparing(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -273,7 +305,18 @@ const Products = () => {
         title="Product Master"
         subtitle="The single source of truth for every Oasis product."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {canPrepareCatalogueDrafts && (
+              <Button
+                variant="outline"
+                onClick={() => void prepareCatalogueDrafts()}
+                disabled={!authorityReady || bulkDraftPreparing}
+                title="Create or refresh mutable catalogue-version drafts only; never auto-approves"
+              >
+                <Layers className="h-4 w-4 mr-1" />
+                {bulkDraftPreparing ? "Preparing drafts…" : "Prepare missing drafts"}
+              </Button>
+            )}
             <Button asChild variant="default">
               <Link to="/products/new/fast"><Zap className="h-4 w-4 mr-1" />Fast Create</Link>
             </Button>
