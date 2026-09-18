@@ -12,10 +12,7 @@ import {
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
-import {
-  isPackBasedSelling,
-  isWeightBasedSelling,
-} from "@/features/productAuthority/packLogic";
+import { isPackBasedSelling, isWeightBasedSelling } from "@/features/productAuthority/packLogic";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { buildCanonicalPackagingHierarchy } from "./packagingHierarchyCanonical";
@@ -56,7 +53,7 @@ function badgeFor(
 }
 
 function evalContent(input: ProductTruthInput): DimensionStatus {
-  const complete = !!(input.productName && input.productName.trim());
+  const complete = !!input.productName?.trim();
   return {
     dimension: "content_status",
     badge: badgeFor(complete, { legacy: input.isLegacy }),
@@ -159,18 +156,15 @@ function evalPackaging(input: ProductTruthInput): DimensionStatus {
       (!!input.packaging?.pcsPerPack || !!input.weightDefinedPack);
     note = complete
       ? undefined
-      : (nonPieceChainMessages[0] ?? "Qty per pack or governed pack weight missing");
+      : (nonPieceChainMessages[0] ?? "Qty per pack missing");
   } else if (input.weightOnlySelling) {
     complete = nonPieceChainMessages.length === 0;
     note = complete
       ? undefined
       : (nonPieceChainMessages[0] ?? "Weight-based packaging hierarchy invalid");
   } else {
-    complete =
-      chain.valid && !!(input.packaging?.piecesPerKg || input.packaging?.gramsPerPiece);
-    note = complete
-      ? undefined
-      : (chain.messages[0] ?? "Packaging conversion rules incomplete");
+    complete = chain.valid && !!(input.packaging?.piecesPerKg || input.packaging?.gramsPerPiece);
+    note = complete ? undefined : (chain.messages[0] ?? "Packaging conversion rules incomplete");
   }
 
   return {
