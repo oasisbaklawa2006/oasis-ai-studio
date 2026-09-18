@@ -108,13 +108,18 @@ export async function queryProductAliasesForProduct(
   return rows.filter((row) => String(row.product_id ?? "") === productId);
 }
 
+export type ProductAliasesQueryResult = {
+  data: Array<Record<string, unknown>>;
+  error: { message: string } | null;
+};
+
 /** Bulk alias rows for many products — one query per batch, migration schema first. */
-export async function queryProductAliasesForProducts(
+export async function queryProductAliasesForProductsResult(
   client: AliasClient,
   productIds: string[],
-): Promise<Array<Record<string, unknown>>> {
+): Promise<ProductAliasesQueryResult> {
   const uniqueIds = [...new Set(productIds.map((id) => id.trim()).filter(Boolean))];
-  if (!uniqueIds.length) return [];
+  if (!uniqueIds.length) return { data: [], error: null };
 
   const migration = await client
     .from("product_aliases")
@@ -123,11 +128,11 @@ export async function queryProductAliasesForProducts(
     .order("created_at", { ascending: false });
 
   if (!migration.error) {
-    return filterActiveAliasRows(migration.data ?? []);
+    return { data: filterActiveAliasRows(migration.data ?? []), error: null };
   }
 
   if (!isAliasSchemaMismatchError(migration.error.message)) {
-    return [];
+    return { data: [], error: migration.error };
   }
 
   const legacy = await client
@@ -136,8 +141,21 @@ export async function queryProductAliasesForProducts(
     .in("product_id", uniqueIds)
     .order("created_at", { ascending: false });
 
-  if (!legacy.error) return legacy.data ?? [];
-  return [];
+  if (!legacy.error) return { data: legacy.data ?? [], error: null };
+  return { data: [], error: legacy.error };
+}
+
+/**
+ * Compatibility wrapper for existing read-only consumers.
+ * New write-adjacent callers should use queryProductAliasesForProductsResult()
+ * so authority read failures cannot be mistaken for an empty alias set.
+ */
+export async function queryProductAliasesForProducts(
+  client: AliasClient,
+  productIds: string[],
+): Promise<Array<Record<string, unknown>>> {
+  const result = await queryProductAliasesForProductsResult(client, productIds);
+  return result.data;
 }
 
 /** Alias search query compatible with migration and legacy Central schemas. */

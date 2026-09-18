@@ -1,4 +1,3 @@
-import { LIVE_CENTRAL_WRITE_ENABLED, buildCentralSyncPreviewBundle } from "./centralSyncPayload";
 import {
   approveCatalogueVersion,
   createCatalogueVersionDraft,
@@ -9,15 +8,63 @@ import {
   recordSyncPreviewEvent,
   updateCatalogueVersionSnapshot,
 } from "./catalogueVersionStore";
+import { buildCentralSyncPreviewBundle, LIVE_CENTRAL_WRITE_ENABLED } from "./centralSyncPayload";
 import { generateCatalogueSnapshot } from "./snapshotGenerator";
-import { validateSnapshotGate, validateSnapshotGateWithMedia } from "./snapshotValidation";
-import type { CentralSyncPreviewBundle, SnapshotGeneratorInput } from "./types";
+import { validateSnapshotGateWithMedia } from "./snapshotValidation";
+import type {
+  CatalogueSnapshotJson,
+  CatalogueVersionRow,
+  CentralSyncPreviewBundle,
+  SnapshotGeneratorInput,
+} from "./types";
 
 export type PreviewCentralSyncResult = {
   bundle: CentralSyncPreviewBundle;
   versionId: string;
   liveWriteAttempted: false;
 };
+
+async function persistCatalogueDraftSnapshot(args: {
+  productId: string;
+  snapshot: CatalogueSnapshotJson;
+}): Promise<CatalogueVersionRow> {
+  const versions = await listCatalogueVersions(args.productId);
+  const head = getHeadVersion(versions);
+  const mutableHead = head && !isImmutableVersion(head.status) ? head : null;
+
+  if (!mutableHead) {
+    return await createCatalogueVersionDraft({
+      productId: args.productId,
+      snapshot: args.snapshot,
+    });
+  }
+
+  const updated = await updateCatalogueVersionSnapshot({
+    productId: args.productId,
+    versionId: mutableHead.id,
+    snapshot: args.snapshot,
+  });
+  if (!updated.ok) {
+    throw new Error(updated.message);
+  }
+
+  return {
+    ...mutableHead,
+    snapshot_json: args.snapshot,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export async function prepareCatalogueVersionDraft(
+  input: SnapshotGeneratorInput,
+): Promise<{ versionId: string; snapshot: CatalogueSnapshotJson }> {
+  const snapshot = generateCatalogueSnapshot(input);
+  const versionRow = await persistCatalogueDraftSnapshot({
+    productId: input.productId,
+    snapshot,
+  });
+  return { versionId: versionRow.id, snapshot };
+}
 
 /**
  * Builds Central 25B/25C preview payload only — never POSTs to Oasis Central.
@@ -34,29 +81,10 @@ export async function previewCentralSync(
     complianceManuallyApproved: !!input.complianceApproved && !input.complianceMetaPending,
   });
 
-  const versions = await listCatalogueVersions(input.productId);
-  const head = getHeadVersion(versions);
-
-  let versionRow =
-    head && !isImmutableVersion(head.status) ? head : null;
-
-  if (!versionRow) {
-    versionRow = await createCatalogueVersionDraft({
-      productId: input.productId,
-      snapshot,
-    });
-  } else {
-    await updateCatalogueVersionSnapshot({
-      productId: input.productId,
-      versionId: versionRow.id,
-      snapshot,
-    });
-    versionRow = {
-      ...versionRow,
-      snapshot_json: snapshot,
-      updated_at: new Date().toISOString(),
-    };
-  }
+  const versionRow = await persistCatalogueDraftSnapshot({
+    productId: input.productId,
+    snapshot,
+  });
 
   const bundle = buildCentralSyncPreviewBundle({
     snapshot,
@@ -137,4 +165,4 @@ export async function approveAndPreviewCentralSync(
   };
 }
 
-export { listCatalogueVersions, listSyncPreviewEvents, LIVE_CENTRAL_WRITE_ENABLED };
+export { LIVE_CENTRAL_WRITE_ENABLED, listCatalogueVersions, listSyncPreviewEvents };
