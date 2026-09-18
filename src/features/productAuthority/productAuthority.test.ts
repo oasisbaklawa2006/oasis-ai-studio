@@ -286,6 +286,19 @@ describe("productSchemaAdapter", () => {
     expect(payload.pcs_per_kg).toBe(50);
   });
 
+  it("hydrates live pcs_per_kg back into Studio pieces_per_kg", () => {
+    const form = dbRowToProductForm(
+      {
+        product_name: "Mor Pistachio Durum",
+        sku: "OAS-AS-BKL-0024",
+        primary_uom: "kg",
+        pcs_per_kg: 40,
+      },
+      {},
+    );
+    expect(form.pieces_per_kg).toBe(40);
+  });
+
   it("maps packaging MOQ fields only to live columns", () => {
     const payload = formToDbProductPayload({
       product_name: "Mor Pistachio Durum",
