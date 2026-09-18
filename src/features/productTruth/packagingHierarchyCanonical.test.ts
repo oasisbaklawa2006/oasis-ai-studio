@@ -72,6 +72,23 @@ describe("packagingHierarchyCanonical", () => {
     expect(persisted).not.toHaveProperty("pcs_per_pack");
   });
 
+  it("recognizes legacy primary_pack_weight_kg as sellable pack weight", () => {
+    const h = buildCanonicalPackagingHierarchy({
+      sku: "LEGACY-PACK-3KG",
+      primary_uom: "pack",
+      primary_pack_weight_kg: 3,
+    });
+    expect(h.nodes[1].qtyPerParent).toBe(3000);
+    expect(h.nodes[1].persistence).toBe("products_row");
+
+    const snap = serializePackagingHierarchyForSnapshot({
+      sku: "LEGACY-PACK-3KG",
+      primary_uom: "pack",
+      primary_pack_weight_kg: 3,
+    });
+    expect(snap.primary_pack.weight_g).toBe(3000);
+  });
+
   it("rejects fractional packs per carton when partial packs are disabled", () => {
     const h = buildCanonicalPackagingHierarchy({
       ...packProductForm,
