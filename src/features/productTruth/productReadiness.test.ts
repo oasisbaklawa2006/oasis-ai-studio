@@ -7,9 +7,24 @@ const completeInput: ProductTruthInput = {
   heroImageUrl: "https://example.com/img.jpg",
   mediaStatus: "approved",
   mediaAssets: [
-    { type: "primary_image", url: "https://example.com/img.jpg", status: "approved", source: "manual" },
-    { type: "catalogue_image", url: "https://example.com/w.jpg", status: "approved", source: "manual" },
-    { type: "close_up_image", url: "https://example.com/c.jpg", status: "approved", source: "manual" },
+    {
+      type: "primary_image",
+      url: "https://example.com/img.jpg",
+      status: "approved",
+      source: "manual",
+    },
+    {
+      type: "catalogue_image",
+      url: "https://example.com/w.jpg",
+      status: "approved",
+      source: "manual",
+    },
+    {
+      type: "close_up_image",
+      url: "https://example.com/c.jpg",
+      status: "approved",
+      source: "manual",
+    },
   ],
   mediaContext: {
     productName: "Test Product",
@@ -57,5 +72,71 @@ describe("productReadiness", () => {
     });
     expect(r.readyForCentralSync).toBe(false);
     expect(r.blockers.some((b) => b.toLowerCase().includes("compliance"))).toBe(true);
+  });
+
+  it("treats kg/grams-only selling as intrinsically convertible without pcs/kg", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      primaryUom: "kg",
+      retailUom: "grams",
+      b2bUom: "kg",
+      packaging: {},
+      weightOnlySelling: true,
+    });
+    const packaging = r.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(true);
+    expect(r.blockers).not.toContain("Packaging conversion rules missing");
+  });
+
+  it("keeps mixed kg-to-piece selling blocked without piece conversion truth", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      primaryUom: "kg",
+      retailUom: "pcs",
+      b2bUom: "kg",
+      packaging: {},
+      weightOnlySelling: false,
+    });
+    const packaging = r.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(false);
+    expect(r.blockers).toContain("Packaging conversion rules missing");
+  });
+
+  it("treats pc/pcs-only selling as intrinsic without pcs-per-pack", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      primaryUom: "pcs",
+      retailUom: "pc",
+      b2bUom: "pcs",
+      packaging: {},
+      pieceOnlySelling: true,
+    });
+    const packaging = r.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(true);
+    expect(r.blockers).not.toContain("Packaging conversion rules missing");
+  });
+
+  it("accepts a container pack defined by governed pack weight", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      primaryUom: "pack",
+      packaging: {},
+      packBasedSelling: true,
+      weightDefinedPack: true,
+    });
+    const packaging = r.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(true);
+  });
+
+  it("does not use pack weight to satisfy a piece-count selling unit", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      primaryUom: "pcs",
+      packaging: {},
+      packBasedSelling: true,
+      weightDefinedPack: false,
+    });
+    const packaging = r.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(false);
   });
 });
