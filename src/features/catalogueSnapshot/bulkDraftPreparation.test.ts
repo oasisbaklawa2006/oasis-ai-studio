@@ -28,7 +28,10 @@ describe("bulk catalogue draft preparation", () => {
     expect(authority.headImmutableByProduct).toEqual({ p1: false, p2: false });
     expect(authority.anyImmutableByProduct).toEqual({ p1: true, p2: false });
     expect(
-      productIdsMissingImmutableVersion([{ id: "p1" }, { id: "p2" }], authority.anyImmutableByProduct),
+      productIdsMissingImmutableVersion(
+        [{ id: "p1" }, { id: "p2" }],
+        authority.anyImmutableByProduct,
+      ),
     ).toEqual(["p2"]);
   });
 });
