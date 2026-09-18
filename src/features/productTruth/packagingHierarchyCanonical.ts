@@ -95,12 +95,17 @@ function piecePackQty(form: Record<string, unknown>): number | null {
   return null;
 }
 
+function legacyPrimaryPackWeightG(form: Record<string, unknown>): number | null {
+  const kg = positiveNum(form.primary_pack_weight_kg);
+  return kg == null ? null : kg * 1000;
+}
+
 function sellablePackQty(form: Record<string, unknown>): number | null {
   const pieceQty = piecePackQty(form);
   if (pieceQty != null) return pieceQty;
   const qtyPerPack = positiveNum(form.qty_per_pack);
   if (qtyPerPack != null) return qtyPerPack;
-  return positiveNum(form.net_weight_g);
+  return positiveNum(form.net_weight_g) ?? legacyPrimaryPackWeightG(form);
 }
 
 function sellablePackUom(form: Record<string, unknown>): string | null {
@@ -191,10 +196,17 @@ export function buildCanonicalPackagingHierarchy(
       label: "Sellable pack",
       qtyPerParent: sellableQty,
       uom: sellableUom,
-      persistence: positiveNum(form.pcs_per_pack) != null ? "products_row" : "form_only",
+      persistence:
+        positiveNum(form.pcs_per_pack) != null ||
+        positiveNum(form.net_weight_g) != null ||
+        positiveNum(form.primary_pack_weight_kg) != null
+          ? "products_row"
+          : "form_only",
       sourceFields: [
         "pcs_per_pack",
         "qty_per_pack",
+        "net_weight_g",
+        "primary_pack_weight_kg",
         "primary_pack_type",
         "primary_pack_uom",
         "pack_size",
@@ -354,6 +366,7 @@ export function serializePackagingHierarchyForSnapshot(
       qty_content_uom: form.qty_content_uom,
       pack_label: form.pack_label,
       pcs_per_pack: form.pcs_per_pack,
+      weight_g: positiveNum(form.net_weight_g) ?? legacyPrimaryPackWeightG(form),
     },
     case_carton: {
       qty: form.carton_qty,
