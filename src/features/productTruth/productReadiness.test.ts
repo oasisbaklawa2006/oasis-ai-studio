@@ -102,6 +102,20 @@ describe("productReadiness", () => {
     expect(r.blockers).toContain("Packaging conversion rules missing");
   });
 
+  it("treats pc/pcs-only selling as intrinsic without pcs-per-pack", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      primaryUom: "pcs",
+      retailUom: "pc",
+      b2bUom: "pcs",
+      packaging: {},
+      pieceOnlySelling: true,
+    });
+    const packaging = r.dimensions.find((d) => d.dimension === "packaging_status");
+    expect(packaging?.complete).toBe(true);
+    expect(r.blockers).not.toContain("Packaging conversion rules missing");
+  });
+
   it("accepts a container pack defined by governed pack weight", () => {
     const r = evaluateProductReadiness({
       ...completeInput,
