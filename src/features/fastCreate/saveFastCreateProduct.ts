@@ -5,6 +5,7 @@ import {
   withReviewedIntakeBarcode,
 } from "@/features/fastCreate/fastCreateIntakeBarcode";
 import { getPersistableFastCreateAliases } from "@/features/governedAiExtraction/fastCreateEnrichment";
+import { assertMobileProductCreateSaveAllowed } from "@/features/mobileProductCreate";
 import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
 import {
   assertStructuredSkuForSave,
@@ -159,20 +160,20 @@ export async function saveFastCreateProduct(
     throw new Error("Product name and category are required.");
   }
 
-  const canSubmit =
-    (await canWriteProductsDirectly(input.roles)) ||
-    input.roles.includes("catalogue_contributor") ||
-    (await isCatalogueContributor());
+  const canWriteDirectly = await canWriteProductsDirectly(input.roles);
+  const isContributor =
+    input.roles.includes("catalogue_contributor") || (await isCatalogueContributor());
+  assertMobileProductCreateSaveAllowed({
+    productName: String(form.product_name),
+    roles: input.roles,
+    canWriteDirectly,
+    isContributor,
+    suggestions: input.suggestions,
+    saleType: input.saleType,
+  });
 
-  if (!canSubmit) {
-    throw new Error("You do not have permission to create products. Contact an administrator.");
-  }
-
-  if (input.saleType && !productClassForSaleType(input.saleType)) {
-    throw new Error(
-      `Sale type "${input.saleType}" ${FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX}. ` +
-        "Choose a sale type with a supported product class, or use the Full Editor for admin review.",
-    );
+  if (!form.product_class && input.saleType) {
+    form.product_class = productClassForSaleType(input.saleType);
   }
   if (!form.product_class) form.product_class = "bulk_loose_product";
   if (!form.main_department) form.main_department = "ready_goods_store";
