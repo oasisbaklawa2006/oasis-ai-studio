@@ -136,6 +136,8 @@ export type ProductTruthInput = {
   packBasedSelling?: boolean;
   /** True only when every configured selling UOM is intrinsic weight (kg/grams/loose). */
   weightOnlySelling?: boolean;
+  /** True only when every configured selling UOM is an intrinsic piece unit (pc/pcs/piece). */
+  pieceOnlySelling?: boolean;
   /** True when a container pack is defined by governed pack weight rather than piece count. */
   weightDefinedPack?: boolean;
   /** Point 33 canonical hierarchy validation (errors block packaging readiness). */
