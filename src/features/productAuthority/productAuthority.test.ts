@@ -297,6 +297,8 @@ describe("productSchemaAdapter", () => {
       {},
     );
     expect(form.pieces_per_kg).toBe(40);
+    const payload = formToDbProductPayload(form);
+    expect(payload.pcs_per_kg).toBe(40);
   });
 
   it("maps packaging MOQ fields only to live columns", () => {
