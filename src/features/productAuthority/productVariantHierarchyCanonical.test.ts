@@ -68,15 +68,31 @@ describe("productVariantHierarchyCanonical", () => {
     expect(resolution.validation.errors.some((e) => e.includes("Cyclic"))).toBe(true);
   });
 
-  it("detects duplicate variant keys across products", () => {
+  it("detects duplicate variant keys under the same basis product", () => {
     const resolution = resolveVariantGraph([
-      { productId: "a", parentProductId: null, variantKey: "250g", sku: "SKU-A" },
-      { productId: "b", parentProductId: null, variantKey: "250g", sku: "SKU-B" },
+      { productId: "a", parentProductId: "basis", variantKey: "250g", sku: "SKU-A" },
+      { productId: "b", parentProductId: "basis", variantKey: "250g", sku: "SKU-B" },
     ]);
     expect(resolution.validation.valid).toBe(false);
     expect(resolution.validation.errors.some((e) => e.includes("Duplicate variant key"))).toBe(
       true,
     );
+  });
+
+  it("allows the same variant key under different basis products (Core scopes uniqueness per basis_product_id)", () => {
+    const resolution = resolveVariantGraph([
+      { productId: "a", parentProductId: "basis-1", variantKey: "250g", sku: "SKU-A" },
+      { productId: "b", parentProductId: "basis-2", variantKey: "250g", sku: "SKU-B" },
+    ]);
+    expect(resolution.validation.valid).toBe(true);
+  });
+
+  it("allows the same variant key on separate null-parent (root/basis) nodes", () => {
+    const resolution = resolveVariantGraph([
+      { productId: "a", parentProductId: null, variantKey: "250g", sku: "SKU-A" },
+      { productId: "b", parentProductId: null, variantKey: "250g", sku: "SKU-B" },
+    ]);
+    expect(resolution.validation.valid).toBe(true);
   });
 
   it("detects ambiguous base product (multiple parents)", () => {
@@ -139,11 +155,23 @@ describe("productVariantHierarchyCanonical", () => {
     });
     expect(snap.schema).toBe("point32_v1");
     expect(snap.scope).toBe("explicit_variant_graph");
+    expect(snap.current_product.product_id).toBe("prod-1");
     expect(snap.variant_graph.persistence).toBe("product_variants_row");
     expect(snap.variant_graph.explicit_edges[0]?.parentProductId).toBe("prod-basis");
     expect(snap.variant_graph.explicit_edges[0]?.variantKey).toBe("500g");
     expect(snap.pack_variant_separation.pack_hierarchy_owner).toBe("point33");
     expect(snap.composition_semantics.bom_parent_ref).toBe("product_bom_items.parent_product_id");
+  });
+
+  it("never infers an explicit_edges entry from packaging_code — requires basis_product_id and variant_key both present", () => {
+    const snap = serializeProductVariantHierarchyForSnapshot(baseForm);
+    expect(snap.variant_graph.explicit_edges).toHaveLength(0);
+
+    const partial = serializeProductVariantHierarchyForSnapshot({
+      ...baseForm,
+      basis_product_id: "prod-basis",
+    });
+    expect(partial.variant_graph.explicit_edges).toHaveLength(0);
   });
 
   it("separates pack hierarchy from variant hierarchy", () => {

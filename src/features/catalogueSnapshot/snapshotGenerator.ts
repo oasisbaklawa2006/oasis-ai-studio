@@ -105,7 +105,10 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
   const hero = approvedImages[0] ?? str(input.form.hero_image_url);
 
   const packagingHierarchy = serializePackagingHierarchyForSnapshot(input.form);
-  const productVariantHierarchy = serializeProductVariantHierarchyForSnapshot(input.form);
+  const productVariantHierarchy = serializeProductVariantHierarchyForSnapshot({
+    ...input.form,
+    id: input.productId,
+  });
   const manuallyApproved = !!input.complianceApproved && !input.complianceMetaPending;
   const factualComposition = serializeFactualCompositionForSnapshot(
     factualCompositionFormForSnapshot(input.form, manuallyApproved),

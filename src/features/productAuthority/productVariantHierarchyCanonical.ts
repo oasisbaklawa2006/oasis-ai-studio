@@ -115,6 +115,10 @@ export function resolveVariantGraph(edges: ExplicitVariantEdge[]): VariantGraphR
   const childrenByParent = new Map<string, string[]>();
   const parentByChild = new Map<string, string>();
   const variantKeyByProduct = new Map<string, string>();
+  // Keyed by `${basisProductId}::${variantKey}` — uniqueness is per basis product
+  // (matches Core's `product_variants_basis_variant_key_unique (basis_product_id, variant_key)`),
+  // not global. Null-parent edges are root/basis nodes, not a shared basis family, so they are
+  // never scoped against each other.
   const variantKeyOwners = new Map<string, string>();
   const allIds = new Set<string>();
 
@@ -122,16 +126,19 @@ export function resolveVariantGraph(edges: ExplicitVariantEdge[]): VariantGraphR
     allIds.add(edge.productId);
     if (edge.parentProductId) allIds.add(edge.parentProductId);
 
-    if (edge.variantKey) {
-      const existingOwner = variantKeyOwners.get(edge.variantKey);
+    if (edge.variantKey && edge.parentProductId) {
+      const scopedKey = `${edge.parentProductId}::${edge.variantKey}`;
+      const existingOwner = variantKeyOwners.get(scopedKey);
       if (existingOwner && existingOwner !== edge.productId) {
         errors.push(
-          `Duplicate variant key "${edge.variantKey}" across products ${existingOwner} and ${edge.productId}.`,
+          `Duplicate variant key "${edge.variantKey}" under basis product ${edge.parentProductId} (products ${existingOwner} and ${edge.productId}).`,
         );
       } else {
-        variantKeyOwners.set(edge.variantKey, edge.productId);
+        variantKeyOwners.set(scopedKey, edge.productId);
         variantKeyByProduct.set(edge.productId, edge.variantKey);
       }
+    } else if (edge.variantKey) {
+      variantKeyByProduct.set(edge.productId, edge.variantKey);
     }
 
     if (!edge.parentProductId) continue;
@@ -380,7 +387,8 @@ export function assertPackNotVariantHierarchy(input: {
 export type SnapshotProductVariantHierarchy = {
   schema: "point32_v1";
   scope: ProductVariantScope;
-  basis_product: {
+  /** The row this snapshot is for — not the basis product. See `variant_graph.explicit_edges[].parentProductId` for the actual basis-product reference. */
+  current_product: {
     product_id: string | null;
     sku: string | null;
     product_name: string | null;
@@ -414,7 +422,7 @@ export function serializeProductVariantHierarchyForSnapshot(
   return {
     schema: "point32_v1",
     scope: canonical.scope,
-    basis_product: {
+    current_product: {
       product_id: canonical.productId,
       sku: canonical.sku,
       product_name: str(form.product_name),
@@ -424,17 +432,19 @@ export function serializeProductVariantHierarchyForSnapshot(
     variant_graph: {
       persistence: "product_variants_row",
       core_authority: POINT_32_CORE_AUTHORITY.variantTable,
-      explicit_edges: canonical.productId
-        ? [
-            {
-              productId: canonical.productId,
-              parentProductId: basisProductId,
-              variantKey:
-                variantKey ?? (str(form.packaging_code) ? `pkg:${str(form.packaging_code)}` : null),
-              sku: canonical.sku,
-            },
-          ]
-        : [],
+      // Never infer an edge from packaging_code — only explicit basis_product_id + variant_key
+      // (both real Core columns) constitute variant parentage.
+      explicit_edges:
+        canonical.productId && basisProductId && variantKey
+          ? [
+              {
+                productId: canonical.productId,
+                parentProductId: basisProductId,
+                variantKey,
+                sku: canonical.sku,
+              },
+            ]
+          : [],
     },
     composition_semantics: {
       bom_parent_ref: "product_bom_items.parent_product_id",

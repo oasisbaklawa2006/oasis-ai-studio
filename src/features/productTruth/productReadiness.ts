@@ -255,6 +255,11 @@ export function evaluateProductReadiness(input: ProductTruthInput): ProductReadi
   if (!dimensions.find((d) => d.dimension === "production_mapping_status")?.complete) {
     blockers.push("Production mapping missing");
   }
+  if (input.variantHierarchyValidation && !input.variantHierarchyValidation.valid) {
+    blockers.push(
+      input.variantHierarchyValidation.errors[0] ?? "Product/variant hierarchy invalid",
+    );
+  }
 
   dimensions.push(evalCentralSync(input, blockers));
 
