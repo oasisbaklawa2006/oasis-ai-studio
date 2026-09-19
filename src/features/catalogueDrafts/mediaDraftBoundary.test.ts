@@ -22,6 +22,7 @@ describe("validateMediaFile", () => {
       type: "video/mp4",
     });
     expect(validateMediaFile(big)).toMatch(/too large/i);
+    expect(validateMediaFile(big)).toMatch(/50 MiB/i);
   });
 
   it("rejects a disallowed MIME type", () => {
