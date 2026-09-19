@@ -1,33 +1,49 @@
-import { useCallback, useEffect, useMemo, useState, startTransition, useDeferredValue } from "react";
+import { CheckCircle2, Copy, Eye, Lock } from "lucide-react";
+import {
+  startTransition,
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { toast } from "sonner";
+import { CentralSyncReadOnlyBanner } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Copy, Eye, Lock } from "lucide-react";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { getAliasText } from "@/lib/aliasDisplay";
-import { queryProductAliasesForProduct } from "@/lib/aliasSchemaAdapter";
-import { CentralSyncReadOnlyBanner } from "@/components/catalogueAuthority/AuthorityStatusBadges";
-import { getVersionsLoadFailure, getVersionsPersistenceSource } from "../catalogueVersionStore";
-import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { evaluateMobileApprovalAction } from "@/features/mobileApproval/mobileApprovalAuthority";
 import {
   evaluateProductReadiness,
   productTruthInputFromForm,
 } from "@/features/productTruth/productReadiness";
 import type { ChannelMoqRule, ChannelPriceRecord } from "@/features/productTruth/types";
-import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
+import { supabase } from "@/integrations/supabase/client";
+import { getAliasText } from "@/lib/aliasDisplay";
+import { queryProductAliasesForProduct } from "@/lib/aliasSchemaAdapter";
+import { isLocalCatalogueFallbackWriteEnabled } from "@/lib/catalogueAuthority/localStoragePolicy";
+import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
+import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
+import {
+  getVersionsLoadFailure,
+  getVersionsPersistenceSource,
+  isImmutableVersion,
+} from "../catalogueVersionStore";
+import { isStaleCatalogueVersion, LIVE_CENTRAL_WRITE_ENABLED } from "../centralSyncPayload";
 import {
   approveAndPreviewCentralSync,
   listCatalogueVersions,
   listSyncPreviewEvents,
   previewCentralSync,
 } from "../centralSyncPreviewService";
-import { LIVE_CENTRAL_WRITE_ENABLED } from "../centralSyncPayload";
-import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
-import { isLocalCatalogueFallbackWriteEnabled } from "@/lib/catalogueAuthority/localStoragePolicy";
 import { validateSnapshotGate } from "../snapshotValidation";
-import type { CatalogueSyncEventRow, CatalogueVersionRow, CentralSyncPreviewBundle, SnapshotGeneratorInput } from "../types";
-import { isImmutableVersion } from "../catalogueVersionStore";
-import { isStaleCatalogueVersion } from "../centralSyncPayload";
+import type {
+  CatalogueSyncEventRow,
+  CatalogueVersionRow,
+  CentralSyncPreviewBundle,
+  SnapshotGeneratorInput,
+} from "../types";
 
 type Props = {
   form: Record<string, unknown>;
@@ -48,12 +64,15 @@ export function CentralSyncPreviewPanel({
   moqRules = [],
   productMediaRows = [],
 }: Props) {
+  const { isReviewer: isCatalogueReviewerRole } = useCatalogueReviewer();
   const [versions, setVersions] = useState<CatalogueVersionRow[]>([]);
   const [events, setEvents] = useState<CatalogueSyncEventRow[]>([]);
   const [bundle, setBundle] = useState<CentralSyncPreviewBundle | null>(null);
   const [loading, setLoading] = useState(false);
   const [showJson, setShowJson] = useState(false);
-  const [languageAliasRows, setLanguageAliasRows] = useState<SnapshotGeneratorInput["languageAliasRows"]>([]);
+  const [languageAliasRows, setLanguageAliasRows] = useState<
+    SnapshotGeneratorInput["languageAliasRows"]
+  >([]);
   const deferredBundle = useDeferredValue(bundle);
 
   const jsonPreview = useMemo(() => {
@@ -143,8 +162,7 @@ export function CentralSyncPreviewPanel({
 
   const persistenceSource = getVersionsPersistenceSource(productId);
   const versionsLoadFailure = getVersionsLoadFailure(productId);
-  const versionsInfraReady =
-    persistenceSource === "supabase" || persistenceSource === "local_only";
+  const versionsInfraReady = persistenceSource === "supabase" || persistenceSource === "local_only";
   const previewBlocked = !versionsInfraReady;
   const previewBlockMessage = previewBlocked
     ? versionsLoadFailure
@@ -178,6 +196,13 @@ export function CentralSyncPreviewPanel({
   };
 
   const runApprovePreview = () => {
+    const gate = evaluateMobileApprovalAction("approve_snapshot_preview", {
+      isCatalogueReviewer: isCatalogueReviewerRole,
+    });
+    if (!gate.allowed) {
+      toast.error(gate.blockReason ?? "Snapshot approval blocked.");
+      return;
+    }
     if (previewBlocked) {
       toast.error(previewBlockMessage ?? "Central Sync preview is unavailable.");
       return;
@@ -246,7 +271,8 @@ export function CentralSyncPreviewPanel({
         <div>
           <h4 className="font-medium">Central sync readiness</h4>
           <p className="text-xs text-muted-foreground">
-            Immutable snapshots lock after approval. GST/HSN stay null until manual compliance approval.
+            Immutable snapshots lock after approval. GST/HSN stay null until manual compliance
+            approval.
           </p>
         </div>
         {validation.allowed && readiness.readyForCentralSync ? (
@@ -277,15 +303,21 @@ export function CentralSyncPreviewPanel({
           variant="secondary"
           onClick={runPreview}
           disabled={loading || previewBlocked}
-          title={previewBlocked ? previewBlockMessage ?? undefined : undefined}
+          title={previewBlocked ? (previewBlockMessage ?? undefined) : undefined}
         >
           <Eye className="h-3 w-3 mr-1" /> {loading ? "Generating…" : "Generate preview"}
         </Button>
         <Button
           size="sm"
           onClick={runApprovePreview}
-          disabled={loading || previewBlocked || !validation.allowed}
-          title={previewBlocked ? previewBlockMessage ?? undefined : undefined}
+          disabled={loading || previewBlocked || !validation.allowed || !isCatalogueReviewerRole}
+          title={
+            !isCatalogueReviewerRole
+              ? "Catalogue reviewer role required"
+              : previewBlocked
+                ? (previewBlockMessage ?? undefined)
+                : undefined
+          }
         >
           {loading ? "Working…" : "Approve snapshot (preview)"}
         </Button>
@@ -300,7 +332,9 @@ export function CentralSyncPreviewPanel({
       <div className="card-elevated p-4">
         <h4 className="font-medium mb-2">Version history</h4>
         {versions.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No catalogue versions yet. Generate a preview to create a draft.</p>
+          <p className="text-sm text-muted-foreground">
+            No catalogue versions yet. Generate a preview to create a draft.
+          </p>
         ) : (
           <ul className="text-sm space-y-2">
             {versions.map((v) => {
@@ -347,7 +381,8 @@ export function CentralSyncPreviewPanel({
           )}
           {!showJson && (
             <p className="text-xs text-muted-foreground">
-              Preview bundle ready ({Object.keys(bundle).length} top-level keys). Expand JSON on demand to avoid UI jank.
+              Preview bundle ready ({Object.keys(bundle).length} top-level keys). Expand JSON on
+              demand to avoid UI jank.
             </p>
           )}
         </div>

@@ -94,10 +94,6 @@ import {
   isExportBundleDistributable,
   STATUS_LABEL,
 } from "@/features/catalogueAiStudio/catalogueDraftWorkflow";
-import {
-  versionHistoryPhaseLabel,
-  type ProductVersionHistoryReadModel,
-} from "@/features/productWorkflow/productVersionHistory";
 import { isFieldEdited } from "@/features/catalogueAiStudio/catalogueFieldEditedState";
 import { isLanguageMessagingField } from "@/features/catalogueAiStudio/catalogueLanguageFields";
 import {
@@ -143,10 +139,16 @@ import {
 import { isMissingFieldOnlyMessage } from "@/features/catalogueAiStudio/missingFieldMessage";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
 import { isTestingMediaGovernance } from "@/features/mediaReadiness/mediaGovernanceDisplay";
+import { evaluateMobileApprovalAction } from "@/features/mobileApproval/mobileApprovalAuthority";
 import {
   getCachedProductMediaAuthority,
   subscribeToProductMediaAuthority,
 } from "@/features/productAuthority/productMediaMutationAuthority";
+import {
+  type ProductVersionHistoryReadModel,
+  versionHistoryPhaseLabel,
+} from "@/features/productWorkflow/productVersionHistory";
+import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { supabase } from "@/integrations/supabase/client";
 
 type CatalogueProductStudioProduct = DraftProductInput & {
@@ -418,6 +420,7 @@ function ReadinessRow({
 
 export default function CatalogueProductStudio() {
   const { user } = useAuth();
+  const { isReviewer: isCatalogueReviewerRole } = useCatalogueReviewer();
   const nav = useNavigate();
   const [products, setProducts] = useState<CatalogueProductStudioProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -729,9 +732,7 @@ export default function CatalogueProductStudio() {
   // Persisted draft governance.
   const [persistedDraft, setPersistedDraft] = useState<CatalogueDraftRow | null>(null);
   const [auditLog, setAuditLog] = useState<CatalogueDraftAuditRow[]>([]);
-  const [versionHistory, setVersionHistory] = useState<ProductVersionHistoryReadModel | null>(
-    null,
-  );
+  const [versionHistory, setVersionHistory] = useState<ProductVersionHistoryReadModel | null>(null);
   const [draftLoading, setDraftLoading] = useState(false);
   const [draftBusy, setDraftBusy] = useState(false);
   const [rejectReasonOpen, setRejectReasonOpen] = useState(false);
@@ -802,10 +803,7 @@ export default function CatalogueProductStudio() {
           setAiGeneratedBaseline(restored?.baseline ?? null);
           setAiFieldTracking(restored?.tracking ?? null);
           setAiGeneratedTone(restored?.tone ?? null);
-          const [log, history] = await Promise.all([
-            fetchDraftAuditLog(row.id),
-            historyPromise,
-          ]);
+          const [log, history] = await Promise.all([fetchDraftAuditLog(row.id), historyPromise]);
           if (!cancelled && selectedIdRef.current === productId) {
             setAuditLog(log);
             setVersionHistory(history);
@@ -1340,6 +1338,13 @@ export default function CatalogueProductStudio() {
 
   const handleApprove = async () => {
     if (!selected) return;
+    const gate = evaluateMobileApprovalAction("approve_copy_draft", {
+      isCatalogueReviewer: isCatalogueReviewerRole,
+    });
+    if (!gate.allowed) {
+      toast.error(gate.blockReason ?? "Approval blocked.");
+      return;
+    }
     if (!currentPersistedDraft || draftLoading) {
       toast.error("Draft is still loading. Please wait.");
       return;
@@ -1365,6 +1370,13 @@ export default function CatalogueProductStudio() {
 
   const handleReject = async () => {
     if (!selected || !rejectReason.trim()) return;
+    const gate = evaluateMobileApprovalAction("reject_copy_draft", {
+      isCatalogueReviewer: isCatalogueReviewerRole,
+    });
+    if (!gate.allowed) {
+      toast.error(gate.blockReason ?? "Rejection blocked.");
+      return;
+    }
     if (!currentPersistedDraft || draftLoading) {
       toast.error("Draft is still loading. Please wait.");
       return;
@@ -1908,6 +1920,7 @@ export default function CatalogueProductStudio() {
                           </Button>
                         )}
                       {currentPersistedDraft &&
+                        isCatalogueReviewerRole &&
                         canApprove(currentPersistedDraft.status as CatalogueDraftStatus) && (
                           <Button
                             type="button"
@@ -1920,6 +1933,7 @@ export default function CatalogueProductStudio() {
                           </Button>
                         )}
                       {currentPersistedDraft &&
+                        isCatalogueReviewerRole &&
                         canReject(currentPersistedDraft.status as CatalogueDraftStatus) &&
                         !rejectReasonOpen && (
                           <Button
@@ -2078,10 +2092,7 @@ export default function CatalogueProductStudio() {
                                 const reason =
                                   canonicalEvent?.reason ??
                                   auditMetadataString(entry, "rejection_reason") ??
-                                  auditMetadataString(
-                                    entry,
-                                    "previous_version_rejection_reason",
-                                  );
+                                  auditMetadataString(entry, "previous_version_rejection_reason");
                                 return (
                                   <div
                                     key={entry.id}
