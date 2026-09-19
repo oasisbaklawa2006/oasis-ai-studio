@@ -1,7 +1,7 @@
 # POINT 41 — Live Storage & Physical Camera UAT Checklist
 
 **Work item:** Central #459 Point 41 (Media workspace)  
-**Scope:** Human/physical verification only — **not** claimed by software PR #143  
+**Scope:** Human/physical verification only — **not** claimed by software PR #227 (clean current-main replacement of superseded #143)  
 **Environment:** AI Studio staging or production preview (Vercel exact-head) with live Supabase  
 **Bucket:** `product-media` (`AI_STUDIO_MEDIA_BUCKET`)
 
@@ -9,7 +9,7 @@
 
 | # | Check | Pass criteria |
 | --- | --- | --- |
-| R1 | Vercel preview deploys from exact-head branch commit | Deployment status **Ready** on PR #143 |
+| R1 | Vercel preview deploys from exact-head branch commit | Deployment status **Ready** on PR #227 |
 | R2 | `/media` route loads on preview | Page renders without runtime error |
 | R3 | `/media/review` route loads for reviewer role | Access gate or submissions desk (not blank crash) |
 | R4 | Record preview URL + commit SHA in sign-off table below | Matches PR head under test |
@@ -83,4 +83,4 @@
 | Overall | PASS / FAIL / BLOCKED |
 | Blockers | |
 
-**Software closure (PR #143) ends here.** Programme Point 41 stage clearance requires completed sign-off above.
+**Software closure (PR #227) ends here.** Programme Point 41 stage clearance requires completed sign-off above.

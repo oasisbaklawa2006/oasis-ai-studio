@@ -78,6 +78,10 @@ describe("formatSubmissionAge", () => {
     const recent = new Date(Date.now() - 5 * 60_000).toISOString();
     expect(formatSubmissionAge(recent)).toMatch(/Submitted 5 minutes ago/);
   });
+
+  it("falls back to 'Submitted recently' for an invalid timestamp instead of NaN", () => {
+    expect(formatSubmissionAge("not-a-date")).toBe("Submitted recently");
+  });
 });
 
 describe("mediaSubmissionProductLabel", () => {

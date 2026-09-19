@@ -22,7 +22,7 @@
 | Surface | Write mode | Persistence | Review path |
 | --- | --- | --- | --- |
 | `/media` | `useCatalogueMediaWriteMode` → direct / draft / readonly | `product_media` insert + optional `catalogue_media_submissions` draft | `/media/review` or `/approvals` |
-| `ProductMediaUploader` | Same boundary | `productMediaPersistence` + `productMediaMutationAuthority` | Draft → approval RPCs |
+| `ProductMediaUploader` | Same boundary | `productMediaPersistence` + `productMediaMutationAuthority` | Draft → reviewer reject only (approval RPC blocked, see API/table authority below) |
 | `mediaDraftBoundary` | Staging vs direct paths | Storage upload + draft submit | `submitMediaCatalogueDraft` |
 
 ## API / table authority (read-only census)
@@ -31,7 +31,7 @@
 | --- | --- | --- |
 | `product_media` | Shared DB | Insert/read via Supabase client; no migration in this PR |
 | `catalogue_media_submissions` | Catalogue draft plane | Submit + list for review |
-| `approve_catalogue_media_submission` | Core RPC | Reviewer approve |
+| `approve_catalogue_media_submission` | Core RPC | Blocked — Core approval mapping not finalized (`approve_blocked_mapping_not_finalized`); AI Studio UI hides Approve for media |
 | `reject_catalogue_media_submission` | Core RPC | Reviewer reject |
 | Storage `product-media` | Core bucket policy | Upload via `uploadMediaFileToStorage` |
 

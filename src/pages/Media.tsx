@@ -39,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Role } from "@/lib/permissions";
 
 const MEDIA_DRAFT_SUCCESS =
-  "Media change submitted for approval. Approved media will appear here after review.";
+  "Media change submitted for approval. Uploaded media remains visible as raw while approval is pending.";
 
 type MediaLibraryProduct = { id: string; product_name: string; sku: string | null };
 
@@ -333,8 +333,8 @@ const Media = () => {
                   <div className="space-y-3">
                     {writeMode === "draft" && (
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        Media changes are submitted for approval. Approved media will appear here
-                        after review.
+                        Media changes are submitted for approval. Uploaded media remains visible as
+                        raw while approval is pending.
                       </p>
                     )}
                     <div className="grid grid-cols-2 gap-3">

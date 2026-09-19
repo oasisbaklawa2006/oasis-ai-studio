@@ -101,7 +101,9 @@ export function safeDisplayableMediaUrl(url: string | null | undefined): string 
 
 export function formatSubmissionAge(dateStr?: string | null): string {
   if (!dateStr) return "Submitted recently";
-  const ms = Date.now() - new Date(dateStr).getTime();
+  const submittedAt = new Date(dateStr).getTime();
+  if (!Number.isFinite(submittedAt)) return "Submitted recently";
+  const ms = Date.now() - submittedAt;
   const minutes = Math.max(1, Math.floor(ms / 60000));
   if (minutes < 60) return `Submitted ${minutes} minute${minutes === 1 ? "" : "s"} ago`;
   const hours = Math.floor(minutes / 60);

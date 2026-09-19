@@ -39,6 +39,7 @@ const MediaReview = () => {
   const [activeTab, setActiveTab] = useState<MediaSubmissionStatus>("pending_approval");
   const [reasons, setReasons] = useState<Map<string, string>>(() => new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [inFlight, setInFlight] = useState<Set<string>>(() => new Set());
   const mediaApprovalAvailable = isMediaCatalogueApprovalAvailable();
 
   const load = async () => {
@@ -100,19 +101,29 @@ const MediaReview = () => {
   };
 
   const reject = async (row: MediaSubmissionRow) => {
-    const reason = rejectionReasonFor(row.id);
-    const res = await rejectMediaSubmission(row.id, reason);
-    if (!res.ok) {
-      toast.error(res.message);
-      return;
+    if (inFlight.has(row.id)) return;
+    setInFlight((prev) => new Set(prev).add(row.id));
+    try {
+      const reason = rejectionReasonFor(row.id);
+      const res = await rejectMediaSubmission(row.id, reason);
+      if (!res.ok) {
+        toast.error(res.message);
+        return;
+      }
+      toast.success("Media rejected");
+      setReasons((prev) => {
+        const next = new Map(prev);
+        next.set(row.id, "");
+        return next;
+      });
+      await load();
+    } finally {
+      setInFlight((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
     }
-    toast.success("Media rejected");
-    setReasons((prev) => {
-      const next = new Map(prev);
-      next.set(row.id, "");
-      return next;
-    });
-    await load();
   };
 
   if (!allowed) {
@@ -284,7 +295,7 @@ const MediaReview = () => {
                           variant="outline"
                           className="rounded-full"
                           onClick={() => reject(row)}
-                          disabled={!rejectionReasonFor(row.id).trim()}
+                          disabled={!rejectionReasonFor(row.id).trim() || inFlight.has(row.id)}
                         >
                           Reject
                         </Button>
