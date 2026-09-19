@@ -71,6 +71,7 @@ import {
   resolveFullEditorTabState,
 } from "@/features/productAuthority/fullEditorArchitecture";
 import { ProductVariantHierarchyPanel } from "@/features/productAuthority/panels/ProductVariantHierarchyPanel";
+import { ProductVariantRelationshipEditor } from "@/features/productAuthority/panels/ProductVariantRelationshipEditor";
 import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
 import {
   buildDimensionsText,
@@ -1263,6 +1264,15 @@ const ProductEdit = () => {
     setForm((f: Record<string, unknown>) => ({ ...f, ...p }));
   };
 
+  /**
+   * Point 32 follow-up (#229): the variant relationship editor writes directly to
+   * `products`/`product_variants` and is already persisted by the time it calls this — unlike
+   * `patch`, it must not mark the form dirty or suggest there's a pending save.
+   */
+  const applyVariantRelationshipPatch = (p: Record<string, unknown>) => {
+    setForm((f: Record<string, unknown>) => ({ ...f, ...p }));
+  };
+
   useEffect(() => {
     if (restored.current) return;
 
@@ -2118,6 +2128,12 @@ const ProductEdit = () => {
               />
 
               <ProductVariantHierarchyPanel form={form} />
+
+              <ProductVariantRelationshipEditor
+                productId={isNew ? null : (id ?? null)}
+                productSku={typeof form.sku === "string" ? form.sku : null}
+                onRelationshipChange={applyVariantRelationshipPatch}
+              />
 
               {isContributorMode && (
                 <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">
