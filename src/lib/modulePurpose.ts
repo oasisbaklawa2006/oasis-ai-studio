@@ -5,6 +5,8 @@ export const MODULE_PURPOSES: Record<string, string> = {
   "/admin/import/category-1":
     "Validate a Category-1 authority file and submit accepted rows as approval drafts—never direct master writes.",
   "/media": "Review and manage governed product imagery and media-readiness evidence.",
+  "/media/review":
+    "Review catalogue media submissions with payload-only previews. Rejections remain available while Core approval mapping is unfinished.",
   "/tags": "Manage the controlled product tag catalogue when its production backend is available.",
   "/catalogues":
     "Stage and inspect catalogue source documents as review evidence. This workspace cannot create products, approve prices or publish website commerce.",
