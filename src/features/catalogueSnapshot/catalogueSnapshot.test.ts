@@ -121,6 +121,9 @@ describe("catalogueSnapshot", () => {
     expect(snap.packaging_label_readiness.ready_for_label_design).toBe(false);
     expect(snap.factual_composition.schema).toBe("point34_v1");
     expect(snap.factual_composition.point37_label_authority).toBe(true);
+    expect(snap.product_variant_hierarchy.schema).toBe("point32_v1");
+    expect(snap.product_variant_hierarchy.scope).toBe("product_sku");
+    expect(snap.product_variant_hierarchy.variant_graph.persistence).toBe("product_variants_row");
     expect(snap.channel_rules).toHaveLength(1);
     expect(snap.pricing_rules).toHaveLength(1);
     expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);

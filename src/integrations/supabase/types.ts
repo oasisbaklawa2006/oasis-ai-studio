@@ -1169,6 +1169,7 @@ export type Database = {
           b2b_price_basis: string | null;
           b2b_price_inr: number | null;
           b2b_uom: string | null;
+          basis_product_id: string | null;
           bom_required: boolean | null;
           carton_dimensions_cm: string | null;
           carton_logic: string | null;
@@ -1278,6 +1279,7 @@ export type Database = {
           b2b_price_basis?: string | null;
           b2b_price_inr?: number | null;
           b2b_uom?: string | null;
+          basis_product_id?: string | null;
           bom_required?: boolean | null;
           carton_dimensions_cm?: string | null;
           carton_logic?: string | null;
@@ -1387,6 +1389,7 @@ export type Database = {
           b2b_price_basis?: string | null;
           b2b_price_inr?: number | null;
           b2b_uom?: string | null;
+          basis_product_id?: string | null;
           bom_required?: boolean | null;
           carton_dimensions_cm?: string | null;
           carton_logic?: string | null;
@@ -1488,7 +1491,63 @@ export type Database = {
           unit_conversion_note?: string | null;
           updated_at?: string | null;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "products_basis_product_id_fkey";
+            columns: ["basis_product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      product_variants: {
+        Row: {
+          basis_product_id: string;
+          basis_sku: string;
+          created_at: string;
+          id: string;
+          product_id: string;
+          sku: string;
+          updated_at: string;
+          variant_key: string;
+        };
+        Insert: {
+          basis_product_id: string;
+          basis_sku: string;
+          created_at?: string;
+          id?: string;
+          product_id: string;
+          sku: string;
+          updated_at?: string;
+          variant_key: string;
+        };
+        Update: {
+          basis_product_id?: string;
+          basis_sku?: string;
+          created_at?: string;
+          id?: string;
+          product_id?: string;
+          sku?: string;
+          updated_at?: string;
+          variant_key?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_basis_product_id_fkey";
+            columns: ["basis_product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "product_variants_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: true;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       profiles: {
         Row: {
