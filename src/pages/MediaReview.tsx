@@ -24,7 +24,6 @@ import {
   type MediaSubmissionStatus,
   rejectMediaSubmission,
 } from "@/features/mediaWorkspace/mediaReviewDesk";
-import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
 
 const TABS: { key: MediaSubmissionStatus; label: string }[] = [
   { key: "pending_approval", label: "Awaiting approval" },
@@ -33,7 +32,6 @@ const TABS: { key: MediaSubmissionStatus; label: string }[] = [
 ];
 
 const MediaReview = () => {
-  const [allowed, setAllowed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<MediaSubmissionRow[]>([]);
   const [activeTab, setActiveTab] = useState<MediaSubmissionStatus>("pending_approval");
@@ -59,12 +57,10 @@ const MediaReview = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount only; load() identity is stable in intent
   useEffect(() => {
-    void (async () => {
-      const ok = await isCatalogueReviewer();
-      setAllowed(ok);
-      if (ok) await load();
-      else setLoading(false);
-    })();
+    // Reviewer access is enforced by the router-level CatalogueReviewerGate (see App.tsx)
+    // so this page-level effect only loads data — it never re-checks or re-derives
+    // access itself, keeping one shared resolver as the sole authority (#228).
+    void load();
   }, []);
 
   const groupedByStatus = useMemo(
@@ -125,17 +121,6 @@ const MediaReview = () => {
       });
     }
   };
-
-  if (!allowed) {
-    return (
-      <div className="p-4 text-sm space-y-2">
-        <p>Media review is restricted to catalogue reviewers.</p>
-        <Link to="/media" className="text-sm text-primary underline-offset-4 hover:underline">
-          Return to Media Library
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <>

@@ -20,16 +20,19 @@ import {
   Wand2,
   Wrench,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { modulePurpose } from "@/lib/modulePurpose";
 import { canAccessPage, type PageKey } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
-import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
+
+/** Approval-surface routes gated by the shared catalogue-reviewer resolver only — see #228. */
+const REVIEWER_GATED_ROUTES = new Set(["/approvals", "/media/review"]);
 
 type NavItem = {
   to: string;
@@ -82,15 +85,14 @@ export const AppLayout = () => {
   const [open, setOpen] = useState(false);
   const { flags, loading: flagsLoading } = useFeatureFlags();
   const isAdmin = roles.includes("owner") || roles.includes("admin");
-  const [isReviewer, setIsReviewer] = useState(false);
-  useEffect(() => {
-    (async () => setIsReviewer(await isCatalogueReviewer()))();
-  }, []);
+  const { isReviewer, loading: reviewerLoading } = useCatalogueReviewer();
   const rolesReady = !loading && !rolesLoading;
   const items = rolesReady
     ? nav.filter((n) => {
-        if (n.to === "/approvals") return isAdmin || isReviewer;
-        if (n.to === "/media/review") return isAdmin || isReviewer;
+        // Nav visibility must match the page-level gate's authority exactly (Core
+        // is_catalogue_reviewer()) — never fall back to isAdmin, or owner/admin see
+        // an entry they're then blocked from opening. See #228.
+        if (REVIEWER_GATED_ROUTES.has(n.to)) return !reviewerLoading && isReviewer;
         if (!canAccessPage(roles, n.page)) return false;
         if (!n.featureKey) return true; // core pages always visible
         if (flagsLoading) return isAdmin; // don't hide gated items for admin while loading
