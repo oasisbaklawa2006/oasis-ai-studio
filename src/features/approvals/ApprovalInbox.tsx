@@ -239,6 +239,7 @@ export default function ApprovalInbox() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: run once when reviewer resolves; load() identity is stable in intent
   useEffect(() => {
     if (isReviewer) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReviewer]);
 
   const groupedByStatus = useMemo(() => {
