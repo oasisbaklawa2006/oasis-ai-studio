@@ -31,17 +31,32 @@ export async function hasPermission(permissionKey: string): Promise<boolean> {
   return !!data;
 }
 
+/**
+ * The single governed resolver for catalogue-review authority (Core `is_catalogue_reviewer()`
+ * RPC). Both approval-surface navigation and page access must consume this — never a
+ * client-side role check — so they can't diverge (#228). Fails closed on any RPC error or
+ * thrown/rejected call.
+ */
 export async function isCatalogueReviewer(): Promise<boolean> {
-  const { data, error } = await supabase.rpc("is_catalogue_reviewer");
+  try {
+    const { data, error } = await supabase.rpc("is_catalogue_reviewer");
 
-  if (error) {
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error("[CentralPermissions] is_catalogue_reviewer failed:", error);
+      }
+      return false;
+    }
+
+    return !!data;
+  } catch (error) {
+    // Fail closed on network loss / thrown client errors, not just RPC-reported errors —
+    // this resolver gates both approval-surface navigation and page access (#228).
     if (import.meta.env.DEV) {
-      console.error("[CentralPermissions] is_catalogue_reviewer failed:", error);
+      console.error("[CentralPermissions] is_catalogue_reviewer threw:", error);
     }
     return false;
   }
-
-  return !!data;
 }
 
 export async function isCatalogueContributor(): Promise<boolean> {

@@ -133,7 +133,14 @@ const App = () => (
                       </RoleGate>
                     }
                   />
-                  <Route path="/media/review" element={<MediaReview />} />
+                  <Route
+                    path="/media/review"
+                    element={
+                      <CatalogueReviewerGate>
+                        <MediaReview />
+                      </CatalogueReviewerGate>
+                    }
+                  />
                   <Route
                     path="/tags"
                     element={
