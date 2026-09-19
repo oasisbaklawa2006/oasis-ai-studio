@@ -31,6 +31,9 @@ const TABS: { key: MediaSubmissionStatus; label: string }[] = [
   { key: "rejected", label: "Rejected" },
 ];
 
+/** Reviewer desk for catalogue media submissions. Access is enforced entirely by the
+ * router-level `CatalogueReviewerGate` wrapping this route in App.tsx — this component
+ * assumes access is already granted and only loads/displays data (#228). */
 const MediaReview = () => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<MediaSubmissionRow[]>([]);

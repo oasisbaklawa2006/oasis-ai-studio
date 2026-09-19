@@ -79,6 +79,8 @@ const nav: NavItem[] = [
   { to: "/approvals", label: "Approval Inbox", icon: ShieldCheck, page: "audit_log" },
 ];
 
+/** Sidebar shell and route outlet. Nav visibility for reviewer-gated routes always matches the
+ * page-level access authority (Core `is_catalogue_reviewer()`) — see `REVIEWER_GATED_ROUTES`. */
 export const AppLayout = () => {
   const { user, roles, signOut, loading, rolesLoading } = useAuth();
   const navigate = useNavigate();

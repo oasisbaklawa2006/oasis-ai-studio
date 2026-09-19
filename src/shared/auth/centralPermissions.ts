@@ -31,6 +31,12 @@ export async function hasPermission(permissionKey: string): Promise<boolean> {
   return !!data;
 }
 
+/**
+ * The single governed resolver for catalogue-review authority (Core `is_catalogue_reviewer()`
+ * RPC). Both approval-surface navigation and page access must consume this — never a
+ * client-side role check — so they can't diverge (#228). Fails closed on any RPC error or
+ * thrown/rejected call.
+ */
 export async function isCatalogueReviewer(): Promise<boolean> {
   try {
     const { data, error } = await supabase.rpc("is_catalogue_reviewer");
