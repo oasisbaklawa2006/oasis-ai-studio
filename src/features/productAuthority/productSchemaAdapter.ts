@@ -54,6 +54,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     b2b_price_basis: true,
     b2b_price_inr: true,
     b2b_uom: true,
+    basis_product_id: true,
     bom_required: true,
     carton_dimensions_cm: true,
     carton_logic: true,

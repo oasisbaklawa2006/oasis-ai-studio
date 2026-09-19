@@ -13,6 +13,7 @@ import {
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
 import { isPackBasedSelling, isWeightBasedSelling } from "@/features/productAuthority/packLogic";
+import { buildCanonicalProductVariantHierarchy } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { buildCanonicalPackagingHierarchy } from "./packagingHierarchyCanonical";
@@ -254,6 +255,11 @@ export function evaluateProductReadiness(input: ProductTruthInput): ProductReadi
   if (!dimensions.find((d) => d.dimension === "production_mapping_status")?.complete) {
     blockers.push("Production mapping missing");
   }
+  if (input.variantHierarchyValidation && !input.variantHierarchyValidation.valid) {
+    blockers.push(
+      input.variantHierarchyValidation.errors[0] ?? "Product/variant hierarchy invalid",
+    );
+  }
 
   dimensions.push(evalCentralSync(input, blockers));
 
@@ -372,6 +378,7 @@ export function productTruthInputFromForm(
     pieceOnlySelling,
     weightDefinedPack,
     packagingHierarchyValidation: buildCanonicalPackagingHierarchy(form).validation,
+    variantHierarchyValidation: buildCanonicalProductVariantHierarchy(form).validation,
   };
 }
 

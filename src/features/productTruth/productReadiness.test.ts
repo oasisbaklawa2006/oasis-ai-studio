@@ -88,6 +88,27 @@ describe("productReadiness", () => {
     expect(r.blockers).not.toContain("Packaging conversion rules missing");
   });
 
+  it("blocks central sync when variant hierarchy validation is invalid", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      variantHierarchyValidation: {
+        valid: false,
+        errors: ["A product cannot be its own basis product."],
+        warnings: [],
+      },
+    });
+    expect(r.readyForCentralSync).toBe(false);
+    expect(r.blockers).toContain("A product cannot be its own basis product.");
+  });
+
+  it("does not block central sync when variant hierarchy validation is valid", () => {
+    const r = evaluateProductReadiness({
+      ...completeInput,
+      variantHierarchyValidation: { valid: true, errors: [], warnings: [] },
+    });
+    expect(r.readyForCentralSync).toBe(true);
+  });
+
   it("keeps mixed kg-to-piece selling blocked without piece conversion truth", () => {
     const r = evaluateProductReadiness({
       ...completeInput,
