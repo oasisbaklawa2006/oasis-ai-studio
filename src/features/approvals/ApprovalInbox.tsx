@@ -3,13 +3,14 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { evaluateMobileApprovalAction } from "@/features/mobileApproval/mobileApprovalAuthority";
 import {
   blockPilotApprovalMessage,
   isDraftSku,
   isStructuredOasisSku,
 } from "@/features/productAuthority/skuGuard";
+import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { supabase } from "@/integrations/supabase/client";
-import { isCatalogueReviewer } from "@/shared/auth/centralPermissions";
 
 type ApprovalStatus = "pending_approval" | "approved" | "rejected";
 
@@ -183,7 +184,7 @@ const getDisplayReviewFlags = (payload: Record<string, any> | null | undefined) 
 };
 
 export default function ApprovalInbox() {
-  const [allowed, setAllowed] = useState(false);
+  const { isReviewer, loading: reviewerLoading } = useCatalogueReviewer();
   const [items, setItems] = useState<ApprovalItem[]>([]);
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ApprovalStatus>("pending_approval");
@@ -235,14 +236,10 @@ export default function ApprovalInbox() {
     setItems(all);
   };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: run once on mount only; load() identity is stable in intent
+  // biome-ignore lint/correctness/useExhaustiveDependencies: run once when reviewer resolves; load() identity is stable in intent
   useEffect(() => {
-    (async () => {
-      const ok = await isCatalogueReviewer();
-      setAllowed(ok);
-      if (ok) load();
-    })();
-  }, []);
+    if (isReviewer) load();
+  }, [isReviewer]);
 
   const groupedByStatus = useMemo(() => {
     return {
@@ -253,6 +250,14 @@ export default function ApprovalInbox() {
   }, [items]);
 
   const approve = async (r: ApprovalItem) => {
+    const gate = evaluateMobileApprovalAction("approve_contributor_draft", {
+      isCatalogueReviewer: isReviewer,
+      governedByCentral: r.governedByCentral,
+    });
+    if (!gate.allowed) {
+      toast.error(gate.blockReason ?? "Approval blocked.");
+      return;
+    }
     if (r.governedByCentral || !r.approveFn) {
       toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
       return;
@@ -284,6 +289,14 @@ export default function ApprovalInbox() {
   };
 
   const reject = async (r: ApprovalItem) => {
+    const gate = evaluateMobileApprovalAction("reject_contributor_draft", {
+      isCatalogueReviewer: isReviewer,
+      governedByCentral: r.governedByCentral,
+    });
+    if (!gate.allowed) {
+      toast.error(gate.blockReason ?? "Rejection blocked.");
+      return;
+    }
     if (r.governedByCentral || !r.rejectFn) {
       toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
       return;
@@ -300,8 +313,13 @@ export default function ApprovalInbox() {
     load();
   };
 
-  if (!allowed)
-    return <div className="p-4 text-sm">Approval inbox is restricted to catalogue reviewers.</div>;
+  if (reviewerLoading) {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center text-muted-foreground">
+        Loading approval inbox…
+      </div>
+    );
+  }
 
   const currentItems = groupedByStatus[activeTab];
 
