@@ -13,6 +13,7 @@ import {
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
 import { isPackBasedSelling, isWeightBasedSelling } from "@/features/productAuthority/packLogic";
+import { buildCanonicalProductVariantHierarchy } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { priceBlocksPublish } from "./channelPricingMoqEngine";
 import { buildCanonicalPackagingHierarchy } from "./packagingHierarchyCanonical";
@@ -372,6 +373,7 @@ export function productTruthInputFromForm(
     pieceOnlySelling,
     weightDefinedPack,
     packagingHierarchyValidation: buildCanonicalPackagingHierarchy(form).validation,
+    variantHierarchyValidation: buildCanonicalProductVariantHierarchy(form).validation,
   };
 }
 

@@ -70,6 +70,7 @@ import {
   resolveFullEditorSavePath,
   resolveFullEditorTabState,
 } from "@/features/productAuthority/fullEditorArchitecture";
+import { ProductVariantHierarchyPanel } from "@/features/productAuthority/panels/ProductVariantHierarchyPanel";
 import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
 import {
   buildDimensionsText,
@@ -78,6 +79,7 @@ import {
   productSaveValidationMessage,
   validateProductSavePayload,
 } from "@/features/productAuthority/productSchemaAdapter";
+import { assertVariantHierarchySaveAllowed } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
 import {
   releaseSingleFlight,
@@ -1553,6 +1555,14 @@ const ProductEdit = () => {
         return;
       }
 
+      const variantGuard = assertVariantHierarchySaveAllowed(safePayload);
+      if (variantGuard.ok === false) {
+        setLoading(false);
+        setSubmitError(variantGuard.reason);
+        toast.error(variantGuard.reason);
+        return;
+      }
+
       let productRow: Record<string, unknown>;
       try {
         productRow = productEditDirectProductsRow(safePayload);
@@ -2106,6 +2116,8 @@ const ProductEdit = () => {
                 productClass={form.product_class}
                 onChange={patch}
               />
+
+              <ProductVariantHierarchyPanel form={form} />
 
               {isContributorMode && (
                 <div className="rounded-md border border-accent/30 bg-accent-soft/30 p-3 text-xs text-muted-foreground">

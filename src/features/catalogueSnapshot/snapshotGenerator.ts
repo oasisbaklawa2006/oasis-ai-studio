@@ -8,6 +8,7 @@ import {
 } from "@/features/mediaReadiness/mediaReadinessEngine";
 import { evaluatePublicationReadiness } from "@/features/productAuthority/moqLeadTimeReadinessCanonical";
 import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
+import { serializeProductVariantHierarchyForSnapshot } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { buildSnapshotLanguageIntelligence } from "@/features/productIntelligence/snapshotLanguage";
 import { serializePackagingHierarchyForSnapshot } from "@/features/productTruth/packagingHierarchyCanonical";
@@ -104,6 +105,7 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
   const hero = approvedImages[0] ?? str(input.form.hero_image_url);
 
   const packagingHierarchy = serializePackagingHierarchyForSnapshot(input.form);
+  const productVariantHierarchy = serializeProductVariantHierarchyForSnapshot(input.form);
   const manuallyApproved = !!input.complianceApproved && !input.complianceMetaPending;
   const factualComposition = serializeFactualCompositionForSnapshot(
     factualCompositionFormForSnapshot(input.form, manuallyApproved),
@@ -179,6 +181,7 @@ export function generateCatalogueSnapshot(input: SnapshotGeneratorInput): Catalo
       rules: conversionRules,
     },
     packaging_hierarchy: packagingHierarchy,
+    product_variant_hierarchy: productVariantHierarchy,
     packaging_label_readiness: point37.snapshot,
     factual_composition: factualComposition,
     channel_rules: input.moqRules ?? [],

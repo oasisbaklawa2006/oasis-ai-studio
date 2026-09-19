@@ -1,6 +1,7 @@
 import type { PackagingTaxonomyAuthority } from "@/features/productAuthority/catalogueReadyGate";
 import type { Point36FulfillmentReadinessSnapshot } from "@/features/productAuthority/moqLeadTimeReadinessCanonical";
 import type { Point37PackagingLabelReadinessSnapshot } from "@/features/productAuthority/packagingLabelReadinessCanonical";
+import type { SnapshotProductVariantHierarchy } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import type { SnapshotLanguageIntelligence } from "@/features/productIntelligence/types";
 import type { SnapshotPackagingHierarchy } from "@/features/productTruth/packagingHierarchyCanonical";
 import type { SnapshotFactualComposition } from "@/features/productTruth/productFactualCompositionCanonical";
@@ -68,6 +69,8 @@ export type CatalogueSnapshotJson = {
   };
   uom_conversion_rules: PackagingHierarchy & Record<string, unknown>;
   packaging_hierarchy: SnapshotPackagingHierarchy;
+  /** Point 32 — sellable SKU identity + explicit variant graph (Core PR #310, live). */
+  product_variant_hierarchy: SnapshotProductVariantHierarchy;
   /** Point 37 — packaging / label-readiness canonical block (preview-only when taxonomy unloaded). */
   packaging_label_readiness: Point37PackagingLabelReadinessSnapshot;
   factual_composition: SnapshotFactualComposition;
