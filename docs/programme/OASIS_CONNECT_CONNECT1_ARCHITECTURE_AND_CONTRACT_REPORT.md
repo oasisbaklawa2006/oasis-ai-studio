@@ -56,7 +56,8 @@ is derived from reading these clones, not from assumption.
 
 ## 4. Duplication/conflict list
 
-- None found. No repository has attempted a competing consumer registry, token store, or reprint authority. The gap is absence, not duplication — CONNECT-2 is additive.
+- None found **in the paths actually inspected**: `oasis-ai-studio` (full repo), `oasis-supabase-core` migrations, and `oasis-trace` (`src/`). No competing consumer registry, token store, or reprint authority exists in any of those.
+- Central was only keyword-grepped (see Open Items), not fully inspected. CONNECT-1b must confirm the same absence there before CONNECT-2 relies on "additive, no duplication" as settled for that repository.
 
 ## 5. Proposed Oasis Connect contract (design-only, not applied)
 
@@ -90,8 +91,11 @@ Minimum net-new objects, informed by what already exists (avoids the `connect_pr
 - `connect_tokens` — consumer_id, token_hash (never plaintext), scopes[], rate_limit, expires_at, revoked_at.
 - `connect_profiles` — id, label, consumer_type, field allowlist reference (can be a JSON column referencing AI-Studio-defined field keys rather than a new table per field).
 - `connect_bindings` — consumer_id → profile_id, environment.
-- `connect_delivery_log` — modeled directly on `ols_trace_mutation_receipts`' idempotency-key/fingerprint/response shape.
-- A single `connect_authorize_and_project_v1(token, resource, params)`-style SECURITY DEFINER RPC that validates the token/consumer/profile, then calls `published_products_v1()`/`buyer_product_prices_v1()` (or a Central-exposed RPC) internally and filters to the profile's allowlist server-side. This keeps the product data path reusing existing RPCs instead of copying data into new tables.
+- `connect_delivery_log` — modeled directly on `ols_trace_mutation_receipts`' idempotency-key/fingerprint/response shape. This table, and only this table, owns idempotency/replay for Oasis Connect.
+- `connect_authorize_and_project_v1(token, resource, params)` — SECURITY DEFINER, **read-only, no idempotency key, no `connect_delivery_log` write**. It validates the token/consumer/profile, then calls `published_products_v1()`/`buyer_product_prices_v1()` (or a Central-exposed RPC) and filters to the profile's allowlist server-side.
+  Being read-only and side-effect-free, repeated calls are naturally safe to retry without a replay contract.
+- `connect_record_delivery_v1(token, idempotency_key, resource, response_fingerprint)` — the separate, state-changing RPC that owns idempotency. It takes `p_idempotency_key`, checks/writes `connect_delivery_log` following the same advisory-lock plus fingerprint-conflict pattern as `trace_approve_reprint_request_v1`, and is the only path that persists a delivery record.
+  A consumer/webhook caller invokes the projection RPC to get data, then this RPC to record the delivery — the two are never merged into one RPC, so the read path never needs replay logic.
 - No new printer/reprint tables — CONNECT-5 calls the existing Trace RPCs directly, gated by the same token/consumer check.
 
 ## 7. Channel-profile model (AI Studio domain logic, CONNECT-3 scope)
@@ -106,7 +110,7 @@ Reuse the source-path → authority mapping approach validated in the deleted sc
 
 ## 9. Security model requirements confirmed feasible
 
-- Fail-closed token check is achievable as a single SECURITY DEFINER gate (`connect_authorize_and_project_v1`), matching the existing `trace_approve_reprint_request_v1` pattern (auth check → idempotency/replay check → action).
+- Fail-closed token check is achievable as a SECURITY DEFINER gate at the top of `connect_authorize_and_project_v1`, matching the auth-check half of the existing `trace_approve_reprint_request_v1` pattern; the idempotency/replay half of that pattern belongs to `connect_record_delivery_v1` (see section 6), since the projection call itself is read-only.
 - B2C/B2B isolation is already structurally supported: `buyer_product_prices_v1()` is a separate RPC from `published_products_v1()`, so a B2C-scoped token simply never gets routed to the pricing RPC — no field-level filtering race is needed for that specific leak class.
 - Revocation: `connect_tokens.revoked_at` checked on every call, consistent with how `ols_reprint_requests` status checks work today.
 
@@ -117,7 +121,7 @@ Reuse the source-path → authority mapping approach validated in the deleted sc
 3. Trace-scoped token → request for pricing/customer fields → must fail closed.
 4. WhatsApp-scoped token → request for a draft/unapproved product → must fail closed (published_products_v1 already excludes unapproved rows by construction — confirm this in CONNECT-2 test suite rather than assuming).
 5. Consumer A's token → Consumer B's delivery log/binding → must fail closed (cross-consumer isolation).
-6. Idempotent replay of `connect_authorize_and_project_v1` with same idempotency key → same response, no duplicate side effects (mirrors existing `ols_trace_mutation_receipts` test pattern).
+6. Idempotent replay of `connect_record_delivery_v1` with the same idempotency key → same response, no duplicate `connect_delivery_log` row (mirrors existing `ols_trace_mutation_receipts` test pattern). `connect_authorize_and_project_v1` needs no replay test — it is read-only.
 
 ## Open items for CONNECT-1b (not blocking this report, but not yet closed)
 
