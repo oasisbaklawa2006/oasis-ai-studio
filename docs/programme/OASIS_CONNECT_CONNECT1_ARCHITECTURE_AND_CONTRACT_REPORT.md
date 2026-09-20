@@ -10,7 +10,7 @@ proposed as applied code.
 ## Repositories inspected and exact SHAs
 
 | Repository | HEAD inspected | Access |
-|---|---|---|
+| --- | --- | --- |
 | `oasis-ai-studio` | `851787a7e994b5c5f96b196544c64fd1b7509553` (main) | push (session home repo) |
 | `oasis-supabase-core` | `671781475ef8a625afec96c5336158a504c5e287` | read-only clone |
 | `Oasis-Baklawa-Central` | `1dc6ce989744124c0721203bad103e9c1a83226b` | read-only clone |
@@ -24,17 +24,18 @@ is derived from reading these clones, not from assumption.
 ## 1. Current-state capability matrix
 
 | Capability | Exists today? | Where |
-|---|---|---|
+| --- | --- | --- |
 | Canonical approved product truth | **Yes** | `oasis-ai-studio` `CatalogueSnapshotJson` (`src/features/catalogueSnapshot/types.ts`) — includes `channel_rules: ChannelMoqRule[]`, `pricing_rules: ChannelPriceRecord[]` |
-| Consumer-safe product read projection | **Yes** | Core `public.published_products_v1()` (defined in `20260723161256_legacy_role_authority_baseline.sql:2706`) — returns `product_id, sku, product_name, short_description, long_description, category, subcategory, hero_image_url, pack_size, storage_type, shelf_life, shelf_life_days, dietary_tags, allergen_warnings, primary_uom, created_at`. No cost/margin/internal fields present — this **is** a working B2C-shaped projection already. |
+| Consumer-safe product read projection | **Yes** | Core `public.published_products_v1()` (`20260723161256_legacy_role_authority_baseline.sql:2706`) — returns identity, description, category, media, pack/storage/shelf-life, allergens and UOM columns only. No cost/margin/internal fields present — this **is** a working B2C-shaped projection already. |
 | Channel/consumer-scoped pricing overlay | **Yes** | Core `public.buyer_product_prices_v1()` — returns `product_id, selling_price, currency, uom, gst_rate, tax_inclusive, applied_discount_percent, minimum_order_quantity, minimum_order_uom, order_increment, order_increment_uom, valid_from, valid_until`. Separate RPC from product data — pricing is not baked into the product projection. |
-| Channel-scoped pricing authority (AI Studio side) | **Yes** | `src/features/productAuthority/channelPricingMapper.ts` — explicit list of channel price keys (`b2b_price`, `mrp`, `retail_price`, `bulk_price`, `wholesale_price`, `horeca_price`, `export_price`, `franchisee_price`, `own_outlet_price`, `special_price`, `costing_price`) mapped only into `product_pricing_rules`, never into `products` — comment states "never products table." |
+| Channel-scoped pricing authority (AI Studio side) | **Yes** | `src/features/productAuthority/channelPricingMapper.ts` — an explicit channel price key list (`b2b_price`, `mrp`, `retail_price`, `wholesale_price`, `export_price`, and others) mapped only into `product_pricing_rules`, never into `products`. |
 | Generic consumer/application registry | **No** | No `connect_consumers`-equivalent table or RPC found anywhere in Core. |
 | Consumer credential/token persistence (hashed, scoped, revocable) | **No** | Grepped Core migrations for `api_token`, `access_token`, `token_hash`, `consumer_token` — zero matches. No generic external-consumer auth model exists today. |
 | Channel-profile persistence (configurable, not hard-coded) | **No** | Nothing in Core or AI Studio persists a named channel profile with a field allowlist. |
 | Webhook/delta/change-feed engine | **No** | Not found in any of the four repos. |
-| Trace printer/reprint authority | **Yes, live and mature** | Core: `trace_reprint_approver_allowed_v1()`, `trace_approve_reprint_request_v1(p_request_id, p_idempotency_key)` (SECURITY DEFINER, `pg_advisory_xact_lock`-guarded, checks `ols_trace_mutation_receipts` for idempotent replay, writes `ols_audit_logs`), `trace_save_printer_settings_v1()`, tables `ols_reprint_requests`, `ols_printers`. Migrations: `20260830101000_trace_printer_settings_authority.sql`, `20260911200000_trace_reprint_atomic_allocation_authority.sql`, `20260912010000/010100/010200_trace_reprint_allocation_*`/`_execution_*`, `20260915200000_trace_reprint_approval_authority.sql`. |
-| Trace client already bridges to Core rather than deciding locally | **Yes** | `oasis-trace/src/components/ReprintModal.tsx` calls `allocateGovernedReprint` and `findReusableApprovedRequestLive` (`src/lib/governedReprintAllocation.ts`, `src/lib/reprintApprovalLookup.ts`) — live mode explicitly "delegates count allocation and approval threshold enforcement to Core." This is the exact pattern Oasis Connect's label bridge must reuse. |
+| Trace printer/reprint authority | **Yes, live and mature** | Core: `trace_reprint_approver_allowed_v1()`, `trace_approve_reprint_request_v1(p_request_id, p_idempotency_key)` (SECURITY DEFINER, `pg_advisory_xact_lock`-guarded, checks `ols_trace_mutation_receipts` for idempotent replay, writes `ols_audit_logs`), `trace_save_printer_settings_v1()`, tables `ols_reprint_requests`, `ols_printers`. |
+| Trace printer/reprint migrations | — | `20260830101000_trace_printer_settings_authority.sql`, `20260911200000_trace_reprint_atomic_allocation_authority.sql`, `20260912010000/010100/010200_trace_reprint_allocation_*`/`_execution_*`, `20260915200000_trace_reprint_approval_authority.sql`. |
+| Trace client already bridges to Core rather than deciding locally | **Yes** | `oasis-trace/src/components/ReprintModal.tsx` calls `allocateGovernedReprint` and `findReusableApprovedRequestLive` — live mode delegates count allocation and approval threshold enforcement to Core. This is the pattern Oasis Connect's label bridge must reuse. |
 | Central-side commercial/customer data ownership | **Partially inspected** | Central repo has no obviously named `connect`/pricing-authority module surfaced by keyword grep in this pass; Central's commercial-truth surface needs a deeper CONNECT-1b pass before CONNECT-4 is scoped (see Open Items). |
 
 ## 2. Ownership matrix (as verified, matching CLAUDE.md and the Central register)
@@ -61,7 +62,7 @@ is derived from reading these clones, not from assumption.
 
 Conceptual flow, confirmed compatible with what exists:
 
-```
+```text
 AI Studio approved CatalogueSnapshotJson
   -> Oasis Connect channel profile (new, AI-Studio-domain-logic, no persistence)
   -> Core: consumer identity + token authorization (new, CONNECT-2)
@@ -72,7 +73,7 @@ AI Studio approved CatalogueSnapshotJson
 
 For Trace/labels:
 
-```
+```text
 AI Studio approved label dataset (ingredients/allergens/net weight presentation/template)
   -> Oasis Connect label profile (new, AI-Studio-domain-logic)
   -> Core governed contract (new, thin — resolves label-safe fields only)
@@ -90,12 +91,14 @@ Minimum net-new objects, informed by what already exists (avoids the `connect_pr
 - `connect_profiles` — id, label, consumer_type, field allowlist reference (can be a JSON column referencing AI-Studio-defined field keys rather than a new table per field).
 - `connect_bindings` — consumer_id → profile_id, environment.
 - `connect_delivery_log` — modeled directly on `ols_trace_mutation_receipts`' idempotency-key/fingerprint/response shape.
-- A single `connect_authorize_and_project_v1(token, resource, params)`-style SECURITY DEFINER RPC that: validates the token/consumer/profile, then calls `published_products_v1()`/`buyer_product_prices_v1()` (or a Central-exposed RPC) internally and filters to the profile's allowlist server-side — this keeps the actual product data path reusing existing RPCs instead of copying data into new tables.
+- A single `connect_authorize_and_project_v1(token, resource, params)`-style SECURITY DEFINER RPC that validates the token/consumer/profile, then calls `published_products_v1()`/`buyer_product_prices_v1()` (or a Central-exposed RPC) internally and filters to the profile's allowlist server-side. This keeps the product data path reusing existing RPCs instead of copying data into new tables.
 - No new printer/reprint tables — CONNECT-5 calls the existing Trace RPCs directly, gated by the same token/consumer check.
 
 ## 7. Channel-profile model (AI Studio domain logic, CONNECT-3 scope)
 
-Field-authority-tagged (`AI_STUDIO | CORE | CENTRAL | TRACE | CALCULATED`), allowlist + explicit `neverEmit` denylist per profile, scope-gated per field. Five reference profiles: `b2c_india_v1`, `b2b_india_v1`, `whatsapp_retail_v1`, `website_retail_v1`, `trace_label_v1`. (This matches the design abandoned in the earlier unauthorized scratch — it may be recreated once CONNECT-2's contract exists, per the register's CONNECT-3 gate; it must be rebuilt against the actual `connect_authorize_and_project_v1` contract rather than the placeholder registry used in the deleted draft.)
+Field-authority-tagged (`AI_STUDIO | CORE | CENTRAL | TRACE | CALCULATED`), allowlist plus explicit `neverEmit` denylist per profile, scope-gated per field. Five reference profiles: `b2c_india_v1`, `b2b_india_v1`, `whatsapp_retail_v1`, `website_retail_v1`, `trace_label_v1`.
+
+This matches the design abandoned in the earlier unauthorized scratch — it may be recreated once CONNECT-2's contract exists, per the register's CONNECT-3 gate. It must be rebuilt against the actual `connect_authorize_and_project_v1` contract rather than the placeholder registry used in the deleted draft.
 
 ## 8. Field-authority model
 
@@ -132,7 +135,7 @@ write scope.
 
 ---
 
-## CONNECT-1 BLOCKED ONLY BY:
+## CONNECT-1 BLOCKED ONLY BY
 
 - Push/write access to `oasisbaklawa2006/Oasis-Baklawa-Central` to formally commit the Point 54a / ASM-OC-01 register entry (denied by session permission classifier; requires either owner action to apply `OASIS_CONNECT_REGISTER_PROPOSAL_POINT_54A.md` directly, or an explicit permission grant for this session to push to Central).
 
