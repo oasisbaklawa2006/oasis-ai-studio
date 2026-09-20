@@ -60,9 +60,24 @@ Code-level (existing merged test suites, re-run clean on this head):
 - `ProductEdit.tsx` round-trips: `ProductVariantRelationshipEditor` renders alongside the read-only `ProductVariantHierarchyPanel`; successful mutations patch local form state non-dirty so both stay in sync without reload.
 
 **Live production evidence (read-only SQL against the single connected Supabase project `oasis-baklawa`, `tcxvcatsqqertcnycuop` — no mutation performed):**
-- `public.product_variants` table exists live, `rls_enabled: true`, columns exactly match generated types (`id, product_id, basis_product_id, variant_key, basis_sku, sku, created_at, updated_at`), 0 rows (feature not yet used in production, expected for a same-day merge).
+- `public.product_variants` table exists live, `rls_enabled: true`, columns
+  match a manual field-by-field comparison against
+  `src/integrations/supabase/types.ts` (`id, product_id, basis_product_id,
+  variant_key, basis_sku, sku, created_at, updated_at`) — this file was
+  hand-extended for POINT32 pending a `generate_typescript_types` regen per
+  the Point 32 census, so this is not evidence the generated client is
+  current, only that the hand-extended fields are correct. `rows: 0` at
+  inspection time — this is an observation only, not evidence of no prior
+  production usage.
 - `public.products.basis_product_id` column exists live with Core's exact comment.
-- Live RLS policies on `product_variants` confirmed: public/authenticated `SELECT`, `is_admin()`-gated `INSERT`/`UPDATE`/`DELETE` — no service-role bypass, no shadow schema.
+- Live RLS policies on `product_variants` confirmed: public/authenticated
+  `SELECT`, `is_admin()`-gated `INSERT`/`UPDATE`/`DELETE`, matching the Core
+  migration exactly. Separately confirmed by reading
+  `productVariantRelationshipStore.ts`: AI Studio's client imports `supabase`
+  from `@/integrations/supabase/client` (the anon/publishable client) for
+  every read and write in this module — no service-role key is used
+  client-side. No AI Studio code creates or queries any table other than the
+  real `products`/`product_variants` (no shadow schema in this repository).
 - Live triggers confirmed enabled: `trg_enforce_product_variant_identity_v1` (on `product_variants`), `trg_enforce_product_point32_identity_immutable_v1` (on `products`).
 
 **Not verified (genuine external gate):** an actual end-to-end write (real
@@ -125,7 +140,13 @@ defects/verification route to Task 3 / Mission Control.
 
 ## 11. Website linkage (oasisbaklawa.in / .com / .biz) — BLOCKED / NOT INTEGRATED IN THIS REPOSITORY
 
-Full-repository search (`src`, `supabase`, `docs`) for any Wix/WordPress API integration, website feed/export mechanism, or storefront-publication code found **none**. The only matches for `oasisbaklawa.com` are a customer-care contact string in `ProductEdit.tsx` and an admin email address used in one historical migration's RLS check — neither is a publication path.
+A search of every tracked file in the repository (`git ls-files`, not a
+hand-picked subset of directories) for any Wix/WordPress API integration,
+website feed/export mechanism, or storefront-publication code found **none**.
+The only matches for `oasisbaklawa.com` are: a customer-care contact string
+in `ProductEdit.tsx`; an admin email address used in one historical
+migration's RLS check; and two `.ai-intent/` ledger rows referencing the same
+admin email. None is a publication path.
 
 **Finding:** AI Studio, as currently implemented, has **no code-level
 integration path to any of the three websites** — not a credentials gap, not
