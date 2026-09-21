@@ -51,6 +51,7 @@ Those are external runtime/physical gates and remain governed separately.
 ## Regression rule
 
 Reopen Task 1 only if a new failing exact-head CI/review finding, a production
-drift finding, or a demonstrated AI Studio authority defect invalidates this
-seal. Dependency-upgrade PRs must not be reclassified as missing Task 1
-functionality merely because they are open.
+drift finding, a demonstrated AI Studio authority defect, or a demonstrated
+AI Studio-owned software regression invalidates this seal. Dependency-upgrade
+PRs must not be reclassified as missing Task 1 functionality merely because
+they are open.
