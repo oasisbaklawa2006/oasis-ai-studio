@@ -23,10 +23,7 @@ const MUTATING_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  * Returns true when a network request would violate the read-only audit contract.
  * Auth token refresh and read-only GET/HEAD traffic are permitted.
  */
-export function isForbiddenReadOnlyUatPersistenceRequest(
-  method: string,
-  url: string,
-): boolean {
+export function isForbiddenReadOnlyUatPersistenceRequest(method: string, url: string): boolean {
   const upper = method.toUpperCase();
   if (!MUTATING_HTTP_METHODS.has(upper)) return false;
 

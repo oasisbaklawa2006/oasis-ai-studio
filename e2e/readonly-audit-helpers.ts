@@ -1,4 +1,4 @@
-import { devices, type Browser, type Page } from "@playwright/test";
+import { type Browser, devices, type Page } from "@playwright/test";
 
 export const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
 export const EMAIL = process.env.TEST_STUDIO_EMAIL || "";
@@ -16,9 +16,7 @@ export async function createStudioContext(
   const context = await browser.newContext({
     ...devices[playwrightDevice],
     ignoreHTTPSErrors: true,
-    extraHTTPHeaders: bypassSecret
-      ? { "x-vercel-protection-bypass": bypassSecret }
-      : undefined,
+    extraHTTPHeaders: bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : undefined,
   });
   if (bypassSecret) {
     await context.route(`${studioOrigin}/**`, async (route) => {

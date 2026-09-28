@@ -12,13 +12,7 @@ export type StudioCentralUatDeviceProfile = "desktop" | "phone";
 export type StudioCentralUatPlaywrightDevice = "Desktop Chrome" | "iPhone 13";
 
 export type StudioCentralUatCase = {
-  uatId:
-    | "UAT-0122"
-    | "UAT-0123"
-    | "UAT-0124"
-    | "UAT-0125"
-    | "UAT-0126"
-    | "UAT-0127";
+  uatId: "UAT-0122" | "UAT-0123" | "UAT-0124" | "UAT-0125" | "UAT-0126" | "UAT-0127";
   pathname: string;
   uiState: StudioCentralUatUiState;
   deviceProfile: StudioCentralUatDeviceProfile;
@@ -81,9 +75,7 @@ export const STUDIO_CENTRAL_UAT_EVIDENCE_CASES: readonly StudioCentralUatCase[] 
 export const STUDIO_CENTRAL_UAT_IDS: readonly StudioCentralUatCase["uatId"][] =
   STUDIO_CENTRAL_UAT_EVIDENCE_CASES.map((caseRow) => caseRow.uatId);
 
-export function getStudioCentralUatCase(
-  uatId: string,
-): StudioCentralUatCase | undefined {
+export function getStudioCentralUatCase(uatId: string): StudioCentralUatCase | undefined {
   return STUDIO_CENTRAL_UAT_EVIDENCE_CASES.find((caseRow) => caseRow.uatId === uatId);
 }
 

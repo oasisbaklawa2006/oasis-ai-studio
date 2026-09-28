@@ -1,18 +1,18 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { expect, test } from "@playwright/test";
+import { collectReadOnlyUatContractViolations } from "../src/features/uatEvidence/readOnlyUatAuditContract";
+import {
+  STUDIO_CENTRAL_UAT_EVIDENCE_CASES,
+  type StudioCentralUatCase,
+  type UatEvidenceVerdict,
+} from "../src/features/uatEvidence/studioCentralUatRegistry";
 import {
   createStudioContext,
   loginStudio,
-  safeScreenshotName,
   STUDIO_URL,
+  safeScreenshotName,
 } from "./readonly-audit-helpers";
-import { collectReadOnlyUatContractViolations } from "../src/features/uatEvidence/readOnlyUatAuditContract";
-import {
-  type StudioCentralUatCase,
-  STUDIO_CENTRAL_UAT_EVIDENCE_CASES,
-  type UatEvidenceVerdict,
-} from "../src/features/uatEvidence/studioCentralUatRegistry";
 
 const ROOT = path.join(process.cwd(), "audit-artifacts", "full-app");
 const SHOTS = path.join(ROOT, "screenshots", "uat-central");
@@ -124,7 +124,9 @@ async function exerciseCase(
     const addMedia = page.getByRole("button", { name: /add media/i });
     if (!(await addMedia.isVisible().catch(() => false))) {
       cameraFlowOk = false;
-      notes.push("Add Media control not visible — cannot evidence camera-capture UI without mutation rights.");
+      notes.push(
+        "Add Media control not visible — cannot evidence camera-capture UI without mutation rights.",
+      );
     } else {
       await addMedia.click();
       await page.waitForTimeout(500);
@@ -146,11 +148,16 @@ async function exerciseCase(
       if (await name.isVisible().catch(() => false)) {
         await name.fill("E2E READ ONLY — DO NOT SAVE");
       }
-      notes.push("Fast Create controls exercised read-only; no Create Product Draft action executed.");
+      notes.push(
+        "Fast Create controls exercised read-only; no Create Product Draft action executed.",
+      );
     }
   }
 
-  const body = await page.locator("body").innerText().catch(() => "");
+  const body = await page
+    .locator("body")
+    .innerText()
+    .catch(() => "");
   const finalUrl = page.url();
   const overlay = await page
     .locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")
@@ -162,11 +169,15 @@ async function exerciseCase(
     body.trim().length === 0 ||
     /404|page not found|something went wrong/i.test(body);
 
-  if (inaccessible) notes.push("Authenticated user lacks access or was redirected to authentication.");
+  if (inaccessible)
+    notes.push("Authenticated user lacks access or was redirected to authentication.");
   if (fatal) notes.push("Blank, error-overlay, not-found, or fatal-error state detected.");
 
   const viewport = page.viewportSize() ?? { width: 0, height: 0 };
-  const screenshotPath = path.join(SHOTS, `${safeScreenshotName(caseRow.uatId, caseRow.uiState)}.png`);
+  const screenshotPath = path.join(
+    SHOTS,
+    `${safeScreenshotName(caseRow.uatId, caseRow.uiState)}.png`,
+  );
   await page.screenshot({ path: screenshotPath, fullPage: false }).catch(() => undefined);
 
   const { consoleErrors, networkFailures, persistenceViolations } = signals.finish();
@@ -221,7 +232,7 @@ function writeReports() {
       pass: evidenceRows.filter((row) => row.verdict === "PASS").length,
       fail: evidenceRows.filter((row) => row.verdict === "FAIL").length,
       blocked: evidenceRows.filter((row) => row.verdict === "BLOCKED").length,
-      notTested: evidenceRows.filter((row) => row.verdict === "NOT-TESTED" as UatEvidenceVerdict)
+      notTested: evidenceRows.filter((row) => row.verdict === ("NOT-TESTED" as UatEvidenceVerdict))
         .length,
     },
   };
