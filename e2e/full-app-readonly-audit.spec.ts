@@ -16,6 +16,7 @@ const routes = [
   ["full-editor", "/products/new"],
   ["category-1-import", "/admin/import/category-1"],
   ["media", "/media"],
+  ["media-review", "/media/review"],
   ["tags", "/tags"],
   ["catalogues", "/catalogues"],
   ["catalogue-builder", "/admin/catalogue-builder"],
