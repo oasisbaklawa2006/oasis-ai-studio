@@ -81,5 +81,5 @@ export async function loginStudio(page: Page): Promise<{
 }
 
 export function safeScreenshotName(uatId: string, uiState: string) {
-  return uatId.toLowerCase().replace(/[^a-z0-9]+/g, "-") + `--${uiState}`;
+  return `${uatId.toLowerCase().replace(/[^a-z0-9]+/g, "-")}--${uiState}`;
 }
