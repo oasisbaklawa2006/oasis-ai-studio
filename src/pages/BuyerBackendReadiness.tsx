@@ -69,7 +69,9 @@ const BuyerBackendReadinessPage = () => {
       const normalized = normalizeBuyerBackendReadiness(candidate);
       if (!normalized) {
         setRow(null);
-        setError("Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.");
+        setError(
+          "Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.",
+        );
         return;
       }
 
