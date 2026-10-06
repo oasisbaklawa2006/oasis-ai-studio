@@ -22,9 +22,13 @@ export type BuyerReadinessCard = {
   detail: string;
 };
 
-const finiteCount = (value: unknown): number => {
-  const n = typeof value === "number" ? value : Number(value);
-  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : 0;
+const finiteCount = (value: unknown): number | null => {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value >= 0 ? Math.trunc(value) : null;
+  }
+  if (typeof value !== "string" || value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : null;
 };
 
 export const normalizeBuyerBackendReadiness = (value: unknown): BuyerBackendReadiness | null => {
