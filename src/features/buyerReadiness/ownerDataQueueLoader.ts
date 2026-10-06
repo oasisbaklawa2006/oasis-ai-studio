@@ -1,8 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import {
-  buildOwnerDataCompletionQueue,
-  type OwnerDataQueueItem,
-} from "./ownerDataQueue";
+import { buildOwnerDataCompletionQueue, type OwnerDataQueueItem } from "./ownerDataQueue";
 
 const PRODUCT_SELECT = [
   "id",
