@@ -53,10 +53,7 @@ type UntypedReadClient = {
   };
 };
 
-async function readAllPages(
-  label: string,
-  buildQuery: () => ReadQuery,
-): Promise<unknown[]> {
+async function readAllPages(label: string, buildQuery: () => ReadQuery): Promise<unknown[]> {
   const rows: unknown[] = [];
 
   for (let page = 0; page < MAX_PAGES; page += 1) {
