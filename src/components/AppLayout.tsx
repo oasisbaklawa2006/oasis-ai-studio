@@ -2,8 +2,8 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   ClipboardCheck,
-  Gift,
   Gauge,
+  Gift,
   History,
   Image,
   Info,
