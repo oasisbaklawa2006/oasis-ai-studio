@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   BookOpen,
   ClipboardCheck,
+  Gauge,
   Gift,
   History,
   Image,
@@ -72,6 +73,12 @@ const nav: NavItem[] = [
     icon: Sparkles,
     page: "ai_studio",
     featureKey: "ai_image_studio",
+  },
+  {
+    to: "/admin/buyer-backend-readiness",
+    label: "Buyer Readiness",
+    icon: Gauge,
+    page: "settings",
   },
   { to: "/testing", label: "Testing Checklist", icon: ClipboardCheck, page: "testing" },
   { to: "/settings", label: "Activation Center", icon: Settings, page: "settings" },

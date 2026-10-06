@@ -13,6 +13,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 
 const AIStudio = lazy(() => import("./pages/AIStudio"));
 const ApprovalInbox = lazy(() => import("./pages/ApprovalInbox"));
+const BuyerBackendReadiness = lazy(() => import("./pages/BuyerBackendReadiness"));
 const Auth = lazy(() => import("./pages/Auth"));
 const CatalogueBuilder = lazy(() => import("./pages/CatalogueBuilder"));
 const CatalogueProductStudio = lazy(() => import("./pages/CatalogueProductStudio"));
@@ -276,6 +277,14 @@ const App = () => (
                     element={
                       <RoleGate page="settings">
                         <Settings />
+                      </RoleGate>
+                    }
+                  />
+                  <Route
+                    path="/admin/buyer-backend-readiness"
+                    element={
+                      <RoleGate page="settings">
+                        <BuyerBackendReadiness />
                       </RoleGate>
                     }
                   />

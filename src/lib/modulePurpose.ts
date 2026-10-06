@@ -23,6 +23,8 @@ export const MODULE_PURPOSES: Record<string, string> = {
     "Inspect and repair governed product-authority data without bypassing audit controls.",
   "/ai-studio":
     "Launch operational AI Studio workspaces and see which capabilities still require approval.",
+  "/admin/buyer-backend-readiness":
+    "Inspect governed Buyer publication, pricing, private-label, packaging and Oasis Connect readiness without exposing secrets or internal costs.",
   "/testing":
     "Run operator readiness checks and review evidence before enabling production capabilities.",
   "/settings": "Inspect capability configuration and controlled activation status.",
