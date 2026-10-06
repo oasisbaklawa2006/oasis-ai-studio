@@ -87,7 +87,9 @@ const BuyerBackendReadinessPage = () => {
         const normalized = normalizeBuyerBackendReadiness(candidate);
         if (!normalized) {
           setRow(null);
-          setError("Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.");
+          setError(
+            "Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.",
+          );
           return;
         }
 
@@ -164,11 +166,7 @@ const BuyerBackendReadinessPage = () => {
         title="Buyer Backend Readiness"
         subtitle="Live, governed readiness facts for the Buyer catalogue, commercial coverage, private label, packaging and Oasis Connect."
         actions={
-          <Button
-            variant="outline"
-            onClick={() => void load()}
-            disabled={loading || queueLoading}
-          >
+          <Button variant="outline" onClick={() => void load()} disabled={loading || queueLoading}>
             <RefreshCw
               className={`mr-2 h-4 w-4 ${loading || queueLoading ? "animate-spin" : ""}`}
             />
@@ -331,7 +329,10 @@ const BuyerBackendReadinessPage = () => {
                   />
                   {item.lane === "private_label" ? (
                     <>
-                      <Fact label="Private-label selling price" value={inr(item.privateLabelPrice)} />
+                      <Fact
+                        label="Private-label selling price"
+                        value={inr(item.privateLabelPrice)}
+                      />
                       <Fact
                         label="Private-label MOQ"
                         value={
@@ -343,7 +344,10 @@ const BuyerBackendReadinessPage = () => {
                     </>
                   ) : (
                     <>
-                      <Fact label="Legacy B2B value · confirm only" value={inr(item.legacyB2bPrice)} />
+                      <Fact
+                        label="Legacy B2B value · confirm only"
+                        value={inr(item.legacyB2bPrice)}
+                      />
                       <Fact
                         label="Legacy MOQ · confirm only"
                         value={
