@@ -3,9 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
+  type BuyerBackendReadiness,
   buildBuyerReadinessCards,
   normalizeBuyerBackendReadiness,
-  type BuyerBackendReadiness,
   type ReadinessStatus,
 } from "@/features/buyerReadiness/model";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,7 +46,7 @@ const dependencyMessage = (error: RpcError) => {
   return error.message;
 };
 
-const BuyerBackendReadiness = () => {
+const BuyerBackendReadinessPage = () => {
   const [row, setRow] = useState<BuyerBackendReadiness | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,7 +157,9 @@ const BuyerBackendReadiness = () => {
                     </span>
                   </div>
                   <div className="mt-3 font-display text-3xl text-primary">{card.value}</div>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{card.detail}</p>
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {card.detail}
+                  </p>
                 </div>
               );
             })}
@@ -185,7 +187,8 @@ const BuyerBackendReadiness = () => {
                 </div>
               </dl>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                This page is read-only. It never receives Connect token material, product cost/margin data or customer PII.
+                This page is read-only. It never receives Connect token material, product
+                cost/margin data or customer PII.
               </p>
             </div>
 
@@ -193,7 +196,8 @@ const BuyerBackendReadiness = () => {
               <h2 className="font-display text-xl">Activation actions</h2>
               {actions.length === 0 ? (
                 <p className="mt-4 text-sm text-muted-foreground">
-                  The represented backend lanes are fully populated according to the current Core readiness contract.
+                  The represented backend lanes are fully populated according to the current Core
+                  readiness contract.
                 </p>
               ) : (
                 <ol className="mt-4 space-y-3 text-sm">
@@ -215,4 +219,4 @@ const BuyerBackendReadiness = () => {
   );
 };
 
-export default BuyerBackendReadiness;
+export default BuyerBackendReadinessPage;
