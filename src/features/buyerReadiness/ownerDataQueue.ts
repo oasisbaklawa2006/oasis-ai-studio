@@ -121,8 +121,7 @@ const isPackaging = (product: ProductCandidate): boolean => {
     .filter((value): value is string => Boolean(value))
     .map((value) => value.toLowerCase());
   return (
-    values.includes("packaging & decoration material") ||
-    values.includes("packaging_material")
+    values.includes("packaging & decoration material") || values.includes("packaging_material")
   );
 };
 
