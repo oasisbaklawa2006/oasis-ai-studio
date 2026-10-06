@@ -50,9 +50,12 @@ export const normalizeBuyerBackendReadiness = (value: unknown): BuyerBackendRead
 
   if (!required.every((key) => row[key] !== undefined && row[key] !== null)) return null;
 
-  return Object.fromEntries(
+  const normalized = Object.fromEntries(
     required.map((key) => [key, finiteCount(row[key])]),
-  ) as BuyerBackendReadiness;
+  ) as Record<(typeof required)[number], number | null>;
+
+  if (required.some((key) => normalized[key] === null)) return null;
+  return normalized as BuyerBackendReadiness;
 };
 
 const coverageStatus = (covered: number, total: number): ReadinessStatus => {
