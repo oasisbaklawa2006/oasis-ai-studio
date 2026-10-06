@@ -55,27 +55,35 @@ const BuyerBackendReadinessPage = () => {
     setLoading(true);
     setError(null);
 
-    const callRpc = supabase.rpc as unknown as ReadinessRpc;
-    const { data, error: rpcError } = await callRpc("connect_staff_readiness_v1");
+    try {
+      const callRpc = supabase.rpc as unknown as ReadinessRpc;
+      const { data, error: rpcError } = await callRpc("connect_staff_readiness_v1");
 
-    if (rpcError) {
+      if (rpcError) {
+        setRow(null);
+        setError(dependencyMessage(rpcError));
+        return;
+      }
+
+      const candidate = Array.isArray(data) ? data[0] : data;
+      const normalized = normalizeBuyerBackendReadiness(candidate);
+      if (!normalized) {
+        setRow(null);
+        setError("Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.");
+        return;
+      }
+
+      setRow(normalized);
+    } catch (loadError) {
       setRow(null);
-      setError(dependencyMessage(rpcError));
+      setError(
+        loadError instanceof Error
+          ? `Buyer readiness request failed: ${loadError.message}`
+          : "Buyer readiness request failed. Retry when the connection is available.",
+      );
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const candidate = Array.isArray(data) ? data[0] : data;
-    const normalized = normalizeBuyerBackendReadiness(candidate);
-    if (!normalized) {
-      setRow(null);
-      setError("Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.");
-      setLoading(false);
-      return;
-    }
-
-    setRow(normalized);
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -86,6 +94,9 @@ const BuyerBackendReadinessPage = () => {
 
   const actions = row
     ? [
+        row.published_product_count === 0
+          ? "Publish at least one Buyer product through the governed catalogue publication gate."
+          : null,
         row.b2b_priced_published_product_count < row.published_product_count
           ? "Approve active B2B pricing for every published Buyer product that should be orderable."
           : null,
