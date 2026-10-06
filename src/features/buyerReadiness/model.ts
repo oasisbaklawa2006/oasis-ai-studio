@@ -46,7 +46,9 @@ export const normalizeBuyerBackendReadiness = (value: unknown): BuyerBackendRead
 
   if (!required.every((key) => row[key] !== undefined && row[key] !== null)) return null;
 
-  return Object.fromEntries(required.map((key) => [key, finiteCount(row[key])])) as BuyerBackendReadiness;
+  return Object.fromEntries(
+    required.map((key) => [key, finiteCount(row[key])]),
+  ) as BuyerBackendReadiness;
 };
 
 const coverageStatus = (covered: number, total: number): ReadinessStatus => {
@@ -87,7 +89,10 @@ export const buildBuyerReadinessCards = (row: BuyerBackendReadiness): BuyerReadi
       key: "private_label",
       label: "Private-label readiness",
       value: `${row.private_label_price_ready_count}/${row.published_private_label_count}`,
-      status: coverageStatus(row.private_label_price_ready_count, row.published_private_label_count),
+      status: coverageStatus(
+        row.private_label_price_ready_count,
+        row.published_private_label_count,
+      ),
       detail:
         row.published_private_label_count > 0
           ? `${row.published_private_label_count} published private-label product(s); ${row.private_label_price_ready_count} have an explicit customer-facing private-label price.`
