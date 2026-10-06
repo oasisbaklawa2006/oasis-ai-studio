@@ -29,6 +29,27 @@ describe("Buyer backend readiness model", () => {
     expect(normalizeBuyerBackendReadiness({ published_product_count: 9 })).toBeNull();
   });
 
+  it("rejects invalid required counts instead of coercing them to zero", () => {
+    expect(
+      normalizeBuyerBackendReadiness({
+        ...ready,
+        published_product_count: true,
+      }),
+    ).toBeNull();
+    expect(
+      normalizeBuyerBackendReadiness({
+        ...ready,
+        published_product_count: "",
+      }),
+    ).toBeNull();
+    expect(
+      normalizeBuyerBackendReadiness({
+        ...ready,
+        published_product_count: "not-a-number",
+      }),
+    ).toBeNull();
+  });
+
   it("marks complete commercial and Connect coverage ready", () => {
     const cards = buildBuyerReadinessCards(ready);
     expect(cards.every((card) => card.status === "ready")).toBe(true);
