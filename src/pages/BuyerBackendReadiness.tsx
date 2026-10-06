@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, CircleX, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,6 +9,8 @@ import {
   normalizeBuyerBackendReadiness,
   type ReadinessStatus,
 } from "@/features/buyerReadiness/model";
+import type { OwnerDataQueueItem } from "@/features/buyerReadiness/ownerDataQueue";
+import { loadOwnerDataCompletionQueue } from "@/features/buyerReadiness/ownerDataQueueLoader";
 import { supabase } from "@/integrations/supabase/client";
 
 type RpcError = { message: string; code?: string };
@@ -38,7 +41,7 @@ const statusMeta: Record<
 const dependencyMessage = (error: RpcError) => {
   const text = error.message.toLowerCase();
   if (error.code === "PGRST202" || text.includes("could not find the function")) {
-    return "Core readiness contract is not deployed yet. Merge and release Core PR #398 before treating this page as a production readiness signal.";
+    return "Core readiness contract is not deployed yet. Release the governed Core readiness migration before treating this page as a production readiness signal.";
   }
   if (text.includes("permission") || error.code === "42501") {
     return "This readiness view requires an Owner/Admin or catalogue-reviewer authority.";
@@ -46,46 +49,77 @@ const dependencyMessage = (error: RpcError) => {
   return error.message;
 };
 
+const inr = (value: number | null) =>
+  value === null
+    ? "Not set"
+    : new Intl.NumberFormat("en-IN", {
+        style: "currency",
+        currency: "INR",
+        maximumFractionDigits: 2,
+      }).format(value);
+
 const BuyerBackendReadinessPage = () => {
   const [row, setRow] = useState<BuyerBackendReadiness | null>(null);
+  const [ownerQueue, setOwnerQueue] = useState<OwnerDataQueueItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [queueError, setQueueError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [queueLoading, setQueueLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setQueueLoading(true);
     setError(null);
+    setQueueError(null);
 
-    try {
-      const callRpc = supabase.rpc as unknown as ReadinessRpc;
-      const { data, error: rpcError } = await callRpc("connect_staff_readiness_v1");
+    const readinessTask = (async () => {
+      try {
+        const callRpc = supabase.rpc as unknown as ReadinessRpc;
+        const { data, error: rpcError } = await callRpc("connect_staff_readiness_v1");
 
-      if (rpcError) {
-        setRow(null);
-        setError(dependencyMessage(rpcError));
-        return;
-      }
+        if (rpcError) {
+          setRow(null);
+          setError(dependencyMessage(rpcError));
+          return;
+        }
 
-      const candidate = Array.isArray(data) ? data[0] : data;
-      const normalized = normalizeBuyerBackendReadiness(candidate);
-      if (!normalized) {
+        const candidate = Array.isArray(data) ? data[0] : data;
+        const normalized = normalizeBuyerBackendReadiness(candidate);
+        if (!normalized) {
+          setRow(null);
+          setError("Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.");
+          return;
+        }
+
+        setRow(normalized);
+      } catch (loadError) {
         setRow(null);
         setError(
-          "Core returned an incomplete Buyer readiness payload. Treat readiness as blocked.",
+          loadError instanceof Error
+            ? `Buyer readiness request failed: ${loadError.message}`
+            : "Buyer readiness request failed. Retry when the connection is available.",
         );
-        return;
+      } finally {
+        setLoading(false);
       }
+    })();
 
-      setRow(normalized);
-    } catch (loadError) {
-      setRow(null);
-      setError(
-        loadError instanceof Error
-          ? `Buyer readiness request failed: ${loadError.message}`
-          : "Buyer readiness request failed. Retry when the connection is available.",
-      );
-    } finally {
-      setLoading(false);
-    }
+    const queueTask = (async () => {
+      try {
+        setOwnerQueue(await loadOwnerDataCompletionQueue());
+      } catch (loadError) {
+        setOwnerQueue([]);
+        setQueueError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Owner-data completion queue could not be loaded.",
+        );
+      } finally {
+        setQueueLoading(false);
+      }
+    })();
+
+    await Promise.all([readinessTask, queueTask]);
   }, []);
 
   useEffect(() => {
@@ -130,8 +164,14 @@ const BuyerBackendReadinessPage = () => {
         title="Buyer Backend Readiness"
         subtitle="Live, governed readiness facts for the Buyer catalogue, commercial coverage, private label, packaging and Oasis Connect."
         actions={
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          <Button
+            variant="outline"
+            onClick={() => void load()}
+            disabled={loading || queueLoading}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${loading || queueLoading ? "animate-spin" : ""}`}
+            />
             Refresh
           </Button>
         }
@@ -228,8 +268,121 @@ const BuyerBackendReadinessPage = () => {
           </div>
         </>
       )}
+
+      <section className="mt-8 card-elevated p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-display text-xl">Owner data completion queue</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              Exact product facts that still need an owner/catalogue decision before the Buyer
+              private-label or packaging surfaces can be fully populated.
+            </p>
+          </div>
+          <span className="rounded-full border bg-secondary px-3 py-1 text-xs font-medium">
+            Read-only · {ownerQueue.length} action item{ownerQueue.length === 1 ? "" : "s"}
+          </span>
+        </div>
+
+        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900">
+          Stored legacy price and MOQ values are shown only as confirmation context. They are never
+          treated as governed Buyer commercial facts and are not copied into approved pricing by
+          this page.
+        </div>
+
+        {queueLoading ? (
+          <p className="mt-5 text-sm text-muted-foreground">Loading owner-data gaps…</p>
+        ) : queueError ? (
+          <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+            <div className="font-medium">Owner-data queue unavailable</div>
+            <p className="mt-1">{queueError}</p>
+            <p className="mt-1">
+              Aggregate Core readiness above remains authoritative. Retry this supporting read when
+              Studio data access is available.
+            </p>
+          </div>
+        ) : ownerQueue.length === 0 ? (
+          <p className="mt-5 text-sm text-muted-foreground">
+            No active private-label or packaging product currently needs an owner-data decision.
+          </p>
+        ) : (
+          <div className="mt-5 space-y-4">
+            {ownerQueue.map((item) => (
+              <article key={`${item.lane}:${item.productId}`} className="rounded-xl border p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-muted-foreground">
+                      {item.lane === "private_label" ? "Private label" : "Packaging & decoration"}
+                    </div>
+                    <h3 className="mt-1 font-medium text-primary">{item.productName}</h3>
+                    <div className="mt-1 text-xs text-muted-foreground">{item.sku}</div>
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to={`/products/${item.productId}`}>Open governed product editor</Link>
+                  </Button>
+                </div>
+
+                <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2 lg:grid-cols-4">
+                  <Fact label="Publication" value={item.published ? "Published" : "Not ready"} />
+                  <Fact label="Media" value={item.mediaApproved ? "Approved" : "Not approved"} />
+                  <Fact label="Governed B2B price" value={inr(item.governedB2bPrice)} />
+                  <Fact
+                    label="Lead time"
+                    value={item.leadTimeDays ? `${item.leadTimeDays} days` : "Not set"}
+                  />
+                  {item.lane === "private_label" ? (
+                    <>
+                      <Fact label="Private-label selling price" value={inr(item.privateLabelPrice)} />
+                      <Fact
+                        label="Private-label MOQ"
+                        value={
+                          item.privateLabelMoq === null
+                            ? "Not set"
+                            : `${item.privateLabelMoq} ${item.privateLabelMoqUom ?? ""}`.trim()
+                        }
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <Fact label="Legacy B2B value · confirm only" value={inr(item.legacyB2bPrice)} />
+                      <Fact
+                        label="Legacy MOQ · confirm only"
+                        value={
+                          item.legacyMoq === null
+                            ? "Not set"
+                            : `${item.legacyMoq} ${item.uom ?? ""}`.trim()
+                        }
+                      />
+                    </>
+                  )}
+                </div>
+
+                <div className="mt-4">
+                  <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Owner decisions required
+                  </div>
+                  <ul className="mt-2 space-y-1 text-sm">
+                    {item.missing.map((missing) => (
+                      <li key={missing} className="flex gap-2">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                        <span>{missing}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </>
   );
 };
+
+const Fact = ({ label, value }: { label: string; value: string }) => (
+  <div className="rounded-lg bg-secondary/50 p-3">
+    <div className="text-muted-foreground">{label}</div>
+    <div className="mt-1 font-medium text-foreground">{value}</div>
+  </div>
+);
 
 export default BuyerBackendReadinessPage;
