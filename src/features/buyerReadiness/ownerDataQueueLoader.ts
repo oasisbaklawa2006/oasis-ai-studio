@@ -36,11 +36,15 @@ const PRICE_SELECT = [
   "valid_until",
 ].join(",");
 
+const PAGE_SIZE = 500;
+const MAX_PAGES = 100;
+
 type ReadError = { message: string };
 type ReadResult = { data: unknown[] | null; error: ReadError | null };
 
 type ReadQuery = PromiseLike<ReadResult> & {
   eq(column: string, value: unknown): ReadQuery;
+  range(from: number, to: number): ReadQuery;
 };
 
 type UntypedReadClient = {
@@ -49,6 +53,34 @@ type UntypedReadClient = {
   };
 };
 
+async function readAllPages(
+  label: string,
+  buildQuery: () => ReadQuery,
+): Promise<unknown[]> {
+  const rows: unknown[] = [];
+
+  for (let page = 0; page < MAX_PAGES; page += 1) {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const result = await buildQuery().range(from, to);
+
+    if (result.error) {
+      throw new Error(`${label} read failed: ${result.error.message}`);
+    }
+
+    const pageRows = result.data ?? [];
+    rows.push(...pageRows);
+
+    if (pageRows.length < PAGE_SIZE) {
+      return rows;
+    }
+  }
+
+  throw new Error(
+    `${label} read exceeded ${PAGE_SIZE * MAX_PAGES} rows; refusing to present an incomplete owner-data queue.`,
+  );
+}
+
 export async function loadOwnerDataCompletionQueue(
   todayIso = new Date().toISOString().slice(0, 10),
 ): Promise<OwnerDataQueueItem[]> {
@@ -56,21 +88,15 @@ export async function loadOwnerDataCompletionQueue(
   // Keep this deliberately narrow and read-only rather than falling back to
   // select("*"), which could pull product cost/margin fields into this page.
   const client = supabase as unknown as UntypedReadClient;
-  const [productsResult, pricingResult] = await Promise.all([
-    client.from("products").select(PRODUCT_SELECT),
-    client.from("product_pricing_rules").select(PRICE_SELECT).eq("price_channel", "b2b"),
+
+  const [products, pricingRules] = await Promise.all([
+    readAllPages("Owner-data product", () =>
+      client.from("products").select(PRODUCT_SELECT).eq("is_active", true),
+    ),
+    readAllPages("Owner-data pricing", () =>
+      client.from("product_pricing_rules").select(PRICE_SELECT).eq("price_channel", "b2b"),
+    ),
   ]);
 
-  if (productsResult.error) {
-    throw new Error(`Owner-data product read failed: ${productsResult.error.message}`);
-  }
-  if (pricingResult.error) {
-    throw new Error(`Owner-data pricing read failed: ${pricingResult.error.message}`);
-  }
-
-  return buildOwnerDataCompletionQueue(
-    productsResult.data ?? [],
-    pricingResult.data ?? [],
-    todayIso,
-  );
+  return buildOwnerDataCompletionQueue(products, pricingRules, todayIso);
 }
