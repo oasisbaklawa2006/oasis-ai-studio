@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  type BuyerBackendReadiness,
   buildBuyerReadinessCards,
   normalizeBuyerBackendReadiness,
-  type BuyerBackendReadiness,
 } from "./model";
 
 const ready: BuyerBackendReadiness = {
