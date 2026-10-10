@@ -59,7 +59,7 @@ const product = {
 };
 
 describe("catalogueBuilder integration", () => {
-  it("runs governed facts → composition → snapshot → PDF regeneration", async () => {
+  it("blocks unapproved production print while retaining deterministic internal snapshot/PDF regeneration", async () => {
     const collectionItem = item("prod-1", "inquiry");
     const card = buildCatalogueProductCard({
       product,
@@ -96,7 +96,10 @@ describe("catalogueBuilder integration", () => {
     });
 
     const validation = validateCompositionForPrint(composition, [card]);
-    expect(validation.ok).toBe(true);
+    // The fixture contains no Core-approved published catalogue authority.
+    // Draft composition is allowed internally, but production export must fail closed.
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toContain("Pistachio Baklawa: not approved for catalogue distribution");
 
     const snapshot = createPrintCatalogueSnapshot({
       collection,
