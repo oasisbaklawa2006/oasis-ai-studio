@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import { selectApprovedImageUrlsForCentral } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
 import {
+  type CatalogueReleaseGates,
   catalogueReleaseGatesPass,
   evaluateCataloguePublishability,
-  type CatalogueReleaseGates,
 } from "./cataloguePublishability";
 import { exportCataloguePdf } from "./pdfExport";
 import { applyPriceVisibilityToCard } from "./priceVisibility";
