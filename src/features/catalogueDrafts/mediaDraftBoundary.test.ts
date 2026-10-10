@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   ALLOWED_MEDIA_MIME_TYPES,
   IMAGE_MIME_TYPES,
   MAX_MEDIA_FILE_SIZE_BYTES,
+  resolveCatalogueMediaWriteMode,
   sanitizeMediaFileName,
   VIDEO_MIME_TYPES,
   validateMediaFile,
@@ -78,5 +79,61 @@ describe("sanitizeMediaFileName", () => {
   it("strips path-traversal and unsafe characters from an uploaded file name", () => {
     expect(sanitizeMediaFileName("../../etc/passwd")).toBe(".._.._etc_passwd");
     expect(sanitizeMediaFileName("photo 1 (final).jpg")).toBe("photo_1__final_.jpg");
+  });
+});
+
+describe("resolveCatalogueMediaWriteMode", () => {
+  const permissions = () => ({
+    canWriteMasterDirectly: vi.fn(async () => false),
+    isCatalogueContributor: vi.fn(async () => false),
+    canSubmitDraft: vi.fn(async () => false),
+  });
+
+  it("permits existing direct roles without unnecessary permission calls", async () => {
+    const checks = permissions();
+    expect(await resolveCatalogueMediaWriteMode(["owner"], checks)).toBe("direct");
+    expect(checks.canWriteMasterDirectly).not.toHaveBeenCalled();
+    expect(checks.isCatalogueContributor).not.toHaveBeenCalled();
+  });
+
+  it("recognizes a server-confirmed super-admin when contextual roles lag", async () => {
+    const checks = permissions();
+    checks.canWriteMasterDirectly.mockResolvedValueOnce(true);
+    expect(await resolveCatalogueMediaWriteMode([], checks)).toBe("direct");
+    expect(checks.isCatalogueContributor).not.toHaveBeenCalled();
+  });
+
+  it("requires both contributor identity and permission for draft writes", async () => {
+    const checks = permissions();
+    checks.isCatalogueContributor.mockResolvedValueOnce(true);
+    checks.canSubmitDraft.mockResolvedValueOnce(true);
+    expect(await resolveCatalogueMediaWriteMode([], checks)).toBe("draft");
+    expect(checks.canSubmitDraft).toHaveBeenCalledTimes(1);
+    expect(checks.canSubmitDraft).toHaveBeenCalledWith(expect.any(String));
+  });
+
+  it("remains read-only for a non-contributor or denied submission", async () => {
+    const first = permissions();
+    expect(await resolveCatalogueMediaWriteMode([], first)).toBe("readonly");
+    expect(first.canSubmitDraft).not.toHaveBeenCalled();
+
+    const denied = permissions();
+    denied.isCatalogueContributor.mockResolvedValueOnce(true);
+    expect(await resolveCatalogueMediaWriteMode([], denied)).toBe("readonly");
+  });
+
+  it("fails closed for rejected permission RPC promises", async () => {
+    const checks = permissions();
+    checks.canWriteMasterDirectly.mockRejectedValueOnce(new Error("connection lost"));
+    expect(await resolveCatalogueMediaWriteMode([], checks)).toBe("readonly");
+
+    const checks2 = permissions();
+    checks2.isCatalogueContributor.mockRejectedValueOnce(new Error("session expired"));
+    expect(await resolveCatalogueMediaWriteMode([], checks2)).toBe("readonly");
+
+    const checks3 = permissions();
+    checks3.isCatalogueContributor.mockResolvedValueOnce(true);
+    checks3.canSubmitDraft.mockRejectedValueOnce(new Error("permission unavailable"));
+    expect(await resolveCatalogueMediaWriteMode([], checks3)).toBe("readonly");
   });
 });
