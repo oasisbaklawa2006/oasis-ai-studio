@@ -1,3 +1,6 @@
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import type { Role } from "@/lib/permissions";
 import { describe, expect, it, vi } from "vitest";
 import {
   ALLOWED_MEDIA_MIME_TYPES,
@@ -5,9 +8,20 @@ import {
   MAX_MEDIA_FILE_SIZE_BYTES,
   resolveCatalogueMediaWriteMode,
   sanitizeMediaFileName,
+  useCatalogueMediaWriteMode,
   VIDEO_MIME_TYPES,
   validateMediaFile,
 } from "./mediaDraftBoundary";
+
+// Only the mounted hook uses these mock RPCs. The pure resolver tests supply
+// their own injected permission checks and remain independent of this mock.
+const permissionRpcs = vi.hoisted(() => ({
+  canWriteMasterDirectly: vi.fn(),
+  isCatalogueContributor: vi.fn(),
+  canSubmitDraft: vi.fn(),
+}));
+
+vi.mock("@/shared/auth/centralPermissions", () => permissionRpcs);
 
 // Point 27, Phase 12: mirrors the server-side product-media bucket enforcement
 // (Core migration 20260809210000_enforce_product_media_bucket_limits.sql) so a
@@ -135,5 +149,62 @@ describe("resolveCatalogueMediaWriteMode", () => {
     checks3.isCatalogueContributor.mockResolvedValueOnce(true);
     checks3.canSubmitDraft.mockRejectedValueOnce(new Error("permission unavailable"));
     expect(await resolveCatalogueMediaWriteMode([], checks3)).toBe("readonly");
+  });
+});
+
+describe("useCatalogueMediaWriteMode stale-response guard", () => {
+  it("does not restore a former user's edit permission after roles change", async () => {
+    permissionRpcs.canWriteMasterDirectly.mockReset();
+    permissionRpcs.isCatalogueContributor.mockReset();
+    permissionRpcs.canSubmitDraft.mockReset();
+
+    let settleFormerPermission: (allowed: boolean) => void = () => {
+      throw new Error("Previous request was never started");
+    };
+    const pendingFormerPermission = new Promise<boolean>((resolve) => {
+      settleFormerPermission = resolve;
+    });
+    permissionRpcs.canWriteMasterDirectly
+      .mockImplementationOnce(() => pendingFormerPermission)
+      .mockResolvedValueOnce(false);
+    permissionRpcs.isCatalogueContributor.mockResolvedValue(false);
+
+    const formerRoles: Role[] = ["catalogue_manager"];
+    const currentRoles: Role[] = ["sales"];
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    const observed: string[] = [];
+
+    function Probe({ roles }: { roles: Role[] }) {
+      const { writeMode, canMutate } = useCatalogueMediaWriteMode(roles);
+      observed.push(writeMode);
+      return createElement("span", {}, `${writeMode}:${canMutate}`);
+    }
+
+    try {
+      await act(async () => {
+        root.render(createElement(Probe, { roles: formerRoles }));
+      });
+      expect(container.textContent).toBe("readonly:false");
+
+      // The old direct-permission RPC is still unresolved during the switch.
+      await act(async () => {
+        root.render(createElement(Probe, { roles: currentRoles }));
+      });
+      expect(permissionRpcs.canWriteMasterDirectly).toHaveBeenCalledTimes(2);
+      expect(container.textContent).toBe("readonly:false");
+
+      await act(async () => {
+        settleFormerPermission(true);
+        await Promise.resolve();
+      });
+      expect(container.textContent).toBe("readonly:false");
+      expect(observed).not.toContain("direct");
+      expect(permissionRpcs.canSubmitDraft).not.toHaveBeenCalled();
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+    }
   });
 });
