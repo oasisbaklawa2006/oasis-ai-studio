@@ -8,12 +8,7 @@ import { toast } from "sonner";
 import { AlertTriangle, Boxes, Link2, Plus, Search, Trash2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
-import { draftTableMap } from "@/features/catalogueDrafts/draftTableMap";
-import {
-  canSubmitDraft,
-  canWriteMasterDirectly,
-  isCatalogueContributor,
-} from "@/shared/auth/centralPermissions";
+import { useBomWriteMode } from "@/features/productAuthority/bomWriteMode";
 import {
   BOM_TABLE_UNAVAILABLE_MESSAGE,
   probeBomTables,
@@ -44,10 +39,6 @@ interface Props {
   productClass?: string | null;
   bomRequired?: boolean;
 }
-
-const DIRECT_BOM_ROLES: Role[] = ["owner", "admin", "product_manager"];
-
-type WriteMode = "direct" | "draft" | "readonly";
 
 type BomLineDraftFields = {
   component_product_id: string | null;
@@ -149,10 +140,10 @@ const isMissingBomTypeColumnError = (message?: string | null) => {
 };
 
 export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
-  const { roles } = useAuth();
+  const { roles, user } = useAuth();
+  const { writeMode, canMutate } = useBomWriteMode(user?.id ?? null, roles);
   const [items, setItems] = useState<BomItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [writeMode, setWriteMode] = useState<WriteMode>("readonly");
   const [submitting, setSubmitting] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -243,26 +234,6 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentId]);
 
-  useEffect(() => {
-    (async () => {
-      const roleList = roles as Role[];
-      const hasDirect =
-        roleList.some((r) => DIRECT_BOM_ROLES.includes(r)) || (await canWriteMasterDirectly());
-      if (hasDirect) {
-        setWriteMode("direct");
-        return;
-      }
-      if (await isCatalogueContributor()) {
-        const canSubmit = await canSubmitDraft(draftTableMap.bom.permission);
-        setWriteMode(canSubmit ? "draft" : "readonly");
-        return;
-      }
-      setWriteMode("readonly");
-    })();
-  }, [roles]);
-
-  const canMutate = writeMode === "direct" || writeMode === "draft";
-
   const searchProducts = async () => {
     if (submitting) return;
 
@@ -275,7 +246,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
 
     setProductSearchLoading(true);
 
-    const safeQ = q.replaceAll("%", "").replaceAll(",", " ");
+    const safeQ = q.replace(/%/g, "").replace(/,/g, " ");
 
     const { data, error } = await (supabase as any)
       .from("products")
