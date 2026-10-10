@@ -281,9 +281,7 @@ describe("printComposition", () => {
     const validation = validateCompositionForPrint(composition, [card]);
     expect(validation.imageIssues).toEqual([]);
     expect(validation.ok).toBe(false);
-    expect(validation.issues).toContain(
-      "Cashew Pyramid: not approved for catalogue distribution",
-    );
+    expect(validation.issues).toContain("Cashew Pyramid: not approved for catalogue distribution");
   });
 
   it("enforces item price_visibility in composed product sections", () => {
