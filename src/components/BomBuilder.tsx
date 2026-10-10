@@ -16,6 +16,22 @@ import { supabase } from "@/integrations/supabase/client";
 
 type BomType = "internal_bom" | "hamper_bom";
 
+// The live Core product_bom table exists, but Studio's generated client types
+// lag the canonical schema. Limit the temporary adapter to typed BOM mutations;
+// Core RLS and staff permissions remain authoritative for every operation.
+type BomMutationOutcome = { error: { message: string } | null };
+type BomMutationPromise = PromiseLike<BomMutationOutcome>;
+type BomMutationFilter = {
+  eq(column: "id", value: string): BomMutationPromise;
+};
+type BomMutationTable = {
+  insert(payload: Record<string, unknown>): BomMutationPromise;
+  update(payload: Record<string, unknown>): BomMutationFilter;
+  delete(): BomMutationFilter;
+};
+const bomMutationTable = (): BomMutationTable =>
+  (supabase as unknown as { from(table: "product_bom"): BomMutationTable }).from("product_bom");
+
 type BomItem = {
   id: string;
   product_id: string;
@@ -338,7 +354,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   };
 
   const buildDirectPayload = () => {
-    const payload: Record<string, any> = {
+    const payload: Record<string, unknown> = {
       product_id: parentId,
       component_product_id: draft.component_product_id || null,
       component_name: draft.component_name.trim() || null,
@@ -377,8 +393,8 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
         const payload = buildDirectPayload();
 
         const result = editingId
-          ? await (supabase as any).from("product_bom").update(payload).eq("id", editingId)
-          : await (supabase as any).from("product_bom").insert(payload);
+          ? await bomMutationTable().update(payload).eq("id", editingId)
+          : await bomMutationTable().insert(payload);
 
         if (result.error) {
           toast.error(result.error.message);
@@ -427,7 +443,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setSubmitting(true);
     try {
       if (writeMode === "direct") {
-        const { error } = await (supabase as any).from("product_bom").delete().eq("id", item.id);
+        const { error } = await bomMutationTable().delete().eq("id", item.id);
 
         if (error) {
           toast.error(error.message);
