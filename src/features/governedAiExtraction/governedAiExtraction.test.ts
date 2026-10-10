@@ -160,6 +160,40 @@ describe("extractGovernedCompliance", () => {
     expect(result.approved).toBe(false);
   });
 
+  it("rejects the production-retired HTTP 410 endpoint without invented compliance facts", () => {
+    const result = extractGovernedCompliance({
+      product_name: "Pistachio Baklawa",
+      category: "Baklawa",
+      edgeData: null,
+      edgeError: {
+        message: "Edge Function returned a non-2xx status code",
+        context: { status: 410 },
+      },
+    });
+    expect(result.provenance.provider_status).toBe("failed");
+    expect(result.provenance.fail_closed).toBe(true);
+    expect(result.provenance.used_heuristic_fallback).toBe(false);
+    expect(result.provenance.uncertainty_reason).toContain("HTTP 410");
+    expect(result.suggestions).toEqual([]);
+    expect(result.complianceFieldMeta).toEqual({});
+  });
+
+  it("rejects a retired payload marker even without an HTTP error object", () => {
+    const result = extractGovernedCompliance({
+      product_name: "Chocolate Truffle",
+      category: "chocolates",
+      edgeData: {
+        ok: false,
+        error: "endpoint_retired",
+        replacement: "catalogue-ai-copy",
+      },
+      edgeError: null,
+    });
+    expect(result.provenance.provider_status).toBe("failed");
+    expect(result.provenance.used_heuristic_fallback).toBe(false);
+    expect(result.suggestions).toEqual([]);
+  });
+
   it("rejects non-governed AI response that claims approval", () => {
     const result = extractGovernedCompliance({
       product_name: "Test",
