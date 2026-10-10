@@ -15,7 +15,7 @@ export async function getMyRoleKeys(): Promise<string[]> {
 
 export async function hasPermission(permissionKey: string): Promise<boolean> {
   const { data, error } = await supabase.rpc("has_catalogue_permission", {
-    permission_key: permissionKey,
+    p_permission_key: permissionKey,
   });
 
   if (error) {
