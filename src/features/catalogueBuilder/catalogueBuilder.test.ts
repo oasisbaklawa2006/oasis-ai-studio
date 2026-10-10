@@ -87,6 +87,23 @@ describe("catalogueBuilder", () => {
     expect(candidate.publishable).toBe(false);
   });
 
+  it("does not confuse editorial approval or publication with actual Central sync", () => {
+    for (const status of ["draft", "pending_approval", "approved", "published", null]) {
+      const result = evaluateCataloguePublishability({
+        form: completeForm,
+        complianceApproved: true,
+        prices: [
+          { channel: "mrp", priceStatus: "approved", mrp: 1200 },
+          { channel: "b2b", priceStatus: "approved", sellingPrice: 1000 },
+        ],
+        catalogueVersionStatus: status,
+      });
+      expect(result.syncedOk).toBe(false);
+      expect(result.publishable).toBe(false);
+      expect(result.blockers).toContain("Not synced to Central (preview only)");
+    }
+  });
+
   it("unready product shows catalogue blocker", () => {
     const pub = evaluateCataloguePublishability({
       form: { product_name: "Draft only" },
