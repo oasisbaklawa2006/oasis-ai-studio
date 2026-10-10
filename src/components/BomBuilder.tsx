@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { AlertTriangle, Boxes, Link2, Plus, Search, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-import { AlertTriangle, Boxes, Link2, Plus, Search, Trash2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
-import { useBomWriteMode } from "@/features/productAuthority/bomWriteMode";
 import {
   BOM_TABLE_UNAVAILABLE_MESSAGE,
   probeBomTables,
 } from "@/features/productAuthority/bomTableContract";
+import { useBomWriteMode } from "@/features/productAuthority/bomWriteMode";
+import { supabase } from "@/integrations/supabase/client";
 
 type BomType = "internal_bom" | "hamper_bom";
 
@@ -169,7 +169,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     });
   }, []);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!parentId) return;
 
     setLoading(true);
@@ -228,12 +228,11 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       })),
     );
     setLoading(false);
-  };
+  }, [parentId]);
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [parentId]);
+    void load();
+  }, [load]);
 
   const searchProducts = async () => {
     if (submitting) return;
@@ -509,7 +508,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     }, {});
   }, [visibleItems]);
 
-  const selectedTypeMeta = BOM_TYPES.find((type) => type.v === selectedBomType)!;
+  const selectedTypeMeta = BOM_TYPES.find((type) => type.v === selectedBomType) ?? BOM_TYPES[0];
 
   const bomAuthority = useMemo(() => {
     if (bomTableUnavailable) {
@@ -597,8 +596,8 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
 
       {warnings.length > 0 && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs space-y-1">
-          {warnings.map((warning, index) => (
-            <div key={index}>⚠️ {warning}</div>
+          {[...new Set(warnings)].map((warning) => (
+            <div key={warning}>⚠️ {warning}</div>
           ))}
         </div>
       )}
