@@ -75,44 +75,65 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [roles, setRoles] = useState<Role[]>([]);
+  // A role snapshot is never valid for a different authenticated identity.
+  const [rolesUserId, setRolesUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [rolesLoading, setRolesLoading] = useState(false);
   const [bootstrapError, setBootstrapError] = useState<string | null>(null);
-  const roleRequestRef = useRef<Promise<void> | null>(null);
+  const roleRequestRef = useRef<{ userId: string; request: Promise<void> } | null>(null);
+  const identityRef = useRef<string | null>(null);
+  const identityVersionRef = useRef(0);
+  const authEventSeenRef = useRef(false);
 
-  const loadRolesViaRpc = useCallback(async () => {
-    if (roleRequestRef.current) return roleRequestRef.current;
+  const bindIdentity = useCallback((userId: string | null) => {
+    if (identityRef.current === userId) return;
+    identityRef.current = userId;
+    identityVersionRef.current += 1;
+    roleRequestRef.current = null;
+    setRoles([]);
+    setRolesUserId(null);
+    setRolesLoading(false);
+    setLoading(userId !== null);
+    setBootstrapError(null);
+  }, []);
+
+  const loadRolesViaRpc = useCallback(async (userId: string) => {
+    if (identityRef.current !== userId) return;
+    if (roleRequestRef.current?.userId === userId) {
+      return roleRequestRef.current.request;
+    }
+    const version = identityVersionRef.current;
+    const current = () => identityRef.current === userId && identityVersionRef.current === version;
 
     const request = (async () => {
       setRolesLoading(true);
       setBootstrapError(null);
-
       try {
         const data = await loadRolesWithTransientRetry(() =>
           supabase.rpc("get_current_user_roles"),
         );
+        if (!current()) return;
         const normalizedRoles = normalizeRoles(data);
-
-        console.log("[Auth] rpc roles raw:", data);
-        console.log("[Auth] rpc roles normalized:", normalizedRoles);
-
         setRoles(normalizedRoles);
-
+        setRolesUserId(userId);
         if (normalizedRoles.length === 0) {
           setBootstrapError("No role assigned. Please contact admin.");
         }
       } catch (error: unknown) {
+        if (!current()) return;
         console.error("[Auth] get_current_user_roles failed:", error);
         setBootstrapError(roleLoadErrorMessage(error));
         setRoles([]);
+        setRolesUserId(null);
       } finally {
-        setRolesLoading(false);
+        if (current()) setRolesLoading(false);
       }
     })().finally(() => {
-      roleRequestRef.current = null;
+      if (roleRequestRef.current?.request === request) {
+        roleRequestRef.current = null;
+      }
     });
-
-    roleRequestRef.current = request;
+    roleRequestRef.current = { userId, request };
     return request;
   }, []);
 
@@ -120,19 +141,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     let mounted = true;
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
-      console.log("[Auth] state change:", event, !!s);
-
+      if (!mounted) return;
+      authEventSeenRef.current = true;
+      const userId = s?.user?.id ?? null;
+      bindIdentity(userId);
       setSession(s);
       setUser(s?.user ?? null);
 
-      if (event === "SIGNED_IN" && s?.user) {
-        setTimeout(() => {
-          if (mounted) loadRolesViaRpc();
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && userId) {
+        // Role RPCs cannot apply to a later account, even if the earlier fetch wins.
+        setTimeout(async () => {
+          if (!mounted || identityRef.current !== userId) return;
+          await loadRolesViaRpc(userId);
+          if (mounted && identityRef.current === userId) setLoading(false);
         }, 0);
-      } else if (event === "SIGNED_OUT") {
-        setRoles([]);
-        setBootstrapError(null);
-        setRolesLoading(false);
+      }
+      if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !userId)) {
+        setLoading(false);
       }
     });
 
@@ -144,26 +169,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("[Auth] session found:", !!s);
 
       if (!mounted) return;
-
+      // Auth events can replace the session while getSession is in flight.
+      if (authEventSeenRef.current) return;
+      const userId = s?.user?.id ?? null;
+      bindIdentity(userId);
       setSession(s);
       setUser(s?.user ?? null);
-
-      if (s?.user) {
-        setRolesLoading(true);
-        await loadRolesViaRpc();
-      }
-
-      if (mounted) setLoading(false);
+      if (userId) await loadRolesViaRpc(userId);
+      if (mounted && identityRef.current === userId) setLoading(false);
     })();
 
     return () => {
       mounted = false;
       sub.subscription.unsubscribe();
     };
-  }, [loadRolesViaRpc]);
+  }, [bindIdentity, loadRolesViaRpc]);
 
   const retryBootstrap = useCallback(async () => {
-    if (user) await loadRolesViaRpc();
+    if (user) await loadRolesViaRpc(user.id);
   }, [user, loadRolesViaRpc]);
 
   return (
@@ -171,7 +194,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       value={{
         user,
         session,
-        roles,
+        roles: user?.id && rolesUserId === user.id ? roles : [],
         loading,
         rolesLoading,
         bootstrapError,
