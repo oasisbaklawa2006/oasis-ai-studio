@@ -113,7 +113,9 @@ export function ComplianceAiPanel({
       });
 
       if (extraction.suggestions.length === 0) {
-        toast.error("AI compliance provider unavailable. No fields changed; enter verified values manually.");
+        toast.error(
+          "AI compliance provider unavailable. No fields changed; enter verified values manually.",
+        );
         return;
       }
       if (extraction.provenance.used_heuristic_fallback && import.meta.env.DEV) {
@@ -145,7 +147,9 @@ export function ComplianceAiPanel({
         edgeError: { message: e instanceof Error ? e.message : "Unknown error" },
       });
       if (extraction.suggestions.length === 0) {
-        toast.error("AI compliance provider unavailable. No fields changed; enter verified values manually.");
+        toast.error(
+          "AI compliance provider unavailable. No fields changed; enter verified values manually.",
+        );
         return;
       }
       applyGovernedExtraction(extraction);
