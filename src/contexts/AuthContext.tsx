@@ -93,6 +93,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRoles([]);
     setRolesUserId(null);
     setRolesLoading(false);
+    setLoading(userId !== null);
     setBootstrapError(null);
   }, []);
 
@@ -149,13 +150,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && userId) {
         // Role RPCs cannot apply to a later account, even if the earlier fetch wins.
-        setTimeout(() => {
-          if (mounted && identityRef.current === userId) {
-            void loadRolesViaRpc(userId);
-          }
+        setTimeout(async () => {
+          if (!mounted || identityRef.current !== userId) return;
+          await loadRolesViaRpc(userId);
+          if (mounted && identityRef.current === userId) setLoading(false);
         }, 0);
       }
-      if (event === "SIGNED_OUT") setLoading(false);
+      if (event === "SIGNED_OUT" || (event === "INITIAL_SESSION" && !userId)) {
+        setLoading(false);
+      }
     });
 
     (async () => {
@@ -167,16 +170,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (!mounted) return;
       // Auth events can replace the session while getSession is in flight.
-      if (authEventSeenRef.current) {
-        setLoading(false);
-        return;
-      }
+      if (authEventSeenRef.current) return;
       const userId = s?.user?.id ?? null;
       bindIdentity(userId);
       setSession(s);
       setUser(s?.user ?? null);
       if (userId) await loadRolesViaRpc(userId);
-      if (mounted) setLoading(false);
+      if (mounted && identityRef.current === userId) setLoading(false);
     })();
 
     return () => {
