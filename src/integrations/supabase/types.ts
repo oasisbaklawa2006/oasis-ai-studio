@@ -1754,6 +1754,8 @@ export type Database = {
         };
         Returns: boolean;
       };
+      /** Verified production public.is_admin() signature (read-only RLS authority). */
+      is_admin: { Args: never; Returns: boolean };
       is_team_member: { Args: { _user_id: string }; Returns: boolean };
       normalize_alias: { Args: { _text: string }; Returns: string };
       search_products_with_aliases: {
