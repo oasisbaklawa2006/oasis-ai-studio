@@ -112,6 +112,10 @@ export function ComplianceAiPanel({
         edgeError: error,
       });
 
+      if (extraction.suggestions.length === 0) {
+        toast.error("AI compliance provider unavailable. No fields changed; enter verified values manually.");
+        return;
+      }
       if (extraction.provenance.used_heuristic_fallback && import.meta.env.DEV) {
         console.warn(
           "[ComplianceAiPanel] governed fallback:",
@@ -140,6 +144,10 @@ export function ComplianceAiPanel({
         edgeData: null,
         edgeError: { message: e instanceof Error ? e.message : "Unknown error" },
       });
+      if (extraction.suggestions.length === 0) {
+        toast.error("AI compliance provider unavailable. No fields changed; enter verified values manually.");
+        return;
+      }
       applyGovernedExtraction(extraction);
       if (import.meta.env.DEV) {
         console.warn("[ComplianceAiPanel] governed fallback after error:", e);
