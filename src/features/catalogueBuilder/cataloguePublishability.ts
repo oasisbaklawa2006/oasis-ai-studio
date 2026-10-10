@@ -75,8 +75,8 @@ export function evaluateCataloguePublishability(args: {
   const approvedOk = !!complianceDim?.complete && (args.complianceApproved ?? false);
   if (!approvedOk) blockers.push("Compliance not manually approved");
 
-  const syncedOk =
-    args.catalogueVersionStatus === "synced" || args.catalogueVersionStatus === "published";
+  // Publication or editorial approval alone is not proof of a successful Central sync.
+  const syncedOk = args.catalogueVersionStatus === "synced";
   if (!syncedOk) blockers.push("Not synced to Central (preview only)");
 
   const publishable = catalogueReleaseGatesPass({
