@@ -69,17 +69,30 @@ export async function isSuperAdmin(): Promise<boolean> {
   return roles.includes("super_admin");
 }
 
-export async function canWriteMasterDirectly(): Promise<boolean> {
-  return isSuperAdmin();
+/**
+ * The production `products` and `product_media` write RLS policies use
+ * `public.is_admin()`, which checks active `public.users.role` admin/super_admin.
+ * A frontend role-map key, or the unrelated `products_write` permission, does
+ * not prove that those RLS policies will accept a direct write.
+ */
+export async function canWriteProductsDirectly(_rolesFromContext?: string[]): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc("is_admin");
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error("[CentralPermissions] products is_admin authority probe failed:", error);
+      }
+      return false;
+    }
+    return data === true;
+  } catch {
+    return false;
+  }
 }
 
-const PRODUCTS_DIRECT_WRITE_ROLES = ["super_admin", "owner", "admin", "product_manager"] as const;
-
-/** Owner/admin/PM direct product master writes (permissions.ts products_write parity). */
-export async function canWriteProductsDirectly(rolesFromContext?: string[]): Promise<boolean> {
-  const roles = rolesFromContext ?? (await getMyRoleKeys());
-  if (PRODUCTS_DIRECT_WRITE_ROLES.some((r) => roles.includes(r))) return true;
-  return hasPermission("products_write");
+/** Direct media writes share the same production RLS authority as product writes. */
+export async function canWriteMasterDirectly(): Promise<boolean> {
+  return canWriteProductsDirectly();
 }
 
 export async function canSubmitDraft(permissionKey: string): Promise<boolean> {
