@@ -6,6 +6,17 @@ export function generateWhatsAppMiniCatalogueText(args: {
   products: CatalogueProductCard[];
   shareUrl?: string | null;
 }): string {
+  // The preview is copyable, so treat it as customer-distributable material.
+  // Never interpolate a draft/unapproved card's product claims or media URL.
+  const awaitingApproval = args.products.filter((product) => !product.publishable);
+  if (awaitingApproval.length > 0) {
+    return [
+      `*${args.title}*`,
+      "",
+      `_Sharing blocked: ${awaitingApproval.length} product(s) require approved catalogue publication._`,
+    ].join("\n");
+  }
+
   const lines: string[] = [`*${args.title}*`, "Oasis Baklawa — curated catalogue", ""];
 
   for (const p of args.products.slice(0, 12)) {
