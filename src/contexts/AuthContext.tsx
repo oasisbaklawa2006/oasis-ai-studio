@@ -147,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(s);
       setUser(s?.user ?? null);
 
-      if (event === "SIGNED_IN" && userId) {
+      if ((event === "SIGNED_IN" || event === "INITIAL_SESSION") && userId) {
         // Role RPCs cannot apply to a later account, even if the earlier fetch wins.
         setTimeout(() => {
           if (mounted && identityRef.current === userId) {
