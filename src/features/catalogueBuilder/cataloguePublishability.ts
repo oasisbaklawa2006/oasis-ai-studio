@@ -20,6 +20,23 @@ export type CataloguePublishabilityResult = {
   syncedOk: boolean;
 };
 
+export type CatalogueReleaseGates = Pick<
+  CataloguePublishabilityResult,
+  "contentOk" | "mediaOk" | "pricingOk" | "approvedOk" | "syncedOk"
+> & { readyForCentralSync: boolean };
+
+/** A product is distributable only after its approved Central catalogue snapshot exists. */
+export function catalogueReleaseGatesPass(gates: CatalogueReleaseGates): boolean {
+  return (
+    gates.contentOk &&
+    gates.mediaOk &&
+    gates.pricingOk &&
+    gates.approvedOk &&
+    gates.syncedOk &&
+    gates.readyForCentralSync
+  );
+}
+
 export function evaluateCataloguePublishability(args: {
   form: Record<string, unknown>;
   complianceApproved?: boolean;
@@ -62,8 +79,14 @@ export function evaluateCataloguePublishability(args: {
     args.catalogueVersionStatus === "synced" || args.catalogueVersionStatus === "published";
   if (!syncedOk) blockers.push("Not synced to Central (preview only)");
 
-  const publishable =
-    contentOk && mediaOk && pricingOk && approvedOk && readiness.readyForCentralSync;
+  const publishable = catalogueReleaseGatesPass({
+    contentOk,
+    mediaOk,
+    pricingOk,
+    approvedOk,
+    syncedOk,
+    readyForCentralSync: readiness.readyForCentralSync,
+  });
 
   if (!readiness.readyForCentralSync && publishable === false) {
     for (const b of readiness.blockers) {
