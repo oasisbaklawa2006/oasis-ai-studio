@@ -129,25 +129,48 @@ export const submitMediaCatalogueDraft = async (
     targetRecordId: targetRecordId ?? null,
   });
 
+export type CatalogueMediaPermissionChecks = {
+  canWriteMasterDirectly: () => Promise<boolean>;
+  isCatalogueContributor: () => Promise<boolean>;
+  canSubmitDraft: (permission: string) => Promise<boolean>;
+};
+
+/**
+ * UI permission projection only; Core RLS/RPC must still authorize every write.
+ * Failure to resolve permissions must never preserve a prior editable mode.
+ */
+export async function resolveCatalogueMediaWriteMode(
+  roles: readonly Role[],
+  checks: CatalogueMediaPermissionChecks = {
+    canWriteMasterDirectly,
+    isCatalogueContributor,
+    canSubmitDraft,
+  },
+): Promise<MediaWriteMode> {
+  try {
+    if (roles.some((role) => DIRECT_MEDIA_ROLES.includes(role))) return "direct";
+    if (await checks.canWriteMasterDirectly()) return "direct";
+    if (!(await checks.isCatalogueContributor())) return "readonly";
+    return (await checks.canSubmitDraft(draftTableMap.media.permission)) ? "draft" : "readonly";
+  } catch {
+    return "readonly";
+  }
+}
+
 export function useCatalogueMediaWriteMode(roles: Role[]) {
   const [writeMode, setWriteMode] = useState<MediaWriteMode>("readonly");
 
   useEffect(() => {
-    (async () => {
-      const roleList = roles as Role[];
-      const hasDirect =
-        roleList.some((r) => DIRECT_MEDIA_ROLES.includes(r)) || (await canWriteMasterDirectly());
-      if (hasDirect) {
-        setWriteMode("direct");
-        return;
-      }
-      if (await isCatalogueContributor()) {
-        const canSubmit = await canSubmitDraft(draftTableMap.media.permission);
-        setWriteMode(canSubmit ? "draft" : "readonly");
-        return;
-      }
-      setWriteMode("readonly");
-    })();
+    let current = true;
+    // An account or role switch immediately invalidates the previous edit mode.
+    setWriteMode("readonly");
+    void resolveCatalogueMediaWriteMode(roles).then((resolved) => {
+      if (current) setWriteMode(resolved);
+    });
+    return () => {
+      // An older permission RPC must never re-grant editing after a role switch/unmount.
+      current = false;
+    };
   }, [roles]);
 
   const canMutate = writeMode === "direct" || writeMode === "draft";

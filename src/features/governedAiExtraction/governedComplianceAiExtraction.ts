@@ -171,7 +171,7 @@ export type GovernedComplianceExtractionInput = {
   product_name?: string;
   category?: string;
   edgeData: unknown;
-  edgeError: { message?: string } | null;
+  edgeError: { message?: string; context?: unknown } | null;
 };
 
 /**
@@ -182,6 +182,34 @@ export type GovernedComplianceExtractionInput = {
 export function extractGovernedCompliance(
   input: GovernedComplianceExtractionInput,
 ): GovernedComplianceExtraction {
+  // The production generate-product-attributes function is retired (HTTP 410).
+  // Do not replace an explicit retirement with fabricated GST/HSN/shelf-life
+  // heuristics. Unknown/network failures retain their existing review-only path.
+  const context = input.edgeError?.context;
+  const httpStatus =
+    context && typeof context === "object" && "status" in context ? context.status : null;
+  const retiredPayload =
+    input.edgeData && typeof input.edgeData === "object"
+      ? (input.edgeData as Record<string, unknown>).error === "endpoint_retired"
+      : false;
+  if (httpStatus === 410 || retiredPayload) {
+    return buildGovernedExtractionFromResponse(
+      {
+        suggestion_only: true,
+        approved: false,
+        disclaimer: AI_COMPLIANCE_LEGAL_DISCLAIMER,
+        suggestions: {},
+      },
+      {
+        service: "generate-product-attributes",
+        provider_status: "failed",
+        used_heuristic_fallback: false,
+        uncertainty_reason:
+          "AI compliance provider retired (HTTP 410). Verified manual entry required.",
+      },
+    );
+  }
+
   const parsed = parseAiComplianceResponse(input.edgeData);
   const hasEdgeError = !!input.edgeError;
 
