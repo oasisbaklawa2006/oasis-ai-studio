@@ -57,7 +57,8 @@ const BOM_TYPES: { v: BomType; label: string; description: string }[] = [
   {
     v: "hamper_bom",
     label: "Hamper BOM",
-    description: "Ready packs, loose products, and packaging items required to assemble one hamper.",
+    description:
+      "Ready packs, loose products, and packaging items required to assemble one hamper.",
   },
 ];
 
@@ -108,7 +109,7 @@ const productDisplayName = (p: ProductOption) => p.name || p.sku || p.id;
 const buildCatalogueDraftPayload = (
   productId: string,
   fields: BomLineDraftFields,
-  includeBomType: boolean
+  includeBomType: boolean,
 ): Record<string, unknown> => {
   const payload: Record<string, unknown> = {
     scope: "product_bom_line",
@@ -149,7 +150,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState(emptyDraft());
   const [selectedBomType, setSelectedBomType] = useState<BomType>(() =>
-    defaultBomTypeForClass(productClass)
+    defaultBomTypeForClass(productClass),
   );
   const [supportsBomType, setSupportsBomType] = useState<boolean | null>(null);
   const [bomTableUnavailable, setBomTableUnavailable] = useState<string | null>(null);
@@ -185,7 +186,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     const withBomType = await (supabase as any)
       .from("product_bom")
       .select(
-        "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, bom_type, created_at"
+        "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, bom_type, created_at",
       )
       .eq("product_id", parentId)
       .order("created_at", { ascending: true });
@@ -207,7 +208,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     const fallback = await (supabase as any)
       .from("product_bom")
       .select(
-        "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, created_at"
+        "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, created_at",
       )
       .eq("product_id", parentId)
       .order("created_at", { ascending: true });
@@ -224,7 +225,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       ((fallback.data ?? []) as BomItem[]).map((item) => ({
         ...item,
         bom_type: "internal_bom",
-      }))
+      })),
     );
     setLoading(false);
   };
@@ -377,10 +378,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
         const payload = buildDirectPayload();
 
         const result = editingId
-          ? await (supabase as any)
-              .from("product_bom")
-              .update(payload)
-              .eq("id", editingId)
+          ? await (supabase as any).from("product_bom").update(payload).eq("id", editingId)
           : await (supabase as any).from("product_bom").insert(payload);
 
         if (result.error) {
@@ -397,7 +395,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       const draftPayload = buildCatalogueDraftPayload(
         parentId,
         buildFormLineFields(),
-        supportsBomType !== false
+        supportsBomType !== false,
       );
 
       const res = await submitCatalogueDraft({
@@ -415,7 +413,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       toast.success(
         editingId
           ? "BOM line change submitted for approval."
-          : "BOM line submitted for approval. Approved BOM changes will appear here after review."
+          : "BOM line submitted for approval. Approved BOM changes will appear here after review.",
       );
       cancel();
     } finally {
@@ -430,10 +428,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setSubmitting(true);
     try {
       if (writeMode === "direct") {
-        const { error } = await (supabase as any)
-          .from("product_bom")
-          .delete()
-          .eq("id", item.id);
+        const { error } = await (supabase as any).from("product_bom").delete().eq("id", item.id);
 
         if (error) {
           toast.error(error.message);
@@ -451,7 +446,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
         payload: buildCatalogueDraftPayload(
           parentId,
           bomLineFieldsFromItem(item),
-          supportsBomType !== false
+          supportsBomType !== false,
         ),
         targetRecordId: item.id,
       });
@@ -462,7 +457,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       }
 
       toast.success(
-        "Delete request submitted for approval. This BOM line stays visible until review."
+        "Delete request submitted for approval. This BOM line stays visible until review.",
       );
     } finally {
       setSubmitting(false);
@@ -478,18 +473,28 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     const list: string[] = [];
 
     if (supportsBomType === false) {
-      list.push("BOM type column is not active yet. Run the bom_type SQL to separate Internal BOM and Hamper BOM rows.");
+      list.push(
+        "BOM type column is not active yet. Run the bom_type SQL to separate Internal BOM and Hamper BOM rows.",
+      );
     }
 
     if (bomRequired && visibleItems.length === 0) {
       list.push("BOM is marked required but no components exist yet for the selected BOM type.");
     }
 
-    if (productClass === "gift_hamper" && selectedBomType === "hamper_bom" && visibleItems.length === 0) {
+    if (
+      productClass === "gift_hamper" &&
+      selectedBomType === "hamper_bom" &&
+      visibleItems.length === 0
+    ) {
       list.push("Hamper product should have a Hamper BOM before approval.");
     }
 
-    if (productClass === "ready_pack" && selectedBomType === "internal_bom" && visibleItems.length === 0) {
+    if (
+      productClass === "ready_pack" &&
+      selectedBomType === "internal_bom" &&
+      visibleItems.length === 0
+    ) {
       list.push("Ready pack should have an Internal BOM before approval.");
     }
 
@@ -541,13 +546,16 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className={`rounded-lg border p-3 text-xs flex gap-2 items-start ${bomAuthority.className}`}>
+      <div
+        className={`rounded-lg border p-3 text-xs flex gap-2 items-start ${bomAuthority.className}`}
+      >
         <AlertTriangle className={`h-4 w-4 mt-0.5 shrink-0 ${bomAuthority.iconClass}`} />
         <div>
           <div className="font-medium text-foreground">BOM authority: {bomAuthority.label}</div>
           <div className="text-muted-foreground mt-0.5">{bomAuthority.detail}</div>
           <div className="text-muted-foreground mt-1">
-            Internal BOM builds one ready pack. Hamper BOM assembles hampers from ready packs and packaging.
+            Internal BOM builds one ready pack. Hamper BOM assembles hampers from ready packs and
+            packaging.
           </div>
         </div>
       </div>
@@ -576,12 +584,14 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       </div>
 
       <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-        Selected: <span className="font-medium text-foreground">{selectedTypeMeta.label}</span> — {selectedTypeMeta.description}
+        Selected: <span className="font-medium text-foreground">{selectedTypeMeta.label}</span> —{" "}
+        {selectedTypeMeta.description}
       </div>
 
       {writeMode === "draft" && (
         <p className="text-xs text-muted-foreground leading-relaxed">
-          BOM line changes are submitted for approval. Approved BOM changes will appear here after review.
+          BOM line changes are submitted for approval. Approved BOM changes will appear here after
+          review.
         </p>
       )}
 
@@ -595,16 +605,12 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
 
       <div className="grid sm:grid-cols-3 gap-3">
         <div className="card-elevated p-4">
-          <div className="text-[11px] uppercase text-muted-foreground">
-            Components
-          </div>
+          <div className="text-[11px] uppercase text-muted-foreground">Components</div>
           <div className="text-xl font-semibold">{visibleItems.length}</div>
         </div>
 
         <div className="card-elevated p-4 sm:col-span-2">
-          <div className="text-[11px] uppercase text-muted-foreground mb-2">
-            Source routing
-          </div>
+          <div className="text-[11px] uppercase text-muted-foreground mb-2">Source routing</div>
           <div className="flex flex-wrap gap-1.5">
             {Object.keys(groupedCounts).length === 0 ? (
               <span className="text-xs text-muted-foreground">No routing yet</span>
