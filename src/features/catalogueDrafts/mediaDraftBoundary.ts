@@ -140,7 +140,7 @@ export type CatalogueMediaPermissionChecks = {
  * Failure to resolve permissions must never preserve a prior editable mode.
  */
 export async function resolveCatalogueMediaWriteMode(
-  roles: readonly Role[],
+  _roles: readonly Role[],
   checks: CatalogueMediaPermissionChecks = {
     canWriteMasterDirectly,
     isCatalogueContributor,
