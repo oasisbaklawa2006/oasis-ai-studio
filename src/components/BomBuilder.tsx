@@ -642,7 +642,8 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                   </div>
 
                   <Badge variant="outline" className="text-[10px]">
-                    {BOM_TYPES.find((type) => type.v === (item.bom_type || "internal_bom"))?.label || "Internal BOM"}
+                    {BOM_TYPES.find((type) => type.v === (item.bom_type || "internal_bom"))
+                      ?.label || "Internal BOM"}
                   </Badge>
 
                   {item.component_product_id && (
@@ -751,7 +752,12 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
                 <div className="flex items-center gap-2 rounded-md border p-2 text-sm">
                   <Link2 className="h-4 w-4 text-muted-foreground" />
                   <span className="flex-1 truncate">{draft.component_name}</span>
-                  <Button size="sm" variant="ghost" onClick={clearPickedProduct} disabled={submitting}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={clearPickedProduct}
+                    disabled={submitting}
+                  >
                     Clear link
                   </Button>
                 </div>
@@ -844,9 +850,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
               Cancel
             </Button>
             <Button onClick={save} disabled={submitting}>
-              {submitting
-                ? "Submitting…"
-                : `${editingId ? "Update" : "Add"} component`}
+              {submitting ? "Submitting…" : `${editingId ? "Update" : "Add"} component`}
             </Button>
           </div>
         </div>
