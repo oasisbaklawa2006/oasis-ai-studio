@@ -165,5 +165,12 @@ export function validateCompositionForPrint(
     hasCover: composition.sections.some((s) => s.kind === "cover"),
   });
 
-  return { ...layout, imageIssues };
+  // Production PDF is a distribution artifact: every card must have an approved
+  // Central catalogue version as well as passing content/media/commercial gates.
+  // Internal composition previews remain available while products are being reviewed.
+  const authorityIssues = cards
+    .filter((card) => !card.publishable)
+    .map((card) => `${card.name}: not approved for catalogue distribution`);
+  const issues = [...layout.issues, ...authorityIssues];
+  return { ...layout, ok: issues.length === 0, issues, imageIssues };
 }
