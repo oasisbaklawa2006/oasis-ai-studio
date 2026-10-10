@@ -35,7 +35,7 @@ function mountable() {
     container,
     mount: async () => {
       await act(async () => {
-        root.render(createElement(AuthProvider, {}, createElement(Probe)));
+        root.render(createElement(AuthProvider, { children: createElement(Probe) }));
       });
     },
     unmount: async () => {
