@@ -187,9 +187,7 @@ export function extractGovernedCompliance(
   // heuristics. Unknown/network failures retain their existing review-only path.
   const context = input.edgeError?.context;
   const httpStatus =
-    context && typeof context === "object" && "status" in context
-      ? context.status
-      : null;
+    context && typeof context === "object" && "status" in context ? context.status : null;
   const retiredPayload =
     input.edgeData && typeof input.edgeData === "object"
       ? (input.edgeData as Record<string, unknown>).error === "endpoint_retired"
@@ -206,7 +204,8 @@ export function extractGovernedCompliance(
         service: "generate-product-attributes",
         provider_status: "failed",
         used_heuristic_fallback: false,
-        uncertainty_reason: "AI compliance provider retired (HTTP 410). Verified manual entry required.",
+        uncertainty_reason:
+          "AI compliance provider retired (HTTP 410). Verified manual entry required.",
       },
     );
   }
