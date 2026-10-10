@@ -1,6 +1,6 @@
 import {
-  IMMUTABLE_VERSION_STATUSES,
   type CatalogueVersionStatus,
+  IMMUTABLE_VERSION_STATUSES,
 } from "@/features/catalogueSnapshot/types";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import type { ProductLabelBarcodeRow } from "@/features/productGovernance/types";
@@ -129,13 +129,14 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     if (r.approval_status === "approved") priceCounts[r.product_id].approved += 1;
   });
 
-  const { headImmutableByProduct, headStatusByProduct, anyImmutableByProduct } = catalogueVersionAuthorityMaps(
-    (versionsRes.data ?? []) as Array<{
-      product_id: string | null;
-      status: string | null;
-      version_number: number | null;
-    }>,
-  );
+  const { headImmutableByProduct, headStatusByProduct, anyImmutableByProduct } =
+    catalogueVersionAuthorityMaps(
+      (versionsRes.data ?? []) as Array<{
+        product_id: string | null;
+        status: string | null;
+        version_number: number | null;
+      }>,
+    );
 
   return {
     rules: rulesRes.data ?? [],
