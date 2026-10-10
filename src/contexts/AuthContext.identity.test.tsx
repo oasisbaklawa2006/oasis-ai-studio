@@ -59,6 +59,45 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe("AuthProvider binds roles to the active user identity", () => {
+  it("keeps role-gated screens loading until the initial session role RPC completes", async () => {
+    let settle: (value: { data: string[]; error: null }) => void = () => {};
+    mock.rpc.mockImplementationOnce(
+      () =>
+        new Promise<{ data: string[]; error: null }>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    function LoadingProbe() {
+      const { user, loading, rolesLoading, roles } = useAuth();
+      const status = loading || rolesLoading ? "loading" : roles.join(",") || "restricted";
+      return createElement("output", {}, `${user?.id ?? "none"}:${status}`);
+    }
+    try {
+      await act(async () => {
+        root.render(createElement(AuthProvider, { children: createElement(LoadingProbe) }));
+      });
+      await act(async () => {
+        notifyAuth("INITIAL_SESSION", sessionFor("staff"));
+      });
+      expect(container.textContent).toBe("staff:loading");
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      // The RoleGate must not temporarily show AccessRestricted before roles arrive.
+      expect(container.textContent).toBe("staff:loading");
+      await act(async () => {
+        settle({ data: ["sales"], error: null });
+        await Promise.resolve();
+      });
+      expect(container.textContent).toBe("staff:sales");
+    } finally {
+      await act(async () => {
+        root.unmount();
+      });
+    }
+  });
   it("loads scoped roles when Supabase emits INITIAL_SESSION instead of SIGNED_IN", async () => {
     mock.rpc.mockResolvedValueOnce({ data: ["sales"], error: null });
     const app = mountable();
