@@ -48,7 +48,10 @@ export function useBomWriteMode(userId: string | null, roles: readonly Role[]) {
     let active = true;
     setPermission({ identityKey, mode: "readonly" });
     if (identityKey !== null) {
-      void resolveBomWriteMode(roles).then((mode) => {
+      // This immutable role snapshot is derived from the dependency key, so a
+      // stale render cannot reapply permissions from another identity.
+      const roleSnapshot = (JSON.parse(identityKey) as string[]).slice(1) as Role[];
+      void resolveBomWriteMode(roleSnapshot).then((mode) => {
         if (active) setPermission({ identityKey, mode });
       });
     }
