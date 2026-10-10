@@ -26,6 +26,7 @@ describe("bulk catalogue draft preparation", () => {
     ]);
 
     expect(authority.headImmutableByProduct).toEqual({ p1: false, p2: false });
+    expect(authority.headStatusByProduct).toEqual({ p1: "draft", p2: "draft" });
     expect(authority.anyImmutableByProduct).toEqual({ p1: true, p2: false });
     expect(
       productIdsMissingImmutableVersion(
@@ -33,5 +34,28 @@ describe("bulk catalogue draft preparation", () => {
         authority.anyImmutableByProduct,
       ),
     ).toEqual(["p2"]);
+  });
+  it("does not label an approved or published head as synced to Central", () => {
+    const status = catalogueVersionAuthorityMaps([
+      { product_id: "approved", status: "approved", version_number: 3 },
+      { product_id: "published", status: "published", version_number: 2 },
+      { product_id: "synced", status: "synced", version_number: 4 },
+      { product_id: "revised", status: "draft", version_number: 5 },
+      { product_id: "revised", status: "synced", version_number: 4 },
+    ]);
+
+    expect(status.headStatusByProduct).toEqual({
+      approved: "approved",
+      published: "published",
+      synced: "synced",
+      revised: "draft",
+    });
+    expect(status.headImmutableByProduct).toEqual({
+      approved: true,
+      published: true,
+      synced: true,
+      revised: false,
+    });
+    expect(status.anyImmutableByProduct.revised).toBe(true);
   });
 });

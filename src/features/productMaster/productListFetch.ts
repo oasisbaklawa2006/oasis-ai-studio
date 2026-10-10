@@ -1,4 +1,7 @@
-import { IMMUTABLE_VERSION_STATUSES } from "@/features/catalogueSnapshot/types";
+import {
+  type CatalogueVersionStatus,
+  IMMUTABLE_VERSION_STATUSES,
+} from "@/features/catalogueSnapshot/types";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import type { ProductLabelBarcodeRow } from "@/features/productGovernance/types";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
@@ -23,6 +26,7 @@ export type ProductAuthorityBundleResult = {
   pricingByProduct: Record<string, PricingRuleRow[]>;
   moqByProduct: Record<string, MoqRuleRow[]>;
   catalogueApprovedByProduct: Record<string, boolean>;
+  catalogueVersionStatusByProduct: Record<string, CatalogueVersionStatus | null>;
   catalogueImmutableByProduct: Record<string, boolean>;
   labelRows: ProductLabelBarcodeRow[];
   hadErrors: boolean;
@@ -60,9 +64,11 @@ export function catalogueVersionAuthorityMaps(
   }>,
 ): {
   headImmutableByProduct: Record<string, boolean>;
+  headStatusByProduct: Record<string, CatalogueVersionStatus | null>;
   anyImmutableByProduct: Record<string, boolean>;
 } {
   const headImmutableByProduct: Record<string, boolean> = {};
+  const headStatusByProduct: Record<string, CatalogueVersionStatus | null> = {};
   const anyImmutableByProduct: Record<string, boolean> = {};
 
   for (const row of rows) {
@@ -73,6 +79,7 @@ export function catalogueVersionAuthorityMaps(
     );
     if (headImmutableByProduct[productId] === undefined) {
       headImmutableByProduct[productId] = immutable;
+      headStatusByProduct[productId] = row.status as CatalogueVersionStatus | null;
     }
     if (immutable) {
       anyImmutableByProduct[productId] = true;
@@ -81,7 +88,7 @@ export function catalogueVersionAuthorityMaps(
     }
   }
 
-  return { headImmutableByProduct, anyImmutableByProduct };
+  return { headImmutableByProduct, headStatusByProduct, anyImmutableByProduct };
 }
 
 export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBundleResult> {
@@ -122,13 +129,14 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     if (r.approval_status === "approved") priceCounts[r.product_id].approved += 1;
   });
 
-  const { headImmutableByProduct, anyImmutableByProduct } = catalogueVersionAuthorityMaps(
-    (versionsRes.data ?? []) as Array<{
-      product_id: string | null;
-      status: string | null;
-      version_number: number | null;
-    }>,
-  );
+  const { headImmutableByProduct, headStatusByProduct, anyImmutableByProduct } =
+    catalogueVersionAuthorityMaps(
+      (versionsRes.data ?? []) as Array<{
+        product_id: string | null;
+        status: string | null;
+        version_number: number | null;
+      }>,
+    );
 
   return {
     rules: rulesRes.data ?? [],
@@ -138,6 +146,7 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
     pricingByProduct: groupRowsByProductId(pricingRows),
     moqByProduct: groupRowsByProductId(moqRows),
     catalogueApprovedByProduct: headImmutableByProduct,
+    catalogueVersionStatusByProduct: headStatusByProduct,
     catalogueImmutableByProduct: anyImmutableByProduct,
     labelRows: [],
     hadErrors,

@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { selectApprovedImageUrlsForCentral } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAsset } from "@/features/mediaReadiness/types";
-import { evaluateCataloguePublishability } from "./cataloguePublishability";
+import {
+  type CatalogueReleaseGates,
+  catalogueReleaseGatesPass,
+  evaluateCataloguePublishability,
+} from "./cataloguePublishability";
 import { exportCataloguePdf } from "./pdfExport";
 import { applyPriceVisibilityToCard } from "./priceVisibility";
 import type { CatalogueProductCard } from "./types";
@@ -51,6 +55,53 @@ describe("catalogueBuilder", () => {
     });
     expect(pub.contentOk).toBe(true);
     expect(pub.mediaOk).toBe(true);
+  });
+
+  it("fails closed until an approved Central catalogue version is synced", () => {
+    const ready: CatalogueReleaseGates = {
+      contentOk: true,
+      mediaOk: true,
+      pricingOk: true,
+      approvedOk: true,
+      syncedOk: true,
+      readyForCentralSync: true,
+    };
+    expect(catalogueReleaseGatesPass(ready)).toBe(true);
+    for (const key of Object.keys(ready) as Array<keyof CatalogueReleaseGates>) {
+      expect(catalogueReleaseGatesPass({ ...ready, [key]: false })).toBe(false);
+    }
+  });
+
+  it("keeps the public publishable flag false when sync is absent, even with all other gates", () => {
+    const candidate = evaluateCataloguePublishability({
+      form: completeForm,
+      complianceApproved: true,
+      prices: [
+        { channel: "mrp", priceStatus: "approved", mrp: 1200 },
+        { channel: "b2b", priceStatus: "approved", sellingPrice: 1000 },
+      ],
+      catalogueVersionStatus: null,
+    });
+    expect(candidate.syncedOk).toBe(false);
+    expect(candidate.blockers).toContain("Not synced to Central (preview only)");
+    expect(candidate.publishable).toBe(false);
+  });
+
+  it("does not confuse editorial approval or publication with actual Central sync", () => {
+    for (const status of ["draft", "pending_approval", "approved", "published", null]) {
+      const result = evaluateCataloguePublishability({
+        form: completeForm,
+        complianceApproved: true,
+        prices: [
+          { channel: "mrp", priceStatus: "approved", mrp: 1200 },
+          { channel: "b2b", priceStatus: "approved", sellingPrice: 1000 },
+        ],
+        catalogueVersionStatus: status,
+      });
+      expect(result.syncedOk).toBe(false);
+      expect(result.publishable).toBe(false);
+      expect(result.blockers).toContain("Not synced to Central (preview only)");
+    }
   });
 
   it("unready product shows catalogue blocker", () => {
