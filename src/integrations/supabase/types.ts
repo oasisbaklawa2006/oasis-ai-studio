@@ -1730,6 +1730,9 @@ export type Database = {
         Returns: string;
       };
       get_current_user_roles: { Args: never; Returns: string[] };
+      /** Verified production signatures for governed catalogue permission RPCs. */
+      get_my_role_keys: { Args: never; Returns: string[] };
+      has_catalogue_permission: { Args: { p_permission_key: string }; Returns: boolean };
       get_public_catalogue_channel_data: {
         Args: { _slug: string };
         Returns: {
@@ -1756,6 +1759,7 @@ export type Database = {
       };
       /** Verified production public.is_admin() signature (read-only RLS authority). */
       is_admin: { Args: never; Returns: boolean };
+      is_catalogue_reviewer: { Args: never; Returns: boolean };
       is_team_member: { Args: { _user_id: string }; Returns: boolean };
       normalize_alias: { Args: { _text: string }; Returns: string };
       search_products_with_aliases: {
