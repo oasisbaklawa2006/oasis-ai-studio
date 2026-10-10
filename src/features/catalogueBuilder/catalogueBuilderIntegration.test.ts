@@ -99,7 +99,9 @@ describe("catalogueBuilder integration", () => {
     // The fixture contains no Core-approved published catalogue authority.
     // Draft composition is allowed internally, but production export must fail closed.
     expect(validation.ok).toBe(false);
-    expect(validation.issues).toContain("Pistachio Baklawa: not approved for catalogue distribution");
+    expect(validation.issues).toContain(
+      "Pistachio Baklawa: not approved for catalogue distribution",
+    );
 
     const snapshot = createPrintCatalogueSnapshot({
       collection,
