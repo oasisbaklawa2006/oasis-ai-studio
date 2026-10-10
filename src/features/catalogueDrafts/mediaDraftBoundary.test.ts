@@ -1,7 +1,7 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
-import type { Role } from "@/lib/permissions";
 import { describe, expect, it, vi } from "vitest";
+import type { Role } from "@/lib/permissions";
 import {
   ALLOWED_MEDIA_MIME_TYPES,
   IMAGE_MIME_TYPES,
