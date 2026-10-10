@@ -35,7 +35,11 @@ function mountable() {
     container,
     mount: async () => {
       await act(async () => {
-        root.render(<AuthProvider><Probe /></AuthProvider>);
+        root.render(
+          <AuthProvider>
+            <Probe />
+          </AuthProvider>,
+        );
       });
     },
     unmount: async () => {
@@ -76,7 +80,11 @@ describe("AuthProvider binds roles to the active user identity", () => {
     }
     try {
       await act(async () => {
-        root.render(<AuthProvider><LoadingProbe /></AuthProvider>);
+        root.render(
+          <AuthProvider>
+            <LoadingProbe />
+          </AuthProvider>,
+        );
       });
       await act(async () => {
         notifyAuth("INITIAL_SESSION", sessionFor("staff"));
