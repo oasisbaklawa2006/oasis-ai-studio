@@ -59,6 +59,20 @@ afterEach(() => {
   vi.useRealTimers();
 });
 describe("AuthProvider binds roles to the active user identity", () => {
+  it("loads scoped roles when Supabase emits INITIAL_SESSION instead of SIGNED_IN", async () => {
+    mock.rpc.mockResolvedValueOnce({ data: ["sales"], error: null });
+    const app = mountable();
+    try {
+      await app.mount();
+      await act(async () => {
+        notifyAuth("INITIAL_SESSION", sessionFor("existing"));
+        await vi.runAllTimersAsync();
+      });
+      expect(app.container.textContent).toBe("existing:sales");
+    } finally {
+      await app.unmount();
+    }
+  });
   it("hides old owner permissions immediately on account change", async () => {
     mock.rpc
       .mockResolvedValueOnce({ data: ["owner"], error: null })
