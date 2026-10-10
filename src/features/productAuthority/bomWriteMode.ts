@@ -58,8 +58,6 @@ export function useBomWriteMode(userId: string | null, roles: readonly Role[]) {
   }, [identityKey]);
 
   const writeMode =
-    identityKey !== null && permission.identityKey === identityKey
-      ? permission.mode
-      : "readonly";
+    identityKey !== null && permission.identityKey === identityKey ? permission.mode : "readonly";
   return { writeMode, canMutate: writeMode !== "readonly" };
 }
