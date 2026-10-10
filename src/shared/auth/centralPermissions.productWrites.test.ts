@@ -90,4 +90,13 @@ describe("catalogue contributor permission RPC matches the deployed Core functio
     mock.rpc.mockResolvedValueOnce({ data: null, error: { message: "RPC unavailable" } });
     expect(await hasPermission("catalogue.products.submit")).toBe(false);
   });
+
+  it("fails closed when Core permission or role lookup rejects the request", async () => {
+    mock.rpc.mockRejectedValueOnce(new Error("network interrupted"));
+    expect(await hasPermission("catalogue.products.submit")).toBe(false);
+
+    mock.rpc.mockRejectedValueOnce(new Error("auth session expired"));
+    expect(await canSubmitDraft("catalogue.products.submit")).toBe(false);
+    expect(mock.rpc).toHaveBeenCalledTimes(2);
+  });
 });
