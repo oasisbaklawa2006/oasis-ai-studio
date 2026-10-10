@@ -1,34 +1,42 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export async function getMyRoleKeys(): Promise<string[]> {
-  const { data, error } = await supabase.rpc("get_my_role_keys");
+  try {
+    const { data, error } = await supabase.rpc("get_my_role_keys");
 
-  if (error) {
-    if (import.meta.env.DEV) {
-      console.error("[CentralPermissions] get_my_role_keys failed:", error);
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error("[CentralPermissions] get_my_role_keys failed:", error);
+      }
+      return [];
     }
+
+    return Array.isArray(data) ? data.map(String) : [];
+  } catch {
     return [];
   }
-
-  return Array.isArray(data) ? data.map(String) : [];
 }
 
 export async function hasPermission(permissionKey: string): Promise<boolean> {
-  const { data, error } = await supabase.rpc("has_catalogue_permission", {
-    p_permission_key: permissionKey,
-  });
+  try {
+    const { data, error } = await supabase.rpc("has_catalogue_permission", {
+      p_permission_key: permissionKey,
+    });
 
-  if (error) {
-    if (import.meta.env.DEV) {
-      console.error("[CentralPermissions] has_catalogue_permission failed:", {
-        permissionKey,
-        error,
-      });
+    if (error) {
+      if (import.meta.env.DEV) {
+        console.error("[CentralPermissions] has_catalogue_permission failed:", {
+          permissionKey,
+          error,
+        });
+      }
+      return false;
     }
+
+    return data === true;
+  } catch {
     return false;
   }
-
-  return !!data;
 }
 
 /**
