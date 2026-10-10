@@ -195,9 +195,8 @@ export default function CatalogueBuilder() {
           mediaRows: authorityBundle.mediaByProduct[item.product_id],
           pricingRows: authorityBundle.pricingByProduct[item.product_id],
           moqRows: authorityBundle.moqByProduct[item.product_id],
-          catalogueVersionStatus: authorityBundle.catalogueApprovedByProduct[item.product_id]
-            ? "synced"
-            : null,
+          catalogueVersionStatus:
+            authorityBundle.catalogueVersionStatusByProduct[item.product_id] ?? null,
           channel: activeCollection?.channel,
         });
       })
