@@ -14,7 +14,8 @@ describe("live product / media direct-write RLS authority", () => {
   it("grants direct product write only on confirmed backend is_admin true", async () => {
     mock.rpc.mockResolvedValueOnce({ data: true, error: null });
     expect(await canWriteProductsDirectly(["owner"])).toBe(true);
-    expect(mock.rpc).toHaveBeenCalledExactlyOnceWith("is_admin");
+    expect(mock.rpc).toHaveBeenCalledTimes(1);
+    expect(mock.rpc).toHaveBeenCalledWith("is_admin");
   });
 
   it("does not mistake mapped owner/product_manager or unrelated permission for direct write", async () => {
