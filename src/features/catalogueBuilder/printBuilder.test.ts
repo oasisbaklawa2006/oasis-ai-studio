@@ -140,6 +140,30 @@ describe("priceVisibility", () => {
     expect(text).not.toContain("MRP");
   });
 
+  it("never includes draft product details or prices in copyable WhatsApp previews", () => {
+    const text = generateWhatsAppMiniCatalogueText({
+      title: "Internal draft",
+      products: [
+        baseCard(),
+        baseCard({
+          productId: "draft",
+          name: "Confidential Unapproved Product",
+          sku: "NOT-A-REAL-SKU",
+          sellingPrice: 99999,
+          imageUrl: "https://private.example.invalid/draft.jpg",
+          publishable: false,
+          blockers: ["Not synced to Central (preview only)"],
+        }),
+      ],
+    });
+    expect(text).toContain("Sharing blocked");
+    expect(text).not.toContain("Confidential Unapproved Product");
+    expect(text).not.toContain("NOT-A-REAL-SKU");
+    expect(text).not.toContain("₹99999");
+    expect(text).not.toContain("private.example.invalid");
+    expect(text).not.toContain("Cashew Pyramid");
+  });
+
   it("omits price segment entirely for hidden mode in share text", () => {
     const hidden = applyPriceVisibilityToCard(baseCard(), "hidden");
     expect(formatPriceSegmentForShare(hidden)).toBe("MOQ 5 kg");
@@ -238,6 +262,28 @@ describe("printComposition", () => {
     const validation = validateCompositionForPrint(composition, cards);
     expect(validation.imageIssues.length).toBeGreaterThan(0);
     expect(validation.ok).toBe(false);
+  });
+
+  it("blocks production PDF export when any card has not reached approved publication", () => {
+    const card = baseCard({
+      publishable: false,
+      blockers: ["Not synced to Central (preview only)"],
+      imageApproved: true,
+      imageWidthPx: 2000,
+      imageHeightPx: 2000,
+    });
+    const composition = buildPrintComposition({
+      collection: baseCollection,
+      items: [baseItem("p1", 0)],
+      cards: [card],
+      templateId: "b2b_classic",
+    });
+    const validation = validateCompositionForPrint(composition, [card]);
+    expect(validation.imageIssues).toEqual([]);
+    expect(validation.ok).toBe(false);
+    expect(validation.issues).toContain(
+      "Cashew Pyramid: not approved for catalogue distribution",
+    );
   });
 
   it("enforces item price_visibility in composed product sections", () => {
