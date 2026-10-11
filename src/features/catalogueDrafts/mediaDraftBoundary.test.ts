@@ -103,10 +103,17 @@ describe("resolveCatalogueMediaWriteMode", () => {
     canSubmitDraft: vi.fn(async () => false),
   });
 
-  it("permits existing direct roles without unnecessary permission calls", async () => {
+  it("never grants direct media writes from a frontend owner role alone", async () => {
     const checks = permissions();
-    expect(await resolveCatalogueMediaWriteMode(["owner"], checks)).toBe("direct");
-    expect(checks.canWriteMasterDirectly).not.toHaveBeenCalled();
+    expect(await resolveCatalogueMediaWriteMode(["owner"], checks)).toBe("readonly");
+    expect(checks.canWriteMasterDirectly).toHaveBeenCalledTimes(1);
+    expect(checks.isCatalogueContributor).toHaveBeenCalledTimes(1);
+  });
+
+  it("grants direct media writes only after the backend confirms its RLS authority", async () => {
+    const checks = permissions();
+    checks.canWriteMasterDirectly.mockResolvedValueOnce(true);
+    expect(await resolveCatalogueMediaWriteMode(["product_manager"], checks)).toBe("direct");
     expect(checks.isCatalogueContributor).not.toHaveBeenCalled();
   });
 

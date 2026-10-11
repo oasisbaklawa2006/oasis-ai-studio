@@ -140,7 +140,7 @@ export type CatalogueMediaPermissionChecks = {
  * Failure to resolve permissions must never preserve a prior editable mode.
  */
 export async function resolveCatalogueMediaWriteMode(
-  roles: readonly Role[],
+  _roles: readonly Role[],
   checks: CatalogueMediaPermissionChecks = {
     canWriteMasterDirectly,
     isCatalogueContributor,
@@ -148,7 +148,8 @@ export async function resolveCatalogueMediaWriteMode(
   },
 ): Promise<MediaWriteMode> {
   try {
-    if (roles.some((role) => DIRECT_MEDIA_ROLES.includes(role))) return "direct";
+    // Contextual role labels cannot override production product_media RLS.
+    // Keep `roles` in the signature for hook compatibility and role revalidation.
     if (await checks.canWriteMasterDirectly()) return "direct";
     if (!(await checks.isCatalogueContributor())) return "readonly";
     return (await checks.canSubmitDraft(draftTableMap.media.permission)) ? "draft" : "readonly";
