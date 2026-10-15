@@ -170,7 +170,10 @@ function buildDraftRow(row) {
 }
 
 export function prepareWave2cDrafts(existingAliases) {
-  const path = join(ROOT, "data/product-language-preview/batch001_language_terms_safe_to_draft.csv");
+  const path = join(
+    ROOT,
+    "data/product-language-preview/batch001_language_terms_safe_to_draft.csv",
+  );
   const rows = parseCsv(readFileSync(path, "utf8"));
 
   const wave2cSet = new Set(WAVE2C_SKUS);
@@ -208,20 +211,32 @@ export function prepareWave2cDrafts(existingAliases) {
     const productId = PRODUCT_IDS[row.sku];
 
     if (isBareGeneric(row.term_text)) {
-      scan.excluded_bare_generic.push({ sku: row.sku, term: row.term_text, reason: "bare_generic" });
+      scan.excluded_bare_generic.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "bare_generic",
+      });
       continue;
     }
 
     const dedupeKey = `${n}|${productId}`;
     if (seen.has(dedupeKey)) {
-      scan.excluded_within_batch_dupe.push({ sku: row.sku, term: row.term_text, reason: "case_variant_dupe" });
+      scan.excluded_within_batch_dupe.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "case_variant_dupe",
+      });
       continue;
     }
     seen.set(dedupeKey, row);
 
     const existingOwners = existingByNorm.get(n) ?? [];
     if (existingOwners.includes(productId)) {
-      scan.excluded_existing_same_product.push({ sku: row.sku, term: row.term_text, reason: "already_approved" });
+      scan.excluded_existing_same_product.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "already_approved",
+      });
       continue;
     }
 
@@ -252,7 +267,11 @@ export function prepareWave2cDrafts(existingAliases) {
     const skus = new Set(group.map((r) => r.sku));
     if (skus.size > 1) {
       for (const row of group) {
-        scan.excluded_cross_wave2c.push({ sku: row.sku, term: row.term_text, reason: "cross_wave2c_ambiguity" });
+        scan.excluded_cross_wave2c.push({
+          sku: row.sku,
+          term: row.term_text,
+          reason: "cross_wave2c_ambiguity",
+        });
       }
       continue;
     }
@@ -271,7 +290,9 @@ function loadExistingAliases() {
     "batch001_wave2b_drafts_payload.json",
   ]) {
     try {
-      const rows = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview", file), "utf8"));
+      const rows = JSON.parse(
+        readFileSync(join(ROOT, "data/product-language-preview", file), "utf8"),
+      );
       for (const d of rows) {
         existing.push({
           norm_text: norm(d.payload.alias_text),

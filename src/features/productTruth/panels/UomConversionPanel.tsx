@@ -44,9 +44,7 @@ export function UomConversionPanel({ form, truthInput }: Props) {
         </div>
       </div>
 
-      {!chain.valid && (
-        <p className="text-xs text-destructive">{chain.messages.join(" · ")}</p>
-      )}
+      {!chain.valid && <p className="text-xs text-destructive">{chain.messages.join(" · ")}</p>}
 
       <div className="rounded border p-3 bg-muted/20 text-xs space-y-1">
         <div className="font-medium">Quick examples</div>

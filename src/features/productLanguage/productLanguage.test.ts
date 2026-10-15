@@ -1,17 +1,13 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import {
-  PRODUCT_LANGUAGE_TERM_TYPES,
-  TERM_TYPE_LABELS,
   buildAdminAliasInsert,
   buildContributorAliasDraftPayload,
   channelScopeForTermType,
   inferDefaultTermType,
+  PRODUCT_LANGUAGE_TERM_TYPES,
+  TERM_TYPE_LABELS,
 } from "./terms";
-import {
-  countStoredTermTypes,
-  getStoredTermType,
-  setStoredTermType,
-} from "./termTypeStorage";
+import { countStoredTermTypes, getStoredTermType, setStoredTermType } from "./termTypeStorage";
 
 describe("product language terms", () => {
   it("exposes six editable term type tabs plus official name elsewhere", () => {

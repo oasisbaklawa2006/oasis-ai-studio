@@ -1,4 +1,4 @@
-import type { SuggestionAuditEvent, SuggestionAuditAction } from "./types";
+import type { SuggestionAuditAction, SuggestionAuditEvent } from "./types";
 
 const AUDIT_KEY = "oasis_operator_suggestion_audit_v1";
 

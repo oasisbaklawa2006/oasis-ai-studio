@@ -6,7 +6,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -75,15 +75,21 @@ async function main() {
     _packaging_code: "LOOSE",
   });
   infra.generateOasisSku = skuRpc.error ? "fail" : "pass";
-  console.log(`generate_oasis_sku: ${infra.generateOasisSku}${skuRpc.error ? ` (${skuRpc.error.message})` : skuRpc.data ? ` → ${skuRpc.data}` : ""}`);
+  console.log(
+    `generate_oasis_sku: ${infra.generateOasisSku}${skuRpc.error ? ` (${skuRpc.error.message})` : skuRpc.data ? ` → ${skuRpc.data}` : ""}`,
+  );
 
   const searchRpc = await supabase.rpc("search_products_with_aliases", { _q: "cashew" });
   infra.searchProductsWithAliases = searchRpc.error ? "fail" : "pass";
-  console.log(`search_products_with_aliases: ${infra.searchProductsWithAliases}${searchRpc.error ? ` (${searchRpc.error.message})` : ` (${(searchRpc.data ?? []).length} hits)`}`);
+  console.log(
+    `search_products_with_aliases: ${infra.searchProductsWithAliases}${searchRpc.error ? ` (${searchRpc.error.message})` : ` (${(searchRpc.data ?? []).length} hits)`}`,
+  );
 
   const probeId = "00000000-0000-0000-0000-000000000001";
   const approveRpc = await supabase.rpc("approve_catalogue_product_draft", { draft_id: probeId });
-  infra.approveProductDraft = /could not find the function|does not exist/i.test(approveRpc.error?.message ?? "")
+  infra.approveProductDraft = /could not find the function|does not exist/i.test(
+    approveRpc.error?.message ?? "",
+  )
     ? "fail"
     : "pass";
   console.log(`approve_catalogue_product_draft: ${infra.approveProductDraft}`);
@@ -92,7 +98,11 @@ async function main() {
   let readyCount = 0;
 
   for (const { sku, label } of PILOT_SKUS) {
-    const { data: product, error } = await supabase.from("products").select("*").eq("sku", sku).maybeSingle();
+    const { data: product, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("sku", sku)
+      .maybeSingle();
     if (error) throw error;
 
     const structuredSku = product?.sku && !/^DRAFT-/i.test(product.sku) ? "pass" : "fail";
@@ -115,7 +125,10 @@ async function main() {
         .select("type")
         .eq("product_id", product.id);
       const types = new Set((media ?? []).map((m) => String(m.type ?? "").toLowerCase()));
-      squareImage = types.has("square_image") || types.has("white_background") || types.has("hero_image") ? "pass" : "fail";
+      squareImage =
+        types.has("square_image") || types.has("white_background") || types.has("hero_image")
+          ? "pass"
+          : "fail";
 
       const { data: aliases } = await supabase
         .from("product_aliases")
@@ -169,7 +182,9 @@ async function main() {
     });
 
     console.log(`\n${sku} ${label}: ready=${ready ? "YES" : "NO"}`);
-    console.log(`  HSN/GST: ${hsnGst} | packaging: ${packaging} | hero: ${heroImage} | aliases: ${aliasCount} (wa ${waCount})`);
+    console.log(
+      `  HSN/GST: ${hsnGst} | packaging: ${packaging} | hero: ${heroImage} | aliases: ${aliasCount} (wa ${waCount})`,
+    );
   }
 
   const pct = Math.round((readyCount / PILOT_SKUS.length) * 100);
@@ -178,7 +193,10 @@ async function main() {
   const outDir = join(ROOT, "data/pilot");
   mkdirSync(outDir, { recursive: true });
   const headers = Object.keys(rows[0]);
-  const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(","))].join("\n");
+  const csv = [
+    headers.join(","),
+    ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(",")),
+  ].join("\n");
   const outPath = join(outDir, "ai_studio_5sku_readiness_matrix.csv");
   writeFileSync(outPath, csv + "\n");
   console.log(`\nWrote ${outPath}`);

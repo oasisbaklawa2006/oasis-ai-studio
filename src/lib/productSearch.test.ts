@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildFallbackResults, buildProductTextSearchOrFilter, normalizeSearchQuery, productDisplayNameFromRow } from "./productSearch";
+import {
+  buildFallbackResults,
+  buildProductTextSearchOrFilter,
+  normalizeSearchQuery,
+  productDisplayNameFromRow,
+} from "./productSearch";
 
 describe("productSearch fallback", () => {
   const products = [
@@ -44,17 +49,27 @@ describe("productSearch fallback", () => {
   });
 
   it("finds product via linked alias_text", () => {
-    const results = buildFallbackResults(products, [
-      { alias_text: "choco pist", product_id: "p12", canonical_name: "Chocolate Pistachio Asiyah" },
-    ], "choco pist");
+    const results = buildFallbackResults(
+      products,
+      [
+        {
+          alias_text: "choco pist",
+          product_id: "p12",
+          canonical_name: "Chocolate Pistachio Asiyah",
+        },
+      ],
+      "choco pist",
+    );
     expect(results.some((r) => r.sku === "OAS-AS-BKL-0012")).toBe(true);
     expect(results.find((r) => r.sku === "OAS-AS-BKL-0012")?.matched_alias).toBe("choco pist");
   });
 
   it("finds product via legacy canonical_name alias", () => {
-    const results = buildFallbackResults(products, [
-      { alias_text: "pyramid", product_id: null, canonical_name: "Cashew Pyramid" },
-    ], "pyramid");
+    const results = buildFallbackResults(
+      products,
+      [{ alias_text: "pyramid", product_id: null, canonical_name: "Cashew Pyramid" }],
+      "pyramid",
+    );
     expect(results.some((r) => r.sku === "OAS-LEGACY-001")).toBe(true);
   });
 

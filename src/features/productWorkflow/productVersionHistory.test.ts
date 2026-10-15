@@ -14,7 +14,9 @@ import {
   versionHistoryPhaseLabel,
 } from "./productVersionHistory";
 
-function draft(overrides: Partial<CatalogueDraftRow> & Pick<CatalogueDraftRow, "id">): CatalogueDraftRow {
+function draft(
+  overrides: Partial<CatalogueDraftRow> & Pick<CatalogueDraftRow, "id">,
+): CatalogueDraftRow {
   return {
     product_id: "product-1",
     version_number: 1,

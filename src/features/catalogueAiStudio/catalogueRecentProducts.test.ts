@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { lastOpenedProduct, parseRecentProductEntries, recordRecentProduct } from "./catalogueRecentProducts";
+import {
+  lastOpenedProduct,
+  parseRecentProductEntries,
+  recordRecentProduct,
+} from "./catalogueRecentProducts";
 
 describe("recordRecentProduct", () => {
   it("adds a new product to the front", () => {
@@ -64,7 +68,9 @@ describe("parseRecentProductEntries", () => {
       { foo: "bar" },
       null,
     ]);
-    expect(parseRecentProductEntries(raw)).toEqual([{ productId: "p1", lastOpenedAt: "2026-01-01T00:00:00Z" }]);
+    expect(parseRecentProductEntries(raw)).toEqual([
+      { productId: "p1", lastOpenedAt: "2026-01-01T00:00:00Z" },
+    ]);
   });
 
   it("round-trips a valid list", () => {

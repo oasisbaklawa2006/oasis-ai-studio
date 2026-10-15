@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   INITIAL_MEDIA_LOAD_STATE,
   isMediaResultEmpty,
+  MEDIA_LOAD_ERROR_MESSAGE,
   mediaLoadFailed,
   mediaLoadStarted,
   mediaLoadSucceeded,
-  MEDIA_LOAD_ERROR_MESSAGE,
 } from "./catalogueMediaLoadState";
 
 describe("catalogueMediaLoadState", () => {
@@ -23,7 +23,9 @@ describe("catalogueMediaLoadState", () => {
   });
 
   it("mediaLoadSucceeded() with media is 'loaded' and not empty", () => {
-    const state = mediaLoadSucceeded([{ id: "a", type: "hero_image", status: "approved", file_url: "https://x/a.jpg" }]);
+    const state = mediaLoadSucceeded([
+      { id: "a", type: "hero_image", status: "approved", file_url: "https://x/a.jpg" },
+    ]);
     expect(state.status).toBe("loaded");
     expect(state.errorMessage).toBeNull();
     expect(isMediaResultEmpty(state)).toBe(false);

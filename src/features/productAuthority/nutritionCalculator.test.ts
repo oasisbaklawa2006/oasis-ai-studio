@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { derivePanelForWeight, nutrientPerPiece, nutrientPerServing, type NutritionPanelDraft } from "./nutritionCalculator";
+import {
+  derivePanelForWeight,
+  type NutritionPanelDraft,
+  nutrientPerPiece,
+  nutrientPerServing,
+} from "./nutritionCalculator";
 
 describe("nutrientPerServing", () => {
   it("scales a per-100g value to a serving weight", () => {

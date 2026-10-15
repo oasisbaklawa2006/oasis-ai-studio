@@ -1,12 +1,24 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  type RuntimeCatalog,
+  resolveProductUtterance,
+} from "@/features/productIntelligence/runtime";
 import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
-import { resolveProductUtterance, type RuntimeCatalog } from "@/features/productIntelligence/runtime";
+import { resolveInboxFeed } from "./fetchInboundMessages";
+import { SAMPLE_INBOUND_MESSAGES } from "./fixtures/sampleMessages";
+import {
+  buildResolverPayload,
+  createInMemoryIngestStore,
+  ingestInboundMessage,
+} from "./ingestInboundMessage";
+import { mapRowToInboundMessage } from "./mapInboundMessage";
 import {
   confirmSuggestion,
   initialOperatorState,
   rejectSuggestion,
   selectAlternative,
 } from "./operatorSuggestionState";
+import { seedPhase2cTestMessagesInMemory } from "./seedPhase2cTestMessages";
 import {
   appendSuggestionAudit,
   clearSuggestionAuditLog,
@@ -14,15 +26,6 @@ import {
 } from "./suggestionAudit";
 import { canPreselectTopMatch } from "./suggestionGovernance";
 import { validateWhatsAppInboundInput } from "./validateWhatsAppInbound";
-import {
-  buildResolverPayload,
-  createInMemoryIngestStore,
-  ingestInboundMessage,
-} from "./ingestInboundMessage";
-import { resolveInboxFeed } from "./fetchInboundMessages";
-import { mapRowToInboundMessage } from "./mapInboundMessage";
-import { seedPhase2cTestMessagesInMemory } from "./seedPhase2cTestMessages";
-import { SAMPLE_INBOUND_MESSAGES } from "./fixtures/sampleMessages";
 
 const catalog: RuntimeCatalog = PRODUCTION_SNAPSHOT_CATALOG;
 const loadCatalog = async () => catalog;

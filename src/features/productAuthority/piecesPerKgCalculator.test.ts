@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { pieceWeightGramsFromPiecesPerKg, piecesPerKgFromPieceWeightGrams } from "./piecesPerKgCalculator";
+import {
+  piecesPerKgFromPieceWeightGrams,
+  pieceWeightGramsFromPiecesPerKg,
+} from "./piecesPerKgCalculator";
 
 describe("piecesPerKgFromPieceWeightGrams", () => {
   it("computes pieces per kg from a piece weight", () => {

@@ -1,7 +1,7 @@
 import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
 import { normalizeStoredResolution } from "./storedResolution";
-import type { WhatsAppInboundMessageRow } from "./whatsappInboundTypes";
 import type { InboundWhatsAppMessage } from "./types";
+import type { WhatsAppInboundMessageRow } from "./whatsappInboundTypes";
 
 export function mapRowToInboundMessage(row: WhatsAppInboundMessageRow): InboundWhatsAppMessage {
   return {
@@ -33,7 +33,8 @@ export function rowFromRpcPayload(data: Record<string, unknown>): WhatsAppInboun
     message_type: String(data.message_type ?? "text"),
     received_at: String(data.received_at),
     raw_payload: (data.raw_payload as Record<string, unknown> | null) ?? null,
-    resolver_status: (data.resolver_status as WhatsAppInboundMessageRow["resolver_status"]) ?? "pending",
+    resolver_status:
+      (data.resolver_status as WhatsAppInboundMessageRow["resolver_status"]) ?? "pending",
     resolver_result_json: parseStoredResolution(data.resolver_result_json, message_body),
     created_at: String(data.created_at),
   };

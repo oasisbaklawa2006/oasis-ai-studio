@@ -25,7 +25,10 @@ try {
   rows = JSON.parse(readFileSync(chunkPath, "utf8"));
 } catch {
   const all = JSON.parse(
-    readFileSync(join(ROOT, "data/product-language-preview/batch001_wave2a_drafts_payload.json"), "utf8"),
+    readFileSync(
+      join(ROOT, "data/product-language-preview/batch001_wave2a_drafts_payload.json"),
+      "utf8",
+    ),
   );
   const chunkSize = 20;
   rows = all.slice(chunkIdx * chunkSize, (chunkIdx + 1) * chunkSize);

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -11,14 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { productGovernanceLabel } from "@/features/productGovernance/duplicateDetection";
 import {
   assessProductDeleteEligibility,
   permanentDeleteConfirmationPhrase,
   permanentlyDeleteProduct,
 } from "@/features/productGovernance/productGovernanceService";
 import type { ProductGovernanceRow } from "@/features/productGovernance/types";
-import { productGovernanceLabel } from "@/features/productGovernance/duplicateDetection";
-import { toast } from "sonner";
 
 type Props = {
   product: ProductGovernanceRow | null;
@@ -27,12 +27,7 @@ type Props = {
   onDeleted?: () => void;
 };
 
-export function PermanentDeleteProductDialog({
-  product,
-  open,
-  onOpenChange,
-  onDeleted,
-}: Props) {
+export function PermanentDeleteProductDialog({ product, open, onOpenChange, onDeleted }: Props) {
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [confirmText, setConfirmText] = useState("");
@@ -89,13 +84,18 @@ export function PermanentDeleteProductDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete permanently</AlertDialogTitle>
           <AlertDialogDescription>
-            This removes <span className="font-medium">{product ? productGovernanceLabel(product) : "this product"}</span> from Product Master. This cannot be undone.
+            This removes{" "}
+            <span className="font-medium">
+              {product ? productGovernanceLabel(product) : "this product"}
+            </span>{" "}
+            from Product Master. This cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         <div className="space-y-3 text-sm">
           <p className="text-muted-foreground">
-            SUPER_ADMIN only. Allowed when the product is draft, never synced to Central, and has no catalogue, label, inventory, or order references.
+            SUPER_ADMIN only. Allowed when the product is draft, never synced to Central, and has no
+            catalogue, label, inventory, or order references.
           </p>
 
           {checking ? (
@@ -132,11 +132,7 @@ export function PermanentDeleteProductDialog({
 
         <AlertDialogFooter>
           <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
-          <Button
-            variant="destructive"
-            disabled={!canConfirm}
-            onClick={() => void handleDelete()}
-          >
+          <Button variant="destructive" disabled={!canConfirm} onClick={() => void handleDelete()}>
             {loading ? "Deleting…" : "Delete permanently"}
           </Button>
         </AlertDialogFooter>

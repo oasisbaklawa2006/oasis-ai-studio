@@ -24,9 +24,7 @@ const readyProduct = {
 };
 
 const readyBundle = {
-  productMediaRows: [
-    { type: "hero_image", file_url: "https://cdn/hero.jpg", status: "approved" },
-  ],
+  productMediaRows: [{ type: "hero_image", file_url: "https://cdn/hero.jpg", status: "approved" }],
   pricingRows: [
     {
       product_id: "p1",

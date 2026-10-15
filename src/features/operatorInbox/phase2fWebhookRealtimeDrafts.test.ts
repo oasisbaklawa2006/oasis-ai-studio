@@ -1,17 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { extractOrderQuantity } from "@/features/productIntelligence/runtime/parseOrderQuantity";
 import { resolveProductUtterance } from "@/features/productIntelligence/runtime";
 import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
-import {
-  confirmSuggestion,
-  initialOperatorState,
-} from "./operatorSuggestionState";
+import { extractOrderQuantity } from "@/features/productIntelligence/runtime/parseOrderQuantity";
 import {
   createInMemoryDraftStore,
   createSalesOrderDraftFromOperator,
 } from "./createSalesOrderDraft";
-import { processWebhookPayload } from "./webhook/processWebhookPayload";
 import { createInMemoryIngestStore } from "./ingestInboundMessage";
+import { confirmSuggestion, initialOperatorState } from "./operatorSuggestionState";
+import { processWebhookPayload } from "./webhook/processWebhookPayload";
 
 describe("Phase 2F — order quantity extraction", () => {
   it("6 pc midya → quantity 6", () => {

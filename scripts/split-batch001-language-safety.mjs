@@ -138,7 +138,11 @@ function hasSkuContext(term, officialName, sku) {
   if (/durum|roll/i.test(officialName) && /durum|roll/i.test(term)) return true;
   if (/kitta|diamond/i.test(officialName) && /kitta|diamond/i.test(term)) return true;
   if (/pyramid|boukaj/i.test(officialName) && /pyramid|boukaj/i.test(term)) return true;
-  if (/asiyah|assiyah|high jump|high gap/i.test(officialName) && /asiyah|assiyah|high jump|high gap/i.test(term)) return true;
+  if (
+    /asiyah|assiyah|high jump|high gap/i.test(officialName) &&
+    /asiyah|assiyah|high jump|high gap/i.test(term)
+  )
+    return true;
   if (/ring/i.test(officialName) && /ring/i.test(term)) return true;
   if (/tart|katori/i.test(officialName) && /tart|katori/i.test(term)) return true;
   if (/square/i.test(officialName) && /square/i.test(term)) return true;
@@ -160,13 +164,25 @@ function matchesCrossSkuCluster(term) {
     if (n === cluster || n.endsWith(` ${cluster}`) || n.startsWith(`${cluster} `)) {
       if (skus.length > 1) return { cluster, skus };
     }
-    if (cluster === "boukaj" && /\bboukaj\b|\bbokaj\b/.test(n) && !/cashew|kaju|pistachio|pista/i.test(n)) {
+    if (
+      cluster === "boukaj" &&
+      /\bboukaj\b|\bbokaj\b/.test(n) &&
+      !/cashew|kaju|pistachio|pista/i.test(n)
+    ) {
       return { cluster: "boukaj", skus };
     }
-    if (cluster === "asiyah" && /\basiyah\b|\bassiyah\b/.test(n) && !/chocolate|mor|cashew|kaju|pistachio|pista/i.test(n)) {
+    if (
+      cluster === "asiyah" &&
+      /\basiyah\b|\bassiyah\b/.test(n) &&
+      !/chocolate|mor|cashew|kaju|pistachio|pista/i.test(n)
+    ) {
       return { cluster: "asiyah", skus };
     }
-    if (cluster === "pyramid" && /\bpyramid\b/.test(n) && !/cashew|kaju|pistachio|pista|topping/i.test(n)) {
+    if (
+      cluster === "pyramid" &&
+      /\bpyramid\b/.test(n) &&
+      !/cashew|kaju|pistachio|pista|topping/i.test(n)
+    ) {
       return { cluster: "pyramid", skus };
     }
   }
@@ -205,7 +221,11 @@ function classifyRow(row, termSkuIndex) {
   }
 
   const cluster = matchesCrossSkuCluster(row.term_text);
-  if (cluster && cluster.skus.length > 1 && !hasSkuContext(row.term_text, row.official_name, row.sku)) {
+  if (
+    cluster &&
+    cluster.skus.length > 1 &&
+    !hasSkuContext(row.term_text, row.official_name, row.sku)
+  ) {
     return {
       bucket: "REVIEW_ONLY",
       reason: `cross-sku cluster: ${cluster.cluster} (${cluster.skus.join(", ")})`,
@@ -297,9 +317,7 @@ function main() {
     else review.push(enriched);
   }
 
-  writeCsv(join(PREVIEW_DIR, "batch001_language_terms_safe_to_draft.csv"), safe, [
-    "safety_reason",
-  ]);
+  writeCsv(join(PREVIEW_DIR, "batch001_language_terms_safe_to_draft.csv"), safe, ["safety_reason"]);
   writeCsv(join(PREVIEW_DIR, "batch001_language_terms_review_only.csv"), review, [
     "safety_reason",
     "recommended_clarification",
@@ -356,7 +374,9 @@ function main() {
   md.push("| Bucket | Count | % |");
   md.push("|--------|-------|---|");
   md.push(`| SAFE_TO_DRAFT | ${safe.length} | ${Math.round((safe.length / rows.length) * 100)}% |`);
-  md.push(`| REVIEW_ONLY | ${review.length} | ${Math.round((review.length / rows.length) * 100)}% |`);
+  md.push(
+    `| REVIEW_ONLY | ${review.length} | ${Math.round((review.length / rows.length) * 100)}% |`,
+  );
   md.push(`| **Total** | **${rows.length}** | 100% |\n`);
 
   md.push("## By term type (safe vs review)\n");
@@ -399,7 +419,9 @@ function main() {
   } else {
     md.push(`**${insufficient.length}** SKUs below minimum:\n`);
     for (const i of insufficient.sort((a, b) => a.safe_total - b.safe_total)) {
-      md.push(`- **${i.sku}** (${i.official_name}) — safe total ${i.safe_total}: ${i.gaps.join("; ")}`);
+      md.push(
+        `- **${i.sku}** (${i.official_name}) — safe total ${i.safe_total}: ${i.gaps.join("; ")}`,
+      );
     }
     md.push("");
   }
@@ -446,7 +468,9 @@ function main() {
   md.push("- bare/ambiguous token, or");
   md.push("- term could match multiple Batch 001 SKUs, or");
   md.push("- clarification trigger required\n");
-  md.push("---\n*Preview only. No product_aliases writes. No catalogue_alias_drafts. No Central sync.*\n");
+  md.push(
+    "---\n*Preview only. No product_aliases writes. No catalogue_alias_drafts. No Central sync.*\n",
+  );
 
   writeFileSync(join(PREVIEW_DIR, "batch001_language_safety_summary.md"), md.join("\n"));
 

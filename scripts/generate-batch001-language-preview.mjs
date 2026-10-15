@@ -5,7 +5,7 @@
  *         data/product-language-preview/batch001_language_conflicts.md
  */
 
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -16,9 +16,7 @@ const OUT_DIR = join(ROOT, "data/product-language-preview");
 const HSN = "21069099";
 const CATEGORY = "Baklawa";
 
-const SKUS = Array.from({ length: 25 }, (_, i) =>
-  `OAS-AS-BKL-${String(i + 1).padStart(4, "0")}`,
-);
+const SKUS = Array.from({ length: 25 }, (_, i) => `OAS-AS-BKL-${String(i + 1).padStart(4, "0")}`);
 
 const GLOBAL_HIGH_RISK = new Set([
   "pyramid",
@@ -98,7 +96,10 @@ function productMeta(sno, csvMap) {
 
 function hasEnoughContext(term, officialName) {
   const t = term.toLowerCase();
-  const nameTokens = officialName.toLowerCase().split(/[\s()]+/).filter((x) => x.length > 2);
+  const nameTokens = officialName
+    .toLowerCase()
+    .split(/[\s()]+/)
+    .filter((x) => x.length > 2);
   const matched = nameTokens.filter((tok) => t.includes(tok));
   return matched.length >= 2 || t.includes(officialName.toLowerCase());
 }
@@ -109,25 +110,56 @@ function assessConflict(term, officialName, sku, conflictNotes) {
 
   for (const risky of GLOBAL_HIGH_RISK) {
     if (bare === risky || bare === `need ${risky}` || bare === `send ${risky}`) {
-      return { risk: "HIGH", question: `Bare "${risky}" matches multiple Batch 001 SKUs — require full product phrase or SKU ${sku}` };
+      return {
+        risk: "HIGH",
+        question: `Bare "${risky}" matches multiple Batch 001 SKUs — require full product phrase or SKU ${sku}`,
+      };
     }
   }
 
-  if (/\bpyramid\b/i.test(term) && !/\(topping\)/i.test(officialName) && officialName.includes("Pyramid(Topping)")) {
-    return { risk: "HIGH", question: `Distinguish OAS-AS-BKL-0011 (topping) from OAS-AS-BKL-0019 (plain pistachio pyramid) and OAS-AS-BKL-0006 (cashew pyramid)` };
+  if (
+    /\bpyramid\b/i.test(term) &&
+    !/\(topping\)/i.test(officialName) &&
+    officialName.includes("Pyramid(Topping)")
+  ) {
+    return {
+      risk: "HIGH",
+      question: `Distinguish OAS-AS-BKL-0011 (topping) from OAS-AS-BKL-0019 (plain pistachio pyramid) and OAS-AS-BKL-0006 (cashew pyramid)`,
+    };
   }
 
-  if (/\bpyramid\b/i.test(term) && officialName === "Pistachio Pyramid" && !/pistachio|pista|boukaj/i.test(term)) {
-    return { risk: "HIGH", question: "Pyramid without nut qualifier — maps to 0006, 0011, or 0019" };
+  if (
+    /\bpyramid\b/i.test(term) &&
+    officialName === "Pistachio Pyramid" &&
+    !/pistachio|pista|boukaj/i.test(term)
+  ) {
+    return {
+      risk: "HIGH",
+      question: "Pyramid without nut qualifier — maps to 0006, 0011, or 0019",
+    };
   }
 
-  if (/\bpyramid\b/i.test(term) && officialName === "Cashew Pyramid" && !/cashew|kaju|boukaj/i.test(term)) {
-    return { risk: "HIGH", question: "Pyramid without cashew qualifier — maps to multiple pyramid SKUs" };
+  if (
+    /\bpyramid\b/i.test(term) &&
+    officialName === "Cashew Pyramid" &&
+    !/cashew|kaju|boukaj/i.test(term)
+  ) {
+    return {
+      risk: "HIGH",
+      question: "Pyramid without cashew qualifier — maps to multiple pyramid SKUs",
+    };
   }
 
-  if (/\bpistachio\b/i.test(term) && !/ring|tart|pyramid|asiyah|durum|diamond|mor|chocolate|\(topping\)/i.test(term) && officialName.includes("Pistachio")) {
+  if (
+    /\bpistachio\b/i.test(term) &&
+    !/ring|tart|pyramid|asiyah|durum|diamond|mor|chocolate|\(topping\)/i.test(term) &&
+    officialName.includes("Pistachio")
+  ) {
     if (!hasEnoughContext(term, officialName)) {
-      return { risk: "HIGH", question: `Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for ${sku}` };
+      return {
+        risk: "HIGH",
+        question: `Pistachio-only phrase — pair with shape (ring/tart/pyramid/asiyah/durum) for ${sku}`,
+      };
     }
   }
 
@@ -136,14 +168,19 @@ function assessConflict(term, officialName, sku, conflictNotes) {
   }
 
   if (conflictNotes?.length) {
-    const ambiguous = conflictNotes.some((n) => /pyramid|boukaj|asiyah|pistachio/i.test(term) && /disambigu/i.test(n));
+    const ambiguous = conflictNotes.some(
+      (n) => /pyramid|boukaj|asiyah|pistachio/i.test(term) && /disambigu/i.test(n),
+    );
     if (ambiguous && !hasEnoughContext(term, officialName)) {
       return { risk: "HIGH", question: conflictNotes[0] };
     }
   }
 
   if (GLOBAL_HIGH_RISK.has(bare.split(/\s+/)[0]) && !hasEnoughContext(term, officialName)) {
-    return { risk: "MEDIUM", question: `Partial token match — prefer full "${officialName}" phrase for WhatsApp` };
+    return {
+      risk: "MEDIUM",
+      question: `Partial token match — prefer full "${officialName}" phrase for WhatsApp`,
+    };
   }
 
   return { risk: "LOW", question: "" };
@@ -184,7 +221,8 @@ function nomenclatureAliases(meta) {
   const extra = [];
   if (/kitta/i.test(official_name)) extra.push("Cashew Diamond", "Kaju Diamond");
   if (/pyramid/i.test(official_name) && /cashew/i.test(official_name)) extra.push("Cashew Boukaj");
-  if (/pyramid/i.test(official_name) && /pistachio/i.test(official_name)) extra.push("Pistachio Boukaj");
+  if (/pyramid/i.test(official_name) && /pistachio/i.test(official_name))
+    extra.push("Pistachio Boukaj");
   if (/asiyah/i.test(official_name)) {
     const nut = /pistachio|pista/i.test(official_name) ? "Pistachio" : "Cashew";
     extra.push(`${nut} High Jump`, `${nut} High Gap`);
@@ -197,14 +235,16 @@ function nomenclatureAliases(meta) {
   }
   if (/finger/i.test(official_name)) extra.push("Cashew Asabi", "Cashew Asabeh");
   if (/crosole/i.test(official_name)) extra.push("Almond Croissant Shape Baklava");
-  if (/tart/i.test(official_name) && /cashew/i.test(official_name)) extra.push("Cashew Katori", "Kaju Katori");
+  if (/tart/i.test(official_name) && /cashew/i.test(official_name))
+    extra.push("Cashew Katori", "Kaju Katori");
   return extra;
 }
 
 function customerTerms(meta) {
   const { official_name, aliases } = meta;
   const informal = [];
-  if (/kitta/i.test(official_name)) informal.push("cashew piece", "kaju piece", "cashew kitta piece");
+  if (/kitta/i.test(official_name))
+    informal.push("cashew piece", "kaju piece", "cashew kitta piece");
   if (/ring/i.test(official_name)) {
     const nut = /pistachio|pista/i.test(official_name) ? "pista ring" : "kaju ring";
     informal.push(nut, `${nut} sweet`);
@@ -212,7 +252,8 @@ function customerTerms(meta) {
   if (/pyramid/i.test(official_name)) {
     const nut = /pistachio|pista/i.test(official_name) ? "pista pyramid" : "kaju pyramid";
     informal.push(nut);
-    if (official_name.includes("(Topping)")) informal.push("pista pyramid topping", "pyramid with topping");
+    if (official_name.includes("(Topping)"))
+      informal.push("pista pyramid topping", "pyramid with topping");
   }
   if (/asiyah/i.test(official_name)) {
     const nut = /pistachio|pista/i.test(official_name) ? "pista gap" : "cashew gap";
@@ -256,10 +297,14 @@ function searchKeywords(meta) {
 }
 
 function conflictNotesForSku(sku) {
-  if (sku === "OAS-AS-BKL-0011") return ["Ambiguous vs OAS-AS-BKL-0019 — pyramid(topping) must include topping marker"];
-  if (sku === "OAS-AS-BKL-0019") return ["Shares pyramid/boukaj with OAS-AS-BKL-0006 and OAS-AS-BKL-0011"];
-  if (sku === "OAS-AS-BKL-0006") return ["Cashew pyramid vs pistachio pyramid SKUs — require nut in phrase"];
-  if (sku === "OAS-AS-BKL-0012" || sku === "OAS-AS-BKL-0016") return ["Multiple asiyah SKUs — require chocolate/mor/plain qualifier"];
+  if (sku === "OAS-AS-BKL-0011")
+    return ["Ambiguous vs OAS-AS-BKL-0019 — pyramid(topping) must include topping marker"];
+  if (sku === "OAS-AS-BKL-0019")
+    return ["Shares pyramid/boukaj with OAS-AS-BKL-0006 and OAS-AS-BKL-0011"];
+  if (sku === "OAS-AS-BKL-0006")
+    return ["Cashew pyramid vs pistachio pyramid SKUs — require nut in phrase"];
+  if (sku === "OAS-AS-BKL-0012" || sku === "OAS-AS-BKL-0016")
+    return ["Multiple asiyah SKUs — require chocolate/mor/plain qualifier"];
   return [];
 }
 
@@ -292,7 +337,10 @@ function buildProductTerms(sno, csvMap) {
     ...nomenclatureAliases(meta),
   ];
   const uniqueOfficial = [...new Set(officialAliasPool)].slice(0, 8);
-  for (const t of uniqueOfficial.slice(0, Math.max(2, uniqueOfficial.length >= 2 ? uniqueOfficial.length : 2))) {
+  for (const t of uniqueOfficial.slice(
+    0,
+    Math.max(2, uniqueOfficial.length >= 2 ? uniqueOfficial.length : 2),
+  )) {
     add("official_alias", t);
   }
 
@@ -301,7 +349,11 @@ function buildProductTerms(sno, csvMap) {
   for (const t of customers.slice(0, Math.max(3, customers.length))) add("customer_term", t);
 
   const waPool = [...meta.whatsapp];
-  const waNeed = [`need ${meta.official_name.toLowerCase()}`, `send ${meta.official_name.toLowerCase()}`, `${meta.official_name.toLowerCase()} kg`];
+  const waNeed = [
+    `need ${meta.official_name.toLowerCase()}`,
+    `send ${meta.official_name.toLowerCase()}`,
+    `${meta.official_name.toLowerCase()} kg`,
+  ];
   const waUnique = [...new Set([...waPool, ...waNeed])];
   for (const t of waUnique.slice(0, Math.max(5, waUnique.length))) add("whatsapp_keyword", t);
 
@@ -368,8 +420,7 @@ function main() {
         notes,
         high_count: high.length,
         question:
-          notes[0] ||
-          (high[0]?.clarification_question ?? "Review HIGH-risk terms before import"),
+          notes[0] || (high[0]?.clarification_question ?? "Review HIGH-risk terms before import"),
       });
     }
   }
@@ -418,7 +469,9 @@ function main() {
   md.push("|-----|---------------|------|");
   md.push("| OAS-AS-BKL-0006 | Cashew Pyramid | Cashew boukaj — not pistachio |");
   md.push("| OAS-AS-BKL-0011 | Pistachio Pyramid(Topping) | Must include **topping** marker |");
-  md.push("| OAS-AS-BKL-0019 | Pistachio Pyramid | Plain pistachio boukaj — not topping variant |\n");
+  md.push(
+    "| OAS-AS-BKL-0019 | Pistachio Pyramid | Plain pistachio boukaj — not topping variant |\n",
+  );
 
   md.push("### Asiyah family\n");
   md.push("| SKU | Official Name | Disambiguator |");
@@ -442,7 +495,9 @@ function main() {
   md.push("| SKU | Term | Type | Clarification |");
   md.push("|-----|------|------|---------------|");
   for (const h of highConflicts.slice(0, 40)) {
-    md.push(`| ${h.sku} | ${h.term_text} | ${h.term_type} | ${h.clarification_question.replace(/\|/g, "/")} |`);
+    md.push(
+      `| ${h.sku} | ${h.term_text} | ${h.term_type} | ${h.clarification_question.replace(/\|/g, "/")} |`,
+    );
   }
 
   md.push("\n---\n");
@@ -455,10 +510,13 @@ function main() {
     high: highConflicts.length,
     clarifications: clarifications.length,
     byType: Object.fromEntries(
-      ["official_alias", "customer_term", "whatsapp_keyword", "regional_term", "search_keyword"].map((t) => [
-        t,
-        allRows.filter((r) => r.term_type === t).length,
-      ]),
+      [
+        "official_alias",
+        "customer_term",
+        "whatsapp_keyword",
+        "regional_term",
+        "search_keyword",
+      ].map((t) => [t, allRows.filter((r) => r.term_type === t).length]),
     ),
   };
   console.log(JSON.stringify(summary, null, 2));

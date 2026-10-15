@@ -54,7 +54,10 @@ export async function fetchDraftVisibility(): Promise<DraftVisibilityResult> {
     return {
       drafts: [],
       decisions: [],
-      error: draftsRes.error?.message ?? decisionsRes.error?.message ?? "Failed to load draft visibility",
+      error:
+        draftsRes.error?.message ??
+        decisionsRes.error?.message ??
+        "Failed to load draft visibility",
     };
   }
 

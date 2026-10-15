@@ -1,7 +1,9 @@
 import type { ProductMediaContext, ProductMediaProfile } from "./types";
 
 function norm(s: string | null | undefined): string {
-  return String(s ?? "").trim().toLowerCase();
+  return String(s ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 export function detectProductMediaProfile(product: ProductMediaContext): ProductMediaProfile {

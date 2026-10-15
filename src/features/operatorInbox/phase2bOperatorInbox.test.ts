@@ -1,10 +1,10 @@
-import { describe, expect, it, beforeEach, vi } from "vitest";
-import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  resolveProductUtterance,
   type RuntimeCatalog,
+  resolveProductUtterance,
 } from "@/features/productIntelligence/runtime";
-import { resolveInboundMessage } from "./resolveInboundMessage";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
+import { isCashewTartFamilySku } from "@/features/productIntelligence/runtime/productFamilies";
 import {
   confirmSuggestion,
   hydrateOperatorStateFromDraft,
@@ -13,6 +13,7 @@ import {
   rejectSuggestion,
   selectAlternative,
 } from "./operatorSuggestionState";
+import { resolveInboundMessage } from "./resolveInboundMessage";
 import {
   appendSuggestionAudit,
   clearSuggestionAuditLog,
@@ -27,7 +28,6 @@ import {
   requiresExplicitProductSelection,
   showPrimarySuggestion,
 } from "./suggestionGovernance";
-import { isCashewTartFamilySku } from "@/features/productIntelligence/runtime/productFamilies";
 
 const catalog: RuntimeCatalog = PRODUCTION_SNAPSHOT_CATALOG;
 const loadCatalog = async () => catalog;

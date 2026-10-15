@@ -1,6 +1,6 @@
+import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 import type { DerivedMediaStatus } from "./mediaAuthorityContract";
 import { getMediaGovernanceMode } from "./mediaGovernanceMode";
-import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
 
 export function isTestingMediaGovernance(): boolean {
   return getMediaGovernanceMode() === "testing";

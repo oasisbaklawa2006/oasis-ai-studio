@@ -5,9 +5,15 @@
 
 export function idempotencyKey(row) {
   const p = row.payload ?? {};
-  const source = String(p.source ?? row.source_app ?? "").trim().toLowerCase();
-  const productId = String(p.product_id ?? row.target_record_id ?? "").trim().toLowerCase();
-  const alias = String(p.alias_text ?? p.alias ?? "").trim().toLowerCase();
+  const source = String(p.source ?? row.source_app ?? "")
+    .trim()
+    .toLowerCase();
+  const productId = String(p.product_id ?? row.target_record_id ?? "")
+    .trim()
+    .toLowerCase();
+  const alias = String(p.alias_text ?? p.alias ?? "")
+    .trim()
+    .toLowerCase();
   return `${source}|${productId}|${alias}`;
 }
 
@@ -93,7 +99,14 @@ export function guardSubmit({ rows, batchLabel, chunkIdx = 0, chunkCount = 1, ar
   const { unique, duplicates } = dedupeDraftRows(rows, { batchLabel });
 
   if (!unique.length) {
-    console.error(JSON.stringify({ mode: live ? "live" : "dry-run", batch: batchLabel, chunk: chunkIdx, rows: 0 }));
+    console.error(
+      JSON.stringify({
+        mode: live ? "live" : "dry-run",
+        batch: batchLabel,
+        chunk: chunkIdx,
+        rows: 0,
+      }),
+    );
     return { emitted: false, rows: [] };
   }
 

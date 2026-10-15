@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  collapseCandidatesByLogicalGroup,
-  logicalGroupKey,
-} from "./candidateGrouping";
-import { resolveProductUtterance } from "./resolveProductUtterance";
+import { collapseCandidatesByLogicalGroup, logicalGroupKey } from "./candidateGrouping";
 import { PRODUCTION_SNAPSHOT_CATALOG } from "./fixtures/productionSnapshotCatalog";
 import {
   isCashewTartFamilyProduct,
@@ -11,6 +7,7 @@ import {
   isCashewTartFamilyUtterance,
   productFamilyKey,
 } from "./productFamilies";
+import { resolveProductUtterance } from "./resolveProductUtterance";
 import type { RuntimeCatalog } from "./types";
 
 /** Live production aliases only — no synthetic kaju tart alias on bulk. */
@@ -25,8 +22,12 @@ const LIVE_CASHEW_TART_CATALOG: RuntimeCatalog = {
 
 describe("cashew tart product family", () => {
   it("maps Tart Cashew and Cashew Tart Bulk to the same family key", () => {
-    const tartCashew = PRODUCTION_SNAPSHOT_CATALOG.products.find((p) => p.sku === "OAS-AS-BKL-0020")!;
-    const bulk = PRODUCTION_SNAPSHOT_CATALOG.products.find((p) => p.sku === "OAS-AS-BKL-CSH-BULK-0004")!;
+    const tartCashew = PRODUCTION_SNAPSHOT_CATALOG.products.find(
+      (p) => p.sku === "OAS-AS-BKL-0020",
+    )!;
+    const bulk = PRODUCTION_SNAPSHOT_CATALOG.products.find(
+      (p) => p.sku === "OAS-AS-BKL-CSH-BULK-0004",
+    )!;
     expect(productFamilyKey(tartCashew)).toBe("cashew_tart");
     expect(productFamilyKey(bulk)).toBe("cashew_tart");
     expect(logicalGroupKey(tartCashew)).toBe(logicalGroupKey(bulk));

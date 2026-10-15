@@ -1,6 +1,6 @@
+import { Check, Sparkles, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { ProductUtteranceResolution, RuntimeAlternative } from "@/features/productIntelligence/runtime";
 import {
   canConfirmSuggestion,
   confirmButtonLabelForCard,
@@ -10,7 +10,10 @@ import {
   showPrimarySuggestion,
 } from "@/features/operatorInbox/suggestionGovernance";
 import type { OperatorSuggestionState } from "@/features/operatorInbox/types";
-import { Check, X, Sparkles } from "lucide-react";
+import type {
+  ProductUtteranceResolution,
+  RuntimeAlternative,
+} from "@/features/productIntelligence/runtime";
 
 const BAND_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   HIGH: "default",
@@ -50,13 +53,19 @@ export function ProductSuggestionCard({
   const confirmLabel = confirmButtonLabelForCard(resolution, operator);
 
   return (
-    <div className="mt-2 rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2 text-sm" data-testid="product-suggestion-card">
+    <div
+      className="mt-2 rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2 text-sm"
+      data-testid="product-suggestion-card"
+    >
       <div className="flex items-center gap-2 flex-wrap">
         <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           Product suggestion
         </span>
-        <Badge variant={BAND_VARIANT[resolution.confidence_band] ?? "outline"} className="text-[10px]">
+        <Badge
+          variant={BAND_VARIANT[resolution.confidence_band] ?? "outline"}
+          className="text-[10px]"
+        >
           {resolution.confidence_band}
         </Badge>
         <Badge variant="outline" className="text-[10px]">
@@ -94,7 +103,8 @@ export function ProductSuggestionCard({
           className="text-xs text-emerald-800 dark:text-emerald-300"
           data-testid="draft-status-banner"
         >
-          Draft {draftStatus.replace(/_/g, " ").toLowerCase()} · {operator.selected_product_name ?? operator.selected_sku}
+          Draft {draftStatus.replace(/_/g, " ").toLowerCase()} ·{" "}
+          {operator.selected_product_name ?? operator.selected_sku}
         </p>
       )}
 

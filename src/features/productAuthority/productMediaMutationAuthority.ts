@@ -39,13 +39,14 @@
  *  - Toasts/UI-context messaging are also the caller's job (this module has no UI concerns) —
  *    identify the affected product, or suppress when the visible context has changed.
  */
-import { supabase } from "@/integrations/supabase/client";
+
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
+  type DerivedMediaStatus,
   repairDirectMasterMediaRows,
   syncProductMediaAuthority,
-  type DerivedMediaStatus,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
-import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface ProductMediaAuthorityResult {
   productId: string;
@@ -93,7 +94,9 @@ export function subscribeToProductMediaAuthority(fn: ProductMediaAuthoritySubscr
  * session — lets a component that re-displays a product show the committed result instantly,
  * without waiting on a network round trip, even if the operator switched away and back.
  */
-export function getCachedProductMediaAuthority(productId: string): ProductMediaAuthorityResult | null {
+export function getCachedProductMediaAuthority(
+  productId: string,
+): ProductMediaAuthorityResult | null {
   return authorityByProduct.get(productId) ?? null;
 }
 

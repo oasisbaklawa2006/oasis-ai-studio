@@ -22,12 +22,17 @@ export function formatActorLabel(profile: ActorProfile | undefined, actorId: str
 
 /** Fetches display labels for a set of actor ids in one query. Never throws — a lookup failure
  * (e.g. RLS denies reading another user's profile) degrades to short-id labels, not an error. */
-export async function fetchActorLabels(actorIds: Array<string | null | undefined>): Promise<Record<string, string>> {
+export async function fetchActorLabels(
+  actorIds: Array<string | null | undefined>,
+): Promise<Record<string, string>> {
   const ids = Array.from(new Set(actorIds.filter((id): id is string => Boolean(id))));
   if (ids.length === 0) return {};
 
   try {
-    const { data, error } = await supabase.from("profiles").select("id, full_name, email").in("id", ids);
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .in("id", ids);
     if (error) throw error;
     const byId = new Map((data ?? []).map((p) => [p.id, p as ActorProfile]));
     const labels: Record<string, string> = {};

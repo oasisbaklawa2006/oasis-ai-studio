@@ -100,7 +100,10 @@ function buildDraftRow(csvRow) {
 }
 
 export function loadPhase1DraftRows() {
-  const path = join(ROOT, "data/product-language-preview/batch001_language_terms_safe_to_draft.csv");
+  const path = join(
+    ROOT,
+    "data/product-language-preview/batch001_language_terms_safe_to_draft.csv",
+  );
   const rows = parseCsv(readFileSync(path, "utf8"));
 
   return rows
@@ -119,7 +122,8 @@ function main() {
   const bySku = {};
   const byType = {};
   for (const d of drafts) {
-    const sku = Object.entries(PRODUCT_IDS).find(([, id]) => id === d.payload.product_id)?.[0] ?? "?";
+    const sku =
+      Object.entries(PRODUCT_IDS).find(([, id]) => id === d.payload.product_id)?.[0] ?? "?";
     bySku[sku] = (bySku[sku] ?? 0) + 1;
     byType[d.payload.term_type] = (byType[d.payload.term_type] ?? 0) + 1;
   }

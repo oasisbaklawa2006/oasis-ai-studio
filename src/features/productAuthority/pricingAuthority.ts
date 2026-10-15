@@ -101,7 +101,10 @@ export function resolvePricing(
 
   const channelOf = (name: string, effectiveValueOf: EffectiveValueOf) => {
     const selected = getChannelPrice(approvedChannelPrices, name, at);
-    if (selected && disagreesWithSelected(approvedChannelPrices, name, selected, at, effectiveValueOf)) {
+    if (
+      selected &&
+      disagreesWithSelected(approvedChannelPrices, name, selected, at, effectiveValueOf)
+    ) {
       reviewRequiredChannels.push(name);
     }
     return selected;
@@ -121,7 +124,12 @@ export function resolvePricing(
   // (product_pricing_rules is the declared write authority — same rule as b2b/export), but
   // a disagreeing positive products.mrp fallback value must surface for operator review
   // rather than being silently discarded.
-  if (channelMrp != null && fieldMrp != null && channelMrp !== fieldMrp && !reviewRequiredChannels.includes("mrp")) {
+  if (
+    channelMrp != null &&
+    fieldMrp != null &&
+    channelMrp !== fieldMrp &&
+    !reviewRequiredChannels.includes("mrp")
+  ) {
     reviewRequiredChannels.push("mrp");
   }
   const mrp = channelMrp ?? fieldMrp;
@@ -131,7 +139,13 @@ export function resolvePricing(
   const fromChannel = !!(mrpRule || b2bRule || exportRule);
   const fromFields = !!(fieldMrp || fieldB2b || fieldExport || fieldWholesale);
   const source: ResolvedPricing["source"] =
-    fromChannel && fromFields ? "mixed" : fromChannel ? "channel_rules" : fromFields ? "product_fields" : "none";
+    fromChannel && fromFields
+      ? "mixed"
+      : fromChannel
+        ? "channel_rules"
+        : fromFields
+          ? "product_fields"
+          : "none";
 
   return {
     mrp,

@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { seedMoqRowForChannel, type ChannelSeedTarget } from "@/features/productAuthority/seedChannelAuthority";
-import { PRODUCT_TRUTH_CHANNELS } from "../types";
-import type { ChannelMoqRule, ChannelPriceRecord, PackagingHierarchy } from "../types";
+import { Button } from "@/components/ui/button";
+import {
+  type ChannelSeedTarget,
+  seedMoqRowForChannel,
+} from "@/features/productAuthority/seedChannelAuthority";
 import { getChannelPrice, priceBlocksPublish } from "../channelPricingMoqEngine";
+import type { ChannelMoqRule, ChannelPriceRecord, PackagingHierarchy } from "../types";
+import { PRODUCT_TRUTH_CHANNELS } from "../types";
 
 type Props = {
   prices: ChannelPriceRecord[];
@@ -15,13 +18,7 @@ type Props = {
   onMoqSeeded?: () => void;
 };
 
-export function ChannelRulesPanel({
-  prices,
-  moqRules,
-  productId,
-  product,
-  onMoqSeeded,
-}: Props) {
+export function ChannelRulesPanel({ prices, moqRules, productId, product, onMoqSeeded }: Props) {
   const [seeding, setSeeding] = useState<string | null>(null);
 
   const seedMoq = async (channel: ChannelSeedTarget) => {
@@ -66,7 +63,8 @@ export function ChannelRulesPanel({
               const moq = moqRules.find((r) => r.channel === ch);
               const priceExists = !!(price?.sellingPrice ?? price?.mrp);
               const moqMissing = priceExists && !moq;
-              const seedChannel = ch === "retail" || ch === "b2b" ? (ch as ChannelSeedTarget) : null;
+              const seedChannel =
+                ch === "retail" || ch === "b2b" ? (ch as ChannelSeedTarget) : null;
 
               return (
                 <tr key={ch} className="border-b border-border/50">

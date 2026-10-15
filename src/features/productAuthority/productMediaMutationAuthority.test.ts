@@ -24,8 +24,11 @@ const syncMock = vi.fn(
 
 vi.mock("@/features/mediaReadiness/mediaAuthorityContract", () => ({
   repairDirectMasterMediaRows: (productId: string, rows: unknown[]) => repairMock(productId, rows),
-  syncProductMediaAuthority: (productId: string, rows: { file_url?: string | null }[], opts?: unknown) =>
-    syncMock(productId, rows, opts),
+  syncProductMediaAuthority: (
+    productId: string,
+    rows: { file_url?: string | null }[],
+    opts?: unknown,
+  ) => syncMock(productId, rows, opts),
 }));
 
 const {
@@ -120,9 +123,13 @@ describe("reconcileProductMediaAuthority (the one completion pipeline)", () => {
     const productId = "prod-reconcile-fallback";
     const opId = beginProductMediaOperation(productId);
 
-    await reconcileProductMediaAuthority(productId, opId, { fallbackHeroUrl: "https://legacy/hero.jpg" });
+    await reconcileProductMediaAuthority(productId, opId, {
+      fallbackHeroUrl: "https://legacy/hero.jpg",
+    });
 
-    expect(syncMock).toHaveBeenCalledWith(productId, [], { fallbackHeroUrl: "https://legacy/hero.jpg" });
+    expect(syncMock).toHaveBeenCalledWith(productId, [], {
+      fallbackHeroUrl: "https://legacy/hero.jpg",
+    });
   });
 
   it("out-of-order completions never overwrite a newer result for the same product (regression matrix #12)", async () => {

@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
-import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
+import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
 
 export function CatalogueWriteModeBanner() {
-  const [mode, setMode] = useState<"direct"|"draft"|"readonly">("readonly");
-  useEffect(() => { (async () => {
-    if (await canWriteProductsDirectly()) return setMode("direct");
-    if (await isCatalogueContributor()) return setMode("draft");
-    setMode("readonly");
-  })(); }, []);
+  const [mode, setMode] = useState<"direct" | "draft" | "readonly">("readonly");
+  useEffect(() => {
+    (async () => {
+      if (await canWriteProductsDirectly()) return setMode("direct");
+      if (await isCatalogueContributor()) return setMode("draft");
+      setMode("readonly");
+    })();
+  }, []);
   return (
     <div className="mb-4 rounded-md border px-3 py-2 text-sm bg-muted/30 space-y-2">
       <div>

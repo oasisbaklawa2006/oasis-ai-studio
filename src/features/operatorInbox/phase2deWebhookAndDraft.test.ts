@@ -1,21 +1,21 @@
 import { describe, expect, it, vi } from "vitest";
-import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
 import {
-  resolveProductUtterance,
   type RuntimeCatalog,
+  resolveProductUtterance,
 } from "@/features/productIntelligence/runtime";
-import {
-  confirmSuggestion,
-  initialOperatorState,
-  rejectSuggestion,
-  selectAlternative,
-} from "./operatorSuggestionState";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
 import {
   createInMemoryDraftStore,
   createSalesOrderDraftFromOperator,
 } from "./createSalesOrderDraft";
 import { canCreateSalesOrderDraft, operatorDecisionForDraft } from "./draftGovernance";
 import { createInMemoryIngestStore, ingestInboundMessage } from "./ingestInboundMessage";
+import {
+  confirmSuggestion,
+  initialOperatorState,
+  rejectSuggestion,
+  selectAlternative,
+} from "./operatorSuggestionState";
 import { normalizeWebhookPayload } from "./webhook/normalizeWebhookPayload";
 import { processWebhookPayload } from "./webhook/processWebhookPayload";
 
@@ -81,7 +81,12 @@ describe("Phase 2D — webhook adapter", () => {
 
     expect(first.ok).toBe(true);
     expect(second.ok).toBe(true);
-    if (first.ok && !("ignored" in first && first.ignored) && second.ok && !("ignored" in second && second.ignored)) {
+    if (
+      first.ok &&
+      !("ignored" in first && first.ignored) &&
+      second.ok &&
+      !("ignored" in second && second.ignored)
+    ) {
       expect(second.duplicate).toBe(true);
       expect(first.message_id).toBe(second.message_id);
     }
@@ -137,7 +142,9 @@ describe("Phase 2D — webhook adapter", () => {
         rpc: store.deps.rpc,
       },
     );
-    const outbound = fetchSpy.mock.calls.filter(([url]) => String(url).includes("graph.facebook.com"));
+    const outbound = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes("graph.facebook.com"),
+    );
     expect(outbound).toHaveLength(0);
     fetchSpy.mockRestore();
   });

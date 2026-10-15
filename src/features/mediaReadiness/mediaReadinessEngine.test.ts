@@ -87,11 +87,7 @@ describe("mediaReadinessEngine", () => {
   });
 
   it("approved media URLs selected for Central payload", () => {
-    const assets = [
-      asset("primary_image"),
-      asset("catalogue_image"),
-      asset("close_up_image"),
-    ];
+    const assets = [asset("primary_image"), asset("catalogue_image"), asset("close_up_image")];
     const urls = selectApprovedImageUrlsForCentral(assets);
     expect(urls).toHaveLength(3);
   });
@@ -109,20 +105,13 @@ describe("mediaReadinessEngine", () => {
 
   it("complete Baklawa media passes Central sync gate in production mode", () => {
     withMode("production", () => {
-      const assets = [
-        asset("primary_image"),
-        asset("catalogue_image"),
-        asset("close_up_image"),
-      ];
+      const assets = [asset("primary_image"), asset("catalogue_image"), asset("close_up_image")];
       expect(canSyncMediaToCentral(baklawaProduct, assets)).toBe(true);
     });
   });
 
   it("legacy product does not throw and shows incomplete status", () => {
-    const r = evaluateMediaReadiness(
-      { ...baklawaProduct, isLegacy: true },
-      [],
-    );
+    const r = evaluateMediaReadiness({ ...baklawaProduct, isLegacy: true }, []);
     expect(r.isLegacy).toBe(true);
     expect(r.canPublishMedia).toBe(false);
     expect(r.blockers.some((b) => b.toLowerCase().includes("legacy"))).toBe(true);

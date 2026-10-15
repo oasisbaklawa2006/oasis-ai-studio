@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 import {
   authoritativeMediaAssets,
   deriveHeroUrlFromMediaRows,
   deriveMediaStatusFromRows,
 } from "./mediaAuthorityContract";
-import { buildProductReadinessSnapshot } from "@/features/readiness/productReadinessSnapshot";
 
 describe("mediaAuthorityContract", () => {
   it("derives approved status when governed required slots are approved (testing: hero only)", () => {
@@ -32,17 +32,17 @@ describe("mediaAuthorityContract", () => {
 
   it("accepts products.hero_image_url as approved hero in testing when no media rows", () => {
     import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
-    expect(
-      deriveMediaStatusFromRows([], { fallbackHeroUrl: "https://cdn/hero.jpg" }),
-    ).toBe("approved");
+    expect(deriveMediaStatusFromRows([], { fallbackHeroUrl: "https://cdn/hero.jpg" })).toBe(
+      "approved",
+    );
   });
 
   it("does not use raw_photo when no approved hero_image row exists", () => {
     import.meta.env.VITE_MEDIA_GOVERNANCE_MODE = "testing";
     const rows = [{ type: "raw_photo", file_url: "https://cdn/h.jpg", status: "approved" }];
-    expect(
-      deriveMediaStatusFromRows(rows, { fallbackHeroUrl: "https://cdn/h.jpg" }),
-    ).toBe("approved");
+    expect(deriveMediaStatusFromRows(rows, { fallbackHeroUrl: "https://cdn/h.jpg" })).toBe(
+      "approved",
+    );
     expect(deriveHeroUrlFromMediaRows(rows)).toBeNull();
   });
 

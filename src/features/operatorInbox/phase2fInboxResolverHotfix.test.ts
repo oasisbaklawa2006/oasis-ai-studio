@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { parseStoredResolution, rowFromRpcPayload } from "./mapInboundMessage";
+import { confirmSuggestion, initialOperatorState } from "./operatorSuggestionState";
+import { resolveInboundMessage } from "./resolveInboundMessage";
 import {
   isCompleteResolution,
   isRenderableStoredResolution,
   normalizeStoredResolution,
 } from "./storedResolution";
-import { parseStoredResolution, rowFromRpcPayload } from "./mapInboundMessage";
-import { initialOperatorState, confirmSuggestion } from "./operatorSuggestionState";
-import { resolveInboundMessage } from "./resolveInboundMessage";
 import { showPrimarySuggestion } from "./suggestionGovernance";
 
 /** Production DB rows observed 2026-06-24 — minimal edge-stored JSON shapes. */

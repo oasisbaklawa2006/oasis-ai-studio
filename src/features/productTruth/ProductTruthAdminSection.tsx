@@ -1,17 +1,19 @@
 import { lazy, Suspense, startTransition, useDeferredValue, useEffect, useState } from "react";
+import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
-import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
-import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
-import type { ProductReadinessResult } from "./productReadiness";
-import type { ChannelMoqRule, ChannelPriceRecord, ProductTruthInput } from "./types";
 import { ProductTruthPanelSkeleton } from "./ProductTruthTabSkeleton";
+import type { ProductReadinessResult } from "./productReadiness";
+import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
+import type { ChannelMoqRule, ChannelPriceRecord, ProductTruthInput } from "./types";
 
 const ProductReadinessPanel = lazy(() =>
   import("./panels/ProductReadinessPanel").then((m) => ({ default: m.ProductReadinessPanel })),
 );
 const ProductLanguageTermsPanel = lazy(() =>
-  import("./panels/ProductLanguageTermsPanel").then((m) => ({ default: m.ProductLanguageTermsPanel })),
+  import("./panels/ProductLanguageTermsPanel").then((m) => ({
+    default: m.ProductLanguageTermsPanel,
+  })),
 );
 const MediaReadinessPanel = lazy(() =>
   import("@/features/mediaReadiness/panels/MediaReadinessPanel").then((m) => ({
@@ -116,7 +118,8 @@ export function ProductTruthAdminSection({
       <div className="card-elevated p-4 space-y-2">
         <h3 className="font-display text-xl mb-1">Product Truth</h3>
         <p className="text-sm text-muted-foreground">
-          Readiness, UOM/packaging rules, and channel pricing/MOQ validation for Catalogue master data.
+          Readiness, UOM/packaging rules, and channel pricing/MOQ validation for Catalogue master
+          data.
         </p>
         <AuthorityStatusBadges
           show={{

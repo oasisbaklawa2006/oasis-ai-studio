@@ -156,7 +156,12 @@ export function saleTypeFromForm(form: Record<string, unknown>): SaleType {
   if (cls === "gift_hamper") return "gift_hamper";
   if (cls === "bulk_loose_product") return "b2b_horeca";
   const dept = String(form.main_department ?? "").toLowerCase();
-  if (dept === "packing_material" || String(form.category ?? "").toLowerCase().includes("packaging")) {
+  if (
+    dept === "packing_material" ||
+    String(form.category ?? "")
+      .toLowerCase()
+      .includes("packaging")
+  ) {
     return "packaging_material";
   }
   return "b2b_horeca";

@@ -26,7 +26,9 @@ describe("mediaGovernanceDisplay", () => {
         derivedStatus: "missing",
       }),
     ).toBe("Needs hero image");
-    expect(labelStatusInfoLine("draft")).toContain("label designer not part of current catalogue readiness");
+    expect(labelStatusInfoLine("draft")).toContain(
+      "label designer not part of current catalogue readiness",
+    );
   });
 
   it("maps readiness snapshot media dimension to Complete when hero approved", () => {

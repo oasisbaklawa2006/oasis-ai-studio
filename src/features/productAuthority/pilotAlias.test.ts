@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildAllPilotAliasBundles, buildPilotAliasBundle } from "./pilotAliasEngine";
 import {
+  buildCollisionIndex,
   checkPilotAliasCollision,
   isBareGenericAlias,
   normalizeAliasText,
-  buildCollisionIndex,
 } from "./pilotAliasCollision";
+import { buildAllPilotAliasBundles, buildPilotAliasBundle } from "./pilotAliasEngine";
 import { PILOT_SKUS } from "./skuGuard";
 
 describe("pilotAliasCollision", () => {

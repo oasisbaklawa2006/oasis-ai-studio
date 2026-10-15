@@ -1,15 +1,18 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { seedMoqRowForChannel, type ChannelSeedTarget } from "@/features/productAuthority/seedChannelAuthority";
+import {
+  type ChannelSeedTarget,
+  seedMoqRowForChannel,
+} from "@/features/productAuthority/seedChannelAuthority";
 import {
   getInvalidQtyMessage,
   validateOrderQtyAgainstChannelRules,
 } from "../channelPricingMoqEngine";
-import { describeConversion } from "../uomPackagingEngine";
 import type { ChannelMoqRule, ChannelPriceRecord, PackagingHierarchy } from "../types";
+import { describeConversion } from "../uomPackagingEngine";
 
 type Props = {
   packaging: PackagingHierarchy;
@@ -47,9 +50,7 @@ export function PreviewCalculatorPanel({
       : { valid: false, messages: ["Enter a positive quantity"] };
 
   const invalidMsg =
-    Number.isFinite(n) && n > 0
-      ? getInvalidQtyMessage(n, uom, channel, rule, packaging)
-      : null;
+    Number.isFinite(n) && n > 0 ? getInvalidQtyMessage(n, uom, channel, rule, packaging) : null;
 
   const seedMoq = async () => {
     if (!productId || !product || !seedChannel) {
@@ -91,9 +92,16 @@ export function PreviewCalculatorPanel({
       {moqMissing && seedChannel && (
         <div className="rounded border border-warning/40 bg-warning/10 p-3 text-sm flex flex-wrap items-center justify-between gap-2">
           <span className="text-warning">
-            {channel} price is configured but no MOQ rule exists — calculator cannot validate orders.
+            {channel} price is configured but no MOQ rule exists — calculator cannot validate
+            orders.
           </span>
-          <Button type="button" size="sm" variant="outline" disabled={seeding} onClick={() => void seedMoq()}>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={seeding}
+            onClick={() => void seedMoq()}
+          >
             {seeding ? "Seeding…" : "Seed MOQ from product"}
           </Button>
         </div>
@@ -103,12 +111,23 @@ export function PreviewCalculatorPanel({
         <div className="rounded border p-3 text-sm space-y-2 bg-muted/20">
           <p>{describeConversion(n, uom, packaging)}</p>
           <p className={validation.valid ? "text-success" : "text-destructive"}>
-            {validation.valid ? "Valid for channel rules" : invalidMsg ?? validation.messages.join("; ")}
+            {validation.valid
+              ? "Valid for channel rules"
+              : (invalidMsg ?? validation.messages.join("; "))}
           </p>
         </div>
       )}
 
-      <Button type="button" variant="outline" size="sm" onClick={() => { setQty("1"); setUom("pcs"); setChannel("retail"); }}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          setQty("1");
+          setUom("pcs");
+          setChannel("retail");
+        }}
+      >
         Reset: retail 1 pc
       </Button>
     </div>

@@ -13,7 +13,9 @@ describe("getSaleTypeRequirements", () => {
 
   it("ready pack requires B2B price only when B2B is enabled", () => {
     expect(getSaleTypeRequirements("retail_ready_pack").requiresB2bPrice).toBe(false);
-    expect(getSaleTypeRequirements("retail_ready_pack", { b2bEnabled: true }).requiresB2bPrice).toBe(true);
+    expect(
+      getSaleTypeRequirements("retail_ready_pack", { b2bEnabled: true }).requiresB2bPrice,
+    ).toBe(true);
   });
 
   it("B2B/HoReCa requires B2B price and MOQ/carton logic, image optional", () => {

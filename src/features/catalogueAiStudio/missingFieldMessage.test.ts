@@ -9,9 +9,13 @@ describe("isMissingFieldOnlyMessage", () => {
 
   it("does not flag real copy that happens to mention a field", () => {
     expect(
-      isMissingFieldOnlyMessage("Cashew Baklawa is available for wholesale. Add missing field first: B2B price."),
+      isMissingFieldOnlyMessage(
+        "Cashew Baklawa is available for wholesale. Add missing field first: B2B price.",
+      ),
     ).toBe(false);
-    expect(isMissingFieldOnlyMessage("Premium Oasis sweets — crafted with quality ingredients.")).toBe(false);
+    expect(
+      isMissingFieldOnlyMessage("Premium Oasis sweets — crafted with quality ingredients."),
+    ).toBe(false);
   });
 
   it("does not flag empty or unrelated text", () => {

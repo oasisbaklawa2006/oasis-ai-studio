@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { evaluateCatalogueMediaCompleteness, mediaKindFromRowType, requiredMediaKinds } from "./mediaCompleteness";
+import {
+  evaluateCatalogueMediaCompleteness,
+  mediaKindFromRowType,
+  requiredMediaKinds,
+} from "./mediaCompleteness";
 
 describe("requiredMediaKinds", () => {
   it("catalogue-visible retail products require more than hero", () => {
-    expect(requiredMediaKinds("retail_ready_pack")).toEqual(["hero", "square", "closeup", "packaging"]);
+    expect(requiredMediaKinds("retail_ready_pack")).toEqual([
+      "hero",
+      "square",
+      "closeup",
+      "packaging",
+    ]);
   });
 
   it("internal products require no catalogue media", () => {
@@ -31,12 +40,16 @@ describe("evaluateCatalogueMediaCompleteness", () => {
   });
 
   it("counts a fallback hero URL as hero presence", () => {
-    const result = evaluateCatalogueMediaCompleteness("b2b_horeca", [], { fallbackHeroUrl: "https://x/h.jpg" });
+    const result = evaluateCatalogueMediaCompleteness("b2b_horeca", [], {
+      fallbackHeroUrl: "https://x/h.jpg",
+    });
     expect(result.complete).toBe(true);
   });
 
   it("ignores rows without a file URL", () => {
-    const result = evaluateCatalogueMediaCompleteness("b2b_horeca", [{ type: "hero", file_url: "" }]);
+    const result = evaluateCatalogueMediaCompleteness("b2b_horeca", [
+      { type: "hero", file_url: "" },
+    ]);
     expect(result.complete).toBe(false);
   });
 });

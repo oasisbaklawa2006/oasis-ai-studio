@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 import { formToDbProductPayload } from "@/features/productAuthority/productSchemaAdapter";
+import { resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 
 describe("fastCreateSkuCodes", () => {
   it("maps baklawa preset to AS/BKL taxonomy codes", () => {

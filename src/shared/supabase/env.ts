@@ -10,7 +10,9 @@ export const SUPABASE_URL = requireEnv("VITE_SUPABASE_URL");
 export const SUPABASE_PUBLISHABLE_KEY = requireEnv("VITE_SUPABASE_PUBLISHABLE_KEY");
 
 if (!SUPABASE_HOST_PATTERN.test(SUPABASE_URL)) {
-  throw new Error("[supabase/env] VITE_SUPABASE_URL must be an https://<project-ref>.supabase.co URL.");
+  throw new Error(
+    "[supabase/env] VITE_SUPABASE_URL must be an https://<project-ref>.supabase.co URL.",
+  );
 }
 
 if (/lovable/i.test(SUPABASE_URL)) {

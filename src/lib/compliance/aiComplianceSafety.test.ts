@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { createAiSuggestionFieldMeta } from "@/shared/ai/complianceApproval";
 import {
   buildSuggestionPayload,
   canApproveComplianceFieldsFromRoles,
   stripUnapprovedComplianceFields,
 } from "./aiComplianceSafety";
-import { createAiSuggestionFieldMeta } from "@/shared/ai/complianceApproval";
 
 describe("aiComplianceSafety", () => {
   it("buildSuggestionPayload marks output suggestion_only and not approved", () => {
