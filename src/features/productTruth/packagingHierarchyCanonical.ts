@@ -2,16 +2,16 @@ import { packagingHierarchyFromForm } from "./packagingHierarchyFromForm";
 import type { PackagingHierarchy } from "./types";
 
 /** Canonical Point 33 hierarchy levels (product SKU scope — no variant table). */
-export type PackagingHierarchyLevel =
+type PackagingHierarchyLevel =
   | "product"
   | "sellable_pack"
   | "case_carton"
   | "master_carton"
   | "pallet";
 
-export type PackagingPersistence = "products_row" | "form_only" | "snapshot_only" | "core_blocked";
+type PackagingPersistence = "products_row" | "form_only" | "snapshot_only" | "core_blocked";
 
-export type PackagingHierarchyNode = {
+type PackagingHierarchyNode = {
   level: PackagingHierarchyLevel;
   label: string;
   /** Child units contained in one unit at this level (e.g. packs per carton). */
@@ -40,7 +40,7 @@ export type CanonicalPackagingHierarchy = {
   point35DimensionAuthority: true;
 };
 
-export const POINT_33_CORE_DEPENDENCIES = {
+const POINT_33_CORE_DEPENDENCIES = {
   pallet: [
     "products.cartons_per_pallet",
     "products.master_cartons_per_pallet",
@@ -175,7 +175,7 @@ export function buildCanonicalPackagingHierarchy(
   const packsPerCarton = engine.packsPerCarton;
   const sellableQty = sellablePackQty(form);
   const sellableUom = sellablePackUom(form);
-  const caseQty = caseCartonQty(form, packsPerCarton);
+  const caseQty = caseCartonQty(form, packsPerCarton ?? null);
   const caseUom = str(form.carton_uom) ?? "carton";
   const masterQty = positiveNum(form.master_carton_qty);
   const masterUom = str(form.master_carton_uom) ?? "master_carton";
@@ -237,7 +237,7 @@ export function buildCanonicalPackagingHierarchy(
       qtyPerParent: null,
       uom: null,
       persistence: "core_blocked",
-      sourceFields: POINT_33_CORE_DEPENDENCIES.pallet,
+      sourceFields: [...POINT_33_CORE_DEPENDENCIES.pallet],
       present: false,
     },
   ];

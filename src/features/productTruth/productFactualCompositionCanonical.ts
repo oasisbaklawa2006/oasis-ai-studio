@@ -7,13 +7,9 @@
  * omitted them from generated types / save adapter — reconciled here.
  */
 
-export type FactualPersistence =
-  | "products_row"
-  | "structured_table"
-  | "form_only"
-  | "pdf_import_only";
+type FactualPersistence = "products_row" | "structured_table" | "form_only" | "pdf_import_only";
 
-export type FactualReviewState = "known" | "deferred" | "unknown";
+type FactualReviewState = "known" | "deferred" | "unknown";
 
 export type FactualFieldKey =
   | "shelf_life_days"
@@ -29,7 +25,7 @@ export type FactualFieldKey =
   | "pdf_shelf_life"
   | "pdf_storage_condition";
 
-export type FactualFieldSpec = {
+type FactualFieldSpec = {
   key: FactualFieldKey;
   label: string;
   unit: string | null;
@@ -39,12 +35,12 @@ export type FactualFieldSpec = {
 };
 
 /** Optional structured paths — not required for Point 34 text-field closure. */
-export const POINT_34_OPTIONAL_STRUCTURED_PATHS = {
+const POINT_34_OPTIONAL_STRUCTURED_PATHS = {
   structuredIngredients: ["ingredients master + product_ingredients junction"],
   nutritionPanels: ["nutrition_panels per product_id (structured macros)"],
 } as const;
 
-export const FACTUAL_FIELD_REGISTRY: ReadonlyArray<FactualFieldSpec> = [
+const FACTUAL_FIELD_REGISTRY: ReadonlyArray<FactualFieldSpec> = [
   {
     key: "shelf_life_days",
     label: "Shelf life",
@@ -158,11 +154,6 @@ export const PERSISTED_FACTUAL_PRODUCT_COLUMNS = FACTUAL_FIELD_REGISTRY.filter(
   | "nutrition_facts"
 >;
 
-/** UI form keys that map to products-row columns (never sent under UI key names). */
-export const UI_TO_PRODUCTS_FACTUAL_FIELD_MAP = {
-  nutritional_info: "nutrition_facts",
-} as const;
-
 function hasText(v: unknown): boolean {
   return v != null && String(v).trim().length > 0;
 }
@@ -198,7 +189,7 @@ export function normalizeNutritionText(form: Record<string, unknown>): string | 
   return str(form.nutrition_facts);
 }
 
-export type FactualFieldState = {
+type FactualFieldState = {
   key: FactualFieldKey;
   persistence: FactualPersistence;
   reviewState: FactualReviewState;
@@ -223,7 +214,7 @@ function specForKey(key: FactualFieldKey): FactualFieldSpec {
   return spec;
 }
 
-export function resolveFactualFieldState(
+function resolveFactualFieldState(
   key: FactualFieldKey,
   form: Record<string, unknown>,
 ): FactualFieldState {
@@ -405,9 +396,20 @@ export function factualCompositionDraftPayload(form: Record<string, unknown>): {
     ingredients: str(form.ingredients),
     allergen_information: str(form.allergen_warnings),
     nutritional_information: normalizeNutritionText(form),
-    shelf_life_days: form.shelf_life_days ?? null,
-    frozen_shelf_life_days: form.frozen_shelf_life_days ?? null,
-    post_processing_shelf_life_days: form.post_processing_shelf_life_days ?? null,
+    shelf_life_days:
+      typeof form.shelf_life_days === "number" || typeof form.shelf_life_days === "string"
+        ? form.shelf_life_days
+        : null,
+    frozen_shelf_life_days:
+      typeof form.frozen_shelf_life_days === "number" ||
+      typeof form.frozen_shelf_life_days === "string"
+        ? form.frozen_shelf_life_days
+        : null,
+    post_processing_shelf_life_days:
+      typeof form.post_processing_shelf_life_days === "number" ||
+      typeof form.post_processing_shelf_life_days === "string"
+        ? form.post_processing_shelf_life_days
+        : null,
     storage_instructions: str(form.storage_instructions),
     temperature_requirement: str(form.temperature_requirement),
     thawing_instruction: str(form.thawing_instruction),

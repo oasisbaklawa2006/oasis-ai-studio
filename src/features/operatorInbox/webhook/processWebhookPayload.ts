@@ -1,17 +1,17 @@
+import type { IngestDeps } from "../ingestInboundMessage";
 import { ingestInboundMessage } from "../ingestInboundMessage";
 import { normalizeWebhookPayload } from "./normalizeWebhookPayload";
 import type { WebhookPayloadInput, WebhookProcessResult } from "./types";
-import type { IngestDeps } from "../ingestInboundMessage";
 
 export async function processWebhookPayload(
   input: WebhookPayloadInput,
   deps?: IngestDeps,
 ): Promise<WebhookProcessResult> {
   const normalized = normalizeWebhookPayload(input);
-  if (!normalized.ok) {
+  if (normalized.ok !== true) {
     return { ok: false, error: normalized.error };
   }
-  if ("ignored" in normalized && normalized.ignored) {
+  if ("ignored" in normalized) {
     return { ok: true, ignored: true, reason: normalized.reason };
   }
 

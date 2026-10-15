@@ -1,28 +1,26 @@
+import {
+  Boxes,
+  Copy,
+  Filter,
+  Image as ImageIcon,
+  Layers,
+  Package,
+  Plus,
+  Search,
+  Tag,
+  X,
+  Zap,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
 import { PageHeader } from "@/components/PageHeader";
+import { ReadinessBadge } from "@/components/ReadinessBadge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Plus, Search, Image as ImageIcon, Copy,
-  Filter, X, Package, Layers, Tag, Boxes, Zap,
-} from "lucide-react";
-import {
-  BASIC_SEARCH_FALLBACK_MESSAGE,
-  searchProductsWithAliases,
-  type ProductSearchResult,
-} from "@/lib/productSearch";
-import { toast } from "sonner";
-import { ReadinessBadge } from "@/components/ReadinessBadge";
-import { CatalogueWriteModeBanner } from "@/components/CatalogueWriteModeBanner";
-import { resolveProductCardHeroUrl } from "@/lib/productImage";
-import {
-  buildProductReadinessSnapshot,
-  dimensionCardLabel,
-  dimensionIsComplete,
-} from "@/features/readiness/productReadinessSnapshot";
-import { mediaGovernanceStatusLine } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { mediaGovernanceStatusLine } from "@/features/mediaReadiness/mediaGovernanceDisplay";
 import {
   detectProductMasterDuplicates,
   duplicateKindLabel,
@@ -33,11 +31,23 @@ import {
   fetchProductAuthorityBundle,
   fetchProductsForMasterList,
 } from "@/features/productMaster/productListFetch";
+import type { ProductListRow } from "@/features/productMaster/productListModel";
 import {
   filterProductsForMasterList,
   productDisplayName,
 } from "@/features/productMaster/productListModel";
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
+import {
+  buildProductReadinessSnapshot,
+  dimensionCardLabel,
+  dimensionIsComplete,
+} from "@/features/readiness/productReadinessSnapshot";
+import { resolveProductCardHeroUrl } from "@/lib/productImage";
+import {
+  BASIC_SEARCH_FALLBACK_MESSAGE,
+  type ProductSearchResult,
+  searchProductsWithAliases,
+} from "@/lib/productSearch";
 
 const PRODUCT_CLASSES = [
   { v: "bulk_loose_product", label: "Bulk / Loose" },
@@ -74,7 +84,15 @@ const SORTS = [
 const labelOf = (list: { v: string; label: string }[], v?: string | null) =>
   list.find((x) => x.v === v)?.label ?? v ?? "";
 
-const Badge = ({ tone = "muted", children, title }: { tone?: "ok" | "warn" | "muted" | "accent" | "primary"; children: React.ReactNode; title?: string }) => {
+const Badge = ({
+  tone = "muted",
+  children,
+  title,
+}: {
+  tone?: "ok" | "warn" | "muted" | "accent" | "primary";
+  children: React.ReactNode;
+  title?: string;
+}) => {
   const map = {
     ok: "bg-success/10 text-success",
     warn: "bg-warning/10 text-warning",
@@ -82,25 +100,31 @@ const Badge = ({ tone = "muted", children, title }: { tone?: "ok" | "warn" | "mu
     accent: "bg-accent-soft text-accent-foreground",
     primary: "bg-primary/10 text-primary",
   } as const;
-  return <span title={title} className={`badge-soft ${map[tone]}`}>{children}</span>;
+  return (
+    <span title={title} className={`badge-soft ${map[tone]}`}>
+      {children}
+    </span>
+  );
 };
 
-const moqSummary = (p: any): string | null => {
+const moqSummary = (p: ProductListRow): string | null => {
   if (p.moq_rule_type === "not_applicable") return "MOQ: not applicable";
-  if (p.private_label_allowed && p.private_label_moq) return `MOQ: ${p.private_label_moq} ${p.private_label_moq_uom || "pcs"} private label`;
-  if (p.fixed_carton_required && p.carton_qty) return `MOQ: closed carton ${p.carton_qty} ${p.carton_uom || "pcs"}`;
+  if (p.private_label_allowed && p.private_label_moq)
+    return `MOQ: ${p.private_label_moq} ${p.private_label_moq_uom || "pcs"} private label`;
+  if (p.fixed_carton_required && p.carton_qty)
+    return `MOQ: closed carton ${p.carton_qty} ${p.carton_uom || "pcs"}`;
   if (p.moq_value) return `MOQ: ${p.moq_value} ${p.moq_uom || ""}`.trim();
   if (p.moq_text) return `MOQ: ${p.moq_text}`;
   return null;
 };
 
-const uomSummary = (p: any): string | null => {
+const uomSummary = (p: ProductListRow): string | null => {
   if (p.b2b_uom && p.retail_uom) return `B2B: ${p.b2b_uom} · Retail: ${p.retail_uom}`;
   if (p.primary_uom) return `UOM: ${p.primary_uom}`;
   return null;
 };
 
-const deptSummary = (p: any): string | null => {
+const deptSummary = (p: ProductListRow): string | null => {
   const main = labelOf(MAIN_DEPTS, p.main_department);
   const prod = labelOf(PROD_DEPTS, p.production_department);
   if (main && prod) return `${main} · ${prod}`;
@@ -108,11 +132,11 @@ const deptSummary = (p: any): string | null => {
 };
 
 const Products = () => {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<ProductListRow[]>([]);
   const [results, setResults] = useState<ProductSearchResult[] | null>(null);
   const [searchBasicFallback, setSearchBasicFallback] = useState(false);
   const [q, setQ] = useState("");
-  const [rules, setRules] = useState<any[]>([]);
+  const [rules, setRules] = useState<{ code: string; code_type: string; label: string }[]>([]);
 
   // SKU code filters (existing)
   const [div, setDiv] = useState("");
@@ -138,16 +162,21 @@ const Products = () => {
   const reloadProducts = () => setReloadToken((n) => n + 1);
 
   const [moqCounts, setMoqCounts] = useState<Record<string, number>>({});
-  const [priceCounts, setPriceCounts] = useState<Record<string, { total: number; approved: number }>>({});
+  const [priceCounts, setPriceCounts] = useState<
+    Record<string, { total: number; approved: number }>
+  >({});
   const [mediaByProduct, setMediaByProduct] = useState<Record<string, ProductMediaRow[]>>({});
   const [pricingByProduct, setPricingByProduct] = useState<Record<string, PricingRuleRow[]>>({});
   const [moqByProduct, setMoqByProduct] = useState<Record<string, MoqRuleRow[]>>({});
-  const [catalogueApprovedByProduct, setCatalogueApprovedByProduct] = useState<Record<string, boolean>>({});
+  const [catalogueApprovedByProduct, setCatalogueApprovedByProduct] = useState<
+    Record<string, boolean>
+  >({});
   const [authorityReady, setAuthorityReady] = useState(false);
   const [readinessUnavailable, setReadinessUnavailable] = useState(false);
   const [productsLoadError, setProductsLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    void reloadToken; // Explicit refresh requests must reload the authority bundle.
     let cancelled = false;
     (async () => {
       setAuthorityReady(false);
@@ -220,12 +249,18 @@ const Products = () => {
         setSearchBasicFallback(r.usedBasicFallback);
       }
     }, 200);
-    return () => { cancelled = true; clearTimeout(t); };
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
   }, [q]);
 
   const aliasById = new Map<string, string>();
-  if (results) results.forEach((r) => { if (r.matched_alias && !aliasById.has(r.id)) aliasById.set(r.id, r.matched_alias); });
-  const ids = results ? new Set(results.map((r) => r.id)) : null;
+  if (results)
+    results.forEach((r) => {
+      if (r.matched_alias && !aliasById.has(r.id)) aliasById.set(r.id, r.matched_alias);
+    });
+  const ids = useMemo(() => (results ? new Set(results.map((r) => r.id)) : null), [results]);
 
   const filtered = useMemo(() => {
     let arr = filterProductsForMasterList(items, {
@@ -245,26 +280,88 @@ const Products = () => {
       labelStatus,
     });
     switch (sort) {
-      case "name": arr = [...arr].sort((a, b) => productDisplayName(a).localeCompare(productDisplayName(b))); break;
-      case "class": arr = [...arr].sort((a, b) => (a.product_class || "").localeCompare(b.product_class || "")); break;
-      case "dept": arr = [...arr].sort((a, b) => (a.main_department || "").localeCompare(b.main_department || "")); break;
-      case "ready": arr = [...arr].sort((a, b) => Number(!!b.is_catalogue_ready) - Number(!!a.is_catalogue_ready)); break;
-      case "label_ok": arr = [...arr].sort((a, b) => Number(b.label_status === "approved" || b.label_status === "locked") - Number(a.label_status === "approved" || a.label_status === "locked")); break;
+      case "name":
+        arr = [...arr].sort((a, b) => productDisplayName(a).localeCompare(productDisplayName(b)));
+        break;
+      case "class":
+        arr = [...arr].sort((a, b) => (a.product_class || "").localeCompare(b.product_class || ""));
+        break;
+      case "dept":
+        arr = [...arr].sort((a, b) =>
+          (a.main_department || "").localeCompare(b.main_department || ""),
+        );
+        break;
+      case "ready":
+        arr = [...arr].sort(
+          (a, b) => Number(!!b.is_catalogue_ready) - Number(!!a.is_catalogue_ready),
+        );
+        break;
+      case "label_ok":
+        arr = [...arr].sort(
+          (a, b) =>
+            Number(b.label_status === "approved" || b.label_status === "locked") -
+            Number(a.label_status === "approved" || a.label_status === "locked"),
+        );
+        break;
     }
     return arr;
-  }, [items, ids, div, cat, pack, pclass, mainDept, prodDept, uom, pl, bom, carton, ready, labelStatus, sort, showArchived]);
+  }, [
+    items,
+    ids,
+    div,
+    cat,
+    pack,
+    pclass,
+    mainDept,
+    prodDept,
+    uom,
+    pl,
+    bom,
+    carton,
+    ready,
+    labelStatus,
+    sort,
+    showArchived,
+  ]);
 
   const by = (t: string) => rules.filter((r) => r.code_type === t);
-  const copy = (e: React.MouseEvent, sku: string) => { e.preventDefault(); navigator.clipboard.writeText(sku); toast.success("SKU copied"); };
-
-  const activeFilterCount = [div, cat, pack, pclass, mainDept, prodDept, uom, pl, bom, carton, ready, labelStatus].filter(Boolean).length;
-  const clearAll = () => {
-    setDiv(""); setCat(""); setPack("");
-    setPclass(""); setMainDept(""); setProdDept(""); setUom("");
-    setPl(""); setBom(""); setCarton(""); setReady(""); setLabelStatus("");
+  const copy = (e: React.MouseEvent, sku: string) => {
+    e.preventDefault();
+    navigator.clipboard.writeText(sku);
+    toast.success("SKU copied");
   };
 
-  const sel = "h-9 px-2 rounded-lg border border-border/60 bg-background text-xs w-full min-w-0 truncate";
+  const activeFilterCount = [
+    div,
+    cat,
+    pack,
+    pclass,
+    mainDept,
+    prodDept,
+    uom,
+    pl,
+    bom,
+    carton,
+    ready,
+    labelStatus,
+  ].filter(Boolean).length;
+  const clearAll = () => {
+    setDiv("");
+    setCat("");
+    setPack("");
+    setPclass("");
+    setMainDept("");
+    setProdDept("");
+    setUom("");
+    setPl("");
+    setBom("");
+    setCarton("");
+    setReady("");
+    setLabelStatus("");
+  };
+
+  const sel =
+    "h-9 px-2 rounded-lg border border-border/60 bg-background text-xs w-full min-w-0 truncate";
 
   return (
     <>
@@ -275,10 +372,16 @@ const Products = () => {
         actions={
           <div className="flex gap-2">
             <Button asChild variant="default">
-              <Link to="/products/new/fast"><Zap className="h-4 w-4 mr-1" />Fast Create</Link>
+              <Link to="/products/new/fast">
+                <Zap className="h-4 w-4 mr-1" />
+                Fast Create
+              </Link>
             </Button>
             <Button asChild variant="outline">
-              <Link to="/products/new"><Plus className="h-4 w-4 mr-1" />Full editor</Link>
+              <Link to="/products/new">
+                <Plus className="h-4 w-4 mr-1" />
+                Full editor
+              </Link>
             </Button>
           </div>
         }
@@ -294,9 +397,15 @@ const Products = () => {
               placeholder="Search by name, SKU, alias…"
               className="border-0 focus-visible:ring-0 px-0 bg-transparent text-sm min-w-0 flex-1"
             />
-            <Button variant="outline" size="sm" onClick={() => setShowFilters((v) => !v)} className="shrink-0 rounded-full">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters((v) => !v)}
+              className="shrink-0 rounded-full"
+            >
               <Filter className="h-3.5 w-3.5 mr-1" />
-              <span className="hidden sm:inline">Filters</span>{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
+              <span className="hidden sm:inline">Filters</span>
+              {activeFilterCount > 0 ? ` · ${activeFilterCount}` : ""}
             </Button>
             <Button
               variant={showArchived ? "secondary" : "outline"}
@@ -306,8 +415,16 @@ const Products = () => {
             >
               {showArchived ? "Archived" : "Active"}
             </Button>
-            <select className="h-9 px-2 rounded-full border border-border/60 bg-background text-xs hidden sm:block max-w-[160px] truncate" value={sort} onChange={(e) => setSort(e.target.value)}>
-              {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+            <select
+              className="h-9 px-2 rounded-full border border-border/60 bg-background text-xs hidden sm:block max-w-[160px] truncate"
+              value={sort}
+              onChange={(e) => setSort(e.target.value)}
+            >
+              {SORTS.map((s) => (
+                <option key={s.v} value={s.v}>
+                  {s.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -315,10 +432,11 @@ const Products = () => {
             <p className="text-xs text-muted-foreground px-1">{BASIC_SEARCH_FALLBACK_MESSAGE}</p>
           )}
 
-          {(duplicateProductCount > 0) && (
+          {duplicateProductCount > 0 && (
             <div className="px-1 text-xs">
               <span className="badge-soft bg-warning/10 text-warning">
-                {duplicateProductCount} product{duplicateProductCount === 1 ? "" : "s"} with duplicate signals
+                {duplicateProductCount} product{duplicateProductCount === 1 ? "" : "s"} with
+                duplicate signals
               </span>
             </div>
           )}
@@ -328,19 +446,46 @@ const Products = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 min-w-0">
                 <select className={sel} value={pclass} onChange={(e) => setPclass(e.target.value)}>
                   <option value="">All product classes</option>
-                  {PRODUCT_CLASSES.map((c) => <option key={c.v} value={c.v}>{c.label}</option>)}
+                  {PRODUCT_CLASSES.map((c) => (
+                    <option key={c.v} value={c.v}>
+                      {c.label}
+                    </option>
+                  ))}
                 </select>
-                <select className={sel} value={mainDept} onChange={(e) => { setMainDept(e.target.value); if (e.target.value !== "ready_goods_store") setProdDept(""); }}>
+                <select
+                  className={sel}
+                  value={mainDept}
+                  onChange={(e) => {
+                    setMainDept(e.target.value);
+                    if (e.target.value !== "ready_goods_store") setProdDept("");
+                  }}
+                >
                   <option value="">All main departments</option>
-                  {MAIN_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                  {MAIN_DEPTS.map((d) => (
+                    <option key={d.v} value={d.v}>
+                      {d.label}
+                    </option>
+                  ))}
                 </select>
-                <select className={sel} value={prodDept} onChange={(e) => setProdDept(e.target.value)}>
+                <select
+                  className={sel}
+                  value={prodDept}
+                  onChange={(e) => setProdDept(e.target.value)}
+                >
                   <option value="">All production depts</option>
-                  {PROD_DEPTS.map((d) => <option key={d.v} value={d.v}>{d.label}</option>)}
+                  {PROD_DEPTS.map((d) => (
+                    <option key={d.v} value={d.v}>
+                      {d.label}
+                    </option>
+                  ))}
                 </select>
                 <select className={sel} value={uom} onChange={(e) => setUom(e.target.value)}>
                   <option value="">All UOM</option>
-                  {UOMS.map((u) => <option key={u} value={u}>{u}</option>)}
+                  {UOMS.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
                 </select>
                 <select className={sel} value={pl} onChange={(e) => setPl(e.target.value)}>
                   <option value="">Private label: all</option>
@@ -362,9 +507,17 @@ const Products = () => {
                   <option value="yes">Catalogue ready</option>
                   <option value="no">Not ready</option>
                 </select>
-                <select className={sel} value={labelStatus} onChange={(e) => setLabelStatus(e.target.value)}>
+                <select
+                  className={sel}
+                  value={labelStatus}
+                  onChange={(e) => setLabelStatus(e.target.value)}
+                >
                   <option value="">Label: all</option>
-                  {LABEL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {LABEL_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
                 </select>
                 <label className={`${sel} flex items-center gap-2 cursor-pointer`}>
                   <input
@@ -377,23 +530,44 @@ const Products = () => {
                 </label>
                 <select className={sel} value={div} onChange={(e) => setDiv(e.target.value)}>
                   <option value="">All divisions</option>
-                  {by("division").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+                  {by("division").map((r) => (
+                    <option key={r.code} value={r.code}>
+                      {r.code} · {r.label}
+                    </option>
+                  ))}
                 </select>
                 <select className={sel} value={cat} onChange={(e) => setCat(e.target.value)}>
                   <option value="">All SKU categories</option>
-                  {by("category").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+                  {by("category").map((r) => (
+                    <option key={r.code} value={r.code}>
+                      {r.code} · {r.label}
+                    </option>
+                  ))}
                 </select>
                 <select className={sel} value={pack} onChange={(e) => setPack(e.target.value)}>
                   <option value="">All packaging</option>
-                  {by("packaging").map((r) => <option key={r.code} value={r.code}>{r.code} · {r.label}</option>)}
+                  {by("packaging").map((r) => (
+                    <option key={r.code} value={r.code}>
+                      {r.code} · {r.label}
+                    </option>
+                  ))}
                 </select>
-                <select className={`${sel} sm:hidden`} value={sort} onChange={(e) => setSort(e.target.value)}>
-                  {SORTS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
+                <select
+                  className={`${sel} sm:hidden`}
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                >
+                  {SORTS.map((s) => (
+                    <option key={s.v} value={s.v}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
               </div>
               {activeFilterCount > 0 && (
                 <Button variant="ghost" size="sm" onClick={clearAll}>
-                  <X className="h-3.5 w-3.5 mr-1" />Clear filters
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Clear filters
                 </Button>
               )}
             </div>
@@ -413,12 +587,13 @@ const Products = () => {
           const pricingComplete = readiness
             ? dimensionIsComplete(readiness, "pricing_status")
             : false;
-          const mediaComplete = readiness
-            ? dimensionIsComplete(readiness, "media_status")
-            : false;
+          const mediaComplete = readiness ? dimensionIsComplete(readiness, "media_status") : false;
           const mediaLabel = readiness
             ? dimensionCardLabel(readiness, "media_status")
-            : mediaGovernanceStatusLine({ heroUrl, derivedStatus: p.media_status });
+            : mediaGovernanceStatusLine({
+                heroUrl,
+                derivedStatus: typeof p.media_status === "string" ? p.media_status : null,
+              });
           const complianceComplete = readiness
             ? dimensionIsComplete(readiness, "compliance_status")
             : false;
@@ -432,106 +607,171 @@ const Products = () => {
                 />
               </div>
               <Link to={`/products/${p.id}`} className="flex flex-col flex-1 min-w-0">
-              <div className="luxe-media relative">
-                {heroUrl
-                  ? <img src={heroUrl} alt={productDisplayName(p)} loading="lazy" className={heroUrl.includes("/_pdf_pages/") ? "opacity-60" : ""} />
-                  : <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40"><ImageIcon className="h-10 w-10 text-accent/30" /></div>}
-                {(heroUrl?.includes("/_pdf_pages/") || !heroUrl) && (
-                  <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-0.5 rounded-full font-medium">Photo needed</span>
-                )}
-              </div>
-              <div className="p-4 sm:p-5 flex-1 flex flex-col min-w-0 space-y-3">
-                <div className="flex items-start justify-between gap-2 min-w-0 pr-8">
-                  <div className="min-w-0 flex-1">
-                    <div className="luxe-sub mb-1 truncate">{p.category || p.product_type || "—"}</div>
-                    <div className="font-display text-lg leading-tight truncate">{productDisplayName(p)}</div>
-                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 font-mono min-w-0">
-                      <span className="truncate">{p.sku}</span>
-                      <button onClick={(e) => copy(e, p.sku)} className="hover:text-foreground shrink-0"><Copy className="h-3 w-3" /></button>
+                <div className="luxe-media relative">
+                  {heroUrl ? (
+                    <img
+                      src={heroUrl}
+                      alt={productDisplayName(p)}
+                      loading="lazy"
+                      className={heroUrl.includes("/_pdf_pages/") ? "opacity-60" : ""}
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-secondary to-accent-soft/40">
+                      <ImageIcon className="h-10 w-10 text-accent/30" />
                     </div>
+                  )}
+                  {(heroUrl?.includes("/_pdf_pages/") || !heroUrl) && (
+                    <span className="absolute top-2 left-2 text-[10px] bg-warning text-warning-foreground px-2 py-0.5 rounded-full font-medium">
+                      Photo needed
+                    </span>
+                  )}
+                </div>
+                <div className="p-4 sm:p-5 flex-1 flex flex-col min-w-0 space-y-3">
+                  <div className="flex items-start justify-between gap-2 min-w-0 pr-8">
+                    <div className="min-w-0 flex-1">
+                      <div className="luxe-sub mb-1 truncate">
+                        {p.category || p.product_type || "—"}
+                      </div>
+                      <div className="font-display text-lg leading-tight truncate">
+                        {productDisplayName(p)}
+                      </div>
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5 font-mono min-w-0">
+                        <span className="truncate">{p.sku}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => copy(e, p.sku ?? "")}
+                          className="hover:text-foreground shrink-0"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                    {p.is_sample && (
+                      <span className="badge-soft bg-accent-soft text-accent-foreground shrink-0">
+                        Sample
+                      </span>
+                    )}
                   </div>
-                  {p.is_sample && <span className="badge-soft bg-accent-soft text-accent-foreground shrink-0">Sample</span>}
+
+                  {matched && (
+                    <div className="text-[11px] text-accent">
+                      Matched by alias: <span className="font-medium">{matched}</span>
+                    </div>
+                  )}
+
+                  {p.archived_at && (
+                    <div className="text-[11px] text-muted-foreground">
+                      Archived · hidden from default search
+                    </div>
+                  )}
+
+                  {duplicateSignalsByProduct.get(p.id)?.map((signal) => (
+                    <div
+                      key={`${signal.kind}-${signal.otherProductId}`}
+                      className="text-[11px] text-warning"
+                    >
+                      {duplicateKindLabel(signal.kind)}: {signal.matchedValue} · {signal.otherLabel}
+                    </div>
+                  ))}
+
+                  {/* Identity + ops badges */}
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {p.product_class && (
+                      <Badge tone="primary">
+                        <Layers className="h-3 w-3" />
+                        {labelOf(PRODUCT_CLASSES, p.product_class)}
+                      </Badge>
+                    )}
+                    {dept && (
+                      <Badge tone="muted">
+                        <Package className="h-3 w-3" />
+                        {dept}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Commercial line */}
+                  <div className="text-xs text-muted-foreground space-y-0.5 mb-3">
+                    {uomS && <div>{uomS}</div>}
+                    {moqS && <div>{moqS}</div>}
+                    {!uomS && !moqS && (
+                      <div>
+                        {p.pack_size || "—"} ·{" "}
+                        {p.shelf_life_days ? `${p.shelf_life_days}d shelf` : "—"}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Flags + readiness */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {p.private_label_allowed && (
+                      <Badge tone="accent">
+                        <Tag className="h-3 w-3" />
+                        Private label
+                      </Badge>
+                    )}
+                    {p.bom_required && (
+                      <Badge tone="accent">
+                        <Boxes className="h-3 w-3" />
+                        BOM
+                      </Badge>
+                    )}
+                    {p.fixed_carton_required && (
+                      <Badge tone="muted">
+                        <Package className="h-3 w-3" />
+                        Closed carton
+                      </Badge>
+                    )}
+                    {moqCounts[p.id] > 0 && (
+                      <Badge tone="primary" title={`${moqCounts[p.id]} channel MOQ rules`}>
+                        MOQ rules · {moqCounts[p.id]}
+                      </Badge>
+                    )}
+                    {priceCounts[p.id]?.total > 0 && readiness && (
+                      <Badge
+                        tone={pricingComplete ? "ok" : "warn"}
+                        title={`Pricing: ${dimensionCardLabel(readiness, "pricing_status")}`}
+                      >
+                        {pricingComplete ? "Approved price" : "Needs pricing"} ·{" "}
+                        {priceCounts[p.id].total}
+                      </Badge>
+                    )}
+                    <Badge
+                      tone={mediaComplete || heroUrl ? "ok" : "warn"}
+                      title={
+                        readiness ? `Media: ${mediaLabel}` : heroUrl ? "hero present" : mediaLabel
+                      }
+                    >
+                      <ImageIcon className="h-3 w-3" />
+                      {mediaLabel}
+                    </Badge>
+                    {readiness && (
+                      <Badge
+                        tone={complianceComplete ? "ok" : "warn"}
+                        title={`Compliance: ${dimensionCardLabel(readiness, "compliance_status")}`}
+                      >
+                        GST/HSN · {dimensionCardLabel(readiness, "compliance_status")}
+                      </Badge>
+                    )}
+                    {readinessUnavailable && authorityReady ? (
+                      <Badge tone="muted" title="Readiness side tables could not be loaded">
+                        Readiness unavailable
+                      </Badge>
+                    ) : (
+                      <ReadinessBadge
+                        product={p}
+                        readiness={readiness}
+                        compact
+                        loading={!authorityReady}
+                        statusOpts={{
+                          catalogueVersionApproved: catalogueApprovedByProduct[p.id],
+                          pricingRows: pricingByProduct[p.id],
+                          moqRows: moqByProduct[p.id],
+                        }}
+                      />
+                    )}
+                  </div>
                 </div>
-
-                {matched && <div className="text-[11px] text-accent">Matched by alias: <span className="font-medium">{matched}</span></div>}
-
-              {p.archived_at && (
-                <div className="text-[11px] text-muted-foreground">Archived · hidden from default search</div>
-              )}
-
-              {duplicateSignalsByProduct.get(p.id)?.map((signal) => (
-                <div key={`${signal.kind}-${signal.otherProductId}`} className="text-[11px] text-warning">
-                  {duplicateKindLabel(signal.kind)}: {signal.matchedValue} · {signal.otherLabel}
-                </div>
-              ))}
-
-              {/* Identity + ops badges */}
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {p.product_class && <Badge tone="primary"><Layers className="h-3 w-3" />{labelOf(PRODUCT_CLASSES, p.product_class)}</Badge>}
-                {dept && <Badge tone="muted"><Package className="h-3 w-3" />{dept}</Badge>}
-              </div>
-
-              {/* Commercial line */}
-              <div className="text-xs text-muted-foreground space-y-0.5 mb-3">
-                {uomS && <div>{uomS}</div>}
-                {moqS && <div>{moqS}</div>}
-                {!uomS && !moqS && <div>{p.pack_size || "—"} · {p.shelf_life_days ? `${p.shelf_life_days}d shelf` : "—"}</div>}
-              </div>
-
-              {/* Flags + readiness */}
-              <div className="flex flex-wrap gap-1.5">
-                {p.private_label_allowed && <Badge tone="accent"><Tag className="h-3 w-3" />Private label</Badge>}
-                {p.bom_required && <Badge tone="accent"><Boxes className="h-3 w-3" />BOM</Badge>}
-                {p.fixed_carton_required && <Badge tone="muted"><Package className="h-3 w-3" />Closed carton</Badge>}
-                {moqCounts[p.id] > 0 && <Badge tone="primary" title={`${moqCounts[p.id]} channel MOQ rules`}>MOQ rules · {moqCounts[p.id]}</Badge>}
-                {priceCounts[p.id]?.total > 0 && readiness && (
-                  <Badge
-                    tone={pricingComplete ? "ok" : "warn"}
-                    title={`Pricing: ${dimensionCardLabel(readiness, "pricing_status")}`}
-                  >
-                    {pricingComplete ? "Approved price" : "Needs pricing"} · {priceCounts[p.id].total}
-                  </Badge>
-                )}
-                <Badge
-                  tone={mediaComplete || heroUrl ? "ok" : "warn"}
-                  title={
-                    readiness
-                      ? `Media: ${mediaLabel}`
-                      : heroUrl
-                        ? "hero present"
-                        : mediaLabel
-                  }
-                >
-                  <ImageIcon className="h-3 w-3" />
-                  {mediaLabel}
-                </Badge>
-                {readiness && (
-                  <Badge
-                    tone={complianceComplete ? "ok" : "warn"}
-                    title={`Compliance: ${dimensionCardLabel(readiness, "compliance_status")}`}
-                  >
-                    GST/HSN · {dimensionCardLabel(readiness, "compliance_status")}
-                  </Badge>
-                )}
-                {readinessUnavailable && authorityReady ? (
-                  <Badge tone="muted" title="Readiness side tables could not be loaded">
-                    Readiness unavailable
-                  </Badge>
-                ) : (
-                  <ReadinessBadge
-                    product={p}
-                    readiness={readiness}
-                    compact
-                    loading={!authorityReady}
-                    statusOpts={{
-                      catalogueVersionApproved: catalogueApprovedByProduct[p.id],
-                      pricingRows: pricingByProduct[p.id],
-                      moqRows: moqByProduct[p.id],
-                    }}
-                  />
-                )}
-              </div>
-              </div>
               </Link>
             </div>
           );
@@ -548,7 +788,8 @@ const Products = () => {
             </div>
             {activeFilterCount > 0 && (
               <Button variant="outline" size="sm" onClick={clearAll}>
-                <X className="h-3.5 w-3.5 mr-1" />Clear filters
+                <X className="h-3.5 w-3.5 mr-1" />
+                Clear filters
               </Button>
             )}
           </div>

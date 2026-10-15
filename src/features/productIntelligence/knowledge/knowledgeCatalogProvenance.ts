@@ -1,5 +1,10 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { IMMUTABLE_VERSION_STATUSES } from "@/features/catalogueSnapshot/types";
 import { supabase } from "@/integrations/supabase/client";
+import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+
+const authorityDb = supabase as unknown as SupabaseClient<ExtendedDatabase>;
+
 import { sortDeterministicStrings } from "./deterministicSort";
 
 const IMMUTABLE_STATUS_SET = new Set<string>(IMMUTABLE_VERSION_STATUSES);
@@ -72,7 +77,7 @@ export async function deriveCatalogueVersionProvenance(
     return resolveImmutableCatalogueVersionProvenance([], []);
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await authorityDb
     .from("catalogue_versions")
     .select("id, product_id, status, version_number")
     .in("product_id", uniqueProductIds)

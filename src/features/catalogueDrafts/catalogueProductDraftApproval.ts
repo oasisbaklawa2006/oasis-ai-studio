@@ -9,7 +9,7 @@ import {
   type Point37LiveProductColumn,
 } from "@/features/productAuthority/labelComplianceLiveColumns";
 
-export const POINT37_LIVE_LEGAL_COMPLIANCE_DRAFT_KEYS = POINT_37_LIVE_PRODUCT_COLUMNS;
+const POINT37_LIVE_LEGAL_COMPLIANCE_DRAFT_KEYS = POINT_37_LIVE_PRODUCT_COLUMNS;
 
 export type ProductDraftApprovalOperation = "create" | "update";
 

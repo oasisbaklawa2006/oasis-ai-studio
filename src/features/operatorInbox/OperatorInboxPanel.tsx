@@ -2,13 +2,13 @@ import { useCallback, useEffect, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ProductSuggestionCard } from "@/features/productIntelligence/components/ProductSuggestionCard";
-import type { ProductUtteranceResolution, RuntimeAlternative } from "@/features/productIntelligence/runtime";
+import type {
+  ProductUtteranceResolution,
+  RuntimeAlternative,
+} from "@/features/productIntelligence/runtime";
 import { DraftVisibilityPanel } from "./components/DraftVisibilityPanel";
 import { InboundMessageBubble } from "./components/InboundMessageBubble";
-import {
-  createSalesOrderDraftFromOperator,
-  recordOperatorDecision,
-} from "./createSalesOrderDraft";
+import { createSalesOrderDraftFromOperator, recordOperatorDecision } from "./createSalesOrderDraft";
 import { isRenderableStoredResolution } from "./draftGovernance";
 import { fetchDraftVisibility, type WhatsAppDraftRow } from "./fetchDraftVisibility";
 import { fetchInboundMessages } from "./fetchInboundMessages";
@@ -21,11 +21,11 @@ import {
   selectAlternative,
 } from "./operatorSuggestionState";
 import { resolveInboundMessage } from "./resolveInboundMessage";
-import { appendSuggestionAudit } from "./suggestionAudit";
 import {
   isPhase2cTestSeedEnabled,
   seedPhase2cTestMessagesToDatabase,
 } from "./seedPhase2cTestMessages";
+import { appendSuggestionAudit } from "./suggestionAudit";
 import type { InboundMessageView, InboundWhatsAppMessage, OperatorSuggestionState } from "./types";
 import { useOperatorInboxRealtime } from "./useOperatorInboxRealtime";
 import type { InboxFeedMode } from "./whatsappInboundTypes";
@@ -46,9 +46,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
       ? "Resolver failed at ingest — message shown without suggestion."
       : null,
   );
-  const [loading, setLoading] = useState(
-    !renderFromDb && message.resolver_status !== "failed",
-  );
+  const [loading, setLoading] = useState(!renderFromDb && message.resolver_status !== "failed");
   const [operator, setOperator] = useState<OperatorSuggestionState>(() =>
     existingDraft
       ? hydrateOperatorStateFromDraft(existingDraft)
@@ -106,7 +104,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
     return () => {
       cancelled = true;
     };
-  }, [message.body, message.id, message.resolver_status, message.stored_resolution, existingDraft?.id]);
+  }, [message.body, message.resolver_status, message.stored_resolution, existingDraft]);
 
   useEffect(() => {
     if (!existingDraft) return;
@@ -114,10 +112,14 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
     setDraftId(existingDraft.id);
     setDraftStatus(existingDraft.status);
     setDraftError(null);
-  }, [existingDraft?.id, existingDraft?.resolved_sku, existingDraft?.status, existingDraft?.created_at]);
+  }, [existingDraft]);
 
   const audit = useCallback(
-    (action: "confirm" | "reject" | "select_alternative", sku: string | null, name: string | null) => {
+    (
+      action: "confirm" | "reject" | "select_alternative",
+      sku: string | null,
+      name: string | null,
+    ) => {
       appendSuggestionAudit({
         message_id: message.id,
         utterance: message.body,
@@ -189,9 +191,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
 
   return (
     <InboundMessageBubble message={message}>
-      {loading && (
-        <p className="text-xs text-muted-foreground mt-2">Resolving product…</p>
-      )}
+      {loading && <p className="text-xs text-muted-foreground mt-2">Resolving product…</p>}
       {resolverError && !loading && (
         <p className="text-xs text-amber-700 dark:text-amber-400 mt-2">{resolverError}</p>
       )}
@@ -206,17 +206,13 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
           draftStatus={draftStatus}
         />
       )}
-      {confirming && (
-        <p className="text-xs text-muted-foreground mt-2">Confirming selection…</p>
-      )}
+      {confirming && <p className="text-xs text-muted-foreground mt-2">Confirming selection…</p>}
       {draftId && (
         <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-2">
           Sales order draft created: {draftId}
         </p>
       )}
-      {draftError && (
-        <p className="text-xs text-destructive mt-2">{draftError}</p>
-      )}
+      {draftError && <p className="text-xs text-destructive mt-2">{draftError}</p>}
     </InboundMessageBubble>
   );
 }
@@ -227,8 +223,12 @@ export default function OperatorInboxPanel() {
   const [mode, setMode] = useState<InboxFeedMode>("sample_fallback");
   const [loadingFeed, setLoadingFeed] = useState(true);
   const [seeding, setSeeding] = useState(false);
-  const [drafts, setDrafts] = useState<Awaited<ReturnType<typeof fetchDraftVisibility>>["drafts"]>([]);
-  const [decisions, setDecisions] = useState<Awaited<ReturnType<typeof fetchDraftVisibility>>["decisions"]>([]);
+  const [drafts, setDrafts] = useState<Awaited<ReturnType<typeof fetchDraftVisibility>>["drafts"]>(
+    [],
+  );
+  const [decisions, setDecisions] = useState<
+    Awaited<ReturnType<typeof fetchDraftVisibility>>["decisions"]
+  >([]);
   const [draftVisibilityError, setDraftVisibilityError] = useState<string | null>(null);
   const [loadingDraftVisibility, setLoadingDraftVisibility] = useState(true);
 
@@ -256,9 +256,12 @@ export default function OperatorInboxPanel() {
     }
   }, []);
 
-  const refreshAll = useCallback(async (options?: { silent?: boolean }) => {
-    await Promise.all([loadFeed(options), loadDraftVisibility(options)]);
-  }, [loadDraftVisibility, loadFeed]);
+  const refreshAll = useCallback(
+    async (options?: { silent?: boolean }) => {
+      await Promise.all([loadFeed(options), loadDraftVisibility(options)]);
+    },
+    [loadDraftVisibility, loadFeed],
+  );
 
   useEffect(() => {
     void refreshAll();
@@ -315,9 +318,7 @@ export default function OperatorInboxPanel() {
       </div>
 
       <div className="card-elevated p-4 sm:p-5 space-y-5">
-        {loadingFeed && (
-          <p className="text-sm text-muted-foreground">Loading inbox…</p>
-        )}
+        {loadingFeed && <p className="text-sm text-muted-foreground">Loading inbox…</p>}
         {!inboxReady && !loadingFeed && loadingDraftVisibility && (
           <p className="text-sm text-muted-foreground">Loading draft state…</p>
         )}
@@ -344,11 +345,9 @@ export default function OperatorInboxPanel() {
         error={draftVisibilityError}
       />
       <p className="text-xs text-muted-foreground max-w-3xl">
-        Confirm creates a reviewable sales order draft only — no final order, stock, finance, or outbound replies.
-        Reject writes an operator audit record when live ingestion is enabled.
+        Confirm creates a reviewable sales order draft only — no final order, stock, finance, or
+        outbound replies. Reject writes an operator audit record when live ingestion is enabled.
       </p>
     </div>
   );
 }
-
-export type { InboundMessageView };

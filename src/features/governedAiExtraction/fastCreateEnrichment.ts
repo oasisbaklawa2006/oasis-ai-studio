@@ -10,14 +10,7 @@ import {
 import { mergeComplianceMetaMaps } from "./governedComplianceFieldMerge";
 import type { GovernedAiProvenance } from "./types";
 
-export const FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS = 15_000;
-
-function createAliasFetchAbortSignal(): AbortSignal | undefined {
-  if (typeof AbortSignal === "undefined" || typeof AbortSignal.timeout !== "function") {
-    return undefined;
-  }
-  return AbortSignal.timeout(FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS);
-}
+const FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS = 15_000;
 
 export type GovernedFastCreateEnrichment = {
   suggestions: FastCreateSuggestions;
@@ -93,6 +86,7 @@ export async function enrichFastCreateWithGovernedAi(
 
   try {
     const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
+      timeout: 30_000,
       body: { product_name: productName, category },
     });
 
@@ -157,42 +151,47 @@ export async function enrichFastCreateWithGovernedAi(
     } else if (!supabaseUrl) {
       provenance.push(degradedAliasProvenance("Supabase URL unavailable"));
     } else {
-      const abortSignal = createAliasFetchAbortSignal();
-      const resp = await fetch(`${supabaseUrl}/functions/v1/oasis-ai-chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        ...(abortSignal ? { signal: abortSignal } : {}),
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "user",
-              content: `Suggest 5 short B2B search aliases (comma-separated, no explanation) for Oasis product: "${productName}" in category "${category}".`,
-            },
-          ],
-        }),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS);
+      try {
+        const resp = await fetch(`${supabaseUrl}/functions/v1/oasis-ai-chat`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            messages: [
+              {
+                role: "user",
+                content: `Suggest 5 short B2B search aliases (comma-separated, no explanation) for Oasis product: "${productName}" in category "${category}".`,
+              },
+            ],
+          }),
+        });
 
-      if (resp.ok) {
-        const text = await resp.text();
-        const assembled = parseChatCompletionStreamText(text);
-        const rawFragments = assembled
-          .split(/[,\n]/)
-          .map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
-        const aliasExtraction = extractGovernedAliases(rawFragments);
-        provenance.push(aliasExtraction.provenance);
+        if (resp.ok) {
+          const text = await resp.text();
+          const assembled = parseChatCompletionStreamText(text);
+          const rawFragments = assembled
+            .split(/[,\n]/)
+            .map((s) => s.trim().replace(/^[-*\d.]+\s*/, ""));
+          const aliasExtraction = extractGovernedAliases(rawFragments);
+          provenance.push(aliasExtraction.provenance);
 
-        if (aliasExtraction.aliases.length > 0) {
-          next.pendingAiAliases = aliasExtraction.aliases.map((alias) => ({
-            alias,
-            alias_type: "search_term",
-          }));
-          next.sources.aiAliases = aliasExtraction.provenance.provider_status === "ok";
+          if (aliasExtraction.aliases.length > 0) {
+            next.pendingAiAliases = aliasExtraction.aliases.map((alias) => ({
+              alias,
+              alias_type: "search_term",
+            }));
+            next.sources.aiAliases = aliasExtraction.provenance.provider_status === "ok";
+          }
+        } else {
+          provenance.push(degradedAliasProvenance(`Alias provider HTTP ${resp.status}`));
         }
-      } else {
-        provenance.push(degradedAliasProvenance(`Alias provider HTTP ${resp.status}`));
+      } finally {
+        clearTimeout(timeout);
       }
     }
   } catch (e) {

@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/legacy/lovable";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -45,16 +44,18 @@ const Auth = () => {
 
   const handleOAuth = async (provider: "google" | "apple") => {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.origin,
+    const result = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: window.location.origin },
     });
     if (result.error) {
       toast.error(result.error.message ?? "Sign-in failed");
       setLoading(false);
       return;
     }
-    if (result.redirected) return;
-    navigate("/");
+    if (result.data.url) return;
+    setLoading(false);
+    toast.error("Sign-in could not start. Please try again.");
   };
   const handleGoogle = () => handleOAuth("google");
   const handleApple = () => handleOAuth("apple");

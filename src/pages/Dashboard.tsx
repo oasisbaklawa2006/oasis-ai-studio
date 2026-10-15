@@ -23,7 +23,15 @@ const StatCard = ({
 
 const Dashboard = () => {
   const [stats, setStats] = useState({ products: 0, catalogues: 0, media: 0, pendingLabels: 0 });
-  const [recent, setRecent] = useState<any[]>([]);
+  const [recent, setRecent] = useState<
+    {
+      id: string;
+      title: string;
+      status: string;
+      is_published: boolean;
+      public_slug: string | null;
+    }[]
+  >([]);
 
   useEffect(() => {
     (async () => {

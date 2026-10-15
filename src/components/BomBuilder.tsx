@@ -92,7 +92,19 @@ const emptyDraft = () => ({
   source_department: "",
 });
 
-const Select = ({ value, onChange, options, placeholder, disabled }: any) => (
+const Select = ({
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled,
+}: {
+  value: string | null | undefined;
+  onChange: (value: string | null) => void;
+  options: { v: string; label: string }[];
+  placeholder?: string;
+  disabled?: boolean;
+}) => (
   <select
     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:opacity-50"
     value={value ?? ""}
@@ -100,7 +112,7 @@ const Select = ({ value, onChange, options, placeholder, disabled }: any) => (
     disabled={disabled}
   >
     <option value="">{placeholder ?? "— Select —"}</option>
-    {options.map((o: any) => (
+    {options.map((o) => (
       <option key={o.v} value={o.v}>
         {o.label}
       </option>
@@ -199,7 +211,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     }
     setBomTableUnavailable(null);
 
-    const withBomType = await (supabase as any)
+    const withBomType = await supabase
       .from("product_bom")
       .select(
         "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, bom_type, created_at",
@@ -221,7 +233,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
       return;
     }
 
-    const fallback = await (supabase as any)
+    const fallback = await supabase
       .from("product_bom")
       .select(
         "id, product_id, component_product_id, component_name, quantity_per_unit, source_department, created_at",
@@ -264,7 +276,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
 
     const safeQ = q.replace(/%/g, "").replace(/,/g, " ");
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("products")
       .select("id, name, sku, category")
       .or(`name.ilike.%${safeQ}%,sku.ilike.%${safeQ}%,category.ilike.%${safeQ}%`)
@@ -283,7 +295,7 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     setProductSearchLoading(false);
   };
 
-  const setD = (key: string, value: any) => {
+  const setD = (key: string, value: string | null) => {
     setDraft((d) => ({ ...d, [key]: value }));
   };
 
@@ -874,5 +886,3 @@ export function BomBuilder({ parentId, productClass, bomRequired }: Props) {
     </div>
   );
 }
-
-export default BomBuilder;

@@ -27,10 +27,7 @@ function tokenOverlapScore(query: string, target: string): number {
   return (overlap / qTokens.size) * 0.7;
 }
 
-function considerCandidate(
-  map: Map<string, ResolverCandidate>,
-  candidate: ResolverCandidate,
-) {
+function considerCandidate(map: Map<string, ResolverCandidate>, candidate: ResolverCandidate) {
   const existing = map.get(candidate.product_id);
   if (!existing || candidate.confidence > existing.confidence) {
     map.set(candidate.product_id, candidate);
@@ -109,6 +106,7 @@ export function resolveProductFromCatalog(
     const aliasText = alias.alias_text.trim();
     if (!aliasText) continue;
 
+    if (!alias.product_id) continue;
     const product = productById.get(alias.product_id);
     if (!product) continue;
 
@@ -156,8 +154,7 @@ export function resolveProductFromCatalog(
 
   const top = candidates[0];
   const second = candidates[1];
-  const ambiguous =
-    second != null && top.confidence - second.confidence < config.ambiguity_delta;
+  const ambiguous = second != null && top.confidence - second.confidence < config.ambiguity_delta;
   const belowThreshold = top.confidence < config.min_threshold;
   const clarification_required = ambiguous || belowThreshold;
 

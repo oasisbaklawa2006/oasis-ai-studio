@@ -8,7 +8,7 @@
 
 import type { InferenceServiceId } from "./inferenceProvenance";
 
-export type InferenceBoundaryKind = "llm" | "heuristic" | "deterministic";
+type InferenceBoundaryKind = "llm" | "heuristic" | "deterministic";
 
 export type InferenceBoundaryRecord = {
   id: string;
@@ -238,12 +238,6 @@ export function getPoint26AuditBoundaries(): InferenceBoundaryRecord[] {
 
 export function getLlmBoundaries(): InferenceBoundaryRecord[] {
   return AI_INFERENCE_BOUNDARY_CENSUS.filter((b) => b.kind === "llm");
-}
-
-export function getBoundaryByService(
-  service: InferenceServiceId | "template-generator",
-): InferenceBoundaryRecord | undefined {
-  return AI_INFERENCE_BOUNDARY_CENSUS.find((b) => b.service === service);
 }
 
 export function summarizeCensusForAudit(): {

@@ -9,7 +9,7 @@ export type ReadinessProfileSlot = {
   uploaderTypes: string[];
 };
 
-export type ReadinessProfileConfig = {
+type ReadinessProfileConfig = {
   required: ReadinessProfileSlot[];
   optional: ReadinessProfileSlot[];
 };
@@ -44,7 +44,7 @@ export const MEDIA_UPLOADER_TO_READINESS: Record<string, MediaAssetType> = {
   export_pack_image: "export_pack_image",
 };
 
-export const READINESS_PROFILES: Record<ProductMediaProfile, ReadinessProfileConfig> = {
+const READINESS_PROFILES: Record<ProductMediaProfile, ReadinessProfileConfig> = {
   baklawa_small_sweets: {
     required: [
       {

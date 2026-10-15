@@ -1,11 +1,10 @@
 import { Copy, Plus, Sparkles, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
@@ -27,7 +26,8 @@ import {
   setStoredTermType,
 } from "@/features/productLanguage/termTypeStorage";
 import { supabase } from "@/integrations/supabase/client";
-import { getAliasText, hasAliasActiveFlag } from "@/lib/aliasDisplay";
+import type { Database } from "@/integrations/supabase/types";
+import { getAliasText } from "@/lib/aliasDisplay";
 import { insertProductAlias } from "@/lib/aliasSchemaAdapter";
 import type { Role } from "@/lib/permissions";
 import {
@@ -74,49 +74,53 @@ interface Props {
 
 export function AliasManager({ productId, productName, id: sectionId, onAliasesChange }: Props) {
   const { roles } = useAuth();
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<Database["public"]["Tables"]["product_aliases"]["Row"][]>([]);
   const [activeTermType, setActiveTermType] = useState<ProductLanguageTermType>("official_alias");
   const [draft, setDraft] = useState({ alias: "", language: "" });
   const [writeMode, setWriteMode] = useState<WriteMode>("readonly");
   const [submitting, setSubmitting] = useState(false);
+  const [aliasesLoading, setAliasesLoading] = useState(true);
+  const [aliasesLoadError, setAliasesLoadError] = useState<string | null>(null);
+  const aliasesRequest = useRef(0);
   const [, setTermTypeVersion] = useState(0);
 
   const officialName = productName.trim() || "—";
 
   const load = useCallback(async () => {
-    const trimmedName = productName.trim();
-    const byProductId = supabase
-      .from("product_aliases")
-      .select("*")
-      .eq("product_id", productId)
-      .order("created_at", { ascending: false });
+    const request = ++aliasesRequest.current;
+    setAliasesLoading(true);
+    setAliasesLoadError(null);
+    setItems([]);
+    try {
+      const { data, error } = await supabase
+        .from("product_aliases")
+        .select("*")
+        .eq("product_id", productId)
+        .order("created_at", { ascending: false });
+      if (request !== aliasesRequest.current) return;
+      if (error) throw new Error(error.message);
+      setItems(data ?? []);
+    } catch (error) {
+      if (request !== aliasesRequest.current) return;
+      setItems([]);
+      setAliasesLoadError(error instanceof Error ? error.message : "Could not load aliases.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not load aliases. Reopen this panel to retry.",
+      );
+    } finally {
+      if (request === aliasesRequest.current) setAliasesLoading(false);
+    }
+  }, [productId]);
 
-    const byCanonical =
-      trimmedName.length > 0
-        ? supabase
-            .from("product_aliases")
-            .select("*")
-            .is("product_id", null)
-            .ilike("canonical_name", trimmedName)
-            .order("created_at", { ascending: false })
-        : Promise.resolve({ data: [] as any[] });
-
-    const [linked, legacy] = await Promise.all([byProductId, byCanonical]);
-    const merged = [...(linked.data ?? []), ...(legacy.data ?? [])];
-    const seen = new Set<string>();
-    setItems(
-      merged.filter((row) => {
-        if (seen.has(row.id)) return false;
-        seen.add(row.id);
-        return true;
-      }),
-    );
-    onAliasesChange?.();
-  }, [onAliasesChange, productId, productName]);
-
+  const invalidateAliases = useCallback(() => {
+    ++aliasesRequest.current;
+  }, []);
   useEffect(() => {
     void load();
-  }, [load]);
+    return invalidateAliases;
+  }, [load, invalidateAliases]);
 
   useEffect(() => {
     void (async () => {
@@ -136,7 +140,8 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
     })();
   }, [roles]);
 
-  const canMutate = writeMode === "direct" || writeMode === "draft";
+  const canMutate =
+    !aliasesLoading && !aliasesLoadError && (writeMode === "direct" || writeMode === "draft");
   const itemsWithTermType = items.map((item) => ({
     item,
     termType: resolveTermType(productId, item),
@@ -147,7 +152,11 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
 
   const addDirect = async (rows: AliasRowInput[], termType: ProductLanguageTermType) => {
     if (!rows.length) return false;
-    const canonical = productName.trim() || "Unnamed product";
+    const canonical = productName.trim();
+    if (!canonical) {
+      toast.error("Refresh the canonical product name before saving aliases.");
+      return false;
+    }
     let inserted = 0;
 
     for (const r of rows) {
@@ -178,11 +187,16 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
 
     bumpTermTypes();
     await load();
+    onAliasesChange?.();
     return true;
   };
 
   const submitAliasCreateDraft = async (row: AliasRowInput, termType: ProductLanguageTermType) => {
-    const canonical = productName.trim() || "Unnamed product";
+    const canonical = productName.trim();
+    if (!canonical) {
+      toast.error("Refresh the canonical product name before saving aliases.");
+      return { ok: false, message: "Refresh the canonical product name before saving aliases." };
+    }
     return submitCatalogueDraft({
       draftType: "alias",
       operation: "create",
@@ -200,7 +214,11 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
   };
 
   const buildMutateDraftPayload = (row: AliasRowInput, termType: ProductLanguageTermType) => {
-    const canonical = productName.trim() || "Unnamed product";
+    const canonical = productName.trim();
+    if (!canonical) {
+      toast.error("Refresh the canonical product name before saving aliases.");
+      throw new Error("Refresh the canonical product name before saving aliases.");
+    }
     return {
       ...buildContributorAliasDraftPayload({
         productId,
@@ -238,7 +256,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
       }
 
       const res = await submitAliasCreateDraft(row, activeTermType);
-      if (!res.ok) {
+      if (res.ok !== true) {
         toast.error(res.message);
         return;
       }
@@ -258,7 +276,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
       product_name: productName.trim(),
       source_version: GOVERNED_NAMING_PROMPT_VERSION,
     });
-    if (!governed.ok) {
+    if (governed.ok !== true) {
       toast.error(governed.reason);
       return;
     }
@@ -284,7 +302,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
       let submitted = 0;
       for (const row of rows) {
         const res = await submitAliasCreateDraft(row, termType);
-        if (res.ok) submitted += 1;
+        if (res.ok === true) submitted += 1;
         else toast.error(res.message);
       }
       if (submitted > 0) {
@@ -295,57 +313,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
     }
   };
 
-  const toggle = async (item: any, v: boolean) => {
-    if (submitting || !canMutate) return;
-    const termType = resolveTermType(productId, item);
-
-    setSubmitting(true);
-    try {
-      if (writeMode === "direct") {
-        if (!hasAliasActiveFlag(item)) {
-          toast.info("Active toggle is not supported on this catalogue schema.");
-          return;
-        }
-        const { error } = await supabase
-          .from("product_aliases")
-          .update({ is_active: v })
-          .eq("id", item.id);
-        if (error) {
-          toast.error(error.message);
-          return;
-        }
-        toast.success("Alias updated.");
-        await load();
-        return;
-      }
-
-      const res = await submitCatalogueDraft({
-        draftType: "alias",
-        operation: "update",
-        payload: buildMutateDraftPayload(
-          {
-            alias: getAliasText(item),
-            language: item.language,
-            script: item.script,
-            alias_type: item.alias_type,
-            source: item.source,
-            is_active: v,
-          },
-          termType,
-        ),
-        targetRecordId: item.id,
-      });
-      if (!res.ok) {
-        toast.error(res.message);
-        return;
-      }
-      toast.success("Submitted for approval. Active state will update after review.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const remove = async (item: any) => {
+  const remove = async (item: Database["public"]["Tables"]["product_aliases"]["Row"]) => {
     if (submitting || !canMutate) return;
     const termType = resolveTermType(productId, item);
 
@@ -361,6 +329,7 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
         bumpTermTypes();
         toast.success("Alias removed.");
         await load();
+        onAliasesChange?.();
         return;
       }
 
@@ -370,17 +339,12 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
         payload: buildMutateDraftPayload(
           {
             alias: getAliasText(item),
-            language: item.language,
-            script: item.script,
-            alias_type: item.alias_type,
-            source: item.source,
-            is_active: item.is_active,
           },
           termType,
         ),
         targetRecordId: item.id,
       });
-      if (!res.ok) {
+      if (res.ok !== true) {
         toast.error(res.message);
         return;
       }
@@ -501,14 +465,22 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
               </div>
             )}
 
+            {aliasesLoading && <p role="status">Loading aliases…</p>}
+            {aliasesLoadError && (
+              <div role="alert">
+                <p>Aliases could not be loaded: {aliasesLoadError}</p>
+                <Button type="button" variant="outline" onClick={() => void load()}>
+                  Retry aliases
+                </Button>
+              </div>
+            )}
             <div className="border-t pt-3 space-y-1.5 max-h-80 overflow-auto">
               {tabItems.map(({ item, termType: itemTermType }) => {
                 const aliasText = getAliasText(item);
-                const active = hasAliasActiveFlag(item) ? item.is_active : true;
                 return (
                   <div
                     key={item.id}
-                    className={`flex items-center gap-3 text-sm py-1.5 px-2 rounded ${active ? "" : "opacity-50"}`}
+                    className="flex items-center gap-3 text-sm py-1.5 px-2 rounded"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="truncate font-medium">{aliasText}</div>
@@ -516,7 +488,6 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
                         <Badge variant="outline" className="text-[10px] py-0">
                           {TERM_TYPE_LABELS[itemTermType]}
                         </Badge>
-                        {[item.language, item.source].filter(Boolean).join(" · ")}
                       </div>
                     </div>
                     {writeMode === "direct" && canMutate && (
@@ -537,13 +508,6 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
                     )}
                     {canMutate ? (
                       <>
-                        {hasAliasActiveFlag(item) && (
-                          <Switch
-                            checked={!!item.is_active}
-                            onCheckedChange={(v) => toggle(item, v)}
-                            disabled={submitting}
-                          />
-                        )}
                         <button
                           type="button"
                           onClick={() => remove(item)}

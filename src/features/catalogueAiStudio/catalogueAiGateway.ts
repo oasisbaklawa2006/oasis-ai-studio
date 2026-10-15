@@ -139,6 +139,8 @@ export type CatalogueAiGenerationResult =
   | { ok: true; content: CatalogueDraftContent; provenance: InferenceOperationProvenance }
   | { ok: false; reason: string };
 
+export const CATALOGUE_AI_TIMEOUT_MS = 30_000;
+
 export async function generateCatalogueContentDraft(
   facts: CatalogueAiSourceFacts,
   tone: CatalogueAiTone = DEFAULT_TONE,
@@ -151,7 +153,13 @@ export async function generateCatalogueContentDraft(
   if (!supabaseUrl || !anonKey)
     return { ok: false, reason: "AI generation is not configured in this environment." };
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  let sessionData: { session: { access_token: string } | null };
+  let sessionError: unknown;
+  try {
+    ({ data: sessionData, error: sessionError } = await supabase.auth.getSession());
+  } catch {
+    return { ok: false, reason: "Session unavailable. Sign in again to use AI generation." };
+  }
   const accessToken = sessionData.session?.access_token;
   if (sessionError || !accessToken)
     return {
@@ -160,9 +168,13 @@ export async function generateCatalogueContentDraft(
     };
 
   let resp: Response;
+  let payload: unknown;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), CATALOGUE_AI_TIMEOUT_MS);
   try {
     resp = await fetch(`${supabaseUrl}/functions/v1/catalogue-ai-copy`, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
@@ -179,19 +191,25 @@ export async function generateCatalogueContentDraft(
         tone: mapCatalogueAiTone(tone),
       }),
     });
+    payload = await resp.json().catch(() => null);
   } catch {
     return {
       ok: false,
-      reason: "Could not reach the AI generation service. Check connectivity and retry.",
+      reason: controller.signal.aborted
+        ? "AI generation timed out. Review your draft before trying again."
+        : "Could not reach the AI generation service. Check connectivity and retry.",
     };
+  } finally {
+    clearTimeout(timeout);
   }
+  if (controller.signal.aborted)
+    return { ok: false, reason: "AI generation timed out. Review your draft before trying again." };
   if (!resp.ok)
     return {
       ok: false,
       reason: `AI generation service returned an error (status ${resp.status}).`,
     };
 
-  const payload = await resp.json().catch(() => null);
   const envelopeCheck = validateProviderReviewEnvelope(payload);
   if (envelopeCheck.ok === false) return { ok: false, reason: envelopeCheck.reason };
   if (!isGovernedCatalogueCopyResponse(payload))
@@ -204,7 +222,7 @@ export async function generateCatalogueContentDraft(
     return { ok: false, reason: "Multilingual response used an unexpected source_version." };
   }
 
-  const schemaCheck = validateAiCatalogueContent(payload.content);
+  const schemaCheck = validateAiCatalogueContent((payload as { content: unknown }).content);
   if (schemaCheck.ok === false) return { ok: false, reason: schemaCheck.reason };
   const groundingCheck = validateGovernedCatalogueCopy(schemaCheck.content, {
     product_name: facts.productName,

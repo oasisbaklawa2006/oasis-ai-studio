@@ -11,7 +11,7 @@
     "lint:biome": "biome check .",
     "lint:biome:changed": "node scripts/biome-changed.mjs",
     "lint:biome:write": "biome check --write .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.studio.json",
     "typecheck:build": "tsc -b --force",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
@@ -34,7 +34,6 @@
     "check:boundaries": "bash scripts/check-repo-boundaries.sh"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -75,7 +74,6 @@
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
-    "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
@@ -87,14 +85,12 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tesseract.js": "^5.1.1",
-    "vaul": "^0.9.9",
-    "zod": "^3.25.76"
+    "vaul": "^0.9.9"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
     "@eslint/js": "^9.32.0",
     "@playwright/test": "^1.60.0",
-    "@tailwindcss/typography": "^0.5.16",
     "@types/node": "^22.16.5",
     "@types/react": "^18.3.23",
     "@types/react-dom": "^18.3.7",

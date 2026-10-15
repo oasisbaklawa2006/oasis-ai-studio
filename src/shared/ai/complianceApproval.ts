@@ -20,10 +20,6 @@ export function canApproveComplianceFields(roles: string[]): boolean {
   return roles.some((r) => (COMPLIANCE_APPROVER_ROLES as readonly string[]).includes(r));
 }
 
-export function canGenerateComplianceSuggestions(_roles: string[]): boolean {
-  return true;
-}
-
 export function createManualFieldMeta(): ComplianceFieldMeta {
   return { source: "manual", approved: true };
 }

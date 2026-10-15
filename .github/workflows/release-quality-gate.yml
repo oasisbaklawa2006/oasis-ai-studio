@@ -18,10 +18,13 @@ jobs:
           node-version: "20"
           cache: npm
       - run: npm ci
-      - name: Run legacy TypeScript gate
+      - name: Typecheck Studio application source
         run: npm run typecheck
       - name: Audit real TypeScript project references
         continue-on-error: true
         run: npm run typecheck:build
+      - run: npm run lint
+      - run: npm run lint:biome
+      - run: npm run quality:dead-code
       - run: npm run build
-      - run: npm run test
+      - run: npm run test:coverage

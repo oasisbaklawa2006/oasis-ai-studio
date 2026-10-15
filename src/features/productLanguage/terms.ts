@@ -56,10 +56,6 @@ export function channelScopeForTermType(termType: ProductLanguageTermType): Chan
   }
 }
 
-export function isWhatsAppTermType(termType: ProductLanguageTermType): boolean {
-  return termType === "whatsapp_keyword";
-}
-
 export type ContributorAliasDraftPayload = {
   scope: "product_alias";
   /** Approve-RPC compatibility — mirrors alias_text */

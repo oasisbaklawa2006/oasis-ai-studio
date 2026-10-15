@@ -6,13 +6,13 @@ import {
 } from "./mediaCatalogueApprovalPolicy";
 
 describe("mediaCatalogueApprovalPolicy", () => {
-  it("fail-closes media catalogue approval until Core mapping is finalized", () => {
-    expect(isMediaCatalogueApprovalAvailable()).toBe(false);
+  it("exposes the existing Core media approval capability without a local backend", () => {
+    expect(isMediaCatalogueApprovalAvailable()).toBe(true);
     expect(MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE).toMatch(/not finalized/i);
   });
 
-  it("blocks media Approve UI in review surfaces while policy is fail-closed", () => {
-    expect(isMediaDraftApprovalUiBlocked("media")).toBe(true);
+  it("does not suppress canonical media approval after the Core mapping deployment", () => {
+    expect(isMediaDraftApprovalUiBlocked("media")).toBe(false);
     expect(isMediaDraftApprovalUiBlocked("product")).toBe(false);
     expect(isMediaDraftApprovalUiBlocked("alias")).toBe(false);
   });

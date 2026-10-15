@@ -1,21 +1,32 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { PageHeader } from "@/components/PageHeader";
-import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
+import type { Database } from "@/integrations/supabase/types";
+
+type CorrectionProduct = Database["public"]["Tables"]["products"]["Row"] & {
+  price_b2b?: number | null;
+  price_bulk?: number | null;
+  price_wholesale?: number | null;
+  base_price?: number | null;
+  moq?: number | null;
+  moq_packs?: number | null;
+};
+
 import {
   AlertTriangle,
   CheckCircle2,
+  Eraser,
   FileWarning,
   Image as ImageIcon,
   Pencil,
-  Eraser,
   Tag as TagIcon,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
+import { PageHeader } from "@/components/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
 
 type FilterKey =
   | "all"
@@ -44,9 +55,10 @@ const REVIEW_KEY = "oasis_data_correction_reviewed_v1";
 
 const isPdf = (u?: string | null) => !!u && u.includes("/_pdf_pages/");
 
-const productDisplayName = (p: any) => p?.name || p?.sku || p?.id || "Unnamed product";
+const productDisplayName = (p: CorrectionProduct) =>
+  p?.name || p?.sku || p?.id || "Unnamed product";
 
-const getPrice = (p: any) =>
+const getPrice = (p: CorrectionProduct) =>
   p.price_b2b ||
   p.price_bulk ||
   p.price_wholesale ||
@@ -55,10 +67,10 @@ const getPrice = (p: any) =>
   p.mrp ||
   null;
 
-const getMoq = (p: any) => p.moq || p.moq_packs || p.private_label_moq || null;
+const getMoq = (p: CorrectionProduct) => p.moq || p.moq_packs || p.private_label_moq || null;
 
 const DataCorrection = () => {
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<CorrectionProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [queryError, setQueryError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -76,49 +88,13 @@ const DataCorrection = () => {
     localStorage.setItem(REVIEW_KEY, JSON.stringify(r));
   };
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setQueryError(null);
 
     const { data, error } = await supabase
       .from("products")
-      .select(
-        [
-          "id",
-          "name",
-          "sku",
-          "category",
-          "sub_category",
-          "description",
-          "image_url",
-          "mrp",
-          "base_price",
-          "wholesale_price",
-          "price_bulk",
-          "price_wholesale",
-          "price_horeca",
-          "price_b2b",
-          "price_special",
-          "moq",
-          "moq_packs",
-          "private_label_moq",
-          "department",
-          "production_department",
-          "shelf_life_days",
-          "storage_instructions",
-          "ingredients",
-          "nutritional_info",
-          "nutrition_facts",
-          "allergen_warnings",
-          "visible_in_catalog",
-          "uom",
-          "hsn_code",
-          "gst_rate",
-          "gst_percentage",
-          "aliases",
-          "product_family",
-        ].join(", ")
-      )
+      .select("*")
       .order("name", { ascending: true });
 
     if (error) {
@@ -131,11 +107,11 @@ const DataCorrection = () => {
 
     setRows(data ?? []);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -163,10 +139,7 @@ const DataCorrection = () => {
       const noCat = !p.category;
       const noDept = !p.department && !p.production_department;
       const noLabel =
-        !p.shelf_life_days ||
-        !p.storage_instructions ||
-        !p.ingredients ||
-        !p.allergen_warnings;
+        !p.shelf_life_days || !p.storage_instructions || !p.ingredients || !p.allergen_warnings;
       const needsPhoto = !p.image_url || isPdf(p.image_url);
 
       switch (filter) {
@@ -194,13 +167,10 @@ const DataCorrection = () => {
     });
   }, [rows, filter, search, reviewed]);
 
-  const clearPdfHero = async (p: any) => {
+  const clearPdfHero = async (p: CorrectionProduct) => {
     if (!confirm("Clear the PDF screenshot used as product image?")) return;
 
-    const { error } = await supabase
-      .from("products")
-      .update({ image_url: null })
-      .eq("id", p.id);
+    const { error } = await supabase.from("products").update({ image_url: null }).eq("id", p.id);
 
     if (error) {
       toast.error(error.message);
@@ -215,7 +185,7 @@ const DataCorrection = () => {
     persistReviewed({ ...reviewed, [id]: !reviewed[id] });
   };
 
-  const markCatalogueReady = async (p: any) => {
+  const markCatalogueReady = async (p: CorrectionProduct) => {
     const { error } = await supabase
       .from("products")
       .update({ visible_in_catalog: !p.visible_in_catalog })
@@ -240,7 +210,8 @@ const DataCorrection = () => {
       <div className="mb-4 space-y-1">
         <AuthorityStatusBadges show={{ local_only: true }} />
         <p className="text-xs text-muted-foreground">
-          &quot;Reviewed&quot; checkmarks are stored in this browser only ({REVIEW_KEY}) — not synced to Supabase or Oasis Central.
+          &quot;Reviewed&quot; checkmarks are stored in this browser only ({REVIEW_KEY}) — not
+          synced to Supabase or Oasis Central.
         </p>
       </div>
 
@@ -305,7 +276,7 @@ const DataCorrection = () => {
                       <ImageIcon className="h-6 w-6 text-muted-foreground" />
                     ) : (
                       <img
-                        src={p.image_url}
+                        src={p.image_url ?? undefined}
                         alt={displayName}
                         className="h-full w-full object-cover"
                       />

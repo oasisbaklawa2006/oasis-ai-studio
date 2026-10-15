@@ -46,7 +46,7 @@ export function normalizeSearchQuery(q: string): string {
   return q.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
-export function escapeIlikePattern(q: string): string {
+function escapeIlikePattern(q: string): string {
   return q.replace(/[%_\\]/g, "\\$&");
 }
 
@@ -65,7 +65,7 @@ export function productDisplayNameFromRow(p: ProductRow): string {
   return p.product_name ?? p.name ?? "Unnamed product";
 }
 
-export function productRowToSearchResult(
+function productRowToSearchResult(
   p: ProductRow,
   matched_alias: string | null,
   match_score: number,

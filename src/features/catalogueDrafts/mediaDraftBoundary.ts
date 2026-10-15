@@ -20,8 +20,6 @@ export type MediaOperationIntent =
   | "replace_hero"
   | "url_import";
 
-export const DIRECT_MEDIA_ROLES: Role[] = ["owner", "admin", "product_manager"];
-
 export type MediaDraftPayloadInput = {
   productId: string | null;
   operationIntent: MediaOperationIntent;
@@ -48,7 +46,7 @@ export const buildStagingMediaPath = (folder: string, fileName: string) => {
   return `products/${folder}/submissions/${ts}-${sanitizeMediaFileName(fileName)}`;
 };
 
-export const buildMediaDraftPayload = (input: MediaDraftPayloadInput) => ({
+const buildMediaDraftPayload = (input: MediaDraftPayloadInput) => ({
   scope: "product_media_asset" as const,
   product_id: input.productId,
   operation_intent: input.operationIntent,
@@ -62,7 +60,7 @@ export const buildMediaDraftPayload = (input: MediaDraftPayloadInput) => ({
   requested_hero: input.requestedHero ?? false,
 });
 
-export const mapIntentToDraftOperation = (
+const mapIntentToDraftOperation = (
   intent: MediaOperationIntent,
 ): "create" | "update" | "delete_request" => {
   if (intent === "delete_request") return "delete_request";
