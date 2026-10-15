@@ -6,7 +6,7 @@ import type {
   PrintComposition,
 } from "./types";
 
-export const PRINT_SNAPSHOT_SCHEMA = "print_catalogue_snapshot_v1" as const;
+const PRINT_SNAPSHOT_SCHEMA = "print_catalogue_snapshot_v1" as const;
 
 export type PrintCatalogueSnapshot = {
   schema: typeof PRINT_SNAPSHOT_SCHEMA;
@@ -197,10 +197,6 @@ export function savePrintSnapshot(snapshot: PrintCatalogueSnapshot): void {
   const all = readAllSnapshots();
   all.push(snapshot);
   writeAllSnapshots(all);
-}
-
-export function getPrintSnapshot(snapshotId: string): PrintCatalogueSnapshot | null {
-  return readAllSnapshots().find((s) => s.snapshotId === snapshotId) ?? null;
 }
 
 /** Verify two snapshots with the same inputs produce the same content hash. */

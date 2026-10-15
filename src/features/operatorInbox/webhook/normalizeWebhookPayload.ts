@@ -2,7 +2,7 @@ import type { WebhookPayloadInput } from "./types";
 
 const SUPPORTED_TEXT_TYPES = new Set(["text", "interactive", "button"]);
 
-export type NormalizedWebhookPayload = {
+type NormalizedWebhookPayload = {
   provider: WebhookPayloadInput["provider"];
   provider_message_id: string | null;
   sender_phone: string;
@@ -36,7 +36,8 @@ function extractMetaMessageBody(raw: Record<string, unknown>): {
   const text =
     (message?.text as { body?: string } | undefined)?.body ??
     (message?.button as { text?: string } | undefined)?.text ??
-    (message?.interactive as { button_reply?: { title?: string } } | undefined)?.button_reply?.title ??
+    (message?.interactive as { button_reply?: { title?: string } } | undefined)?.button_reply
+      ?.title ??
     null;
 
   return {

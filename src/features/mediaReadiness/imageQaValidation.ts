@@ -19,9 +19,9 @@ import {
 import type { EnhancementProviderProvenance } from "./exactProductEnhancement";
 import type { MediaAssetType, ProductMediaContext } from "./types";
 
-export type ImageQaMediaOrigin = "capture" | "enhancement";
+type ImageQaMediaOrigin = "capture" | "enhancement";
 
-export type ImageQaCandidateMetadata = {
+type ImageQaCandidateMetadata = {
   mimeType?: string;
   widthPx?: number;
   heightPx?: number;
@@ -42,7 +42,7 @@ export type ImageQaCandidate = {
   metadata: ImageQaCandidateMetadata;
 };
 
-export type QaAutomatedCheckId =
+type QaAutomatedCheckId =
   | "source_binding"
   | "product_identity"
   | "slot_compliance"
@@ -51,7 +51,7 @@ export type QaAutomatedCheckId =
   | "technical_quality"
   | "metadata_integrity";
 
-export type QaAutomatedCheckStatus = "pass" | "fail" | "uncertain" | "skipped";
+type QaAutomatedCheckStatus = "pass" | "fail" | "uncertain" | "skipped";
 
 export type QaAutomatedCheckResult = {
   id: QaAutomatedCheckId;
@@ -62,7 +62,7 @@ export type QaAutomatedCheckResult = {
   mandatory: boolean;
 };
 
-export type ImageQaPolicy = {
+type ImageQaPolicy = {
   autoApproveForbidden: true;
   humanFidelityReviewRequired: true;
   directPublishForbidden: true;
@@ -87,7 +87,11 @@ export type ImageQaValidationContract = {
 };
 
 export type ImageQaValidationResolution =
-  | { ok: true; contract: ImageQaValidationContract; governance: BenchmarkPhotographyGovernanceContract }
+  | {
+      ok: true;
+      contract: ImageQaValidationContract;
+      governance: BenchmarkPhotographyGovernanceContract;
+    }
   | {
       ok: false;
       error:
@@ -118,7 +122,7 @@ export type QaReadinessEvaluation =
 
 export type QaDisposition = "pending_review" | "approved" | "rejected" | "hold";
 
-export type QaReviewerRole = "media_qa_reviewer" | "media_qa_lead" | "catalogue_admin";
+type QaReviewerRole = "media_qa_reviewer" | "media_qa_lead" | "catalogue_admin";
 
 export type QaReviewerAuthorization = {
   reviewerId: string;
@@ -255,7 +259,7 @@ export function resolveImageQaValidation(
   }
 
   const familyResolved = resolveControlledPhotographyFamily(product);
-  if (!familyResolved.ok) {
+  if (familyResolved.ok !== true) {
     return {
       ok: false,
       error: "family_resolution_failed",
@@ -264,7 +268,7 @@ export function resolveImageQaValidation(
   }
 
   const governanceResolved = resolveBenchmarkPhotographyGovernance(product);
-  if (!governanceResolved.ok) {
+  if (governanceResolved.ok !== true) {
     return {
       ok: false,
       error: "family_resolution_failed",
@@ -273,7 +277,7 @@ export function resolveImageQaValidation(
   }
 
   const mappedSlot = mapUploaderTypeToReadinessSlot(candidate.uploaderType);
-  if (!mappedSlot.ok) {
+  if (mappedSlot.ok !== true) {
     return {
       ok: false,
       error: "unknown_uploader_type",
@@ -298,9 +302,10 @@ export function resolveImageQaValidation(
     };
   }
 
-  const slotInFamily = [...familyResolved.contract.requiredSlots, ...familyResolved.contract.optionalSlots].some(
-    (slot) => slot.readinessSlot === candidate.readinessSlot,
-  );
+  const slotInFamily = [
+    ...familyResolved.contract.requiredSlots,
+    ...familyResolved.contract.optionalSlots,
+  ].some((slot) => slot.readinessSlot === candidate.readinessSlot);
   if (!slotInFamily) {
     return {
       ok: false,
@@ -352,8 +357,7 @@ export function runAutomatedQaChecks(
 
   checks.push({
     id: "source_binding",
-    status:
-      candidate.sourceMediaId && candidate.sourceContentHash ? "pass" : "fail",
+    status: candidate.sourceMediaId && candidate.sourceContentHash ? "pass" : "fail",
     score: candidate.sourceMediaId && candidate.sourceContentHash ? 100 : 0,
     evidence: candidate.sourceMediaId
       ? `Source media ${candidate.sourceMediaId} bound with hash ${candidate.sourceContentHash}`
@@ -461,9 +465,7 @@ function evaluatePreservationProvenance(candidate: ImageQaCandidate): {
   }
 
   const attestation = provenance.preservationAttestation;
-  const uncertain =
-    !attestation.packagingTextPreserved ||
-    !attestation.logoArtworkPreserved;
+  const uncertain = !attestation.packagingTextPreserved || !attestation.logoArtworkPreserved;
   if (uncertain) {
     return {
       status: "uncertain",
@@ -672,7 +674,7 @@ export function recordQaDisposition(
   }
 
   if (request.disposition === "approved") {
-    if (!readiness.ok) {
+    if (readiness.ok !== true) {
       const hasPreservationUncertainty = checks.some(
         (check) => check.id === "preservation_provenance" && check.status === "uncertain",
       );
@@ -685,9 +687,7 @@ export function recordQaDisposition(
         };
       }
 
-      const hasFailures = checks.some(
-        (check) => check.mandatory && check.status === "fail",
-      );
+      const hasFailures = checks.some((check) => check.mandatory && check.status === "fail");
       return {
         ok: false,
         error: hasFailures ? "automated_checks_failed" : "automated_checks_incomplete",
@@ -704,7 +704,7 @@ export function recordQaDisposition(
     }
 
     const auth = validateQaReviewerAuthorization(request.reviewer, "approved");
-    if (!auth.ok) {
+    if (auth.ok !== true) {
       return auth;
     }
 
@@ -727,7 +727,7 @@ export function recordQaDisposition(
     }
 
     const auth = validateQaReviewerAuthorization(request.reviewer, request.disposition);
-    if (!auth.ok) {
+    if (auth.ok !== true) {
       return auth;
     }
   }

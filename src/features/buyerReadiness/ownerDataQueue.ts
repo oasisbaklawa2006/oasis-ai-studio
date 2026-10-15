@@ -1,4 +1,4 @@
-export type OwnerDataLane = "private_label" | "packaging";
+type OwnerDataLane = "private_label" | "packaging";
 
 export type OwnerDataQueueItem = {
   productId: string;

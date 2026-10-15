@@ -1,8 +1,8 @@
-import type { PilotSkuCode } from "./skuGuard";
 import type { PilotAliasCollision, PilotAliasTermSuggestion } from "./pilotAliasTypes";
+import type { PilotSkuCode } from "./skuGuard";
 
 /** Bare generics — reject without product-specific anchor tokens. */
-export const BARE_GENERIC_TERMS = new Set([
+const BARE_GENERIC_TERMS = new Set([
   "baklawa",
   "baklava",
   "cashew",
@@ -32,7 +32,7 @@ export const BARE_GENERIC_TERMS = new Set([
 ]);
 
 /** Shared phrases that need SKU context — warn if used alone. */
-export const AMBIGUOUS_SHARED_PHRASES = new Set([
+const AMBIGUOUS_SHARED_PHRASES = new Set([
   "durum roll",
   "turkish roll",
   "coconut roll",
@@ -54,11 +54,13 @@ export function isBareGenericAlias(aliasText: string): boolean {
   return false;
 }
 
-export function hasProductAnchor(aliasText: string, productName: string, sku: string): boolean {
+function hasProductAnchor(aliasText: string, productName: string, sku: string): boolean {
   const n = normalizeAliasText(aliasText);
   if (n.includes(normalizeAliasText(sku))) return true;
 
-  const nameParts = normalizeAliasText(productName).split(" ").filter((t) => t.length > 2);
+  const nameParts = normalizeAliasText(productName)
+    .split(" ")
+    .filter((t) => t.length > 2);
   const matchedParts = nameParts.filter((part) => n.includes(part));
   if (matchedParts.length >= 2) return true;
   if (matchedParts.length === 1 && matchedParts[0].length >= 5) return true;

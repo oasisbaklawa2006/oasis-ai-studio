@@ -44,10 +44,7 @@ import {
 } from "./labelReadiness";
 import { getSaleTypeRequirements, type SaleType } from "./saleType";
 
-/** @deprecated Use POINT_37_REMAINING_CORE_DEPENDENCIES — live trio now bound in recert. */
-export const POINT_37_CORE_DEPENDENCIES = POINT_37_REMAINING_CORE_DEPENDENCIES;
-
-export const PACKAGING_TYPE_SHADOW_FIELDS = [
+const PACKAGING_TYPE_SHADOW_FIELDS = [
   "pack_size",
   "primary_pack_type",
   "pack_label",
@@ -55,16 +52,16 @@ export const PACKAGING_TYPE_SHADOW_FIELDS = [
   "pdf_secondary_packaging",
 ] as const;
 
-export type PackagingTypeAuthorityState =
+type PackagingTypeAuthorityState =
   | "complete"
   | "missing"
   | "invalid"
   | "shadow_only"
   | "not_required";
 
-export type HierarchyLabelLevel = "sellable_pack" | "inner_carton" | "master_carton";
+type HierarchyLabelLevel = "sellable_pack" | "inner_carton" | "master_carton";
 
-export type HierarchyLabelState = "pass" | "warn" | "missing" | "not_applicable";
+type HierarchyLabelState = "pass" | "warn" | "missing" | "not_applicable";
 
 export interface PackagingTypeAuthorityResult {
   state: PackagingTypeAuthorityState;
@@ -280,7 +277,12 @@ function evaluateHierarchyLabelLevel(
     const hasQty =
       positiveNum(form.pcs_per_pack) != null ||
       positiveNum(form.qty_per_pack) != null ||
-      (hasText(form.pack_size as string | null | undefined) && hasNumericInput(form.net_weight_g));
+      (hasText(form.pack_size as string | null | undefined) &&
+        hasNumericInput(
+          typeof form.net_weight_g === "number" || typeof form.net_weight_g === "string"
+            ? form.net_weight_g
+            : null,
+        ));
     const hasType =
       hasText(form.primary_pack_type as string | null | undefined) ||
       hasText(form.packaging_code as string | null | undefined) ||
@@ -510,7 +512,7 @@ export function evaluateBarcodeLinkage(
   }
 
   const normalized = normalizeBarcodeInput(raw);
-  if (!normalized.ok) {
+  if (normalized.ok !== true) {
     publicationBlockers.push(`Barcode/EAN invalid: ${normalized.reason}`);
     return {
       state: "invalid",

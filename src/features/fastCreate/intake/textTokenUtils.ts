@@ -58,14 +58,6 @@ function isAllDigits(value: string): boolean {
   return true;
 }
 
-function stripSpacesAndDashes(value: string): string {
-  let out = "";
-  for (const ch of value) {
-    if (ch !== " " && ch !== "-") out += ch;
-  }
-  return out;
-}
-
 function isCode128Token(value: string): boolean {
   if (value.length < 4 || value.length > 32) return false;
   for (const ch of value) {
@@ -78,12 +70,4 @@ function isCode128Token(value: string): boolean {
   return true;
 }
 
-export {
-  compactWhitespace,
-  isAllDigits,
-  isCode128Token,
-  isDigitToken,
-  splitWords,
-  stripSpacesAndDashes,
-  tokenize,
-};
+export { compactWhitespace, isAllDigits, isCode128Token, isDigitToken, splitWords, tokenize };

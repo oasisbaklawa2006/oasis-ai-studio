@@ -4,7 +4,7 @@ import type {
 } from "@/features/catalogueAiStudio/catalogueDraftTypes";
 
 /** Fast-create and catalogue-studio naming/description fields governed by Point 48. */
-export type GovernedNamingDescriptionField =
+type GovernedNamingDescriptionField =
   | "product_name"
   | "short_name"
   | "short_description"
@@ -13,7 +13,7 @@ export type GovernedNamingDescriptionField =
 
 export type GovernedNamingService = "catalogue-ai-copy" | "heuristic" | "template";
 
-export type GovernedNamingProviderStatus = "ok" | "degraded" | "failed";
+type GovernedNamingProviderStatus = "ok" | "degraded" | "failed";
 
 /** Authoritative product facts that may ground naming/description copy — never invented. */
 export type AuthoritativeProductFacts = {

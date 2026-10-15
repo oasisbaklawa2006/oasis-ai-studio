@@ -1,4 +1,4 @@
-export type WebhookProvider = "meta_whatsapp" | "test";
+type WebhookProvider = "meta_whatsapp" | "test";
 
 export type WebhookPayloadInput = {
   provider: WebhookProvider;

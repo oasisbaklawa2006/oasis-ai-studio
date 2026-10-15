@@ -10,7 +10,7 @@ export function loadPilotAliasReview(): StoredPilotReview {
   }
 }
 
-export function savePilotAliasReview(map: StoredPilotReview) {
+function savePilotAliasReview(map: StoredPilotReview) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
 }
 
@@ -22,8 +22,4 @@ export function setPilotTermReview(
   map[termId] = status;
   savePilotAliasReview(map);
   return map;
-}
-
-export function clearPilotAliasReview() {
-  localStorage.removeItem(STORAGE_KEY);
 }

@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
 import { resolveProductUtterance } from "@/features/productIntelligence/runtime";
-import { createInMemoryIngestStore } from "./ingestInboundMessage";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
+import { SAMPLE_ERP_WHATSAPP_ROWS } from "./bridge/fixtures/sampleErpWhatsAppRows";
 import { mapErpWhatsAppMessage, normalizeErpPhone } from "./bridge/mapErpWhatsAppMessage";
 import { processErpInboundRow } from "./bridge/processErpInboundRow";
-import { SAMPLE_ERP_WHATSAPP_ROWS } from "./bridge/fixtures/sampleErpWhatsAppRows";
+import { createInMemoryIngestStore } from "./ingestInboundMessage";
 
 const catalog = PRODUCTION_SNAPSHOT_CATALOG;
 
@@ -13,7 +13,7 @@ describe("Phase 2G — ERP row mapping", () => {
     const row = SAMPLE_ERP_WHATSAPP_ROWS[0];
     const mapped = mapErpWhatsAppMessage(row);
     expect(mapped.ok).toBe(true);
-    if (mapped.ok && !("skipped" in mapped && mapped.skipped)) {
+    if (mapped.ok === true && "value" in mapped) {
       expect(mapped.value.sender_phone).toBe("+919891162212");
       expect(mapped.value.message_body).toBe("10 kg Midya pista");
       expect(mapped.value.provider_message_id).toContain("wamid.");
@@ -137,7 +137,9 @@ describe("Phase 2G — ERP bridge ingest", () => {
       }),
       rpc: store.deps.rpc,
     });
-    const outbound = fetchSpy.mock.calls.filter(([url]) => String(url).includes("graph.facebook.com"));
+    const outbound = fetchSpy.mock.calls.filter(([url]) =>
+      String(url).includes("graph.facebook.com"),
+    );
     expect(outbound).toHaveLength(0);
     fetchSpy.mockRestore();
   });
@@ -148,8 +150,8 @@ describe("Phase 2G — ERP bridge ingest", () => {
       from(table: string) {
         tables.push(table);
         return {
-          select: () => ({
-            eq: () => ({
+          select: (_columns?: string) => ({
+            eq: (_column?: string, _value?: unknown) => ({
               gt: () => ({
                 order: () => ({
                   order: () => ({

@@ -1,12 +1,12 @@
-import type { ProductMediaContext, ProductMediaProfile } from "./types";
 import {
   MEDIA_UPLOADER_TO_READINESS,
   optionalProfileSlots,
   profileSlots,
-  requiredProfileSlots,
   type ReadinessProfileSlot,
+  requiredProfileSlots,
 } from "@/features/productTruth/readinessProfiles";
 import { detectProductMediaProfile } from "./mediaProfileDetection";
+import type { ProductMediaContext, ProductMediaProfile } from "./types";
 
 export type MediaGovernanceMode = "testing" | "pilot" | "production";
 
@@ -47,10 +47,6 @@ export function getMediaGovernanceMode(): MediaGovernanceMode {
   return "testing";
 }
 
-export function isProductionMediaGovernance(): boolean {
-  return getMediaGovernanceMode() === "production";
-}
-
 export function governedRequiredUploaderTypes(
   mode: MediaGovernanceMode = getMediaGovernanceMode(),
 ): readonly string[] | null {
@@ -58,7 +54,10 @@ export function governedRequiredUploaderTypes(
   return GOVERNANCE_REQUIRED_UPLOADER_TYPES[mode];
 }
 
-function slotForUploader(uploaderType: string, profile: ProductMediaProfile): ReadinessProfileSlot | null {
+function slotForUploader(
+  uploaderType: string,
+  profile: ProductMediaProfile,
+): ReadinessProfileSlot | null {
   const slotType = MEDIA_UPLOADER_TO_READINESS[uploaderType];
   if (!slotType) return null;
 
@@ -123,9 +122,7 @@ export function governedRecommendedProfileSlots(
     return optionalProfileSlots(profile);
   }
 
-  const requiredTypes = new Set(
-    governedRequiredProfileSlots(product, mode).map((s) => s.type),
-  );
+  const requiredTypes = new Set(governedRequiredProfileSlots(product, mode).map((s) => s.type));
 
   const demotedRequired = requiredProfileSlots(profile).filter(
     (slot) => !requiredTypes.has(slot.type),
@@ -148,7 +145,9 @@ export function governedRecommendedProfileSlots(
   );
 }
 
-export function mediaGovernanceModeLabel(mode: MediaGovernanceMode = getMediaGovernanceMode()): string {
+export function mediaGovernanceModeLabel(
+  mode: MediaGovernanceMode = getMediaGovernanceMode(),
+): string {
   switch (mode) {
     case "testing":
       return "Testing (hero only)";

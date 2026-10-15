@@ -27,7 +27,7 @@ export function mockMultilingualProvider(
   requestedLocale: "hi" | "ar" | "tr" = "hi",
 ) {
   const heuristic = buildHeuristicMultilingualSuggestions(source, ["en", requestedLocale]);
-  if (!heuristic.ok) {
+  if (heuristic.ok !== true) {
     return {
       envelope: { ok: false, reason: heuristic.reason },
       parseResult: { ok: false as const, reason: heuristic.reason },
@@ -88,7 +88,7 @@ export function mockMultilingualProvider(
   };
 
   const reviewCheck = validateProviderMultilingualEnvelope(envelope);
-  if (!reviewCheck.ok) {
+  if (reviewCheck.ok !== true) {
     return { envelope, parseResult: { ok: false as const, reason: reviewCheck.reason } };
   }
 
@@ -105,13 +105,4 @@ export function mockMultilingualProvider(
   const text = valueByScenario[scenario];
   const parseResult = validateMultilingualText(text, requestedLocale, source, responseKind);
   return { envelope, parseResult };
-}
-
-export function buildAuthoritativeMultilingualSource(
-  facts: AuthoritativeMultilingualSource,
-): AuthoritativeMultilingualSource {
-  return {
-    ...facts,
-    source_version: facts.source_version,
-  };
 }

@@ -95,5 +95,3 @@ export function normalizeBarcodeInput(raw: string): BarcodeNormalization {
 
   return { ok: false, reason: "Unsupported barcode length." };
 }
-
-export { checksumEan8, checksumEan13, checksumUpcA };

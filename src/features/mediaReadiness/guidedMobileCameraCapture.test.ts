@@ -107,7 +107,7 @@ describe("guidedMobileCameraCapture", () => {
     it("binds hero_image to primary_image for baklawa family", () => {
       const bound = bindCaptureSlot(baklawaProduct, "hero_image");
       expect(bound.ok).toBe(true);
-      if (!bound.ok) return;
+      if (bound.ok !== true) return;
       expect(bound.binding.readinessSlot).toBe("primary_image");
       expect(bound.familyKey).toBe("baklawa_small_sweets");
       expect(bound.binding.requiredForCatalogue).toBe(true);
@@ -116,14 +116,14 @@ describe("guidedMobileCameraCapture", () => {
     it("binds white_background to catalogue_image for baklawa family", () => {
       const bound = bindCaptureSlot(baklawaProduct, "white_background");
       expect(bound.ok).toBe(true);
-      if (!bound.ok) return;
+      if (bound.ok !== true) return;
       expect(bound.binding.readinessSlot).toBe("catalogue_image");
     });
 
     it("binds label_image to export pack label slot when readiness slot is explicit", () => {
       const bound = bindCaptureSlot(exportProduct, "label_image", "label_front_image");
       expect(bound.ok).toBe(true);
-      if (!bound.ok) return;
+      if (bound.ok !== true) return;
       expect(bound.familyKey).toBe("export_pack");
       expect(bound.binding.readinessSlot).toBe("label_front_image");
     });
@@ -131,21 +131,21 @@ describe("guidedMobileCameraCapture", () => {
     it("fail-closed when uploader type is ambiguous across family slots", () => {
       const bound = bindCaptureSlot(exportProduct, "label_image");
       expect(bound.ok).toBe(false);
-      if (bound.ok) return;
+      if (bound.ok === true) return;
       expect(bound.error).toBe("ambiguous_slot");
     });
 
     it("fail-closed on unknown uploader type", () => {
       const bound = bindCaptureSlot(baklawaProduct, "not_a_real_slot");
       expect(bound.ok).toBe(false);
-      if (bound.ok) return;
+      if (bound.ok === true) return;
       expect(bound.error).toBe("unknown_uploader_type");
     });
 
     it("rejects capture target mismatch", () => {
       const mismatch = validateCaptureTargetMatch("hero_image", "white_background");
       expect(mismatch.ok).toBe(false);
-      if (mismatch.ok) return;
+      if (mismatch.ok === true) return;
       expect(mismatch.error).toBe("capture_target_mismatch");
     });
   });
@@ -154,7 +154,7 @@ describe("guidedMobileCameraCapture", () => {
     it("resolves point44_v1 contract with Point 42 family and Point 43 benchmark guidance", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", mobileCameraEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.schema).toBe("point44_v1");
       expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
@@ -186,7 +186,7 @@ describe("guidedMobileCameraCapture", () => {
         mobileCameraEnv,
       );
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("product_identity_unresolved");
     });
 
@@ -194,21 +194,21 @@ describe("guidedMobileCameraCapture", () => {
       const deniedEnv: CaptureEnvironment = { ...mobileCameraEnv, permissionState: "denied" };
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", deniedEnv);
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("camera_permission_denied");
     });
 
     it("allows resolution on desktop without guided camera eligibility", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", desktopEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
       expect(resolved.contract.capability.guidedCameraEligible).toBe(false);
     });
 
     it("marks downstream enhancement/QA/outputs as separate authorities", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", mobileCameraEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
       expect(resolved.contract.downstreamAuthority).toEqual({
         enhancement: "point45",
         qa: "point46",
@@ -221,7 +221,7 @@ describe("guidedMobileCameraCapture", () => {
     it("accepts guided camera handoff with matching slot and image MIME", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", mobileCameraEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const handoff = validateCaptureHandoff(resolved.contract, {
         uploaderType: "hero_image",
@@ -234,7 +234,7 @@ describe("guidedMobileCameraCapture", () => {
     it("rejects silent gallery fallback on mobile without explicit acknowledgement", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", mobileCameraEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const handoff = validateCaptureHandoff(resolved.contract, {
         uploaderType: "hero_image",
@@ -242,14 +242,14 @@ describe("guidedMobileCameraCapture", () => {
         source: "governed_gallery_fallback",
       });
       expect(handoff.ok).toBe(false);
-      if (handoff.ok) return;
+      if (handoff.ok === true) return;
       expect(handoff.error).toBe("silent_fallback_forbidden");
     });
 
     it("allows governed gallery fallback when operator explicitly acknowledges", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", mobileCameraEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const handoff = validateCaptureHandoff(resolved.contract, {
         uploaderType: "hero_image",
@@ -263,7 +263,7 @@ describe("guidedMobileCameraCapture", () => {
     it("allows desktop gallery without acknowledgement when not guided-camera eligible", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", desktopEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const handoff = validateCaptureHandoff(resolved.contract, {
         uploaderType: "hero_image",
@@ -276,7 +276,7 @@ describe("guidedMobileCameraCapture", () => {
     it("rejects non-image MIME types", () => {
       const resolved = resolveGuidedMobileCapture(baklawaProduct, "hero_image", mobileCameraEnv);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const handoff = validateCaptureHandoff(resolved.contract, {
         uploaderType: "hero_image",
@@ -284,7 +284,7 @@ describe("guidedMobileCameraCapture", () => {
         source: "guided_camera",
       });
       expect(handoff.ok).toBe(false);
-      if (handoff.ok) return;
+      if (handoff.ok === true) return;
       expect(handoff.error).toBe("unsupported_media_type");
     });
   });

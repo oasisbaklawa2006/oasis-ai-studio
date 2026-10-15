@@ -12,7 +12,7 @@ export type InboundWhatsAppMessage = {
   resolver_status?: "pending" | "resolved" | "failed";
 };
 
-export type OperatorDecision = "pending" | "confirmed" | "rejected" | "alternative_selected";
+type OperatorDecision = "pending" | "confirmed" | "rejected" | "alternative_selected";
 
 export type OperatorSuggestionState = {
   decision: OperatorDecision;

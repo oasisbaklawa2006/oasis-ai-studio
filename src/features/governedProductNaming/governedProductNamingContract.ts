@@ -13,7 +13,7 @@ import type {
   GovernedNamingService,
 } from "./types";
 
-export const GOVERNED_NAMING_DISCLAIMER =
+const GOVERNED_NAMING_DISCLAIMER =
   "AI naming/description suggestion only. Review and approve before publication — never canonical product truth.";
 
 export const GOVERNED_NAMING_PROMPT_VERSION = "point48-v1";
@@ -128,7 +128,7 @@ export function buildHeuristicNamingSuggestions(
   facts: AuthoritativeProductFacts,
 ): GovernedNamingDescriptionResult {
   const identity = validateProductIdentity(facts);
-  if (!identity.ok) {
+  if (identity.ok !== true) {
     return failClosed("heuristic", identity.reason);
   }
 
@@ -162,7 +162,7 @@ export function buildHeuristicNamingSuggestions(
 
   for (const value of Object.values(suggestions)) {
     const check = validateNamingText(value, facts);
-    if (!check.ok) {
+    if (check.ok !== true) {
       return failClosed("heuristic", check.reason, { provider_status: "failed" });
     }
   }
@@ -200,7 +200,7 @@ export function validateGovernedCatalogueCopy(
   facts: AuthoritativeProductFacts,
 ): GovernedCatalogueCopyValidationResult {
   const identity = validateProductIdentity(facts);
-  if (!identity.ok) {
+  if (identity.ok !== true) {
     return { ok: false, reason: identity.reason };
   }
 
@@ -211,7 +211,7 @@ export function validateGovernedCatalogueCopy(
       return { ok: false, reason: `AI response was missing or had an invalid value for: ${key}.` };
     }
     const check = validateNamingText(value, facts);
-    if (!check.ok) unsafeFields.push(key);
+    if (check.ok !== true) unsafeFields.push(key);
   }
 
   if (unsafeFields.length > 0) {

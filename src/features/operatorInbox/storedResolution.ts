@@ -1,10 +1,10 @@
-import { extractOrderQuantity } from "@/features/productIntelligence/runtime/parseOrderQuantity";
 import type {
   ConfidenceBand,
   ProductUtteranceResolution,
   ResolverAction,
   RuntimeAlternative,
 } from "@/features/productIntelligence/runtime";
+import { extractOrderQuantity } from "@/features/productIntelligence/runtime/parseOrderQuantity";
 
 const BAND_DEFAULT_CONFIDENCE: Record<ConfidenceBand, number> = {
   HIGH: 0.9,
@@ -68,7 +68,8 @@ export function normalizeStoredResolution(
   const raw = value as Record<string, unknown>;
   if (!isConfidenceBand(raw.confidence_band)) return null;
 
-  const query = typeof raw.query === "string" && raw.query.trim() ? raw.query : fallbackQuery.trim();
+  const query =
+    typeof raw.query === "string" && raw.query.trim() ? raw.query : fallbackQuery.trim();
   if (!query) return null;
 
   const alternatives = parseAlternatives(raw.alternatives);
@@ -84,10 +85,7 @@ export function normalizeStoredResolution(
       typeof raw.resolved_product_id === "string" ? raw.resolved_product_id : null,
     resolved_sku,
     resolved_name,
-    confidence:
-      typeof raw.confidence === "number"
-        ? raw.confidence
-        : BAND_DEFAULT_CONFIDENCE[band],
+    confidence: typeof raw.confidence === "number" ? raw.confidence : BAND_DEFAULT_CONFIDENCE[band],
     confidence_band: band,
     action: isResolverAction(raw.action)
       ? raw.action
@@ -134,11 +132,4 @@ export function isCompleteResolution(
     typeof resolution.action === "string" &&
     Array.isArray(resolution.alternatives)
   );
-}
-
-/** Has ingest metadata but not enough to render — eligible for one client re-resolve. */
-export function isPartialStoredResolution(
-  resolution: ProductUtteranceResolution | null | undefined,
-): boolean {
-  return !!resolution && !isRenderableStoredResolution(resolution);
 }

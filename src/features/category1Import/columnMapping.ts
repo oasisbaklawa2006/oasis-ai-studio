@@ -1,7 +1,7 @@
 import type { Category1AuthorityRow, ColumnMappingEntry } from "./types";
 
 /** Authority file header aliases → canonical Category 1 field. */
-export const CATEGORY1_COLUMN_ALIASES: Record<string, keyof Category1AuthorityRow> = {
+const CATEGORY1_COLUMN_ALIASES: Record<string, keyof Category1AuthorityRow> = {
   sku: "sku",
   product_sku: "sku",
   barcode_sku: "sku",
@@ -87,9 +87,7 @@ function parseBool(value: string | undefined, defaultValue: boolean): boolean {
   return BOOL_TRUE.has(value.trim().toLowerCase());
 }
 
-export function buildColumnMappings(
-  raw: Record<string, string>,
-): ColumnMappingEntry[] {
+export function buildColumnMappings(raw: Record<string, string>): ColumnMappingEntry[] {
   return Object.entries(raw).map(([authorityColumn, sampleValue]) => {
     const key = normalizeHeader(authorityColumn);
     const targetField = CATEGORY1_COLUMN_ALIASES[key] ?? "ignored";

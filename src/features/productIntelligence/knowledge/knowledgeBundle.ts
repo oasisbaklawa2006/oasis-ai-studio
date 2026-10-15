@@ -32,9 +32,9 @@ export async function knowledgeContentChecksum(
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export const WHATSAPP_KNOWLEDGE_SCHEMA_VERSION = "wa-knowledge/v1";
+const WHATSAPP_KNOWLEDGE_SCHEMA_VERSION = "wa-knowledge/v1";
 
-export type WhatsAppKnowledgeSku = {
+type WhatsAppKnowledgeSku = {
   sku: string;
   name: string;
   family: string | null;
@@ -45,7 +45,7 @@ export type WhatsAppKnowledgeSku = {
   packaging_code: string | null;
 };
 
-export type WhatsAppKnowledgePackaging = {
+type WhatsAppKnowledgePackaging = {
   unit: string;
   notes: string;
   packaging_code: string;

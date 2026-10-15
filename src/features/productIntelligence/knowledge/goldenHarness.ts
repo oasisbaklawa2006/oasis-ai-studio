@@ -3,14 +3,14 @@ import { PRODUCTION_SNAPSHOT_CATALOG } from "../runtime/fixtures/productionSnaps
 import { resolveProductUtterance } from "../runtime/resolveProductUtterance";
 import type { RuntimeCatalog } from "../runtime/types";
 
-export type KnowledgeGoldenCase = {
+type KnowledgeGoldenCase = {
   utterance: string;
   expectSku?: string | null;
   expectSkuIn?: string[];
   expectClarify?: boolean;
 };
 
-export const KNOWLEDGE_GOLDEN_CASES: KnowledgeGoldenCase[] = [
+const KNOWLEDGE_GOLDEN_CASES: KnowledgeGoldenCase[] = [
   { utterance: "pista bulbul", expectSku: "OAS-AS-BKL-PST-BULK-0017" },
   { utterance: "kaju tart", expectSkuIn: ["OAS-AS-BKL-0020", "OAS-AS-BKL-CSH-BULK-0004"] },
   { utterance: "kunafa cheese", expectSku: "OAS-FR-KNF-KNF-MAAPET-0002" },
@@ -27,7 +27,7 @@ export const KNOWLEDGE_GOLDEN_CASES: KnowledgeGoldenCase[] = [
   { utterance: "OAS-AS-BKL-CSH-BULK-0004", expectSku: "OAS-AS-BKL-CSH-BULK-0004" },
 ];
 
-export const PRODUCTION_SHAPE_GOLDEN_CASES: KnowledgeGoldenCase[] = [
+const PRODUCTION_SHAPE_GOLDEN_CASES: KnowledgeGoldenCase[] = [
   { utterance: "pista bulbul", expectSku: "OAS-AS-BKL-PST-BULK-0017" },
   { utterance: "midya", expectClarify: true, expectSku: null },
   { utterance: "6 pc midya", expectSku: "OAS-AS-BKL-PST-MAAPET-0003" },

@@ -29,7 +29,7 @@ export type EnhancementAllowedOperation =
   | "exposure_normalization";
 
 /** Operations that violate exact-product fidelity — always rejected. */
-export type EnhancementForbiddenOperation =
+type EnhancementForbiddenOperation =
   | "regenerate_packaging"
   | "alter_product_geometry"
   | "alter_piece_count"
@@ -51,7 +51,7 @@ export type SourceMediaBinding = {
   familyKey: ControlledPhotographyFamilyKey;
 };
 
-export type EnhancementPreservationRequirement = {
+type EnhancementPreservationRequirement = {
   id: string;
   domain: "packaging_text" | "product_geometry" | "piece_count" | "logo_artwork" | "product_color";
   rule: string;
@@ -67,7 +67,7 @@ export type EnhancementPolicy = {
   benchmarkConstraints: readonly BenchmarkGovernanceConstraint[];
 };
 
-export type EnhancementOutputPolicy = {
+type EnhancementOutputPolicy = {
   /** Enhanced output is always a review candidate — never auto-approved. */
   reviewCandidateOnly: true;
   /** Customer-visible or approved media cannot be written directly from enhancement. */
@@ -166,7 +166,7 @@ export type EnhancementProvenanceValidation =
     };
 
 /** Review candidate — never approved in Point 45 lane. */
-export type EnhancementReviewCandidate = {
+type EnhancementReviewCandidate = {
   status: "pending_review";
   contract: ExactProductEnhancementContract;
   providerOutput: EnhancementProviderOutput;
@@ -214,16 +214,37 @@ const FORBIDDEN_INSTRUCTION_PATTERNS: ReadonlyArray<{
   pattern: RegExp;
   operation: EnhancementForbiddenOperation;
 }> = [
-  { pattern: /\b(regenerat|recreat|redraw|repaint).{0,20}(packag|label|logo|text|artwork)\b/i, operation: "regenerate_packaging" },
-  { pattern: /\b(change|alter|modify|reshape|morph).{0,20}(shape|geometry|form|count|pieces)\b/i, operation: "alter_product_geometry" },
-  { pattern: /\b(add|remove|extra|fewer).{0,15}(piece|pcs|count|item)\b/i, operation: "alter_piece_count" },
-  { pattern: /\b(change|shift|recolor|alter).{0,15}(color|colour|hue|tone)\b/i, operation: "alter_product_color" },
-  { pattern: /\b(add|remove|replace).{0,15}(text|label|watermark|price|tag)\b/i, operation: "add_remove_text" },
-  { pattern: /\b(hallucinat|invent|imagin|generat).{0,20}(content|product|filling|inside)\b/i, operation: "hallucinate_contents" },
+  {
+    pattern: /\b(regenerat|recreat|redraw|repaint).{0,20}(packag|label|logo|text|artwork)\b/i,
+    operation: "regenerate_packaging",
+  },
+  {
+    pattern: /\b(change|alter|modify|reshape|morph).{0,20}(shape|geometry|form|count|pieces)\b/i,
+    operation: "alter_product_geometry",
+  },
+  {
+    pattern: /\b(add|remove|extra|fewer).{0,15}(piece|pcs|count|item)\b/i,
+    operation: "alter_piece_count",
+  },
+  {
+    pattern: /\b(change|shift|recolor|alter).{0,15}(color|colour|hue|tone)\b/i,
+    operation: "alter_product_color",
+  },
+  {
+    pattern: /\b(add|remove|replace).{0,15}(text|label|watermark|price|tag)\b/i,
+    operation: "add_remove_text",
+  },
+  {
+    pattern: /\b(hallucinat|invent|imagin|generat).{0,20}(content|product|filling|inside)\b/i,
+    operation: "hallucinate_contents",
+  },
   { pattern: /\b(replace|swap|new).{0,15}logo\b/i, operation: "replace_logo" },
   { pattern: /\binpaint\b/i, operation: "inpaint_product" },
   { pattern: /\b(generative\s+fill|content.?aware\s+fill)\b/i, operation: "generative_fill" },
-  { pattern: /\b(new\s+background|replace\s+background|scene\s+swap)\b/i, operation: "background_replacement_with_new_scene" },
+  {
+    pattern: /\b(new\s+background|replace\s+background|scene\s+swap)\b/i,
+    operation: "background_replacement_with_new_scene",
+  },
 ];
 
 const ALLOWED_OPERATIONS: readonly EnhancementAllowedOperation[] = [
@@ -318,7 +339,7 @@ export function bindEnhancementSourceMedia(
   }
 
   const slotBound = bindCaptureSlot(product, source.uploaderType, source.targetReadinessSlot);
-  if (!slotBound.ok) {
+  if (slotBound.ok !== true) {
     const code =
       slotBound.error === "family_resolution_failed"
         ? "family_resolution_failed"
@@ -362,7 +383,11 @@ export function validateEnhancementOperatorInstruction(
 ): EnhancementInstructionValidation {
   const trimmed = instruction.trim();
   if (!trimmed) {
-    return { ok: false, error: "empty_instruction", message: "Enhancement instruction cannot be empty." };
+    return {
+      ok: false,
+      error: "empty_instruction",
+      message: "Enhancement instruction cannot be empty.",
+    };
   }
 
   for (const { pattern, operation } of FORBIDDEN_INSTRUCTION_PATTERNS) {
@@ -377,9 +402,9 @@ export function validateEnhancementOperatorInstruction(
 
   const familyResolved = resolveControlledPhotographyFamily(product);
   const benchmarkCheck = validateBenchmarkOperatorInstruction(trimmed, {
-    familyKey: familyResolved.ok ? familyResolved.contract.familyKey : undefined,
+    familyKey: familyResolved.ok === true ? familyResolved.contract.familyKey : undefined,
   });
-  if (!benchmarkCheck.ok) {
+  if (benchmarkCheck.ok !== true) {
     return {
       ok: false,
       error: "conflicts_with_benchmark",
@@ -401,7 +426,7 @@ export function resolveExactProductEnhancement(
   },
 ): ExactProductEnhancementResolution {
   const bound = bindEnhancementSourceMedia(product, source);
-  if (!bound.ok) {
+  if (bound.ok !== true) {
     const error =
       bound.code === "product_identity_unresolved"
         ? "product_identity_unresolved"
@@ -418,7 +443,7 @@ export function resolveExactProductEnhancement(
   }
 
   const governanceResolved = resolveBenchmarkPhotographyGovernance(product);
-  if (!governanceResolved.ok) {
+  if (governanceResolved.ok !== true) {
     return {
       ok: false,
       error: "family_resolution_failed",
@@ -547,7 +572,7 @@ export function validateEnhancementHandoff(
   handoff?: { attemptedStatus?: string; attemptedPublish?: boolean },
 ): EnhancementHandoffValidation {
   const provenanceCheck = validateEnhancementProviderOutput(contract, output);
-  if (!provenanceCheck.ok) {
+  if (provenanceCheck.ok !== true) {
     return {
       ok: false,
       error: "provenance_invalid",
@@ -567,7 +592,8 @@ export function validateEnhancementHandoff(
     return {
       ok: false,
       error: "direct_publish_forbidden",
-      message: "Enhanced media cannot be published directly — review candidate only until Point 46 QA.",
+      message:
+        "Enhanced media cannot be published directly — review candidate only until Point 46 QA.",
     };
   }
 
@@ -604,7 +630,7 @@ export function executeMockEnhancement(
       productId: contract.sourceBinding.productId,
       category: contract.familyKey,
     });
-    if (!instructionCheck.ok) {
+    if (instructionCheck.ok !== true) {
       return { ok: false, error: instructionCheck.message };
     }
   }

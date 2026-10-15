@@ -16,7 +16,7 @@ import {
 import type { MediaAssetType, ProductMediaContext } from "./types";
 
 /** Oasis-neutral constraint domains — derived from internal benchmark reference, not brand copy. */
-export type BenchmarkConstraintDomain =
+type BenchmarkConstraintDomain =
   | "composition"
   | "lighting"
   | "product_fidelity"
@@ -350,7 +350,7 @@ export function resolveBenchmarkPhotographyGovernance(
   product: ProductMediaContext,
 ): BenchmarkGovernanceResolution {
   const familyResolved = resolveControlledPhotographyFamily(product);
-  if (!familyResolved.ok) {
+  if (familyResolved.ok !== true) {
     return {
       ok: false,
       error: "family_resolution_failed",

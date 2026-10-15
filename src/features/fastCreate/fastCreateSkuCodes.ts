@@ -8,7 +8,7 @@ export type FastCreateSkuCodeSet = {
 };
 
 /** Pilot mapping from Fast Create category preset → SKU taxonomy codes. */
-export const FAST_CREATE_SKU_CODE_MAP: Record<FastCreateCategoryKey, FastCreateSkuCodeSet> = {
+const FAST_CREATE_SKU_CODE_MAP: Record<FastCreateCategoryKey, FastCreateSkuCodeSet> = {
   baklawa: {
     division_code: "AS",
     category_code: "BKL",
@@ -71,6 +71,8 @@ export const FAST_CREATE_SKU_CODE_MAP: Record<FastCreateCategoryKey, FastCreateS
   },
 };
 
-export function resolveFastCreateSkuCodes(categoryKey: FastCreateCategoryKey): FastCreateSkuCodeSet {
+export function resolveFastCreateSkuCodes(
+  categoryKey: FastCreateCategoryKey,
+): FastCreateSkuCodeSet {
   return FAST_CREATE_SKU_CODE_MAP[categoryKey] ?? FAST_CREATE_SKU_CODE_MAP.other;
 }

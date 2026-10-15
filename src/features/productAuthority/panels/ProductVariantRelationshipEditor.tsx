@@ -56,7 +56,7 @@ export function ProductVariantRelationshipEditor({
     setLoading(true);
     setLoadError(null);
     const rel = await loadProductVariantRelationship(id);
-    if (!rel.ok) {
+    if (rel.ok !== true) {
       setLoadError(rel.message);
       setLoading(false);
       return;
@@ -65,7 +65,7 @@ export function ProductVariantRelationshipEditor({
     setVariantKeyDraft(rel.data?.variant_key ?? "");
     if (rel.data) {
       const basis = await loadBasisProductSummary(rel.data.basis_product_id);
-      setBasisSummary(basis.ok ? basis.data : null);
+      setBasisSummary(basis.ok === true ? basis.data : null);
     } else {
       setBasisSummary(null);
     }
@@ -91,7 +91,7 @@ export function ProductVariantRelationshipEditor({
     setSearching(true);
     const res = await searchBasisProductCandidates(search, productId);
     setSearching(false);
-    if (!res.ok) {
+    if (res.ok !== true) {
       toast.error(res.message);
       setSearchResults([]);
       return;
@@ -142,7 +142,7 @@ export function ProductVariantRelationshipEditor({
 
     setInFlight(false);
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       setActionError(result.message);
       toast.error(result.message);
       return;
@@ -172,7 +172,7 @@ export function ProductVariantRelationshipEditor({
     });
     setInFlight(false);
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       setActionError(result.message);
       toast.error(result.message);
       return;
@@ -188,7 +188,7 @@ export function ProductVariantRelationshipEditor({
     const result = await removeProductVariantRelationship(productId);
     setInFlight(false);
 
-    if (!result.ok) {
+    if (result.ok !== true) {
       setActionError(result.message);
       toast.error(result.message);
       return;

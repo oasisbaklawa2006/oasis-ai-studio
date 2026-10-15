@@ -18,14 +18,6 @@ import {
   resolveControlledPhotographyFamily,
 } from "@/features/mediaReadiness/controlledPhotographyFamilies";
 import {
-  type ExactProductEnhancementContract,
-  type ExactProductEnhancementResolution,
-  resolveExactProductEnhancement,
-  validateEnhancementHandoff,
-  validateEnhancementOperatorInstruction,
-  validateEnhancementProviderOutput,
-} from "@/features/mediaReadiness/exactProductEnhancement";
-import {
   type ApprovedQaSourceBinding,
   type DerivativeOutputContract,
   type DerivativeOutputResolution,
@@ -36,27 +28,35 @@ import {
   validateDerivativeTransformOutput,
 } from "@/features/mediaReadiness/derivativeOutputContract";
 import {
-  type ImageQaCandidate,
-  type ImageQaValidationContract,
-  type ImageQaValidationResolution,
-  type QaAuditRecord,
-  evaluateQaReadiness,
-  recordQaDisposition,
-  resolveImageQaValidation,
-  runAutomatedQaChecks,
-} from "@/features/mediaReadiness/imageQaValidation";
+  type ExactProductEnhancementContract,
+  type ExactProductEnhancementResolution,
+  resolveExactProductEnhancement,
+  validateEnhancementHandoff,
+  validateEnhancementOperatorInstruction,
+  validateEnhancementProviderOutput,
+} from "@/features/mediaReadiness/exactProductEnhancement";
 import {
   type GuidedMobileCaptureContract,
   type GuidedMobileCaptureResolution,
   resolveGuidedMobileCapture,
   validateCaptureHandoff,
 } from "@/features/mediaReadiness/guidedMobileCameraCapture";
+import {
+  evaluateQaReadiness,
+  type ImageQaCandidate,
+  type ImageQaValidationContract,
+  type ImageQaValidationResolution,
+  type QaAuditRecord,
+  recordQaDisposition,
+  resolveImageQaValidation,
+  runAutomatedQaChecks,
+} from "@/features/mediaReadiness/imageQaValidation";
 import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { authoritativeMediaAssets } from "@/features/mediaReadiness/mediaAuthorityContract";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
 import type { MediaAssetType, ProductMediaContext } from "@/features/mediaReadiness/types";
 
-export type CatalogueMediaSlotStatus = "satisfied" | "missing" | "not_applicable";
+type CatalogueMediaSlotStatus = "satisfied" | "missing" | "not_applicable";
 
 export interface CatalogueMediaSlot {
   type: string;
@@ -103,7 +103,7 @@ export function cataloguePhotographyFamilyView(
   product: ProductMediaContext,
 ): CataloguePhotographyFamilyView {
   const resolved = resolveControlledPhotographyFamily(product);
-  if (!resolved.ok) {
+  if (resolved.ok !== true) {
     return { family: null, resolutionError: resolved.message };
   }
   return { family: resolved.contract, resolutionError: null };
@@ -143,7 +143,7 @@ export function catalogueBenchmarkGovernanceView(
   product: ProductMediaContext,
 ): CatalogueBenchmarkGovernanceView {
   const resolved = resolveBenchmarkPhotographyGovernance(product);
-  if (!resolved.ok) {
+  if (resolved.ok !== true) {
     return { governance: null, family: null, resolutionError: resolved.message };
   }
   return {
@@ -159,7 +159,7 @@ export function catalogueValidateImagePromptInstruction(
   product: ProductMediaContext,
 ): ReturnType<typeof validateBenchmarkOperatorInstruction> {
   const resolved = resolveBenchmarkPhotographyGovernance(product);
-  const familyKey = resolved.ok ? resolved.contract.familyKey : undefined;
+  const familyKey = resolved.ok === true ? resolved.contract.familyKey : undefined;
   return validateBenchmarkOperatorInstruction(instruction, { familyKey });
 }
 
@@ -189,7 +189,7 @@ export function catalogueGuidedCaptureView(
     undefined,
     targetReadinessSlot,
   );
-  if (!resolved.ok) {
+  if (resolved.ok !== true) {
     return { contract: null, resolutionError: resolved.message };
   }
   return { contract: resolved.contract, resolutionError: null };
@@ -237,7 +237,7 @@ export function catalogueExactProductEnhancementView(
   },
 ): CatalogueExactProductEnhancementView {
   const resolved = resolveExactProductEnhancement(product, source);
-  if (!resolved.ok) {
+  if (resolved.ok !== true) {
     return { contract: null, resolutionError: resolved.message };
   }
   return { contract: resolved.contract, resolutionError: null };
@@ -249,14 +249,6 @@ export function catalogueValidateEnhancementInstruction(
   product: ProductMediaContext,
 ): ReturnType<typeof validateEnhancementOperatorInstruction> {
   return validateEnhancementOperatorInstruction(instruction, product);
-}
-
-/** Validate enhancement provider output provenance — Point 45 fail-closed policy. */
-export function catalogueValidateEnhancementProvenance(
-  contract: ExactProductEnhancementContract,
-  output: Parameters<typeof validateEnhancementProviderOutput>[1],
-): ReturnType<typeof validateEnhancementProviderOutput> {
-  return validateEnhancementProviderOutput(contract, output);
 }
 
 /** Validate enhancement handoff — output remains pending_review for Point 46 QA. */
@@ -287,7 +279,7 @@ export function catalogueImageQaView(
   candidate: Omit<ImageQaCandidate, "familyKey"> & { familyKey?: ImageQaCandidate["familyKey"] },
 ): CatalogueImageQaView {
   const resolved = resolveImageQaValidation(product, candidate);
-  if (!resolved.ok) {
+  if (resolved.ok !== true) {
     return { contract: null, resolutionError: resolved.message };
   }
   return { contract: resolved.contract, resolutionError: null };
@@ -339,7 +331,7 @@ export function catalogueDerivativeOutputView(
   profileId: string,
 ): CatalogueDerivativeOutputView {
   const resolved = resolveDerivativeOutputContract(product, approvedSource, qaAudit, profileId);
-  if (!resolved.ok) {
+  if (resolved.ok !== true) {
     return { contract: null, resolutionError: resolved.message };
   }
   return { contract: resolved.contract, resolutionError: null };

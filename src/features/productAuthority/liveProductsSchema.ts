@@ -16,7 +16,7 @@ import {
  * Point 36: `lead_time_days` live @ Core #209 / release run `34027390507` @ `5066064` — compat until types regen.
  * Point 37 recert: `fssai_licence_number`, `country_of_origin`, `label_manufacturer_details` live @ Core release run `34034910469` @ `9c93fc32`.
  */
-export const LIVE_PRODUCTS_STUDIO_ONLY_COLUMNS: ReadonlySet<string> = new Set([
+const LIVE_PRODUCTS_STUDIO_ONLY_COLUMNS: ReadonlySet<string> = new Set([
   "approximate_piece_weight_g",
   "pieces_per_kg",
   "sku_generated_at",
@@ -66,14 +66,6 @@ export const CENTRAL_COMPAT_PRODUCT_COLUMNS = [
   "allergen_warnings",
   "nutrition_facts",
 ] as const;
-
-export type CentralCompatProductColumn = (typeof CENTRAL_COMPAT_PRODUCT_COLUMNS)[number];
-
-/** UI form keys that map to live DB columns (never sent under UI key names). */
-export const UI_TO_LIVE_PRODUCT_FIELD_MAP = {
-  approximate_piece_weight_g: "grams_per_piece",
-  pieces_per_kg: "pcs_per_kg",
-} as const;
 
 /** True when a column must never be written to live products. */
 export function isLiveProductsBlockedColumn(key: string): boolean {

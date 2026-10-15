@@ -1,5 +1,5 @@
-import { AI_STUDIO_MEDIA_BUCKET, resolveProductHeroUrl } from "@/lib/productImage";
 import { supabase } from "@/integrations/supabase/client";
+import { AI_STUDIO_MEDIA_BUCKET, resolveProductHeroUrl } from "@/lib/productImage";
 
 export type MediaBucketStatus = "unknown" | "available" | "missing" | "error";
 
@@ -24,7 +24,9 @@ export async function probeProductMediaBucket(): Promise<{
   message: string;
 }> {
   try {
-    const { data, error } = await supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).list("", { limit: 1 });
+    const { data, error } = await supabase.storage
+      .from(AI_STUDIO_MEDIA_BUCKET)
+      .list("", { limit: 1 });
     if (error) {
       const msg = error.message ?? String(error);
       if (/bucket not found|not exist|404/i.test(msg)) {
@@ -37,7 +39,9 @@ export async function probeProductMediaBucket(): Promise<{
     }
     return {
       status: "available",
-      message: data ? `Bucket "${AI_STUDIO_MEDIA_BUCKET}" reachable.` : `Bucket "${AI_STUDIO_MEDIA_BUCKET}" reachable (empty).`,
+      message: data
+        ? `Bucket "${AI_STUDIO_MEDIA_BUCKET}" reachable.`
+        : `Bucket "${AI_STUDIO_MEDIA_BUCKET}" reachable (empty).`,
     };
   } catch (e) {
     return {
@@ -47,9 +51,14 @@ export async function probeProductMediaBucket(): Promise<{
   }
 }
 
-export async function evaluatePilotMediaForProduct(
-  product: { id: string; sku?: string | null; hero_image_url?: string | null; image_url?: string | null },
-): Promise<Omit<PilotMediaStatus, "bucket" | "bucketStatus" | "bucketMessage" | "uploadPathPattern">> {
+export async function evaluatePilotMediaForProduct(product: {
+  id: string;
+  sku?: string | null;
+  hero_image_url?: string | null;
+  image_url?: string | null;
+}): Promise<
+  Omit<PilotMediaStatus, "bucket" | "bucketStatus" | "bucketMessage" | "uploadPathPattern">
+> {
   const heroUrl = resolveProductHeroUrl(product);
   const heroPresent = !!heroUrl;
 
@@ -60,13 +69,9 @@ export async function evaluatePilotMediaForProduct(
 
   const types = new Set((media ?? []).map((m) => String(m.type ?? "").toLowerCase()));
   const squarePresent =
-    types.has("square_image") ||
-    types.has("white_background") ||
-    types.has("hero_image");
+    types.has("square_image") || types.has("white_background") || types.has("hero_image");
 
   return { heroPresent, heroUrl, squarePresent };
 }
-
-export const MEDIA_UPLOAD_PATH_DOC = UPLOAD_PATH_PATTERN;
 
 export const MEDIA_BUCKET_OWNER_ACTION = `Create or verify Supabase Storage bucket "${AI_STUDIO_MEDIA_BUCKET}" (public read, team write). See supabase/migrations for product-media policies. Central legacy bucket "product-images" is read-compatible via image_url sync when column exists on shared DB.`;

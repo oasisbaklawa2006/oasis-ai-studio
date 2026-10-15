@@ -1,12 +1,12 @@
-import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
 import type { RuntimeCatalog } from "@/features/productIntelligence/runtime";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
 import { createInMemoryIngestStore, ingestInboundMessage } from "./ingestInboundMessage";
 import { resolveInboundMessage } from "./resolveInboundMessage";
 import type { IngestInboundResult } from "./whatsappInboundTypes";
 
 const TEST_SEED_PREFIX = "phase2c-test-seed-";
 
-export const PHASE2C_TEST_SEED_MESSAGES = [
+const PHASE2C_TEST_SEED_MESSAGES = [
   { key: "pista-bulbul", body: "pista bulbul", sender_name: "Test Aisha" },
   { key: "midya", body: "midya", sender_name: "Test Rahul" },
   { key: "6pc-midya", body: "6 pc midya", sender_name: "Test Rahul" },

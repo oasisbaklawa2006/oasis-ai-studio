@@ -589,7 +589,10 @@ describe("categoryPrefeed", () => {
   });
 
   it("applies prefeed only to empty fields", () => {
-    const out = applyPrefeedSuggestions({ product_name: "X", hsn_code: "9999" }, "baklawa");
+    const out = applyPrefeedSuggestions<Record<string, unknown>>(
+      { product_name: "X", hsn_code: "9999" },
+      "baklawa",
+    );
     expect(out.hsn_code).toBe("9999");
     expect(out.gst_rate).toBe("18");
   });

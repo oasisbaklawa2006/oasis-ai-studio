@@ -55,7 +55,7 @@ export type CaptureSlotBinding = {
   requiredForCatalogue: boolean;
 };
 
-export type GuidedCaptureConstraint = {
+type GuidedCaptureConstraint = {
   domain: string;
   rule: string;
 };
@@ -68,7 +68,7 @@ export type GuidedCaptureGuidance = {
   operatorChecklist: readonly string[];
 };
 
-export type CaptureFallbackPolicy = {
+type CaptureFallbackPolicy = {
   /** Gallery/file picker allowed only when operator explicitly acknowledges fallback. */
   governedGalleryFallback: boolean;
   /** Desktop without camera API may use gallery without guided camera. */
@@ -77,7 +77,7 @@ export type CaptureFallbackPolicy = {
   silentBypassForbidden: true;
 };
 
-export type CaptureHandoffPolicy = {
+type CaptureHandoffPolicy = {
   preserveOriginalPixels: true;
   preserveExifOrientation: true;
   /** Metadata carried forward for Point 46 QA — no mutation in this lane. */
@@ -336,7 +336,7 @@ export function bindCaptureSlot(
   const normalized = uploaderType.trim().toLowerCase();
 
   const familyResolved = resolveControlledPhotographyFamily(product);
-  if (!familyResolved.ok) {
+  if (familyResolved.ok !== true) {
     return {
       ok: false,
       error: "family_resolution_failed",
@@ -352,7 +352,7 @@ export function bindCaptureSlot(
 
   if (!matchingSlots.length) {
     const mapped = mapUploaderTypeToReadinessSlot(uploaderType);
-    if (!mapped.ok) return mapped;
+    if (mapped.ok !== true) return mapped;
     return {
       ok: false,
       error: "unknown_slot",
@@ -453,7 +453,7 @@ export function resolveGuidedMobileCapture(
   }
 
   const bound = bindCaptureSlot(product, uploaderType, targetReadinessSlot);
-  if (!bound.ok) {
+  if (bound.ok !== true) {
     const error =
       bound.error === "family_resolution_failed"
         ? "family_resolution_failed"
@@ -468,7 +468,7 @@ export function resolveGuidedMobileCapture(
   }
 
   const governanceResolved = resolveBenchmarkPhotographyGovernance(product);
-  if (!governanceResolved.ok) {
+  if (governanceResolved.ok !== true) {
     return {
       ok: false,
       error: "family_resolution_failed",
@@ -569,7 +569,7 @@ export function validateCaptureHandoff(
     contract.binding.uploaderType,
     handoff.uploaderType,
   );
-  if (!targetMatch.ok) return targetMatch;
+  if (targetMatch.ok !== true) return targetMatch;
 
   if (!handoff.mimeType.startsWith(IMAGE_MIME_PREFIX)) {
     return {

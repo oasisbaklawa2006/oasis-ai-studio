@@ -70,18 +70,18 @@ describe("controlledPhotographyFamilies", () => {
   it("fail-closed on unknown uploader types", () => {
     const mapped = mapUploaderTypeToReadinessSlot("hero_image");
     expect(mapped.ok).toBe(true);
-    if (mapped.ok) expect(mapped.slot).toBe("primary_image");
+    if (mapped.ok === true) expect(mapped.slot).toBe("primary_image");
 
     const unknown = mapUploaderTypeToReadinessSlot("not_a_real_slot");
     expect(unknown.ok).toBe(false);
-    if (!unknown.ok) expect(unknown.error).toBe("unknown_uploader_type");
+    if (unknown.ok !== true) expect(unknown.error).toBe("unknown_uploader_type");
   });
 
   it("resolves baklawa family with hero + white background + close-up requirements in production", () => {
     withMode("production", () => {
       const resolved = resolveControlledPhotographyFamily(baklawaProduct);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
       const requiredTypes = resolved.contract.requiredSlots.map((s) => s.readinessSlot);
@@ -103,7 +103,7 @@ describe("controlledPhotographyFamilies", () => {
     withMode("production", () => {
       const resolved = resolveControlledPhotographyFamily(giftProduct);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.familyKey).toBe("gift_box");
       const requiredTypes = resolved.contract.requiredSlots.map((s) => s.readinessSlot);
@@ -117,7 +117,7 @@ describe("controlledPhotographyFamilies", () => {
     withMode("production", () => {
       const resolved = resolveControlledPhotographyFamily(exportProduct);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.familyKey).toBe("export_pack");
       const requiredTypes = resolved.contract.requiredSlots.map((s) => s.readinessSlot);
@@ -131,7 +131,7 @@ describe("controlledPhotographyFamilies", () => {
     withMode("production", () => {
       const resolved = resolveControlledPhotographyFamily(hamperProduct);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.familyKey).toBe("hamper");
       const requiredTypes = resolved.contract.requiredSlots.map((s) => s.readinessSlot);

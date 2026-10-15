@@ -10,7 +10,7 @@ export type PublicationSubmissionUiState =
   | "SUBMISSION_BLOCKED"
   | "SUBMISSION_FAILED";
 
-export type HandoffBlockReason =
+type HandoffBlockReason =
   | "CATALOG_NOT_LOADED"
   | "FIXTURE_SOURCE"
   | "NOT_HANDOFF_READY"

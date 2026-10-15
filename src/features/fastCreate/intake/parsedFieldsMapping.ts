@@ -45,7 +45,7 @@ function emptyDraftFieldValues(): DraftFieldValues {
   };
 }
 
-export function draftFieldValuesFromSuggestions(
+function draftFieldValuesFromSuggestions(
   suggestions: ProductIntakeFieldSuggestion[],
 ): DraftFieldValues {
   const values = emptyDraftFieldValues();

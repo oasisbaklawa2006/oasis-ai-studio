@@ -35,7 +35,7 @@ describe("normalizeBarcodeInput", () => {
   it("accepts valid EAN-13", () => {
     const result = normalizeBarcodeInput("5901234123457");
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.format).toBe("ean13");
+    if (result.ok === true) expect(result.format).toBe("ean13");
   });
 
   it("rejects empty input", () => {
@@ -45,7 +45,7 @@ describe("normalizeBarcodeInput", () => {
   it("strips scanner terminators before EAN-13 checksum validation", () => {
     const result = normalizeBarcodeInput("5901234123450\t\n");
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toContain("checksum");
+    if (result.ok !== true) expect(result.reason).toContain("checksum");
   });
 });
 

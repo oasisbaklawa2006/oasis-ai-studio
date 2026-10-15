@@ -59,7 +59,7 @@ describe("buildHeuristicNamingSuggestions", () => {
   it("grounds copy in authoritative facts only", () => {
     const result = buildHeuristicNamingSuggestions(BASE_FACTS);
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (result.ok !== true) return;
     expect(result.suggestion_only).toBe(true);
     expect(result.approved).toBe(false);
     expect(result.human_review_required).toBe(true);
@@ -76,14 +76,14 @@ describe("buildHeuristicNamingSuggestions", () => {
       description: "Hand-layered filo with cashew filling.",
     });
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (result.ok !== true) return;
     expect(result.suggestions.description).toBe("Hand-layered filo with cashew filling.");
   });
 
   it("fails closed without product identity", () => {
     const result = buildHeuristicNamingSuggestions({ product_name: "" });
     expect(result.ok).toBe(false);
-    if (result.ok) return;
+    if (result.ok === true) return;
     expect(result.provenance.fail_closed).toBe(true);
     expect(result.reason).toContain("product_name");
   });
@@ -91,7 +91,7 @@ describe("buildHeuristicNamingSuggestions", () => {
   it("never emits Premium/signature marketing filler", () => {
     const result = buildHeuristicNamingSuggestions(BASE_FACTS);
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (result.ok !== true) return;
     const blob = JSON.stringify(result.suggestions).toLowerCase();
     expect(blob).not.toContain("premium oasis");
     expect(blob).not.toContain("signature");
@@ -116,7 +116,7 @@ describe("validateGovernedCatalogueCopy", () => {
     };
     const result = validateGovernedCatalogueCopy(unsafe, BASE_FACTS);
     expect(result.ok).toBe(false);
-    if (result.ok) return;
+    if (result.ok === true) return;
     expect(result.unsafe_fields).toContain("long_description");
   });
 
@@ -179,7 +179,7 @@ describe("governedNamingSuggestionsToFields", () => {
   it("marks every emitted field as suggestion-only and unapproved", () => {
     const result = buildHeuristicNamingSuggestions(BASE_FACTS);
     expect(result.ok).toBe(true);
-    if (!result.ok) return;
+    if (result.ok !== true) return;
     const fields = governedNamingSuggestionsToFields(result.suggestions);
     expect(fields.length).toBeGreaterThan(0);
     for (const field of fields) {

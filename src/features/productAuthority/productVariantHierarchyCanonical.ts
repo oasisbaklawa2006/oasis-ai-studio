@@ -12,15 +12,15 @@
 /** Explicit variant graph is now real Core authority (product_variants + basis_product_id). */
 export type ProductVariantScope = "product_sku" | "explicit_variant_graph";
 
-export type VariantPersistence = "products_row" | "composition_only" | "product_variants_row";
+type VariantPersistence = "products_row" | "composition_only" | "product_variants_row";
 
-export type VariantHierarchyLevel =
+type VariantHierarchyLevel =
   | "basis_product"
   | "sellable_sku"
   | "variant_option"
   | "composition_child";
 
-export type VariantHierarchyNode = {
+type VariantHierarchyNode = {
   level: VariantHierarchyLevel;
   label: string;
   productId: string | null;
@@ -49,7 +49,7 @@ export type CanonicalProductVariantHierarchy = {
 };
 
 /** Documents the live Core contract this module binds to (Core PR #310). */
-export const POINT_32_CORE_AUTHORITY = {
+const POINT_32_CORE_AUTHORITY = {
   migration: "20260915240000_point32_product_variant_authority.sql",
   variantTable: [
     "product_variants (id, product_id, basis_product_id, variant_key, basis_sku, sku) — live",
@@ -65,17 +65,7 @@ export const POINT_32_CORE_AUTHORITY = {
 } as const;
 
 /** Form/row keys that carry explicit (never inferred) variant parentage. */
-export const VARIANT_PARENTAGE_FIELD_KEYS = ["basis_product_id", "variant_key"] as const;
-
-/** Form/row keys that must never be treated as variant parentage, even now that Core ships it. */
-export const FORBIDDEN_INFERRED_VARIANT_FIELDS = [
-  "product_family",
-  "product_type",
-  "packaging_code",
-  "pack_size",
-  "short_name",
-  "product_name",
-] as const;
+const VARIANT_PARENTAGE_FIELD_KEYS = ["basis_product_id", "variant_key"] as const;
 
 export type ExplicitVariantEdge = {
   productId: string;

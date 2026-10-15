@@ -28,24 +28,10 @@ export {
   CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   CHANNEL_PRICING_FORM_FIELD_KEYS,
   extractChannelPricingFromForm,
-  isChannelPricingFormField,
-  isPriceBasisFormField,
-  isProductsPricingOrBasisField,
 } from "@/features/productAuthority/channelPricingMapper";
-export {
-  CENTRAL_COMPAT_PRODUCT_COLUMNS,
-  isLiveProductsBlockedColumn,
-  LIVE_PRODUCTS_EXCLUDED_COLUMNS,
-  LIVE_PRODUCTS_PRICING_BASIS_FORM_KEYS,
-  LIVE_PRODUCTS_PRICING_EXCLUDED_COLUMNS,
-  LIVE_PRODUCTS_PRICING_FORM_KEYS,
-};
 
-export type ProductsInsert = Database["public"]["Tables"]["products"]["Insert"];
-export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
-
-/** Columns safe to send on insert/update per generated Studio types. */
-export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
+/** Editor compatibility keys, including legacy aliases. Persist only through LIVE_PRODUCTS_WRITE_ALLOWLIST below. */
+const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
   Object.keys({
     allergen_warnings: true,
     approximate_piece_weight_g: true,
@@ -156,16 +142,13 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     thawing_instruction: true,
     unit_conversion_note: true,
     updated_at: true,
-  } satisfies Record<keyof ProductsInsert, true>),
+  } satisfies Record<string, true>),
 );
 
 export const LIVE_PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = new Set([
   ...[...PRODUCTS_INSERT_ALLOWLIST].filter((key) => !isLiveProductsBlockedColumn(key)),
   ...CENTRAL_COMPAT_PRODUCT_COLUMNS,
 ]);
-
-/** @deprecated Use LIVE_PRODUCTS_WRITE_ALLOWLIST — strict live products contract. */
-export const PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = LIVE_PRODUCTS_WRITE_ALLOWLIST;
 
 export type ProductSaveValidation = {
   ok: boolean;
@@ -327,13 +310,13 @@ export function validateProductSavePayload(
 
 export function productSaveValidationMessage(validation: ProductSaveValidation): string {
   if (
-    !validation.ok &&
+    validation.ok !== true &&
     validation.missing.length === 1 &&
     validation.missing[0] === "product_name"
   ) {
     return "Product name is required.";
   }
-  if (!validation.ok) {
+  if (validation.ok !== true) {
     return `Missing required fields: ${validation.missing.join(", ")}`;
   }
   return "";

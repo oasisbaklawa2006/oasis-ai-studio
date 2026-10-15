@@ -25,7 +25,7 @@ import {
   evaluateLiveLegalLabelFields,
 } from "./labelComplianceLiveColumns";
 
-export type LabelReadinessState = "pass" | "warn" | "missing";
+type LabelReadinessState = "pass" | "warn" | "missing";
 
 export interface LabelReadinessCategory {
   key: string;
@@ -35,7 +35,7 @@ export interface LabelReadinessCategory {
   nextAction: string | null;
 }
 
-export type LabelDataGapSeverity = "no_column" | "not_persisted";
+type LabelDataGapSeverity = "no_column" | "not_persisted";
 
 export interface LabelDataGap {
   key: string;
@@ -44,7 +44,7 @@ export interface LabelDataGap {
   note: string;
 }
 
-export type LabelOverallStatus = "Draft" | "Needs review" | "Ready for label designer" | "Approved";
+type LabelOverallStatus = "Draft" | "Needs review" | "Ready for label designer" | "Approved";
 
 export interface LabelReadinessResult {
   categories: LabelReadinessCategory[];
@@ -259,7 +259,7 @@ function buildNutrition(
   p: LabelReadinessProductInput,
   options?: LabelReadinessOptions,
 ): LabelReadinessCategory {
-  const nutrition = normalizeNutritionText(p);
+  const nutrition = normalizeNutritionText({ ...p });
   if (!nutrition) {
     return {
       key: "nutrition",

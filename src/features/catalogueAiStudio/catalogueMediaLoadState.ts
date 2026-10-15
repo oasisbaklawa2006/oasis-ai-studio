@@ -6,7 +6,7 @@
  */
 import type { CatalogueMediaRow } from "./catalogueMediaSummary";
 
-export type MediaLoadStatus = "loading" | "error" | "loaded";
+type MediaLoadStatus = "loading" | "error" | "loaded";
 
 export interface MediaLoadState {
   status: MediaLoadStatus;
@@ -18,7 +18,11 @@ export interface MediaLoadState {
 /** Generic, non-sensitive message shown for any media-fetch failure. */
 export const MEDIA_LOAD_ERROR_MESSAGE = "Could not load media for this product. Please retry.";
 
-export const INITIAL_MEDIA_LOAD_STATE: MediaLoadState = { status: "loading", rows: [], errorMessage: null };
+export const INITIAL_MEDIA_LOAD_STATE: MediaLoadState = {
+  status: "loading",
+  rows: [],
+  errorMessage: null,
+};
 
 export function mediaLoadStarted(): MediaLoadState {
   return { status: "loading", rows: [], errorMessage: null };

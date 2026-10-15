@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ProductMediaContext } from "./types";
 import {
   assessSourceOverwriteRisk,
   buildDerivativeOutputCensus,
@@ -15,11 +14,12 @@ import {
 } from "./derivativeOutputContract";
 import {
   evaluateQaReadiness,
+  type QaAuditRecord,
   recordQaDisposition,
   resolveImageQaValidation,
   runAutomatedQaChecks,
-  type QaAuditRecord,
 } from "./imageQaValidation";
+import type { ProductMediaContext } from "./types";
 
 const POINT46_HEAD = "b1d2f02";
 
@@ -52,10 +52,13 @@ const authorizedReviewer = {
   authorizedAt: new Date(0).toISOString(),
 };
 
-function approvedQaFixture(): { audit: QaAuditRecord; approvedSource: Parameters<typeof resolveDerivativeOutputContract>[1] } {
+function approvedQaFixture(): {
+  audit: QaAuditRecord;
+  approvedSource: Parameters<typeof resolveDerivativeOutputContract>[1];
+} {
   const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
   expect(resolved.ok).toBe(true);
-  if (!resolved.ok) throw new Error("fixture setup failed");
+  if (resolved.ok !== true) throw new Error("fixture setup failed");
 
   const checks = runAutomatedQaChecks(resolved.contract);
   const readiness = evaluateQaReadiness(checks);
@@ -67,7 +70,7 @@ function approvedQaFixture(): { audit: QaAuditRecord; approvedSource: Parameters
     recordedAt: new Date(0).toISOString(),
   });
   expect(disposition.ok).toBe(true);
-  if (!disposition.ok) throw new Error("fixture setup failed");
+  if (disposition.ok !== true) throw new Error("fixture setup failed");
 
   return {
     audit: disposition.audit,
@@ -99,7 +102,9 @@ describe("derivativeOutputContract", () => {
     });
 
     it("resolves slot-applicable profiles from existing readiness slots", () => {
-      expect(resolveProfilesForSlot("catalogue_image", "square_image")).toContain("web_catalogue_webp");
+      expect(resolveProfilesForSlot("catalogue_image", "square_image")).toContain(
+        "web_catalogue_webp",
+      );
       expect(resolveProfilesForSlot("primary_image", "hero_image")).toContain("web_hero_webp");
       expect(resolveProfilesForSlot("primary_image", "hero_image")).toContain("print_ready_jpeg");
       expect(resolveProfilesForSlot("primary_image", "video")).toEqual(["web_motion_webm"]);
@@ -118,9 +123,7 @@ describe("derivativeOutputContract", () => {
         sourceContentHash: "sha256:capturehash001",
         fileExtension: "webp",
       });
-      expect(path).toBe(
-        "products/prod-baklawa-1/derivatives/web_hero_webp/sha256_captureha.webp",
-      );
+      expect(path).toBe("products/prod-baklawa-1/derivatives/web_hero_webp/sha256_captureha.webp");
       expect(path).not.toContain("/raw/");
     });
 
@@ -146,7 +149,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.schema).toBe("point47_v1");
       expect(resolved.contract.profile.id).toBe("web_hero_webp");
@@ -165,7 +168,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("qa_source_unapproved");
     });
 
@@ -178,7 +181,7 @@ describe("derivativeOutputContract", () => {
         "unknown_profile",
       );
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("unknown_output_profile");
     });
 
@@ -191,7 +194,7 @@ describe("derivativeOutputContract", () => {
         "web_catalogue_webp",
       );
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("profile_slot_incompatible");
     });
 
@@ -204,7 +207,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("product_identity_unresolved");
     });
 
@@ -217,7 +220,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("source_hash_missing");
     });
 
@@ -228,7 +231,7 @@ describe("derivativeOutputContract", () => {
         approvedSource,
       );
       expect(validation.ok).toBe(false);
-      if (validation.ok) return;
+      if (validation.ok === true) return;
       expect(validation.error).toBe("qa_audit_mismatch");
     });
   });
@@ -243,7 +246,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const output = executeMockDerivativeTransform(resolved.contract, {
         widthPx: 3000,
@@ -271,7 +274,7 @@ describe("derivativeOutputContract", () => {
           profileId,
         );
         expect(resolved.ok).toBe(true);
-        if (!resolved.ok) continue;
+        if (resolved.ok !== true) continue;
 
         const output = executeMockDerivativeTransform(resolved.contract, {
           widthPx: 3000,
@@ -315,7 +318,7 @@ describe("derivativeOutputContract", () => {
         "web_motion_webm",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const output = executeMockDerivativeTransform(resolved.contract);
       expect("ok" in output).toBe(false);
@@ -332,7 +335,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const output = executeMockDerivativeTransform(resolved.contract);
       expect("ok" in output).toBe(false);
@@ -344,7 +347,7 @@ describe("derivativeOutputContract", () => {
       };
       const check = validateDerivativeTransformOutput(resolved.contract, tampered);
       expect(check.ok).toBe(false);
-      if (check.ok) return;
+      if (check.ok === true) return;
       expect(check.error).toBe("source_hash_mismatch");
     });
   });
@@ -359,7 +362,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const output = executeMockDerivativeTransform(resolved.contract);
       expect("ok" in output).toBe(false);
@@ -380,7 +383,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const output = executeMockDerivativeTransform(resolved.contract);
       expect("ok" in output).toBe(false);
@@ -388,7 +391,7 @@ describe("derivativeOutputContract", () => {
 
       const handoff = validateDerivativePersistenceHandoff(resolved.contract, output, {});
       expect(handoff.ok).toBe(false);
-      if (handoff.ok) return;
+      if (handoff.ok === true) return;
       expect(handoff.error).toBe("persistence_missing");
     });
 
@@ -401,7 +404,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const output = executeMockDerivativeTransform(resolved.contract);
       expect("ok" in output).toBe(false);
@@ -412,7 +415,7 @@ describe("derivativeOutputContract", () => {
         persistenceResult: { ok: true, storagePath: output.storagePath },
       });
       expect(handoff.ok).toBe(false);
-      if (handoff.ok) return;
+      if (handoff.ok === true) return;
       expect(handoff.error).toBe("direct_publish_forbidden");
     });
 
@@ -425,7 +428,7 @@ describe("derivativeOutputContract", () => {
         "web_hero_webp",
       );
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const output = executeMockDerivativeTransform(resolved.contract);
       expect("ok" in output).toBe(false);
@@ -435,7 +438,7 @@ describe("derivativeOutputContract", () => {
         persistenceResult: { ok: true, storagePath: "products/other/path.webp" },
       });
       expect(handoff.ok).toBe(false);
-      if (handoff.ok) return;
+      if (handoff.ok === true) return;
       expect(handoff.error).toBe("persistence_failed");
     });
   });

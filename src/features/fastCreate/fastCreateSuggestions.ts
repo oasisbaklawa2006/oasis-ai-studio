@@ -184,9 +184,3 @@ export async function generateFastCreateSku(
   if (error || !data) return null;
   return { sku: String(data), codes };
 }
-
-/** @deprecated Use generateFastCreateSku(categoryKey) — returns SKU string only. */
-export async function generateFastCreateSkuLegacy(): Promise<string | null> {
-  const result = await generateFastCreateSku("other");
-  return result?.sku ?? null;
-}

@@ -19,7 +19,7 @@ export type DeferredDetailState = "known" | "deferred" | "unknown" | "pending_re
 
 export type WorkflowStage = "draft_creation" | "approval" | "publication";
 
-export type DeferredDetailProvenanceSource =
+type DeferredDetailProvenanceSource =
   | "operator"
   | "ai_suggestion"
   | "category_default"
@@ -283,7 +283,7 @@ export function mergeDeferredDetailOnResubmit(
       return {
         ...field,
         provenance: {
-          source: "correction_resubmit",
+          source: "correction_resubmit" as const,
           recorded_at: now,
           previous_state: prev.state,
           note: correctionNote ?? `Resolved from ${prev.state}`,

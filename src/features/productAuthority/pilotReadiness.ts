@@ -1,3 +1,8 @@
+import { supabase } from "@/integrations/supabase/client";
+import { resolveProductHeroUrl } from "@/lib/productImage";
+import { type PilotInfraReport, probePilotInfra } from "./infraProbe";
+import { evaluatePilotMediaForProduct, type probeProductMediaBucket } from "./mediaReadiness";
+import { PILOT_COLLISION_HINTS } from "./pilotCollisionHints";
 import {
   dbRowToProductForm,
   formToDbProductPayload,
@@ -9,17 +14,12 @@ import {
   isDraftSku,
   isPilotSku,
   isStructuredOasisSku,
-  PILOT_SKUS,
   PILOT_SKU_LABELS,
+  PILOT_SKUS,
   type PilotSkuCode,
 } from "./skuGuard";
-import { resolveProductHeroUrl } from "@/lib/productImage";
-import { supabase } from "@/integrations/supabase/client";
-import { probeProductMediaBucket, evaluatePilotMediaForProduct } from "./mediaReadiness";
-import { probePilotInfra, type PilotInfraReport } from "./infraProbe";
-import { PILOT_COLLISION_HINTS } from "./pilotCollisionHints";
 
-export type PilotCheckStatus = "pass" | "fail" | "partial" | "unknown";
+type PilotCheckStatus = "pass" | "fail" | "partial" | "unknown";
 
 export type PilotSkuReadiness = {
   sku: PilotSkuCode;
@@ -62,25 +62,12 @@ export type PilotReadinessReport = {
   };
 };
 
-const WHATSAPP_ALIAS_TYPES = new Set([
-  "whatsapp_keyword",
-  "whatsapp",
-  "wa_keyword",
-]);
+const WHATSAPP_ALIAS_TYPES = new Set(["whatsapp_keyword", "whatsapp", "wa_keyword"]);
 
-const SEARCH_ALIAS_TYPES = new Set([
-  "search_keyword",
-  "search_term",
-  "search",
-  "discovery",
-]);
+const SEARCH_ALIAS_TYPES = new Set(["search_keyword", "search_term", "search", "discovery"]);
 
 async function fetchPilotProduct(sku: PilotSkuCode) {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("sku", sku)
-    .maybeSingle();
+  const { data, error } = await supabase.from("products").select("*").eq("sku", sku).maybeSingle();
   if (error) throw new Error(error.message);
   return data as Record<string, unknown> | null;
 }
@@ -96,19 +83,20 @@ function evaluateSchemaSave(row: Record<string, unknown> | null): {
   const validation = validateProductSavePayload(payload, "update");
   const notes: string[] = [];
   if (stripped.length) notes.push(`Would strip legacy keys: ${stripped.join(", ")}`);
-  if (!validation.ok) notes.push(`Missing: ${validation.missing.join(", ")}`);
+  if (validation.ok !== true) notes.push(`Missing: ${validation.missing.join(", ")}`);
   if (notes.length === 0) notes.push("Payload maps to Studio columns");
   return {
-    status: validation.ok && stripped.length === 0 ? "pass" : validation.ok ? "partial" : "fail",
+    status:
+      validation.ok && stripped.length === 0 ? "pass" : validation.ok === true ? "partial" : "fail",
     notes,
   };
 }
 
-function countAliasTypes(aliases: Array<{ alias_type?: string | null }>) {
+function countAliasTypes(aliases: Array<{ alias_type?: string | null } | { id: string }>) {
   let whatsapp = 0;
   let search = 0;
   for (const a of aliases) {
-    const t = String(a.alias_type ?? "").toLowerCase();
+    const t = String("alias_type" in a ? (a.alias_type ?? "") : "").toLowerCase();
     if (WHATSAPP_ALIAS_TYPES.has(t)) whatsapp += 1;
     if (SEARCH_ALIAS_TYPES.has(t)) search += 1;
   }
@@ -148,10 +136,13 @@ function evaluateApprovalReady(
   if (infra.mediaBucket.status === "missing") {
     reasons.push("product-media bucket missing — uploads will fail");
   }
-  return { status: reasons.length === 0 ? "pass" : reasons.length <= 2 ? "partial" : "fail", reasons };
+  return {
+    status: reasons.length === 0 ? "pass" : reasons.length <= 2 ? "partial" : "fail",
+    reasons,
+  };
 }
 
-export async function evaluatePilotSku(
+async function evaluatePilotSku(
   sku: PilotSkuCode,
   infra: PilotInfraReport,
 ): Promise<PilotSkuReadiness> {
@@ -166,19 +157,17 @@ export async function evaluatePilotSku(
   }
 
   const skuGuard = assertStructuredSkuForSave(row?.sku as string, { pilotOnly: false });
-  const structuredSku: PilotCheckStatus = skuGuard.ok
-    ? "pass"
-    : isDraftSku(row?.sku as string)
-      ? "fail"
-      : "partial";
-  if (!skuGuard.ok) blockedReasons.push(skuGuard.reason);
+  const structuredSku: PilotCheckStatus =
+    skuGuard.ok === true ? "pass" : isDraftSku(row?.sku as string) ? "fail" : "partial";
+  if (skuGuard.ok !== true) blockedReasons.push(skuGuard.reason);
 
   const schema = evaluateSchemaSave(row);
   if (schema.status === "fail") blockedReasons.push(...schema.notes);
 
   const hsnCode = row?.hsn_code ? String(row.hsn_code) : null;
   const gstRate = row?.gst_rate != null ? String(row.gst_rate) : null;
-  const hsnGst: PilotCheckStatus = hsnCode && gstRate ? "pass" : hsnCode || gstRate ? "partial" : "fail";
+  const hsnGst: PilotCheckStatus =
+    hsnCode && gstRate ? "pass" : hsnCode || gstRate ? "partial" : "fail";
   if (hsnGst !== "pass") blockedReasons.push("HSN and/or GST missing on product row");
 
   const gramsPerPiece =
@@ -197,11 +186,10 @@ export async function evaluatePilotSku(
         : null;
   const gpp = gramsPerPiece ?? 0;
   const ppk = piecesPerKg ?? 0;
-  const packaging: PilotCheckStatus = gpp > 0 && ppk > 0 ? "pass" : gpp > 0 || ppk > 0 ? "partial" : "fail";
+  const packaging: PilotCheckStatus =
+    gpp > 0 && ppk > 0 ? "pass" : gpp > 0 || ppk > 0 ? "partial" : "fail";
   if (packaging !== "pass") {
-    blockedReasons.push(
-      `Packaging: grams_per_piece=${gpp || "null"}, pcs_per_kg=${ppk || "null"}`,
-    );
+    blockedReasons.push(`Packaging: grams_per_piece=${gpp || "null"}, pcs_per_kg=${ppk || "null"}`);
   }
 
   let heroImage: PilotCheckStatus = "fail";
@@ -209,7 +197,8 @@ export async function evaluatePilotSku(
   if (row?.id) {
     const heroUrl = resolveProductHeroUrl(row as { hero_image_url?: string; image_url?: string });
     heroImage = heroUrl ? "pass" : "fail";
-    if (!heroUrl) blockedReasons.push("Hero image missing (hero_image_url and image_url both empty)");
+    if (!heroUrl)
+      blockedReasons.push("Hero image missing (hero_image_url and image_url both empty)");
 
     const media = await evaluatePilotMediaForProduct({
       id: String(row.id),
@@ -218,7 +207,8 @@ export async function evaluatePilotSku(
       image_url: row.image_url as string,
     });
     squareImage = media.squarePresent ? "pass" : "fail";
-    if (!media.squarePresent) blockedReasons.push("Square/white-background product_media row missing");
+    if (!media.squarePresent)
+      blockedReasons.push("Square/white-background product_media row missing");
   } else {
     blockedReasons.push("No product row — cannot check media");
   }
@@ -229,9 +219,8 @@ export async function evaluatePilotSku(
   if (row?.id) {
     const { data: aliases } = await supabase
       .from("product_aliases")
-      .select("id, alias, alias_type, is_active")
-      .eq("product_id", row.id)
-      .eq("is_active", true);
+      .select("id, alias_text, canonical_name, product_id")
+      .eq("product_id", String(row.id));
     aliasCount = aliases?.length ?? 0;
     const typed = countAliasTypes(aliases ?? []);
     whatsappAliasCount = typed.whatsapp;
@@ -350,9 +339,3 @@ export async function evaluateAllPilotSkus(): Promise<PilotReadinessReport> {
     },
   };
 }
-
-export function pilotSkuCodes(): readonly PilotSkuCode[] {
-  return PILOT_SKUS;
-}
-
-export { isPilotSku, isStructuredOasisSku, PILOT_SKU_LABELS };

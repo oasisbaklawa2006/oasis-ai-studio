@@ -16,18 +16,9 @@ import { getSaleTypeRequirements, type SaleType } from "./saleType";
 /** Core #209 @ `5066064` — production-live product dispatch lead time (days). */
 export const POINT_36_LIVE_PRODUCT_LEAD_TIME_COLUMN = "products.lead_time_days";
 
-export type MoqRuleType =
-  | "not_applicable"
-  | "fixed_min"
-  | "carton_based"
-  | "master_carton_based"
-  | "private_label"
-  | "quotation"
-  | (string & {});
+type MoqAuthorityState = "complete" | "deferred" | "missing" | "invalid";
 
-export type MoqAuthorityState = "complete" | "deferred" | "missing" | "invalid";
-
-export type LeadTimeAuthorityState =
+type LeadTimeAuthorityState =
   | "deferred"
   | "product_stored"
   | "bom_component_only"
@@ -362,7 +353,7 @@ export function evaluateLeadTimeAuthority(
     };
   }
 
-  if (rawProduct != null && rawProduct !== "" && productDays == null) {
+  if (rawProduct != null && productDays == null) {
     return {
       persistence: "products_row",
       state: "invalid",
@@ -396,7 +387,7 @@ export function evaluateLeadTimeAuthority(
   };
 }
 
-export function serializePoint36FulfillmentReadiness(
+function serializePoint36FulfillmentReadiness(
   moq: MoqAuthorityResult,
   leadTime: LeadTimeAuthorityResult,
 ): Point36FulfillmentReadinessSnapshot {

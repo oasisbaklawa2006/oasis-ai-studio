@@ -18,9 +18,9 @@ import {
   SUPPORTED_MULTILINGUAL_LOCALES,
 } from "./types";
 
-export const GOVERNED_MULTILINGUAL_DISCLAIMER =
+const GOVERNED_MULTILINGUAL_DISCLAIMER =
   "Multilingual suggestion only. Review and approve before publication — never canonical product truth.";
-export const GOVERNED_MULTILINGUAL_PROMPT_VERSION = "point49-v1";
+const GOVERNED_MULTILINGUAL_PROMPT_VERSION = "point49-v1";
 export const PENDING_HINDI_DESCRIPTION_MARKER =
   "[Hindi translation pending — approved Hindi source copy required. Do not publish English product name as Hindi.]";
 export const PENDING_SELLING_POINT_MARKER =
@@ -106,7 +106,7 @@ function suggestion(
   };
 }
 
-export function isSupportedMultilingualLocale(locale: string): locale is MultilingualLocaleCode {
+function isSupportedMultilingualLocale(locale: string): locale is MultilingualLocaleCode {
   return (SUPPORTED_MULTILINGUAL_LOCALES as readonly string[]).includes(locale);
 }
 

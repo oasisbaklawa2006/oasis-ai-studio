@@ -1,1 +1,0 @@
-export { parseProductText } from "./productTextParser";

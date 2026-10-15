@@ -1,5 +1,5 @@
 /** Same-origin Tesseract runtime paths — never load worker/core/lang from public CDNs. */
-export const TESSERACT_PUBLIC_ROOT = "/tesseract";
+const TESSERACT_PUBLIC_ROOT = "/tesseract";
 
 export const TESSERACT_RUNTIME_PATHS = {
   workerPath: `${TESSERACT_PUBLIC_ROOT}/worker.min.js`,

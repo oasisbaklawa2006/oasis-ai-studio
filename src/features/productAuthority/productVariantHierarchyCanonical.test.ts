@@ -208,7 +208,7 @@ describe("productVariantHierarchyCanonical", () => {
       basis_product_id: "prod-1",
     });
     expect(result.ok).toBe(false);
-    if (!result.ok) {
+    if (result.ok !== true) {
       expect(result.reason).toMatch(/own basis product/);
     }
   });

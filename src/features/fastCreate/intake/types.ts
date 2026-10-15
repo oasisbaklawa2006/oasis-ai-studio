@@ -1,11 +1,11 @@
 import type { FastCreateDraftSnapshot } from "@/features/fastCreate/fastCreateDraft";
 import type { FastCreateCategoryKey } from "@/features/productDefaults/categoryDefaults";
 
-export type ProductIntakeMode = "barcode" | "ocr" | "voice" | "text";
+type ProductIntakeMode = "barcode" | "ocr" | "voice" | "text";
 
 export type ProductIntakeConfidence = "high" | "medium" | "low" | "unresolved";
 
-export type ProductIntakeStatus =
+type ProductIntakeStatus =
   | "ok"
   | "ambiguous"
   | "duplicate_barcode"

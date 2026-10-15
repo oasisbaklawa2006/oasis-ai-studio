@@ -1,10 +1,12 @@
 import {
   CREATION_BASELINE_DEFAULTS,
-  getCategoryDefaults,
   type FastCreateCategoryKey,
+  getCategoryDefaults,
 } from "./categoryDefaults";
 
-export function applyCreationBaselineDefaults<T extends Record<string, unknown>>(form: T): T {
+export function applyCreationBaselineDefaults<T extends Record<string, unknown>>(
+  form: T,
+): T & Record<string, unknown> {
   const next = { ...form };
   for (const [key, value] of Object.entries(CREATION_BASELINE_DEFAULTS)) {
     const current = next[key];

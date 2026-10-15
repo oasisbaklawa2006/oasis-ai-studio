@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ProductMediaContext } from "./types";
 import {
   buildImageQaValidationCensus,
   evaluateQaReadiness,
@@ -8,6 +7,7 @@ import {
   runAutomatedQaChecks,
   validateQaReviewerAuthorization,
 } from "./imageQaValidation";
+import type { ProductMediaContext } from "./types";
 
 const POINT45_HEAD = "986e202";
 
@@ -45,7 +45,7 @@ describe("imageQaValidation", () => {
     it("resolves point46_v1 contract with Point 42/43 upstream chain", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.schema).toBe("point46_v1");
       expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
@@ -56,12 +56,9 @@ describe("imageQaValidation", () => {
     });
 
     it("fail-closed when product identity is unresolved", () => {
-      const resolved = resolveImageQaValidation(
-        { category: "Baklawa" },
-        captureCandidateBase,
-      );
+      const resolved = resolveImageQaValidation({ category: "Baklawa" }, captureCandidateBase);
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("product_identity_unresolved");
     });
 
@@ -71,7 +68,7 @@ describe("imageQaValidation", () => {
         sourceContentHash: "",
       });
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("source_hash_missing");
     });
 
@@ -81,7 +78,7 @@ describe("imageQaValidation", () => {
         sourceMediaId: "",
       });
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("source_media_unbound");
     });
 
@@ -91,7 +88,7 @@ describe("imageQaValidation", () => {
         productId: "other-product",
       });
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("source_product_mismatch");
     });
 
@@ -101,7 +98,7 @@ describe("imageQaValidation", () => {
         uploaderType: "not_a_real_slot",
       });
       expect(resolved.ok).toBe(false);
-      if (resolved.ok) return;
+      if (resolved.ok === true) return;
       expect(resolved.error).toBe("unknown_uploader_type");
     });
   });
@@ -110,7 +107,7 @@ describe("imageQaValidation", () => {
     it("passes all mandatory checks for valid capture candidate", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const mandatory = checks.filter((check) => check.mandatory);
@@ -120,7 +117,7 @@ describe("imageQaValidation", () => {
     it("produces evidence scores without granting approval", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       for (const check of checks) {
@@ -134,7 +131,7 @@ describe("imageQaValidation", () => {
     it("fails source binding check when hash is empty in contract candidate", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const tampered = {
         ...resolved.contract,
@@ -177,7 +174,7 @@ describe("imageQaValidation", () => {
 
       const resolved = resolveImageQaValidation(baklawaProduct, enhancementCandidate);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const preservation = checks.find((check) => check.id === "preservation_provenance");
@@ -185,7 +182,7 @@ describe("imageQaValidation", () => {
 
       const readiness = evaluateQaReadiness(checks);
       expect(readiness.ok).toBe(false);
-      if (readiness.ok) return;
+      if (readiness.ok === true) return;
       expect(readiness.status).toBe("hold");
     });
 
@@ -195,7 +192,7 @@ describe("imageQaValidation", () => {
         metadata: { ...captureCandidateBase.metadata, widthPx: 400, heightPx: 400 },
       });
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const technical = checks.find((check) => check.id === "technical_quality");
@@ -208,7 +205,7 @@ describe("imageQaValidation", () => {
         metadata: { ...captureCandidateBase.metadata, mimeType: "image/tiff" },
       });
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const metadata = checks.find((check) => check.id === "metadata_integrity");
@@ -220,12 +217,12 @@ describe("imageQaValidation", () => {
     it("marks capture candidate ready for human review when all checks pass", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const readiness = evaluateQaReadiness(checks);
       expect(readiness.ok).toBe(true);
-      if (!readiness.ok) return;
+      if (readiness.ok !== true) return;
       expect(readiness.status).toBe("ready_for_human_review");
     });
 
@@ -247,7 +244,7 @@ describe("imageQaValidation", () => {
         },
       ]);
       expect(readiness.ok).toBe(false);
-      if (readiness.ok) return;
+      if (readiness.ok === true) return;
       expect(readiness.status).toBe("rejected");
       expect(readiness.blockingCheckIds).toContain("source_binding");
     });
@@ -276,7 +273,7 @@ describe("imageQaValidation", () => {
     it("records approved disposition with audit when checks pass and reviewer authorized", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const disposition = recordQaDisposition(resolved.contract, checks, {
@@ -287,7 +284,7 @@ describe("imageQaValidation", () => {
       });
 
       expect(disposition.ok).toBe(true);
-      if (!disposition.ok) return;
+      if (disposition.ok !== true) return;
       expect(disposition.audit.schema).toBe("point46_audit_v1");
       expect(disposition.audit.disposition).toBe("approved");
       expect(disposition.audit.reviewer?.reviewerId).toBe("reviewer-qa-1");
@@ -297,7 +294,7 @@ describe("imageQaValidation", () => {
     it("rejects auto-approve without reviewer", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const disposition = recordQaDisposition(resolved.contract, checks, {
@@ -305,7 +302,7 @@ describe("imageQaValidation", () => {
       });
 
       expect(disposition.ok).toBe(false);
-      if (disposition.ok) return;
+      if (disposition.ok === true) return;
       expect(disposition.error).toBe("reviewer_missing");
     });
 
@@ -340,7 +337,7 @@ describe("imageQaValidation", () => {
 
       const resolved = resolveImageQaValidation(baklawaProduct, enhancementCandidate);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const disposition = recordQaDisposition(resolved.contract, checks, {
@@ -349,14 +346,14 @@ describe("imageQaValidation", () => {
       });
 
       expect(disposition.ok).toBe(false);
-      if (disposition.ok) return;
+      if (disposition.ok === true) return;
       expect(disposition.error).toBe("preservation_uncertain");
     });
 
     it("rejects direct publish attempts", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const disposition = recordQaDisposition(resolved.contract, checks, {
@@ -366,14 +363,14 @@ describe("imageQaValidation", () => {
       });
 
       expect(disposition.ok).toBe(false);
-      if (disposition.ok) return;
+      if (disposition.ok === true) return;
       expect(disposition.error).toBe("direct_publish_forbidden");
     });
 
     it("records hold disposition with reviewer authorization", () => {
       const resolved = resolveImageQaValidation(baklawaProduct, captureCandidateBase);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const disposition = recordQaDisposition(resolved.contract, checks, {
@@ -383,7 +380,7 @@ describe("imageQaValidation", () => {
       });
 
       expect(disposition.ok).toBe(true);
-      if (!disposition.ok) return;
+      if (disposition.ok !== true) return;
       expect(disposition.audit.disposition).toBe("hold");
     });
 
@@ -393,7 +390,7 @@ describe("imageQaValidation", () => {
         metadata: { ...captureCandidateBase.metadata, widthPx: 200, heightPx: 200 },
       });
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const checks = runAutomatedQaChecks(resolved.contract);
       const disposition = recordQaDisposition(resolved.contract, checks, {
@@ -403,7 +400,7 @@ describe("imageQaValidation", () => {
       });
 
       expect(disposition.ok).toBe(true);
-      if (!disposition.ok) return;
+      if (disposition.ok !== true) return;
       expect(disposition.audit.disposition).toBe("rejected");
     });
   });

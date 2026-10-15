@@ -7,7 +7,6 @@
 import type { Database } from "@/integrations/supabase/types";
 
 export type CatalogueDraftRow = Database["public"]["Tables"]["catalogue_ai_studio_drafts"]["Row"];
-export type CatalogueDraftInsert = Database["public"]["Tables"]["catalogue_ai_studio_drafts"]["Insert"];
 export type CatalogueDraftAuditRow =
   Database["public"]["Tables"]["catalogue_ai_studio_draft_audit_log"]["Row"];
 

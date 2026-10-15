@@ -90,7 +90,7 @@ export function buildCatalogLexicon(catalog: RuntimeCatalog): CatalogLexiconEntr
 
 export const RUNTIME_CATALOG_ALIAS_BATCH_SIZE = 200;
 
-export type RuntimeCatalogLoadStats = {
+type RuntimeCatalogLoadStats = {
   aliasQueryCount: number;
 };
 
@@ -188,12 +188,4 @@ export async function loadRuntimeCatalogWithStats(
 
 export async function loadRuntimeCatalog(skuFilter?: string[]): Promise<RuntimeCatalog> {
   return (await loadRuntimeCatalogWithStats(skuFilter)).catalog;
-}
-
-/** Build in-memory catalog from fixtures (tests / offline audit). */
-export function buildRuntimeCatalogFromFixtures(
-  products: RuntimeCatalogProduct[],
-  aliases: RuntimeCatalogAlias[],
-): RuntimeCatalog {
-  return { products, aliases };
 }

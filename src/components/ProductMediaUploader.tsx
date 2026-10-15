@@ -311,7 +311,7 @@ export function ProductMediaUploader({
       alt_text: file.name,
       status: directApproved ? "approved" : status,
     });
-    if (!insertRes.ok) {
+    if (insertRes.ok !== true) {
       toast.error(insertRes.message);
       return false;
     }
@@ -380,7 +380,7 @@ export function ProductMediaUploader({
       },
       opts.targetRecordId,
     );
-    if (!res.ok) {
+    if (res.ok !== true) {
       toast.error(res.message);
       const rows = await refreshLocalMediaView();
       if (rows) publishBestEffortMediaAuthority(requestProductId, operationId, rows);
@@ -571,7 +571,7 @@ export function ProductMediaUploader({
           },
           m.id,
         );
-        if (!res.ok) {
+        if (res.ok !== true) {
           toast.error(res.message);
           return;
         }
@@ -584,6 +584,10 @@ export function ProductMediaUploader({
 
     const requestProductId = productId;
     try {
+      if (!m.file_url) {
+        toast.error("Media URL is unavailable. Refresh the gallery.");
+        return;
+      }
       await setAsHeroDirect(m.file_url);
       // Bugbot-caught: same reasoning as uploadToSlot's hero-upload toast above — suppress only once
       // the operator has moved on to a different product since this click started, not merely for
@@ -619,7 +623,7 @@ export function ProductMediaUploader({
           },
           heroRow?.id ?? null,
         );
-        if (!res.ok) {
+        if (res.ok !== true) {
           toast.error(res.message);
           return;
         }
@@ -675,7 +679,7 @@ export function ProductMediaUploader({
           },
           m.id,
         );
-        if (!res.ok) {
+        if (res.ok !== true) {
           toast.error(res.message);
           return;
         }
@@ -690,7 +694,10 @@ export function ProductMediaUploader({
 
     const requestProductId = productId;
     const operationId = beginProductMediaOperation(requestProductId);
-    const { error } = await supabase.from("product_media").delete().eq("id", m.id);
+    const { error } = await supabase
+      .from("product_media")
+      .delete()
+      .eq("id", m.id ?? "");
     if (error) return toast.error(error.message);
     if (m.file_url === currentHero) {
       // Unlike removeAsHero, the row is genuinely gone now — re-deriving hero from what's actually
@@ -764,7 +771,7 @@ export function ProductMediaUploader({
           status: "raw",
           alt_text: "url_import",
         });
-        if (!insertRes.ok) {
+        if (insertRes.ok !== true) {
           toast.error(insertRes.message);
           return;
         }
@@ -776,7 +783,7 @@ export function ProductMediaUploader({
           source: "url_import",
           requestedHero: wantsHero,
         });
-        if (!res.ok) {
+        if (res.ok !== true) {
           toast.error(res.message);
           await refreshLocalMediaView();
           return;
@@ -803,11 +810,11 @@ export function ProductMediaUploader({
       product_id: productId,
       file_url: url,
       type,
-      status: writeMode !== "draft" && isRequiredSlot(type) ? "approved" : "raw",
+      status: isRequiredSlot(type) ? "approved" : "raw",
       alt_text: "url_import",
     });
 
-    if (!insertRes.ok) {
+    if (insertRes.ok !== true) {
       if (import.meta.env.DEV) console.error("[media-url-add]", insertRes.error, url);
       return toast.error(insertRes.message);
     }
@@ -1149,12 +1156,16 @@ export function ProductMediaUploader({
               <div key={m.id} className="relative group rounded-lg overflow-hidden border bg-muted">
                 <div className="aspect-square relative bg-muted">
                   {m.type === "video" ? (
-                    <video src={m.file_url} className="w-full h-full object-cover" controls>
+                    <video
+                      src={m.file_url ?? undefined}
+                      className="w-full h-full object-cover"
+                      controls
+                    >
                       <track kind="captions" />
                     </video>
                   ) : (
                     <img
-                      src={m.file_url}
+                      src={m.file_url ?? undefined}
                       alt={m.alt_text || ""}
                       className={`w-full h-full object-cover ${pdf && !isHero ? "opacity-70" : ""}`}
                       onError={(e) => {

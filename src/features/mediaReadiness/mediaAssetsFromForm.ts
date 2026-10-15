@@ -74,7 +74,7 @@ export function mediaAssetsFromProductMedia(rows: ProductMediaRow[]): MediaAsset
 /**
  * Derives media assets from product form + optional persisted media_assets JSON.
  */
-export function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[] {
+function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[] {
   const assets: MediaAsset[] = [];
   const globalStatus = parseStatus(form.media_status);
 
@@ -112,7 +112,7 @@ export function mediaAssetsFromForm(form: Record<string, unknown>): MediaAsset[]
  * Merges form-derived and DB `product_media` assets.
  * DB rows win when both sources provide the same slot type.
  */
-export function mergeMediaAssets(...groups: MediaAsset[][]): MediaAsset[] {
+function mergeMediaAssets(...groups: MediaAsset[][]): MediaAsset[] {
   const merged: MediaAsset[] = [];
   for (const group of groups) {
     merged.push(...group);

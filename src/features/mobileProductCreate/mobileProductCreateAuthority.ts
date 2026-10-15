@@ -18,9 +18,8 @@ import { COMPLIANCE_SENSITIVE_FIELDS } from "@/shared/ai/complianceConstants";
 export const MOBILE_PRODUCT_CREATE_ROUTE = "/products/new/fast";
 export const HUMAN_APPROVAL_ROUTE = "/approvals";
 export const SUPPORTED_MOBILE_INTAKE_MODES = ["barcode", "ocr", "voice", "text"] as const;
-export type SupportedMobileIntakeMode = (typeof SUPPORTED_MOBILE_INTAKE_MODES)[number];
 
-export type MobileCreateBlockReason =
+type MobileCreateBlockReason =
   | "MISSING_PRODUCT_IDENTITY"
   | "UNAUTHORIZED_ROLE"
   | "MALFORMED_EXTRACTION"
@@ -32,7 +31,7 @@ export type MobileDraftWorkflowState =
   | "READY_FOR_GOVERNED_SUBMIT"
   | "SUBMITTED_AWAITING_HUMAN_APPROVAL";
 
-export type DeferredFieldStatus = "deferred" | "unknown" | "suggestion_only";
+type DeferredFieldStatus = "deferred" | "unknown" | "suggestion_only";
 
 export type DeferredFieldEntry = {
   field: string;
@@ -83,7 +82,7 @@ export function assertProductIdentity(productName: string): MobileCreateAuthorit
   return null;
 }
 
-export function hasMalformedExtraction(suggestions: FastCreateSuggestions | null): boolean {
+function hasMalformedExtraction(suggestions: FastCreateSuggestions | null): boolean {
   if (!suggestions?.extractionProvenance?.length) return false;
   return suggestions.extractionProvenance.some(
     (entry) => entry.fail_closed && entry.provider_status === "failed",

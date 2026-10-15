@@ -40,11 +40,10 @@ export const CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS = [
   "costing_price_basis",
 ] as const;
 
-export type ChannelPricingFormField = (typeof CHANNEL_PRICING_FORM_FIELD_KEYS)[number];
-export type ChannelPricingBasisFormField = (typeof CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS)[number];
+type ChannelPricingFormField = (typeof CHANNEL_PRICING_FORM_FIELD_KEYS)[number];
 
 /** Map legacy/compliance form fields → product_pricing_rules.price_channel. */
-export const FORM_FIELD_TO_PRICE_CHANNEL: Record<ChannelPricingFormField, string> = {
+const FORM_FIELD_TO_PRICE_CHANNEL: Record<ChannelPricingFormField, string> = {
   mrp: "mrp",
   mrp_price: "mrp",
   retail_price: "retail",
@@ -115,14 +114,14 @@ export function resolveChannelUom(
 }
 
 /** True when a form/payload key is a channel price basis field. */
-export function isPriceBasisFormField(key: string): boolean {
+function isPriceBasisFormField(key: string): boolean {
   if (key === "price_basis") return true;
   if (key.endsWith("_price_basis")) return true;
   return (CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS as readonly string[]).includes(key);
 }
 
 /** True when a form/payload key is a channel price value. */
-export function isChannelPricingFormField(key: string): boolean {
+function isChannelPricingFormField(key: string): boolean {
   if (isPriceBasisFormField(key)) return false;
   if ((CHANNEL_PRICING_FORM_FIELD_KEYS as readonly string[]).includes(key)) return true;
   if (key.endsWith("_price")) return true;

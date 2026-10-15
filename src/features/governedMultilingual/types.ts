@@ -19,7 +19,6 @@ export type MultilingualSuggestionKind =
   | "search_keyword";
 
 export type MultilingualAvailability = "available" | "pending" | "unsupported";
-export type MultilingualReviewStatus = "pending_review" | "approved" | "rejected";
 
 export type GovernedMultilingualService =
   | "heuristic"
@@ -27,7 +26,7 @@ export type GovernedMultilingualService =
   | "catalogue-ai-copy"
   | "multilingual-provider";
 
-export type GovernedMultilingualProviderStatus = "ok" | "degraded" | "failed";
+type GovernedMultilingualProviderStatus = "ok" | "degraded" | "failed";
 
 export type AuthoritativeMultilingualSource = AuthoritativeProductFacts & {
   source_version: string;

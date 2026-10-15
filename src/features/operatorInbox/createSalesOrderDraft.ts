@@ -1,9 +1,6 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
-import {
-  canCreateSalesOrderDraft,
-  operatorDecisionForDraft,
-} from "./draftGovernance";
+import { supabase } from "@/integrations/supabase/client";
+import { canCreateSalesOrderDraft, operatorDecisionForDraft } from "./draftGovernance";
 import type { OperatorSuggestionState } from "./types";
 
 export type SalesOrderDraftRow = {
@@ -38,12 +35,15 @@ export type CreateDraftDeps = {
 
 const defaultDeps: CreateDraftDeps = {
   rpc: async (fn, args) => {
-    const { data, error } = await supabase.rpc(fn as "create_whatsapp_sales_order_draft_from_operator", args as never);
+    const { data, error } = await supabase.rpc(
+      fn as "create_whatsapp_sales_order_draft_from_operator",
+      args as never,
+    );
     return { data: data as Record<string, unknown> | null, error };
   },
 };
 
-export function rowFromDraftPayload(data: Record<string, unknown>): SalesOrderDraftRow {
+function rowFromDraftPayload(data: Record<string, unknown>): SalesOrderDraftRow {
   return {
     id: String(data.id),
     source: "whatsapp_inbound",

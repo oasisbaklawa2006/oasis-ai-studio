@@ -1,4 +1,4 @@
-export const MEDIA_ASSET_TYPES = [
+const MEDIA_ASSET_TYPES = [
   "primary_image",
   "secondary_image",
   "catalogue_image",
@@ -22,9 +22,9 @@ export const MEDIA_ASSET_TYPES = [
 
 export type MediaAssetType = (typeof MEDIA_ASSET_TYPES)[number];
 
-export type MediaAssetStatus = "draft" | "pending_approval" | "approved" | "rejected";
+type MediaAssetStatus = "draft" | "pending_approval" | "approved" | "rejected";
 
-export type MediaAssetSource = "manual" | "ai_generated" | "import";
+type MediaAssetSource = "manual" | "ai_generated" | "import";
 
 export type MediaAsset = {
   type: MediaAssetType;

@@ -199,7 +199,7 @@ export function CentralSyncPreviewPanel({
     const gate = evaluateMobileApprovalAction("approve_snapshot_preview", {
       isCatalogueReviewer: isCatalogueReviewerRole,
     });
-    if (!gate.allowed) {
+    if (gate.allowed !== true) {
       toast.error(gate.blockReason ?? "Snapshot approval blocked.");
       return;
     }
@@ -215,7 +215,7 @@ export function CentralSyncPreviewPanel({
           const result = await approveAndPreviewCentralSync(snapshotInputBase);
           startTransition(() => setBundle(result.preview.bundle));
           await refresh();
-          if (validation.allowed) {
+          if (validation.allowed === true) {
             toast.success(result.approveMessage);
           } else {
             toast.warning(result.approveMessage);
@@ -310,7 +310,9 @@ export function CentralSyncPreviewPanel({
         <Button
           size="sm"
           onClick={runApprovePreview}
-          disabled={loading || previewBlocked || !validation.allowed || !isCatalogueReviewerRole}
+          disabled={
+            loading || previewBlocked || validation.allowed !== true || !isCatalogueReviewerRole
+          }
           title={
             !isCatalogueReviewerRole
               ? "Catalogue reviewer role required"
@@ -356,7 +358,7 @@ export function CentralSyncPreviewPanel({
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{v.status}</Badge>
                     {isImmutableVersion(v.status) && (
-                      <Lock className="h-3 w-3 text-muted-foreground" title="Immutable" />
+                      <Lock className="h-3 w-3 text-muted-foreground" aria-label="Immutable" />
                     )}
                   </div>
                 </li>

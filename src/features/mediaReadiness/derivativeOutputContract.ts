@@ -21,7 +21,7 @@ export type DerivativeOutputProfileId =
   | "uhd_archive_jpeg"
   | "web_motion_webm";
 
-export type DerivativeMimeType = "image/webp" | "image/jpeg" | "video/webm";
+type DerivativeMimeType = "image/webp" | "image/jpeg" | "video/webm";
 
 export type DerivativeOutputProfile = {
   id: DerivativeOutputProfileId;
@@ -51,7 +51,7 @@ export type ApprovedQaSourceBinding = {
   qaAuditRef: string;
 };
 
-export type DerivativeOutputPolicy = {
+type DerivativeOutputPolicy = {
   /** Only Point 46 approved disposition may enter derivative generation. */
   approvedSourceOnly: true;
   /** Derivatives must never overwrite raw/source storage paths. */
@@ -97,7 +97,7 @@ export type DerivativeOutputResolution =
       message: string;
     };
 
-export type DerivativeTransformProvenance = {
+type DerivativeTransformProvenance = {
   schema: "point47_provenance_v1";
   profileId: DerivativeOutputProfileId;
   mimeType: DerivativeMimeType;
@@ -119,7 +119,7 @@ export type DerivativeTransformOutput = {
   manifest: DerivativeManifestMetadata;
 };
 
-export type DerivativeManifestMetadata = {
+type DerivativeManifestMetadata = {
   schema: "point47_manifest_v1";
   profileId: DerivativeOutputProfileId;
   productId: string;
@@ -245,13 +245,6 @@ const DERIVATIVE_OUTPUT_PROFILES: Record<DerivativeOutputProfileId, DerivativeOu
   },
 };
 
-const IMAGE_PROFILES: readonly DerivativeOutputProfileId[] = [
-  "web_catalogue_webp",
-  "web_hero_webp",
-  "print_ready_jpeg",
-  "uhd_archive_jpeg",
-];
-
 const VIDEO_UPLOADER_TYPES = new Set(["video"]);
 
 const SLOT_PROFILE_APPLICABILITY: Partial<
@@ -284,9 +277,7 @@ export function listDerivativeOutputProfiles(): readonly DerivativeOutputProfile
   return Object.values(DERIVATIVE_OUTPUT_PROFILES);
 }
 
-export function getDerivativeOutputProfile(
-  profileId: string,
-): DerivativeOutputProfile | undefined {
+export function getDerivativeOutputProfile(profileId: string): DerivativeOutputProfile | undefined {
   return DERIVATIVE_OUTPUT_PROFILES[profileId as DerivativeOutputProfileId];
 }
 
@@ -350,7 +341,13 @@ function buildQaAuditRef(audit: QaAuditRecord): string {
 export function validateApprovedQaSource(
   audit: QaAuditRecord,
   source: Omit<ApprovedQaSourceBinding, "qaAuditRef">,
-): { ok: true; qaAuditRef: string } | { ok: false; error: DerivativeOutputResolution["error"]; message: string } {
+):
+  | { ok: true; qaAuditRef: string }
+  | {
+      ok: false;
+      error: Extract<DerivativeOutputResolution, { ok: false }>["error"];
+      message: string;
+    } {
   if (audit.disposition !== "approved") {
     return {
       ok: false,
@@ -436,7 +433,7 @@ export function resolveDerivativeOutputContract(
   }
 
   const qaValidation = validateApprovedQaSource(qaAudit, approvedSource);
-  if (!qaValidation.ok) {
+  if (qaValidation.ok !== true) {
     return qaValidation;
   }
 
@@ -450,7 +447,7 @@ export function resolveDerivativeOutputContract(
   }
 
   const familyResolved = resolveControlledPhotographyFamily(product);
-  if (!familyResolved.ok) {
+  if (familyResolved.ok !== true) {
     return {
       ok: false,
       error: "family_resolution_failed",
@@ -468,9 +465,9 @@ export function resolveDerivativeOutputContract(
 
   const normalizedUploader = approvedSource.uploaderType.trim().toLowerCase();
   const mappedSlot = VIDEO_UPLOADER_TYPES.has(normalizedUploader)
-    ? ({ ok: true as const, slot: approvedSource.readinessSlot })
+    ? { ok: true as const, slot: approvedSource.readinessSlot }
     : mapUploaderTypeToReadinessSlot(approvedSource.uploaderType);
-  if (!mappedSlot.ok) {
+  if (mappedSlot.ok !== true) {
     return {
       ok: false,
       error: "unknown_uploader_type",
@@ -550,7 +547,10 @@ function mockDimensionsForProfile(
   profile: DerivativeOutputProfile,
   source?: { widthPx?: number; heightPx?: number },
 ): { widthPx: number; heightPx: number } {
-  const sourceLong = Math.max(source?.widthPx ?? profile.maxLongEdgePx, source?.heightPx ?? profile.maxLongEdgePx);
+  const sourceLong = Math.max(
+    source?.widthPx ?? profile.maxLongEdgePx,
+    source?.heightPx ?? profile.maxLongEdgePx,
+  );
   const longEdge = Math.min(sourceLong, profile.maxLongEdgePx);
   if (profile.aspectRatioHint === "1:1") {
     return { widthPx: longEdge, heightPx: longEdge };
@@ -581,12 +581,15 @@ export function executeMockDerivativeTransform(
   });
 
   const overwriteRisk = assessSourceOverwriteRisk(storagePath, sourceMetadata?.sourceStoragePath);
-  if (!overwriteRisk.ok) {
+  if (overwriteRisk.ok !== true) {
     return { ok: false, error: overwriteRisk.message };
   }
 
   const dimensions = mockDimensionsForProfile(profile, sourceMetadata);
-  if (profile.minLongEdgePx && Math.max(dimensions.widthPx, dimensions.heightPx) < profile.minLongEdgePx) {
+  if (
+    profile.minLongEdgePx &&
+    Math.max(dimensions.widthPx, dimensions.heightPx) < profile.minLongEdgePx
+  ) {
     return {
       ok: false,
       error: `Mock source dimensions below print profile minimum long edge (${profile.minLongEdgePx}px).`,
@@ -730,7 +733,7 @@ export function validateDerivativePersistenceHandoff(
   handoff: DerivativePersistenceHandoff,
 ): DerivativeHandoffValidation {
   const provenanceCheck = validateDerivativeTransformOutput(contract, output);
-  if (!provenanceCheck.ok) {
+  if (provenanceCheck.ok !== true) {
     return {
       ok: false,
       error: "provenance_invalid",
@@ -738,11 +741,8 @@ export function validateDerivativePersistenceHandoff(
     };
   }
 
-  const overwriteRisk = assessSourceOverwriteRisk(
-    output.storagePath,
-    handoff.sourceStoragePath,
-  );
-  if (!overwriteRisk.ok) {
+  const overwriteRisk = assessSourceOverwriteRisk(output.storagePath, handoff.sourceStoragePath);
+  if (overwriteRisk.ok !== true) {
     return {
       ok: false,
       error: "source_overwrite_risk",
@@ -766,7 +766,7 @@ export function validateDerivativePersistenceHandoff(
     };
   }
 
-  if (!handoff.persistenceResult.ok) {
+  if (handoff.persistenceResult.ok !== true) {
     return {
       ok: false,
       error: "persistence_failed",
@@ -779,7 +779,8 @@ export function validateDerivativePersistenceHandoff(
       return {
         ok: false,
         error: "success_claim_without_persistence",
-        message: "Upload/publish success cannot be claimed without canonical persistence acknowledgement.",
+        message:
+          "Upload/publish success cannot be claimed without canonical persistence acknowledgement.",
       };
     }
   }
@@ -810,8 +811,10 @@ export function buildDerivativeOutputCensus(
       point43BenchmarkGovernance: "src/features/mediaReadiness/benchmarkPhotographyGovernance.ts",
       point44GuidedCapture: "src/features/mediaReadiness/guidedMobileCameraCapture.ts",
       point45Enhancement: "src/features/mediaReadiness/exactProductEnhancement.ts",
-      point46ImageQa: "src/features/mediaReadiness/imageQaValidation.ts — approved disposition required",
-      derivativeOutputContract: "src/features/mediaReadiness/derivativeOutputContract.ts — authoritative",
+      point46ImageQa:
+        "src/features/mediaReadiness/imageQaValidation.ts — approved disposition required",
+      derivativeOutputContract:
+        "src/features/mediaReadiness/derivativeOutputContract.ts — authoritative",
       mediaDraftBoundary:
         "src/features/catalogueDrafts/mediaDraftBoundary.ts — MIME allowlist + raw/submissions path builders",
       productMediaPersistence:
@@ -824,7 +827,8 @@ export function buildDerivativeOutputCensus(
       catalogueSnapshot:
         "src/features/catalogueSnapshot/snapshotGenerator.ts — consumes approved hero URLs; no derivative manifest yet",
       mediaLibraryPage: "src/pages/Media.tsx — placeholder UI; no derivative workflow",
-      unifiedMediaArchitecture: "docs/UNIFIED_PRODUCT_MEDIA_ARCHITECTURE.md — role/slot consumption map",
+      unifiedMediaArchitecture:
+        "docs/UNIFIED_PRODUCT_MEDIA_ARCHITECTURE.md — role/slot consumption map",
     },
     riskyPaths: [
       "ProductMediaUploader can persist raw uploads without Point 47 derivative provenance",
@@ -843,5 +847,3 @@ export function buildDerivativeOutputCensus(
     ],
   };
 }
-
-export { IMAGE_PROFILES, DERIVATIVE_OUTPUT_PROFILES };

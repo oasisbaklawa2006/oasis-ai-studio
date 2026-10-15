@@ -1,18 +1,9 @@
-/**
- * Pure per-100g → per-serving / per-piece nutrition math. Never invents a value — every
- * function here only scales a number the user already entered; it never fabricates
- * nutrition data, daily-value percentages (no verified RDA reference table exists here),
- * or FSSAI approval. Callers must still show NUTRITION_DRAFT_NOTICE wherever these numbers
- * appear, since none of this has been through compliance review.
- */
-
-export const NUTRITION_DRAFT_NOTICE = "Draft nutrition data — requires compliance review.";
-
 export type NutritionBasis = "per_100g" | "per_serving" | "per_piece";
 
 /** Scales a per-100g nutrient value to a serving of the given weight in grams. */
 export function nutrientPerServing(per100g: number, servingSizeGrams: number): number | null {
-  if (!Number.isFinite(per100g) || !Number.isFinite(servingSizeGrams) || servingSizeGrams <= 0) return null;
+  if (!Number.isFinite(per100g) || !Number.isFinite(servingSizeGrams) || servingSizeGrams <= 0)
+    return null;
   return Math.round(((per100g * servingSizeGrams) / 100) * 100) / 100;
 }
 
@@ -57,7 +48,11 @@ export function derivePanelForWeight(
   targetWeightGrams: number | null,
   targetBasis: Exclude<NutritionBasis, "per_100g">,
 ): NutritionPanelDraft {
-  const derived: NutritionPanelDraft = { ...per100g, basis: targetBasis, servingSizeGrams: targetWeightGrams };
+  const derived: NutritionPanelDraft = {
+    ...per100g,
+    basis: targetBasis,
+    servingSizeGrams: targetWeightGrams,
+  };
   if (!targetWeightGrams || targetWeightGrams <= 0) {
     for (const field of SCALABLE_FIELDS) derived[field] = null;
     return derived;

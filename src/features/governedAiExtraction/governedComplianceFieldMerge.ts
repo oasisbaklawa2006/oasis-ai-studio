@@ -170,7 +170,3 @@ export function mergeComplianceMetaMaps(
 ): ComplianceFieldMetaMap {
   return { ...(base ?? {}), ...patch };
 }
-
-export function fieldMetaRequiresApproval(meta: ComplianceFieldMeta | undefined): boolean {
-  return (meta?.source === "ai_suggestion" || meta?.source === "category_rule") && !meta.approved;
-}

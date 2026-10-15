@@ -8,9 +8,6 @@
 import type { ProductEditTab } from "./productEditTabs";
 import { PRODUCT_EDIT_TABS, resolveProductEditTab } from "./productEditTabs";
 
-/** Page component that hosts the authoritative Full Editor shell. */
-export const FULL_EDITOR_SHELL_PAGE = "ProductEdit";
-
 /** Authoritative Full Editor entry routes — all product master writes flow through these. */
 export const FULL_EDITOR_CANONICAL_ROUTES = {
   /** Create flow — `ProductEdit` with `id === "new"`. */
@@ -39,20 +36,14 @@ export const FULL_EDITOR_NON_AUTHORITATIVE_ROUTES = [
   "/tags",
 ] as const;
 
-/** Fast Create is a separate governed create tier; handoff pre-fills Full Editor only. */
-export const FULL_EDITOR_HANDOFF_ROUTES = {
-  fastCreate: "/products/new/fast",
-  catalogueStudio: "/admin/catalogue-product-studio",
-} as const;
-
 /** localStorage key prefix for last-selected tab per product. */
-export const FULL_EDITOR_TAB_STORAGE_PREFIX = "oasis_product_edit_tab_";
+const FULL_EDITOR_TAB_STORAGE_PREFIX = "oasis_product_edit_tab_";
 
 /** localStorage key prefix for autosaved form drafts (non-authoritative resilience only). */
-export const FULL_EDITOR_FORM_DRAFT_PREFIX = "catalogue_product_form_draft_";
+const FULL_EDITOR_FORM_DRAFT_PREFIX = "catalogue_product_form_draft_";
 
 /** Downstream programme point that owns each Full Editor tab's field domain. */
-export type FullEditorDomainOwner =
+type FullEditorDomainOwner =
   | "Point26" // product master / identity shell
   | "Point32" // product/variant hierarchy, aliases, language terms
   | "Point33" // pack / carton / pallet / UOM
@@ -100,7 +91,7 @@ export const FULL_EDITOR_TAB_DOMAIN_OWNERSHIP: readonly FullEditorTabDomainContr
 ];
 
 /** Readiness-category → Full Editor tab (Catalogue Studio deep-link bridge). */
-export const FULL_EDITOR_READINESS_CATEGORY_TAB_MAP: Record<string, ProductEditTab> = {
+const FULL_EDITOR_READINESS_CATEGORY_TAB_MAP: Record<string, ProductEditTab> = {
   identity: "identity",
   sku: "identity",
   category: "identity",
@@ -125,10 +116,6 @@ export function resolveFullEditorTabOwner(tab: string): FullEditorTabDomainContr
   return FULL_EDITOR_TAB_DOMAIN_OWNERSHIP.find((entry) => entry.tab === tab) ?? null;
 }
 
-export function assertKnownFullEditorTab(tab: string): ProductEditTab | null {
-  return (PRODUCT_EDIT_TABS as readonly string[]).includes(tab) ? (tab as ProductEditTab) : null;
-}
-
 export type FullEditorIdentity =
   | { kind: "create"; routeId: "new" }
   | { kind: "edit"; routeId: string; productId: string }
@@ -146,10 +133,6 @@ export function resolveFullEditorIdentity(routeId: string | undefined): FullEdit
   return { kind: "edit", routeId: trimmed, productId: trimmed };
 }
 
-export function isFullEditorCreateIdentity(identity: FullEditorIdentity): boolean {
-  return identity.kind === "create";
-}
-
 /**
  * True when the loaded product row does not match the current route id, or a fetch is still
  * in flight — save must fail closed until identity is reconciled.
@@ -164,8 +147,6 @@ export function hasFullEditorIdentityConflict(
   if (fetchPending) return true;
   return loadedId !== identity.productId;
 }
-
-export type FullEditorSavePathKind = "direct_write" | "contributor_draft" | "blocked";
 
 export type FullEditorSavePath =
   | { kind: "direct_write"; allowed: true }

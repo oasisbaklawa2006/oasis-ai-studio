@@ -30,7 +30,7 @@ export function catalogModeLabel(mode: KnowledgeCatalogMode): string {
   }
 }
 
-export function loadFixtureCatalog(mode: Exclude<KnowledgeCatalogMode, "live">): RuntimeCatalog {
+function loadFixtureCatalog(mode: Exclude<KnowledgeCatalogMode, "live">): RuntimeCatalog {
   return mode === "production_fixture" ? PRODUCTION_SNAPSHOT_CATALOG : PHASE2A_FIXTURE_CATALOG;
 }
 

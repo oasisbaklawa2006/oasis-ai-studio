@@ -15,8 +15,6 @@ import {
 } from "./types";
 
 export const GOVERNED_CHANNEL_COPY_PROMPT_VERSION = "point50-v1";
-export const GOVERNED_CHANNEL_COPY_DISCLAIMER =
-  "Channel copy suggestion only. Human review is required before publication, sending, or printing.";
 
 export const CHANNEL_COPY_CHARACTER_LIMITS: Record<GovernedChannelCopyKey, number> = {
   b2b_sales_copy: 500,
@@ -52,7 +50,7 @@ function shelfLifeClaims(text: string): number[] {
     .filter((value) => Number.isFinite(value));
 }
 
-export function validateChannelSource(
+function validateChannelSource(
   source: AuthoritativeChannelSource,
 ): { ok: true } | { ok: false; reason: string } {
   const multilingual = validateMultilingualSource(source);
@@ -73,10 +71,7 @@ function authorisedPrices(source: AuthoritativeChannelSource): Set<number> {
   return prices;
 }
 
-export function detectChannelFactualDrift(
-  text: string,
-  source: AuthoritativeChannelSource,
-): string[] {
+function detectChannelFactualDrift(text: string, source: AuthoritativeChannelSource): string[] {
   const reasons: string[] = [];
   if (LEGAL_CLAIM_PATTERN.test(text)) reasons.push("unapproved legal/compliance claim");
   const allowed = authorisedPrices(source);
@@ -122,7 +117,7 @@ function validateAuthoritativeStorageCopy(
   return { ok: true };
 }
 
-export function validateChannelCopyText(
+function validateChannelCopyText(
   text: string,
   key: GovernedChannelCopyKey,
   source: AuthoritativeChannelSource,

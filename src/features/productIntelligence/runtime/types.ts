@@ -37,15 +37,6 @@ export type RuntimeCatalog = {
   aliases: RuntimeCatalogAlias[];
 };
 
-export type RuntimeCandidate = {
-  product_id: string;
-  sku: string;
-  product_name: string;
-  matched_term: string;
-  match_source: MatchSource;
-  confidence: number;
-};
-
 export type RuntimeAlternative = {
   product_id: string;
   sku: string;

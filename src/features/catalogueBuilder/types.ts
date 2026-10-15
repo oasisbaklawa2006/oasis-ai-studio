@@ -12,7 +12,7 @@ export const CATALOGUE_COLLECTION_TYPES = [
 
 export type CatalogueCollectionType = (typeof CATALOGUE_COLLECTION_TYPES)[number];
 
-export type CatalogueCollectionStatus = "draft" | "internal_review" | "published" | "archived";
+type CatalogueCollectionStatus = "draft" | "internal_review" | "published" | "archived";
 
 export type CatalogueCollectionRow = {
   id: string;
@@ -74,12 +74,7 @@ export type CatalogueProductCard = {
   priceLabel?: string | null;
 };
 
-export type PrintSectionKind =
-  | "cover"
-  | "company_intro"
-  | "contents"
-  | "category_divider"
-  | "product";
+type PrintSectionKind = "cover" | "company_intro" | "contents" | "category_divider" | "product";
 
 export type PrintCompositionSection = {
   kind: PrintSectionKind;

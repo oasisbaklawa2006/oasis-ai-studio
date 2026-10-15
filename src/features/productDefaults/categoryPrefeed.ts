@@ -4,7 +4,7 @@ import { getCategoryDefaults } from "@/features/productDefaults/categoryDefaults
 export const CATEGORY_PREFEED_DISCLAIMER =
   "Suggested defaults only — not legal or tax truth. Review HSN/GST, shelf life, and veg mark with compliance before catalogue approval.";
 
-export type CategoryPrefeedField = {
+type CategoryPrefeedField = {
   key: string;
   label: string;
   value: string | number | boolean | null;
@@ -38,11 +38,41 @@ export function buildCategoryPrefeed(
 ): CategoryPrefeedBundle {
   const d = getCategoryDefaults(categoryKey);
   const fields: CategoryPrefeedField[] = [
-    { key: "category", label: "Category", value: d.category, source: "category_rule", needsReview: true },
-    { key: "hsn_code", label: "HSN (suggested)", value: d.hsn_code, source: "central_parity", needsReview: true },
-    { key: "gst_rate", label: "GST % (suggested)", value: d.gst_rate, source: "central_parity", needsReview: true },
-    { key: "primary_uom", label: "UOM", value: d.primary_uom, source: "category_rule", needsReview: true },
-    { key: "shelf_life_days", label: "Shelf life (days)", value: d.shelf_life_days, source: "category_rule", needsReview: true },
+    {
+      key: "category",
+      label: "Category",
+      value: d.category,
+      source: "category_rule",
+      needsReview: true,
+    },
+    {
+      key: "hsn_code",
+      label: "HSN (suggested)",
+      value: d.hsn_code,
+      source: "central_parity",
+      needsReview: true,
+    },
+    {
+      key: "gst_rate",
+      label: "GST % (suggested)",
+      value: d.gst_rate,
+      source: "central_parity",
+      needsReview: true,
+    },
+    {
+      key: "primary_uom",
+      label: "UOM",
+      value: d.primary_uom,
+      source: "category_rule",
+      needsReview: true,
+    },
+    {
+      key: "shelf_life_days",
+      label: "Shelf life (days)",
+      value: d.shelf_life_days,
+      source: "category_rule",
+      needsReview: true,
+    },
     {
       key: "storage_instructions",
       label: "Storage",
@@ -72,7 +102,9 @@ export function applyPrefeedSuggestions<T extends Record<string, unknown>>(
   categoryKey: FastCreateCategoryKey,
 ): T & { _prefeed_disclaimer?: string } {
   const bundle = buildCategoryPrefeed(categoryKey, categoryKey);
-  const next = { ...form, _prefeed_disclaimer: bundle.disclaimer } as T & { _prefeed_disclaimer?: string };
+  const next = { ...form, _prefeed_disclaimer: bundle.disclaimer } as T & {
+    _prefeed_disclaimer?: string;
+  };
   for (const f of bundle.fields) {
     if (f.key === "veg_mark") continue;
     const k = f.key;

@@ -15,7 +15,7 @@ import type { SaleType } from "./saleType";
 import { getSaleTypeRequirements } from "./saleType";
 import { isStructuredOasisSku, skuPackagingSegment } from "./skuGuard";
 
-export const CATALOGUE_READY_TRUTH_THRESHOLD = 0.7;
+const CATALOGUE_READY_TRUTH_THRESHOLD = 0.7;
 
 /**
  * Active packaging taxonomy snapshot (sku_code_rules where code_type = 'packaging',
@@ -27,7 +27,7 @@ export interface PackagingTaxonomyAuthority {
   activeCodes: Set<string>;
 }
 
-export const PACKAGING_AUTHORITY_NOT_LOADED_MESSAGE =
+const PACKAGING_AUTHORITY_NOT_LOADED_MESSAGE =
   "Packaging taxonomy not loaded yet — cannot confirm packaging readiness";
 
 export interface CatalogueReadyGateInput {

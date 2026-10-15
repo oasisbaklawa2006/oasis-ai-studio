@@ -1,4 +1,4 @@
-export type RoleRpcResult = {
+type RoleRpcResult = {
   data: unknown;
   error: unknown;
 };

@@ -41,10 +41,3 @@ export type GovernedComplianceExtraction = {
   provenance: GovernedAiProvenance;
   complianceFieldMeta: ComplianceFieldMetaMap;
 };
-
-export type GovernedFieldMergeResult = {
-  merged: Record<string, unknown>;
-  appliedFields: ComplianceSensitiveField[];
-  preservedFields: ComplianceSensitiveField[];
-  complianceFieldMeta: ComplianceFieldMetaMap;
-};

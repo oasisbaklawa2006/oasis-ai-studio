@@ -2,9 +2,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { PRODUCTION_CAPABILITIES } from "@/lib/productionCapabilities";
 import { probeProductMediaBucket } from "./mediaReadiness";
 
-export type InfraCheckStatus = "pass" | "fail" | "partial" | "unknown";
+type InfraCheckStatus = "pass" | "fail" | "partial" | "unknown";
 
-export type RpcProbeResult = {
+type RpcProbeResult = {
   status: InfraCheckStatus;
   message: string;
   detail?: string;

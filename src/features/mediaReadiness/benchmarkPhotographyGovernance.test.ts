@@ -39,7 +39,7 @@ describe("benchmarkPhotographyGovernance", () => {
   it("resolves governance from product signals via Point 42 family chain", () => {
     const resolved = resolveBenchmarkPhotographyGovernance(baklawaProduct);
     expect(resolved.ok).toBe(true);
-    if (!resolved.ok) return;
+    if (resolved.ok !== true) return;
 
     expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
     expect(resolved.familyContract.familyKey).toBe("baklawa_small_sweets");
@@ -55,7 +55,7 @@ describe("benchmarkPhotographyGovernance", () => {
     });
     // Empty product still resolves to general — test unknown via broken explicit path is covered in Point 42
     expect(resolved.ok).toBe(true);
-    if (resolved.ok) {
+    if (resolved.ok === true) {
       expect(resolved.contract.familyKey).toBe("general");
     }
   });
@@ -79,66 +79,66 @@ describe("benchmarkPhotographyGovernance", () => {
   it("rejects third-party brand references in operator instructions", () => {
     const bateel = validateBenchmarkOperatorInstruction("make it look like Bateel packaging");
     expect(bateel.ok).toBe(false);
-    if (bateel.ok) return;
+    if (bateel.ok === true) return;
     expect(bateel.error).toBe("forbidden_brand_reference");
 
     const godiva = validateBenchmarkOperatorInstruction("style similar to Godiva");
     expect(godiva.ok).toBe(false);
-    if (godiva.ok) return;
+    if (godiva.ok === true) return;
     expect(godiva.error).toBe("forbidden_brand_reference");
   });
 
   it("rejects instructions that conflict with packaging/text preservation", () => {
     const addText = validateBenchmarkOperatorInstruction("add a price tag overlay on the label");
     expect(addText.ok).toBe(false);
-    if (addText.ok) return;
+    if (addText.ok === true) return;
     expect(addText.conflictAuthority).toBe("packaging_text_preservation");
 
     const removeLabel = validateBenchmarkOperatorInstruction("remove the text from packaging");
     expect(removeLabel.ok).toBe(false);
-    if (removeLabel.ok) return;
+    if (removeLabel.ok === true) return;
     expect(removeLabel.conflictAuthority).toBe("packaging_text_preservation");
   });
 
   it("rejects instructions that conflict with exact product fidelity", () => {
     const alter = validateBenchmarkOperatorInstruction("change the product colour to gold");
     expect(alter.ok).toBe(false);
-    if (alter.ok) return;
+    if (alter.ok === true) return;
     expect(alter.conflictAuthority).toBe("exact_product_fidelity");
   });
 
   it("rejects instructions that skip Point 42 required slots", () => {
     const skip = validateBenchmarkOperatorInstruction("skip the close-up shot");
     expect(skip.ok).toBe(false);
-    if (skip.ok) return;
+    if (skip.ok === true) return;
     expect(skip.conflictAuthority).toBe("point42_required_slots");
   });
 
   it("rejects instructions that bypass downstream QA authority", () => {
     const bypass = validateBenchmarkOperatorInstruction("auto-approve without QA check");
     expect(bypass.ok).toBe(false);
-    if (bypass.ok) return;
+    if (bypass.ok === true) return;
     expect(bypass.conflictAuthority).toBe("downstream_qa_authority");
   });
 
   it("accepts neutral Oasis-owned operator instructions", () => {
     const ok = validateBenchmarkOperatorInstruction("slightly warmer background tone");
     expect(ok.ok).toBe(true);
-    if (!ok.ok) return;
+    if (ok.ok !== true) return;
     expect(ok.sanitizedInstruction).toBe("slightly warmer background tone");
   });
 
   it("rejects empty operator instructions", () => {
     const empty = validateBenchmarkOperatorInstruction("   ");
     expect(empty.ok).toBe(false);
-    if (empty.ok) return;
+    if (empty.ok === true) return;
     expect(empty.error).toBe("empty_instruction");
   });
 
   it("export pack overlay requires label text preservation on label slots", () => {
     const resolved = resolveBenchmarkPhotographyGovernance(exportProduct);
     expect(resolved.ok).toBe(true);
-    if (!resolved.ok) return;
+    if (resolved.ok !== true) return;
 
     expect(resolved.contract.familyKey).toBe("export_pack");
     const labelReq = benchmarkSlotRequirements("export_pack", "label_front_image");

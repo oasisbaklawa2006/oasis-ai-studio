@@ -6,7 +6,7 @@ import type { Database, Json } from "@/integrations/supabase/types";
  * These types mirror Core PR #276. A source entry can remain STAGED with no
  * product_id indefinitely. Nothing in this feature is product-creation authority.
  */
-export type CatalogueSourceBatchStatus =
+type CatalogueSourceBatchStatus =
   | "RECEIVED"
   | "PARSING"
   | "READY_FOR_REVIEW"
@@ -14,11 +14,7 @@ export type CatalogueSourceBatchStatus =
   | "FAILED"
   | "ARCHIVED";
 
-export type CatalogueSourceEntryStatus =
-  | "STAGED"
-  | "MATCHED_EXISTING"
-  | "APPROVED_FOR_DRAFT"
-  | "IGNORED";
+type CatalogueSourceEntryStatus = "STAGED" | "MATCHED_EXISTING" | "APPROVED_FOR_DRAFT" | "IGNORED";
 
 export type CatalogueSourceBatchRow = {
   id: string;
@@ -57,7 +53,7 @@ export type CatalogueSourceEntryRow = {
   updated_at: string;
 };
 
-export type CatalogueSourceAuditRow = {
+type CatalogueSourceAuditRow = {
   id: string;
   batch_id: string;
   entry_id: string | null;
@@ -142,12 +138,6 @@ export type CatalogueSourceTableDefinitions = {
         referencedColumns: ["id"];
       },
     ];
-  };
-};
-
-export type CatalogueSourceDatabase = Database & {
-  public: Database["public"] & {
-    Tables: Database["public"]["Tables"] & CatalogueSourceTableDefinitions;
   };
 };
 

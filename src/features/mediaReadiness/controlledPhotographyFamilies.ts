@@ -35,7 +35,7 @@ export type PhotographyFamilyResolutionError =
   | "unknown_uploader_type"
   | "requirements_unresolved";
 
-export type PhotographyFamilySlotContract = {
+type PhotographyFamilySlotContract = {
   readinessSlot: MediaAssetType;
   label: string;
   uploaderTypes: readonly string[];
@@ -245,7 +245,7 @@ export function getPhotographyFamilyRequirements(
   | PhotographyFamilyRequirements
   | { ok: false; error: PhotographyFamilyResolutionError; message: string } {
   const resolved = resolveControlledPhotographyFamily(product);
-  if (!resolved.ok) return resolved;
+  if (resolved.ok !== true) return resolved;
 
   const requiredRaw =
     mode === "production"

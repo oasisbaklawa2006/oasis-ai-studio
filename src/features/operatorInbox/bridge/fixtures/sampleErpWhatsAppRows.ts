@@ -55,15 +55,3 @@ export const SAMPLE_ERP_WHATSAPP_ROWS: ErpWhatsAppMessageRow[] = [
     whatsapp_contacts: { phone_number: "919888888888", customer_name: null },
   },
 ];
-
-export function createMockErpReader(rows: ErpWhatsAppMessageRow[], cursor: string, limit = 100) {
-  const filtered = rows
-    .filter((row) => row.direction === "inbound")
-    .filter((row) => {
-      const ts = row.message_timestamp ?? row.created_at ?? "";
-      return ts > cursor.replace("T", " ").replace("Z", "");
-    })
-    .sort((a, b) => String(a.message_timestamp).localeCompare(String(b.message_timestamp)))
-    .slice(0, limit);
-  return { rows: filtered, cursor };
-}

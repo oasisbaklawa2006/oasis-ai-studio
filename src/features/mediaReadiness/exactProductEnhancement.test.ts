@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import type { ProductMediaContext } from "./types";
 import {
   bindEnhancementSourceMedia,
   buildEnhancementPolicy,
@@ -10,6 +9,7 @@ import {
   validateEnhancementOperatorInstruction,
   validateEnhancementProviderOutput,
 } from "./exactProductEnhancement";
+import type { ProductMediaContext } from "./types";
 
 const POINT44_HEAD = "63e2d35afbfe2a48fd6db18dfd54644157320837";
 
@@ -30,7 +30,7 @@ describe("exactProductEnhancement", () => {
     it("binds immutable source media to product + Point 42 slot", () => {
       const bound = bindEnhancementSourceMedia(baklawaProduct, sourceFixture);
       expect(bound.ok).toBe(true);
-      if (!bound.ok) return;
+      if (bound.ok !== true) return;
       expect(bound.binding.sourceMediaId).toBe("media-hero-001");
       expect(bound.binding.contentHash).toBe("sha256:abc123def456");
       expect(bound.binding.readinessSlot).toBe("primary_image");
@@ -40,7 +40,7 @@ describe("exactProductEnhancement", () => {
     it("fail-closed when product identity is unresolved", () => {
       const bound = bindEnhancementSourceMedia({ category: "Baklawa" }, sourceFixture);
       expect(bound.ok).toBe(false);
-      if (bound.ok) return;
+      if (bound.ok === true) return;
       expect(bound.code).toBe("product_identity_unresolved");
     });
 
@@ -50,7 +50,7 @@ describe("exactProductEnhancement", () => {
         contentHash: "",
       });
       expect(bound.ok).toBe(false);
-      if (bound.ok) return;
+      if (bound.ok === true) return;
       expect(bound.code).toBe("source_hash_missing");
     });
 
@@ -60,7 +60,7 @@ describe("exactProductEnhancement", () => {
         sourceMediaId: "",
       });
       expect(bound.ok).toBe(false);
-      if (bound.ok) return;
+      if (bound.ok === true) return;
       expect(bound.code).toBe("source_media_unbound");
     });
 
@@ -77,7 +77,7 @@ describe("exactProductEnhancement", () => {
     it("builds policy with allowed lighting/background operations and preservation requirements", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const policy = buildEnhancementPolicy(resolved.governance);
       expect(policy.allowedOperations).toContain("lighting_balance");
@@ -102,7 +102,7 @@ describe("exactProductEnhancement", () => {
         baklawaProduct,
       );
       expect(result.ok).toBe(false);
-      if (result.ok) return;
+      if (result.ok === true) return;
       expect(result.error).toBe("forbidden_enhancement_operation");
     });
 
@@ -112,14 +112,17 @@ describe("exactProductEnhancement", () => {
         baklawaProduct,
       );
       expect(result.ok).toBe(false);
-      if (result.ok) return;
+      if (result.ok === true) return;
       expect(result.error).toBe("forbidden_enhancement_operation");
     });
 
     it("rejects instructions that conflict with Point 43 benchmark governance", () => {
-      const result = validateEnhancementOperatorInstruction("make it look like Bateel", baklawaProduct);
+      const result = validateEnhancementOperatorInstruction(
+        "make it look like Bateel",
+        baklawaProduct,
+      );
       expect(result.ok).toBe(false);
-      if (result.ok) return;
+      if (result.ok === true) return;
       expect(result.error).toBe("conflicts_with_benchmark");
     });
   });
@@ -128,7 +131,7 @@ describe("exactProductEnhancement", () => {
     it("resolves point45_v1 contract with Point 42/43/44 upstream chain", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       expect(resolved.contract.schema).toBe("point45_v1");
       expect(resolved.contract.familyKey).toBe("baklawa_small_sweets");
@@ -146,7 +149,7 @@ describe("exactProductEnhancement", () => {
     it("marks downstream QA and outputs as separate authorities", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
       expect(resolved.contract.downstreamAuthority).toEqual({
         qa: "point46",
         outputs: "point47",
@@ -158,7 +161,7 @@ describe("exactProductEnhancement", () => {
     it("accepts mock provider output with matching source binding and preservation attestation", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const mockOutput = executeMockEnhancement(resolved.contract, {
         operations: ["lighting_balance", "background_cleanup"],
@@ -175,7 +178,7 @@ describe("exactProductEnhancement", () => {
     it("fail-closed when provider output source hash mismatches bound source", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const mockOutput = executeMockEnhancement(resolved.contract, {
         operations: ["lighting_balance"],
@@ -192,14 +195,14 @@ describe("exactProductEnhancement", () => {
 
       const check = validateEnhancementProviderOutput(resolved.contract, tampered);
       expect(check.ok).toBe(false);
-      if (check.ok) return;
+      if (check.ok === true) return;
       expect(check.error).toBe("source_hash_mismatch");
     });
 
     it("fail-closed when preservation attestation is incomplete", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const mockOutput = executeMockEnhancement(resolved.contract, {
         operations: ["lighting_balance"],
@@ -219,21 +222,21 @@ describe("exactProductEnhancement", () => {
 
       const check = validateEnhancementProviderOutput(resolved.contract, unproven);
       expect(check.ok).toBe(false);
-      if (check.ok) return;
+      if (check.ok === true) return;
       expect(check.error).toBe("preservation_unproven");
     });
 
     it("fail-closed when provider output lacks provenance", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const check = validateEnhancementProviderOutput(resolved.contract, {
         candidateMediaRef: "mock://no-provenance",
         provenance: null as never,
       });
       expect(check.ok).toBe(false);
-      if (check.ok) return;
+      if (check.ok === true) return;
       expect(check.error).toBe("provenance_missing");
     });
   });
@@ -242,7 +245,7 @@ describe("exactProductEnhancement", () => {
     it("accepts handoff as pending_review candidate only", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const mockOutput = executeMockEnhancement(resolved.contract, {
         operations: ["exposure_normalization"],
@@ -251,14 +254,14 @@ describe("exactProductEnhancement", () => {
 
       const handoff = validateEnhancementHandoff(resolved.contract, mockOutput);
       expect(handoff.ok).toBe(true);
-      if (!handoff.ok) return;
+      if (handoff.ok !== true) return;
       expect(handoff.candidate.status).toBe("pending_review");
     });
 
     it("rejects auto-approve attempts", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const mockOutput = executeMockEnhancement(resolved.contract, {
         operations: ["lighting_balance"],
@@ -269,14 +272,14 @@ describe("exactProductEnhancement", () => {
         attemptedStatus: "approved",
       });
       expect(handoff.ok).toBe(false);
-      if (handoff.ok) return;
+      if (handoff.ok === true) return;
       expect(handoff.error).toBe("auto_approve_forbidden");
     });
 
     it("rejects direct publish attempts", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const mockOutput = executeMockEnhancement(resolved.contract, {
         operations: ["background_cleanup"],
@@ -287,14 +290,14 @@ describe("exactProductEnhancement", () => {
         attemptedPublish: true,
       });
       expect(handoff.ok).toBe(false);
-      if (handoff.ok) return;
+      if (handoff.ok === true) return;
       expect(handoff.error).toBe("direct_publish_forbidden");
     });
 
     it("mock provider rejects forbidden operations", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const result = executeMockEnhancement(resolved.contract, {
         operations: ["inpaint_product" as never],
@@ -305,7 +308,7 @@ describe("exactProductEnhancement", () => {
     it("mock provider rejects forbidden instructions", () => {
       const resolved = resolveExactProductEnhancement(baklawaProduct, sourceFixture);
       expect(resolved.ok).toBe(true);
-      if (!resolved.ok) return;
+      if (resolved.ok !== true) return;
 
       const result = executeMockEnhancement(resolved.contract, {
         operations: ["lighting_balance"],

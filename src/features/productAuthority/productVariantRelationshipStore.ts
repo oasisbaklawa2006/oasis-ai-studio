@@ -22,10 +22,10 @@ export type ProductVariantRow = Database["public"]["Tables"]["product_variants"]
 export type BasisProductCandidate = {
   id: string;
   sku: string;
-  product_name: string;
+  product_name: string | null;
 };
 
-export type VariantMutationErrorCode =
+type VariantMutationErrorCode =
   | "validation"
   | "not_found"
   | "rls_denied"
@@ -321,7 +321,7 @@ export async function changeProductVariantBasis(
   input: ChangeVariantBasisInput,
 ): Promise<VariantMutationResult<ProductVariantRow>> {
   const removed = await removeProductVariantRelationship(input.productId);
-  if (!removed.ok) return removed;
+  if (removed.ok !== true) return removed;
 
   const created = await createProductVariantRelationship({
     productId: input.productId,
@@ -330,7 +330,7 @@ export async function changeProductVariantBasis(
     basisSku: input.basisSku,
     variantKey: input.variantKey,
   });
-  if (!created.ok) {
+  if (created.ok !== true) {
     return {
       ok: false,
       code: created.code,

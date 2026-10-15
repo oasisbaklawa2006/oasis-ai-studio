@@ -7,12 +7,7 @@ export type SnapshotValidationResult = {
   blockers: string[];
 };
 
-const APPROVED_LIKE_BADGES: ReadinessBadge[] = [
-  "approved",
-  "human_edited",
-  "locked",
-  "published",
-];
+const APPROVED_LIKE_BADGES: ReadinessBadge[] = ["approved", "human_edited", "locked", "published"];
 
 const GATE_DIMENSIONS: { dimension: ReadinessDimension; label: string }[] = [
   { dimension: "content_status", label: "Content" },
@@ -33,7 +28,7 @@ function dimensionApproved(
   return APPROVED_LIKE_BADGES.includes(row.badge);
 }
 
-export function validateSnapshotMediaGate(snapshot: CatalogueSnapshotJson): string[] {
+function validateSnapshotMediaGate(snapshot: CatalogueSnapshotJson): string[] {
   const blockers: string[] = [];
   if (snapshot.media.can_sync_media_to_central === false) {
     blockers.push("Media not ready for Central sync");
@@ -60,9 +55,7 @@ export function validateSnapshotGate(
   for (const { dimension, label } of GATE_DIMENSIONS) {
     if (!dimensionApproved(readiness, dimension)) {
       const row = readiness.dimensions.find((d) => d.dimension === dimension);
-      blockers.push(
-        row?.note ? `${label}: ${row.note}` : `${label} not approved`,
-      );
+      blockers.push(row?.note ? `${label}: ${row.note}` : `${label} not approved`);
     }
   }
 

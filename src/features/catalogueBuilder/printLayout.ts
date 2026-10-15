@@ -53,9 +53,9 @@ export function bleedBoxMm(): PdfPageBoxMm {
   return mediaBoxMm();
 }
 
-export const MIN_PRINT_DPI = 300;
-export const MIN_IMAGE_WIDTH_PX = 1200;
-export const MIN_IMAGE_HEIGHT_PX = 1200;
+const MIN_PRINT_DPI = 300;
+const MIN_IMAGE_WIDTH_PX = 1200;
+const MIN_IMAGE_HEIGHT_PX = 1200;
 
 export type PrintImageQualityInput = {
   imageUrl: string | null;
@@ -77,7 +77,7 @@ export type PrintLayoutValidation = {
 };
 
 /** Estimate effective DPI for a hero image at the printed card size. */
-export function estimateEffectiveDpi(widthPx: number, printWidthMm: number): number {
+function estimateEffectiveDpi(widthPx: number, printWidthMm: number): number {
   const printWidthIn = printWidthMm / 25.4;
   return Math.round(widthPx / printWidthIn);
 }

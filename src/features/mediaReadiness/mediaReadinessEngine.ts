@@ -1,19 +1,18 @@
-import type {
-  MediaAsset,
-  MediaAssetRequirement,
-  MediaAssetType,
-  MediaReadinessResult,
-  MediaAssetSlotStatus,
-  ProductMediaContext,
-} from "./types";
 import { profileSlots } from "@/features/productTruth/readinessProfiles";
 import {
   getMediaGovernanceMode,
   governedRecommendedProfileSlots,
   governedRequiredProfileSlots,
 } from "./mediaGovernanceMode";
-
 import { detectProductMediaProfile } from "./mediaProfileDetection";
+import type {
+  MediaAsset,
+  MediaAssetRequirement,
+  MediaAssetSlotStatus,
+  MediaAssetType,
+  MediaReadinessResult,
+  ProductMediaContext,
+} from "./types";
 
 function toRequirement(slot: {
   type: MediaAssetType;
@@ -29,14 +28,9 @@ function toRequirement(slot: {
   };
 }
 
-export function getRequiredMediaAssets(product: ProductMediaContext): MediaAssetRequirement[] {
+function getRequiredMediaAssets(product: ProductMediaContext): MediaAssetRequirement[] {
   const mode = getMediaGovernanceMode();
   return governedRequiredProfileSlots(product, mode).map(toRequirement);
-}
-
-export function getOptionalMediaAssets(product: ProductMediaContext): MediaAssetRequirement[] {
-  const mode = getMediaGovernanceMode();
-  return governedRecommendedProfileSlots(product, mode).map(toRequirement);
 }
 
 function assetForType(assets: MediaAsset[], type: MediaAssetType): MediaAsset | undefined {
@@ -62,7 +56,7 @@ export function getMissingMediaAssets(
     .map((r) => r.type);
 }
 
-export function calculateMediaScore(
+function calculateMediaScore(
   product: ProductMediaContext,
   mediaAssets: MediaAsset[],
 ): { score: number; maxScore: number } {
@@ -86,13 +80,6 @@ export function selectApprovedImageUrlsForCentral(mediaAssets: MediaAsset[]): st
     urls.push(a.url);
   }
   return urls;
-}
-
-export function canPublishMedia(
-  product: ProductMediaContext,
-  mediaAssets: MediaAsset[],
-): boolean {
-  return evaluateMediaReadiness(product, mediaAssets).canPublishMedia;
 }
 
 export function canSyncMediaToCentral(
@@ -145,9 +132,7 @@ export function evaluateMediaReadiness(
   );
   const slots = [...requiredSlots, ...optionalSlots];
 
-  const missingAssets = requiredSlots
-    .filter((s) => !s.present || !s.approved)
-    .map((s) => s.type);
+  const missingAssets = requiredSlots.filter((s) => !s.present || !s.approved).map((s) => s.type);
   const blockers: string[] = [];
 
   for (const slot of requiredSlots) {
@@ -189,6 +174,3 @@ export function evaluateMediaReadiness(
     isLegacy,
   };
 }
-
-export { detectProductMediaProfile } from "./mediaProfileDetection";
-export { profileSlots };

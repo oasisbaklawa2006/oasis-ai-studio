@@ -31,7 +31,10 @@ function parseCsvLine(line: string): string[] {
 }
 
 export function parseCsvText(text: string): Record<string, string>[] {
-  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim());
+  const lines = text
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .filter((l) => l.trim());
   if (lines.length < 2) return [];
 
   const headers = parseCsvLine(lines[0]);
@@ -45,7 +48,7 @@ export function parseCsvText(text: string): Record<string, string>[] {
   });
 }
 
-export function parseJsonText(text: string): Record<string, string>[] {
+function parseJsonText(text: string): Record<string, string>[] {
   const parsed = JSON.parse(text) as unknown;
   const rows = Array.isArray(parsed)
     ? parsed

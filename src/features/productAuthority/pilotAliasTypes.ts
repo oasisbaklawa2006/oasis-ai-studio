@@ -1,7 +1,7 @@
 import type { PilotSkuCode } from "./skuGuard";
 
 /** Pilot alias taxonomy (5-SKU governed review). */
-export const PILOT_ALIAS_TYPES = [
+const PILOT_ALIAS_TYPES = [
   "official",
   "search_keyword",
   "whatsapp_keyword",
@@ -11,11 +11,11 @@ export const PILOT_ALIAS_TYPES = [
 
 export type PilotAliasType = (typeof PILOT_ALIAS_TYPES)[number];
 
-export const PILOT_CHANNEL_SCOPES = ["catalogue", "whatsapp", "both", "internal"] as const;
+const PILOT_CHANNEL_SCOPES = ["catalogue", "whatsapp", "both", "internal"] as const;
 
 export type PilotChannelScope = (typeof PILOT_CHANNEL_SCOPES)[number];
 
-export const PILOT_REVIEW_STATUSES = ["suggested", "approved", "rejected"] as const;
+const PILOT_REVIEW_STATUSES = ["suggested", "approved", "rejected"] as const;
 
 export type PilotReviewStatus = (typeof PILOT_REVIEW_STATUSES)[number];
 

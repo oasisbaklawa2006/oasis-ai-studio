@@ -1,6 +1,10 @@
 import { applyCollisionChecks } from "./pilotAliasCollision";
 import { PILOT_ALIAS_SEED_PACKS, PILOT_PRODUCT_IDS } from "./pilotAliasSeeds";
-import type { PilotAliasSkuBundle, PilotAliasTermSuggestion, PilotReviewStatus } from "./pilotAliasTypes";
+import type {
+  PilotAliasSkuBundle,
+  PilotAliasTermSuggestion,
+  PilotReviewStatus,
+} from "./pilotAliasTypes";
 import type { PilotSkuCode } from "./skuGuard";
 import { PILOT_SKUS } from "./skuGuard";
 
@@ -10,12 +14,7 @@ function termId(sku: PilotSkuCode, aliasText: string, aliasType: string): string
 
 function flattenPack(pack: (typeof PILOT_ALIAS_SEED_PACKS)[number]): PilotAliasTermSuggestion[] {
   const product_id = PILOT_PRODUCT_IDS[pack.sku];
-  const all = [
-    ...pack.official_and_search,
-    ...pack.whatsapp,
-    ...pack.phonetic,
-    ...pack.sales,
-  ];
+  const all = [...pack.official_and_search, ...pack.whatsapp, ...pack.phonetic, ...pack.sales];
 
   return all.map((raw) => ({
     id: termId(pack.sku, raw.alias_text, raw.alias_type),
@@ -80,8 +79,4 @@ export function setTermReviewStatus(
       : t,
   );
   return summarizeBundle(bundle.sku, bundle.product_name, bundle.product_id, terms);
-}
-
-export function approvedTerms(bundle: PilotAliasSkuBundle): PilotAliasTermSuggestion[] {
-  return bundle.terms.filter((t) => t.review_status === "approved");
 }

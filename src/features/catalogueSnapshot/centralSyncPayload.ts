@@ -1,10 +1,10 @@
 import { getChannelPrice } from "@/features/productTruth/channelPricingMoqEngine";
+import type { SnapshotValidationResult } from "./snapshotValidation";
 import type {
   ApprovedCatalogueProductSnapshot,
   CatalogueSnapshotJson,
   CentralSyncPreviewBundle,
 } from "./types";
-import type { SnapshotValidationResult } from "./snapshotValidation";
 
 export const LIVE_CENTRAL_WRITE_ENABLED = false;
 
@@ -33,7 +33,7 @@ export function validateApprovedCatalogueProductSnapshot(
   return { valid: errors.length === 0, errors };
 }
 
-export function buildApprovedCatalogueProductSnapshot(
+function buildApprovedCatalogueProductSnapshot(
   snapshot: CatalogueSnapshotJson,
   versionCode: string,
 ): ApprovedCatalogueProductSnapshot {
@@ -85,9 +85,7 @@ export function buildApprovedCatalogueProductSnapshot(
     gst_classification_status: compliance.gst_classification_status,
     gst_hsn: compliance.gst_hsn,
     gst_rate: compliance.gst_rate,
-    uom:
-      (snapshot.uom_conversion_rules as { primary_uom?: string | null }).primary_uom ??
-      null,
+    uom: (snapshot.uom_conversion_rules as { primary_uom?: string | null }).primary_uom ?? null,
     barcode_sku: snapshot.identity.sku,
     is_active: true,
     version: versionCode,
@@ -132,11 +130,4 @@ export function isStaleCatalogueVersion(
   currentHeadVersionNumber: number,
 ): boolean {
   return candidateVersionNumber < currentHeadVersionNumber;
-}
-
-export function isNewerCatalogueVersion(
-  candidateVersionNumber: number,
-  currentHeadVersionNumber: number,
-): boolean {
-  return candidateVersionNumber > currentHeadVersionNumber;
 }

@@ -9,7 +9,7 @@ import { getSaleTypeRequirements } from "@/features/productAuthority/saleType";
 
 export type CatalogueMediaKind = "hero" | "square" | "closeup" | "packaging" | "lifestyle";
 
-export const CATALOGUE_MEDIA_KIND_LABELS: Record<CatalogueMediaKind, string> = {
+const CATALOGUE_MEDIA_KIND_LABELS: Record<CatalogueMediaKind, string> = {
   hero: "Hero image",
   square: "Square / catalogue image",
   closeup: "Close-up / detail image",
@@ -33,10 +33,17 @@ const KIND_SYNONYMS: Record<CatalogueMediaKind, string[]> = {
   lifestyle: ["lifestyle", "ambience", "scene"],
 };
 
-export function mediaKindFromRowType(rowType: string | null | undefined): CatalogueMediaKind | null {
-  const t = String(rowType ?? "").trim().toLowerCase();
+export function mediaKindFromRowType(
+  rowType: string | null | undefined,
+): CatalogueMediaKind | null {
+  const t = String(rowType ?? "")
+    .trim()
+    .toLowerCase();
   if (!t) return null;
-  for (const [kind, synonyms] of Object.entries(KIND_SYNONYMS) as [CatalogueMediaKind, string[]][]) {
+  for (const [kind, synonyms] of Object.entries(KIND_SYNONYMS) as [
+    CatalogueMediaKind,
+    string[],
+  ][]) {
     if (synonyms.some((s) => t.includes(s))) return kind;
   }
   return null;

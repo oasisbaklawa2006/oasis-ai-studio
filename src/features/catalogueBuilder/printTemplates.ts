@@ -1,7 +1,7 @@
 import type { CatalogueCollectionType } from "./types";
 
-export const PRINT_VARIANTS = ["b2b", "exhibition", "custom_client"] as const;
-export type PrintCatalogueVariant = (typeof PRINT_VARIANTS)[number];
+const PRINT_VARIANTS = ["b2b", "exhibition", "custom_client"] as const;
+type PrintCatalogueVariant = (typeof PRINT_VARIANTS)[number];
 
 export type PrintTemplateId =
   | "b2b_classic"
@@ -23,7 +23,7 @@ export type PrintTemplateConfig = {
   cardLayout: "standard" | "hero" | "compact";
 };
 
-export const PRINT_TEMPLATES: Record<PrintTemplateId, PrintTemplateConfig> = {
+const PRINT_TEMPLATES: Record<PrintTemplateId, PrintTemplateConfig> = {
   b2b_classic: {
     id: "b2b_classic",
     variant: "b2b",
@@ -96,7 +96,7 @@ export function defaultTemplateForCollectionType(
   return COLLECTION_TYPE_TEMPLATE[catalogueType] ?? "b2b_classic";
 }
 
-export function templatesForVariant(variant: PrintCatalogueVariant): PrintTemplateConfig[] {
+function templatesForVariant(variant: PrintCatalogueVariant): PrintTemplateConfig[] {
   return Object.values(PRINT_TEMPLATES).filter((t) => t.variant === variant);
 }
 
@@ -104,9 +104,7 @@ export function getPrintTemplate(id: PrintTemplateId): PrintTemplateConfig {
   return PRINT_TEMPLATES[id];
 }
 
-export function collectionVariantForType(
-  catalogueType: CatalogueCollectionType,
-): PrintCatalogueVariant {
+function collectionVariantForType(catalogueType: CatalogueCollectionType): PrintCatalogueVariant {
   return getPrintTemplate(defaultTemplateForCollectionType(catalogueType)).variant;
 }
 

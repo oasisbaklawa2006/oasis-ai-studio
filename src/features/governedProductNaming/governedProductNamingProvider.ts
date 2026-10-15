@@ -25,7 +25,7 @@ export function mockCatalogueAiCopyProvider(
   parseResult: { ok: true; content: CatalogueDraftContent } | { ok: false; reason: string };
 } {
   const heuristic = buildHeuristicNamingSuggestions(facts);
-  if (!heuristic.ok) {
+  if (heuristic.ok !== true) {
     return {
       envelope: { ok: false, reason: heuristic.reason },
       parseResult: { ok: false, reason: heuristic.reason },
@@ -88,7 +88,7 @@ export function mockCatalogueAiCopyProvider(
   };
 
   const reviewCheck = validateProviderReviewEnvelope(envelope);
-  if (!reviewCheck.ok) {
+  if (reviewCheck.ok !== true) {
     return { envelope, parseResult: { ok: false, reason: reviewCheck.reason } };
   }
 
@@ -96,10 +96,4 @@ export function mockCatalogueAiCopyProvider(
     envelope,
     parseResult: validateGovernedCatalogueCopy(content, facts),
   };
-}
-
-export function extractFastCreateNamingFromGoverned(
-  facts: AuthoritativeProductFacts,
-): GovernedNamingDescriptionResult {
-  return buildHeuristicNamingSuggestions(facts);
 }

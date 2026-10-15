@@ -27,24 +27,6 @@ export function readIntakeBarcode(extraFormPatch?: Record<string, unknown>): str
   return trimmed || null;
 }
 
-/** Fail-closed Core claim before direct product writes. */
-export async function claimReviewedIntakeBarcode(
-  barcode: string,
-  excludeProductId?: string | null,
-): Promise<string> {
-  const { data, error } = await claimIntakeBarcodeRpc("catalogue_claim_intake_barcode", {
-    p_barcode: barcode,
-    p_exclude_product_id: excludeProductId ?? null,
-  });
-  if (error) {
-    throw new Error(error.message);
-  }
-  if (!data) {
-    throw new Error("Intake barcode claim failed — no barcode returned from Core authority.");
-  }
-  return data;
-}
-
 export async function submitFastCreateProductDraft(
   payload: Record<string, unknown>,
   operation: "create" | "update" = "create",

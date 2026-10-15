@@ -1,12 +1,7 @@
 import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
 import type { OperatorSuggestionState } from "./types";
 
-export {
-  isCompleteResolution,
-  isPartialStoredResolution,
-  isRenderableStoredResolution,
-  normalizeStoredResolution,
-} from "./storedResolution";
+export { isRenderableStoredResolution } from "./storedResolution";
 
 export function canCreateSalesOrderDraft(
   resolution: ProductUtteranceResolution | null,
@@ -16,10 +11,6 @@ export function canCreateSalesOrderDraft(
   if (!operator.selected_sku) return false;
   if (operator.decision !== "confirmed") return false;
   return true;
-}
-
-export function draftStatusForBand(band: ProductUtteranceResolution["confidence_band"]): "AI_DRAFT" | "UNDER_REVIEW" {
-  return band === "HIGH" ? "AI_DRAFT" : "UNDER_REVIEW";
 }
 
 /**
