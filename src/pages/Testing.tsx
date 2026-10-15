@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { safeAttachmentUrl } from "@/lib/safeAttachmentUrl";
 
 type Item = { id: string; label: string; hint: string };
 type Section = { id: string; title: string; items: Item[] };
@@ -304,25 +305,35 @@ const Testing = () => {
           <div className="text-xs text-muted-foreground">No test result PDFs attached yet.</div>
         ) : (
           <ul className="divide-y">
-            {attachments.map((a, i) => (
-              <li key={`${a.url}-${a.uploadedAt}`} className="flex items-center gap-2 py-2 text-sm">
-                <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                <a
-                  href={a.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex-1 min-w-0 truncate hover:underline"
+            {attachments.map((a, i) => {
+              const attachmentUrl = safeAttachmentUrl(a.url);
+              return (
+                <li
+                  key={`${a.url}-${a.uploadedAt}`}
+                  className="flex items-center gap-2 py-2 text-sm"
                 >
-                  {a.name}
-                </a>
-                <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                  {new Date(a.uploadedAt).toLocaleDateString()}
-                </span>
-                <Button size="icon" variant="ghost" onClick={() => removePdf(i)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </li>
-            ))}
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {attachmentUrl ? (
+                    <a
+                      href={attachmentUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 min-w-0 truncate hover:underline"
+                    >
+                      {a.name}
+                    </a>
+                  ) : (
+                    <span className="flex-1 min-w-0 truncate">{a.name}</span>
+                  )}
+                  <span className="text-[11px] text-muted-foreground hidden sm:inline">
+                    {new Date(a.uploadedAt).toLocaleDateString()}
+                  </span>
+                  <Button size="icon" variant="ghost" onClick={() => removePdf(i)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
