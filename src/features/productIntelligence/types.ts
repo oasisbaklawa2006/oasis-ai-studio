@@ -44,7 +44,7 @@ export type SnapshotLanguageIntelligence = {
   search_consumption: {
     matches_name: true;
     matches_sku: true;
-    matches_alias_text: true;
+    matches_alias_text: boolean;
     matches_canonical_name: true;
     matches_typed_terms: false;
   };

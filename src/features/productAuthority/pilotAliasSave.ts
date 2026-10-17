@@ -34,7 +34,7 @@ function buildDraftPayload(term: PilotAliasTermSuggestion) {
 /** Persist only user-approved terms — never auto-save suggestions. */
 export async function saveApprovedPilotAliases(
   bundle: PilotAliasSkuBundle,
-  roles: Role[],
+  _roles: Role[],
 ): Promise<PilotAliasSaveResult> {
   const approved = bundle.terms.filter((t) => t.review_status === "approved");
   const skipped = bundle.terms.length - approved.length;
@@ -60,7 +60,7 @@ export async function saveApprovedPilotAliases(
     };
   }
 
-  const direct = await canWriteMasterDirectly(roles);
+  const direct = await canWriteMasterDirectly();
   const errors: string[] = [];
   let saved = 0;
 

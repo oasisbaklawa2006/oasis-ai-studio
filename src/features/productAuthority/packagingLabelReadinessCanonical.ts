@@ -280,7 +280,8 @@ function evaluateHierarchyLabelLevel(
     const hasQty =
       positiveNum(form.pcs_per_pack) != null ||
       positiveNum(form.qty_per_pack) != null ||
-      (hasText(form.pack_size as string | null | undefined) && hasNumericInput(form.net_weight_g));
+      (hasText(form.pack_size as string | null | undefined) &&
+        hasNumericInput(form.net_weight_g as number | string | null | undefined));
     const hasType =
       hasText(form.primary_pack_type as string | null | undefined) ||
       hasText(form.packaging_code as string | null | undefined) ||

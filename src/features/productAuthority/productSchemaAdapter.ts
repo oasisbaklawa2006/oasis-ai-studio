@@ -44,7 +44,7 @@ export {
 export type ProductsInsert = Database["public"]["Tables"]["products"]["Insert"];
 export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
 
-/** Columns safe to send on insert/update per generated Studio types. */
+/** Candidate product fields recognized by Studio; live write filtering/mapping is applied below. */
 export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
   Object.keys({
     allergen_warnings: true,
@@ -156,7 +156,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     thawing_instruction: true,
     unit_conversion_note: true,
     updated_at: true,
-  } satisfies Record<keyof ProductsInsert, true>),
+  }),
 );
 
 export const LIVE_PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = new Set([

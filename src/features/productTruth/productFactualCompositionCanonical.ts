@@ -183,7 +183,10 @@ function shelfLifeFormValue(v: unknown): string {
 }
 
 /** Canonical nutrition text — nutritional_info wins; nutrition_facts is Central compat alias. */
-export function normalizeNutritionText(form: Record<string, unknown>): string | null {
+export function normalizeNutritionText(form: {
+  nutritional_info?: unknown;
+  nutrition_facts?: unknown;
+}): string | null {
   const primary = str(form.nutritional_info);
   if (primary) return primary;
   return str(form.nutrition_facts);

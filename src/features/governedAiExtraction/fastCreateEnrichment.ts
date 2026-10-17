@@ -10,7 +10,7 @@ import {
 import { mergeComplianceMetaMaps } from "./governedComplianceFieldMerge";
 import type { GovernedAiProvenance } from "./types";
 
-const FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS = 15_000;
+export const FAST_CREATE_ALIAS_FETCH_TIMEOUT_MS = 15_000;
 
 export type GovernedFastCreateEnrichment = {
   suggestions: FastCreateSuggestions;

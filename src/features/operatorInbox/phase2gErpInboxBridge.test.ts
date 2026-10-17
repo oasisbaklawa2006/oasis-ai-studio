@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
 import { resolveProductUtterance } from "@/features/productIntelligence/runtime";
-import { createInMemoryIngestStore } from "./ingestInboundMessage";
+import { PRODUCTION_SNAPSHOT_CATALOG } from "@/features/productIntelligence/runtime/fixtures/productionSnapshotCatalog";
+import { SAMPLE_ERP_WHATSAPP_ROWS } from "./bridge/fixtures/sampleErpWhatsAppRows";
 import { mapErpWhatsAppMessage, normalizeErpPhone } from "./bridge/mapErpWhatsAppMessage";
 import { processErpInboundRow } from "./bridge/processErpInboundRow";
-import { SAMPLE_ERP_WHATSAPP_ROWS } from "./bridge/fixtures/sampleErpWhatsAppRows";
+import { createInMemoryIngestStore } from "./ingestInboundMessage";
 
 const catalog = PRODUCTION_SNAPSHOT_CATALOG;
 

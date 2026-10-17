@@ -350,7 +350,13 @@ function buildQaAuditRef(audit: QaAuditRecord): string {
 export function validateApprovedQaSource(
   audit: QaAuditRecord,
   source: Omit<ApprovedQaSourceBinding, "qaAuditRef">,
-): { ok: true; qaAuditRef: string } | { ok: false; error: DerivativeOutputResolution["error"]; message: string } {
+):
+  | { ok: true; qaAuditRef: string }
+  | {
+      ok: false;
+      error: Extract<DerivativeOutputResolution, { ok: false }>["error"];
+      message: string;
+    } {
   if (audit.disposition !== "approved") {
     return {
       ok: false,

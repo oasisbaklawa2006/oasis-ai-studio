@@ -276,7 +276,8 @@ export function mergeDeferredDetailOnResubmit(
   if (!previous) return current;
   const now = new Date().toISOString();
   const prevByKey = new Map(previous.fields.map((f) => [f.field_key, f]));
-  const mergedFields = current.fields.map((field) => {
+  const mergedFields: DeferredDetailField[] = current.fields.map(
+    (field): DeferredDetailField => {
     const prev = prevByKey.get(field.field_key);
     if (!prev) return field;
     if (prev.state !== field.state && isFieldComplete(field.state)) {
@@ -290,8 +291,9 @@ export function mergeDeferredDetailOnResubmit(
         },
       };
     }
-    return field;
-  });
+      return field;
+    },
+  );
   return { contract_version: DEFERRED_DETAIL_CONTRACT_VERSION, fields: mergedFields };
 }
 

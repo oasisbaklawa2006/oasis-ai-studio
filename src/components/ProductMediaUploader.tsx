@@ -569,7 +569,7 @@ export function ProductMediaUploader({
             source: m.source ?? "gallery",
             requestedHero: true,
           },
-          m.id,
+          mediaId,
         );
         if (!res.ok) {
           toast.error(res.message);
@@ -582,9 +582,14 @@ export function ProductMediaUploader({
       return;
     }
 
+    const mediaUrl = m.file_url?.trim();
+    if (!mediaUrl) {
+      toast.error("Media URL is missing. Refresh the product and try again.");
+      return;
+    }
     const requestProductId = productId;
     try {
-      await setAsHeroDirect(m.file_url);
+      await setAsHeroDirect(mediaUrl);
       // Bugbot-caught: same reasoning as uploadToSlot's hero-upload toast above — suppress only once
       // the operator has moved on to a different product since this click started, not merely for
       // closing the Media tab.
@@ -657,6 +662,11 @@ export function ProductMediaUploader({
 
   const remove = async (m: ProductMediaRow) => {
     if (!canMutate || uploading) return;
+    const mediaId = m.id;
+    if (!mediaId) {
+      toast.error("Media row identity is missing. Refresh the product and try again.");
+      return;
+    }
     if (!confirm("Delete this photo permanently?")) return;
 
     if (writeMode === "draft") {
@@ -673,7 +683,7 @@ export function ProductMediaUploader({
             // See setAsHero above - product_media has no `source` column, so this was always null.
             source: null,
           },
-          m.id,
+          mediaId,
         );
         if (!res.ok) {
           toast.error(res.message);
@@ -690,7 +700,7 @@ export function ProductMediaUploader({
 
     const requestProductId = productId;
     const operationId = beginProductMediaOperation(requestProductId);
-    const { error } = await supabase.from("product_media").delete().eq("id", m.id);
+    const { error } = await supabase.from("product_media").delete().eq("id", mediaId);
     if (error) return toast.error(error.message);
     if (m.file_url === currentHero) {
       // Unlike removeAsHero, the row is genuinely gone now — re-deriving hero from what's actually
@@ -803,7 +813,7 @@ export function ProductMediaUploader({
       product_id: productId,
       file_url: url,
       type,
-      status: writeMode !== "draft" && isRequiredSlot(type) ? "approved" : "raw",
+      status: isRequiredSlot(type) ? "approved" : "raw",
       alt_text: "url_import",
     });
 
@@ -1149,12 +1159,12 @@ export function ProductMediaUploader({
               <div key={m.id} className="relative group rounded-lg overflow-hidden border bg-muted">
                 <div className="aspect-square relative bg-muted">
                   {m.type === "video" ? (
-                    <video src={m.file_url} className="w-full h-full object-cover" controls>
+                    <video src={m.file_url ?? undefined} className="w-full h-full object-cover" controls>
                       <track kind="captions" />
                     </video>
                   ) : (
                     <img
-                      src={m.file_url}
+                      src={m.file_url ?? undefined}
                       alt={m.alt_text || ""}
                       className={`w-full h-full object-cover ${pdf && !isHero ? "opacity-70" : ""}`}
                       onError={(e) => {

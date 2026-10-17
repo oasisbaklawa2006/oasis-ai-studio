@@ -62,19 +62,6 @@ export type PilotReadinessReport = {
   };
 };
 
-const WHATSAPP_ALIAS_TYPES = new Set([
-  "whatsapp_keyword",
-  "whatsapp",
-  "wa_keyword",
-]);
-
-const SEARCH_ALIAS_TYPES = new Set([
-  "search_keyword",
-  "search_term",
-  "search",
-  "discovery",
-]);
-
 async function fetchPilotProduct(sku: PilotSkuCode) {
   const { data, error } = await supabase
     .from("products")
@@ -104,28 +91,6 @@ function evaluateSchemaSave(row: Record<string, unknown> | null): {
   };
 }
 
-function countAliasTypes(aliases: Array<{ alias_type?: string | null }>) {
-  let whatsapp = 0;
-  let search = 0;
-  for (const a of aliases) {
-    const t = String(a.alias_type ?? "").toLowerCase();
-    if (WHATSAPP_ALIAS_TYPES.has(t)) whatsapp += 1;
-    if (SEARCH_ALIAS_TYPES.has(t)) search += 1;
-  }
-  return { whatsapp, search };
-}
-
-function evaluateAliasTermTypes(
-  aliasCount: number,
-  whatsapp: number,
-  search: number,
-): PilotCheckStatus {
-  if (aliasCount === 0) return "fail";
-  if (whatsapp >= 1 && search >= 1 && aliasCount >= 3) return "pass";
-  if (whatsapp >= 1 || search >= 1 || aliasCount >= 3) return "partial";
-  return "fail";
-}
-
 function evaluateApprovalReady(
   row: Record<string, unknown> | null,
   infra: PilotInfraReport,
@@ -141,7 +106,7 @@ function evaluateApprovalReady(
   if (hsnGst !== "pass") reasons.push("HSN and GST must both be set");
   if (packaging !== "pass") reasons.push("grams_per_piece and pieces_per_kg required");
   if (heroImage !== "pass") reasons.push("Hero image required");
-  if (aliasCount < 3) reasons.push("At least 3 active aliases required for pilot approval");
+  if (aliasCount < 3) reasons.push("At least 3 aliases required for pilot approval");
   if (infra.approveProductDraftRpc.status === "fail") {
     reasons.push("approve_catalogue_product_draft RPC not deployed");
   }
@@ -224,24 +189,25 @@ export async function evaluatePilotSku(
   }
 
   let aliasCount = 0;
-  let whatsappAliasCount = 0;
-  let searchAliasCount = 0;
+  const whatsappAliasCount = 0;
+  const searchAliasCount = 0;
+  let aliasTermTypes: PilotCheckStatus = "unknown";
   if (row?.id) {
-    const { data: aliases } = await supabase
+    const { data: aliases, error: aliasError } = await supabase
       .from("product_aliases")
-      .select("id, alias, alias_type, is_active")
-      .eq("product_id", row.id)
-      .eq("is_active", true);
-    aliasCount = aliases?.length ?? 0;
-    const typed = countAliasTypes(aliases ?? []);
-    whatsappAliasCount = typed.whatsapp;
-    searchAliasCount = typed.search;
-    if (aliasCount < 3) blockedReasons.push(`Only ${aliasCount} active aliases (need ≥3)`);
-    if (whatsappAliasCount < 1) blockedReasons.push("No WhatsApp keyword alias in DB (alias_type)");
-    if (searchAliasCount < 1) blockedReasons.push("No search keyword alias in DB (alias_type)");
+      .select("id, alias_text, canonical_name, product_id")
+      .eq("product_id", String(row.id));
+    if (aliasError) {
+      blockedReasons.push(`Alias readiness could not be verified: ${aliasError.message}`);
+    } else {
+      aliasCount = aliases?.length ?? 0;
+      if (aliasCount < 3) blockedReasons.push(`Only ${aliasCount} aliases found (need ≥3)`);
+      aliasTermTypes = aliasCount > 0 ? "partial" : "fail";
+      blockedReasons.push(
+        "Core alias authority does not expose alias_type/is_active; WhatsApp/search subtype readiness remains unverified.",
+      );
+    }
   }
-
-  const aliasTermTypes = evaluateAliasTermTypes(aliasCount, whatsappAliasCount, searchAliasCount);
 
   const collision = PILOT_COLLISION_HINTS[sku];
   const resolverCollisions: PilotCheckStatus = collision.status;
