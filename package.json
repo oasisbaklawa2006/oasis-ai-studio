@@ -11,7 +11,7 @@
     "lint:biome": "biome check .",
     "lint:biome:changed": "node scripts/biome-changed.mjs",
     "lint:biome:write": "biome check --write .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.studio.json",
     "typecheck:build": "tsc -b --force",
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
