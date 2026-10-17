@@ -1,3 +1,11 @@
+import { supabase } from "@/integrations/supabase/client";
+import { resolveProductHeroUrl } from "@/lib/productImage";
+import { type PilotInfraReport, probePilotInfra } from "./infraProbe";
+import {
+  evaluatePilotMediaForProduct,
+  type probeProductMediaBucket,
+} from "./mediaReadiness";
+import { PILOT_COLLISION_HINTS } from "./pilotCollisionHints";
 import {
   dbRowToProductForm,
   formToDbProductPayload,
@@ -9,15 +17,10 @@ import {
   isDraftSku,
   isPilotSku,
   isStructuredOasisSku,
-  PILOT_SKUS,
   PILOT_SKU_LABELS,
+  PILOT_SKUS,
   type PilotSkuCode,
 } from "./skuGuard";
-import { resolveProductHeroUrl } from "@/lib/productImage";
-import { supabase } from "@/integrations/supabase/client";
-import { probeProductMediaBucket, evaluatePilotMediaForProduct } from "./mediaReadiness";
-import { probePilotInfra, type PilotInfraReport } from "./infraProbe";
-import { PILOT_COLLISION_HINTS } from "./pilotCollisionHints";
 
 export type PilotCheckStatus = "pass" | "fail" | "partial" | "unknown";
 
@@ -63,11 +66,7 @@ export type PilotReadinessReport = {
 };
 
 async function fetchPilotProduct(sku: PilotSkuCode) {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .eq("sku", sku)
-    .maybeSingle();
+  const { data, error } = await supabase.from("products").select("*").eq("sku", sku).maybeSingle();
   if (error) throw new Error(error.message);
   return data as Record<string, unknown> | null;
 }
@@ -113,7 +112,10 @@ function evaluateApprovalReady(
   if (infra.mediaBucket.status === "missing") {
     reasons.push("product-media bucket missing — uploads will fail");
   }
-  return { status: reasons.length === 0 ? "pass" : reasons.length <= 2 ? "partial" : "fail", reasons };
+  return {
+    status: reasons.length === 0 ? "pass" : reasons.length <= 2 ? "partial" : "fail",
+    reasons,
+  };
 }
 
 export async function evaluatePilotSku(
@@ -143,7 +145,8 @@ export async function evaluatePilotSku(
 
   const hsnCode = row?.hsn_code ? String(row.hsn_code) : null;
   const gstRate = row?.gst_rate != null ? String(row.gst_rate) : null;
-  const hsnGst: PilotCheckStatus = hsnCode && gstRate ? "pass" : hsnCode || gstRate ? "partial" : "fail";
+  const hsnGst: PilotCheckStatus =
+    hsnCode && gstRate ? "pass" : hsnCode || gstRate ? "partial" : "fail";
   if (hsnGst !== "pass") blockedReasons.push("HSN and/or GST missing on product row");
 
   const gramsPerPiece =
@@ -162,11 +165,10 @@ export async function evaluatePilotSku(
         : null;
   const gpp = gramsPerPiece ?? 0;
   const ppk = piecesPerKg ?? 0;
-  const packaging: PilotCheckStatus = gpp > 0 && ppk > 0 ? "pass" : gpp > 0 || ppk > 0 ? "partial" : "fail";
+  const packaging: PilotCheckStatus =
+    gpp > 0 && ppk > 0 ? "pass" : gpp > 0 || ppk > 0 ? "partial" : "fail";
   if (packaging !== "pass") {
-    blockedReasons.push(
-      `Packaging: grams_per_piece=${gpp || "null"}, pcs_per_kg=${ppk || "null"}`,
-    );
+    blockedReasons.push(`Packaging: grams_per_piece=${gpp || "null"}, pcs_per_kg=${ppk || "null"}`);
   }
 
   let heroImage: PilotCheckStatus = "fail";
@@ -174,7 +176,8 @@ export async function evaluatePilotSku(
   if (row?.id) {
     const heroUrl = resolveProductHeroUrl(row as { hero_image_url?: string; image_url?: string });
     heroImage = heroUrl ? "pass" : "fail";
-    if (!heroUrl) blockedReasons.push("Hero image missing (hero_image_url and image_url both empty)");
+    if (!heroUrl)
+      blockedReasons.push("Hero image missing (hero_image_url and image_url both empty)");
 
     const media = await evaluatePilotMediaForProduct({
       id: String(row.id),
@@ -183,7 +186,8 @@ export async function evaluatePilotSku(
       image_url: row.image_url as string,
     });
     squareImage = media.squarePresent ? "pass" : "fail";
-    if (!media.squarePresent) blockedReasons.push("Square/white-background product_media row missing");
+    if (!media.squarePresent)
+      blockedReasons.push("Square/white-background product_media row missing");
   } else {
     blockedReasons.push("No product row — cannot check media");
   }

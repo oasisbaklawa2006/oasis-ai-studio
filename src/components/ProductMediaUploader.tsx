@@ -569,7 +569,7 @@ export function ProductMediaUploader({
             source: m.source ?? "gallery",
             requestedHero: true,
           },
-          mediaId,
+          m.id,
         );
         if (!res.ok) {
           toast.error(res.message);
@@ -1159,7 +1159,11 @@ export function ProductMediaUploader({
               <div key={m.id} className="relative group rounded-lg overflow-hidden border bg-muted">
                 <div className="aspect-square relative bg-muted">
                   {m.type === "video" ? (
-                    <video src={m.file_url ?? undefined} className="w-full h-full object-cover" controls>
+                    <video
+                      src={m.file_url ?? undefined}
+                      className="w-full h-full object-cover"
+                      controls
+                    >
                       <track kind="captions" />
                     </video>
                   ) : (
