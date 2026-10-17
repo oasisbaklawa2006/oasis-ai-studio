@@ -1,7 +1,9 @@
-import type { RuntimeAlternative } from "@/features/productIntelligence/runtime";
-import type { OperatorSuggestionState } from "./types";
+import type {
+  ProductUtteranceResolution,
+  RuntimeAlternative,
+} from "@/features/productIntelligence/runtime";
 import { canPreselectTopMatch } from "./suggestionGovernance";
-import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
+import type { OperatorSuggestionState } from "./types";
 
 export type DraftOperatorSnapshot = {
   id: string;

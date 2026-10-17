@@ -1,19 +1,16 @@
+import { AlertTriangle, CheckCircle2, ImageIcon } from "lucide-react";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { AlertTriangle, CheckCircle2, ImageIcon } from "lucide-react";
-import { authoritativeMediaAssets } from "../mediaAuthorityContract";
-import { evaluateMediaReadiness, selectApprovedImageUrlsForCentral } from "../mediaReadinessEngine";
 import {
-  getMediaGovernanceMode,
-  mediaGovernanceModeLabel,
-} from "../mediaGovernanceMode";
-import { isTestingMediaGovernance } from "../mediaGovernanceDisplay";
-import {
+  type ProductMediaRow,
   productMediaContextFromForm,
   slotDisplayLabel,
-  type ProductMediaRow,
 } from "../mediaAssetsFromForm";
+import { authoritativeMediaAssets } from "../mediaAuthorityContract";
+import { isTestingMediaGovernance } from "../mediaGovernanceDisplay";
+import { getMediaGovernanceMode, mediaGovernanceModeLabel } from "../mediaGovernanceMode";
+import { evaluateMediaReadiness, selectApprovedImageUrlsForCentral } from "../mediaReadinessEngine";
 import type { MediaAssetSlotStatus } from "../types";
 
 type Props = {
@@ -60,10 +57,7 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
     [form, productMediaRows],
   );
 
-  const readiness = useMemo(
-    () => evaluateMediaReadiness(product, assets),
-    [product, assets],
-  );
+  const readiness = useMemo(() => evaluateMediaReadiness(product, assets), [product, assets]);
 
   const governanceMode = getMediaGovernanceMode();
   const testingMode = isTestingMediaGovernance();
@@ -71,9 +65,7 @@ export function MediaReadinessPanel({ form, productMediaRows = [] }: Props) {
   const recommendedSlots = testingMode ? [] : readiness.slots.filter((s) => !s.required);
 
   const centralUrls = useMemo(() => selectApprovedImageUrlsForCentral(assets), [assets]);
-  const pct = readiness.maxScore
-    ? Math.round((readiness.score / readiness.maxScore) * 100)
-    : 0;
+  const pct = readiness.maxScore ? Math.round((readiness.score / readiness.maxScore) * 100) : 0;
 
   return (
     <div className="card-elevated p-4 space-y-4">

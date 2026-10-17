@@ -38,7 +38,8 @@ export function derivePackFields(answers: PackAnswers): DerivedPackFields {
     retail_uom: unit,
     b2b_uom: byCarton ? "carton" : unit,
     pcs_per_pack: answers.qtyPerPack && answers.qtyPerPack > 0 ? answers.qtyPerPack : null,
-    carton_qty: answers.packsPerCarton && answers.packsPerCarton > 0 ? answers.packsPerCarton : null,
+    carton_qty:
+      answers.packsPerCarton && answers.packsPerCarton > 0 ? answers.packsPerCarton : null,
     fixed_carton_required: byCarton,
     moq_rule_type: byCarton ? "carton_based" : "fixed_min",
     moq_value: 1,
@@ -80,7 +81,11 @@ const PACK_UNITS = new Set([
 
 /** True when the product sells loose / by weight — the only case pieces-per-kg applies. */
 export function isWeightBasedSelling(primaryUom: string | null | undefined): boolean {
-  return KG_UNITS.has(String(primaryUom ?? "").trim().toLowerCase());
+  return KG_UNITS.has(
+    String(primaryUom ?? "")
+      .trim()
+      .toLowerCase(),
+  );
 }
 
 /**
@@ -88,5 +93,9 @@ export function isWeightBasedSelling(primaryUom: string | null | undefined): boo
  * so legacy weight-based products keep their original readiness rules.
  */
 export function isPackBasedSelling(primaryUom: string | null | undefined): boolean {
-  return PACK_UNITS.has(String(primaryUom ?? "").trim().toLowerCase());
+  return PACK_UNITS.has(
+    String(primaryUom ?? "")
+      .trim()
+      .toLowerCase(),
+  );
 }

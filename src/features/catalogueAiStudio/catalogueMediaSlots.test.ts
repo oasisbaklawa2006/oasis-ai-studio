@@ -5,9 +5,9 @@ import {
   catalogueDerivativeOutput,
   catalogueDerivativeOutputView,
   catalogueEvaluateQaReadiness,
-  catalogueExecuteMockDerivativeTransform,
   catalogueExactProductEnhancement,
   catalogueExactProductEnhancementView,
+  catalogueExecuteMockDerivativeTransform,
   catalogueGuidedCaptureView,
   catalogueGuidedMobileCapture,
   catalogueImageQaValidation,
@@ -137,10 +137,7 @@ describe("catalogueExactProductEnhancement", () => {
     expect(okView.contract?.sourceBinding.sourceMediaId).toBe("media-001");
     expect(okView.resolutionError).toBeNull();
 
-    const failView = catalogueExactProductEnhancementView(
-      { category: "Baklawa" },
-      source,
-    );
+    const failView = catalogueExactProductEnhancementView({ category: "Baklawa" }, source);
     expect(failView.contract).toBeNull();
     expect(failView.resolutionError).toContain("Product identity");
   });

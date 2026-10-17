@@ -33,7 +33,10 @@ export function parseRecentProductEntries(raw: string | null): RecentProductEntr
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(
       (e): e is RecentProductEntry =>
-        !!e && typeof e === "object" && typeof e.productId === "string" && typeof e.lastOpenedAt === "string",
+        !!e &&
+        typeof e === "object" &&
+        typeof e.productId === "string" &&
+        typeof e.lastOpenedAt === "string",
     );
   } catch {
     return [];

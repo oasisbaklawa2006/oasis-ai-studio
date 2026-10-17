@@ -1,10 +1,6 @@
 import type { Category1AuthorityRow, ValidationIssue } from "./types";
 
-const DEPARTMENTS = new Set([
-  "ready_goods_store",
-  "packing_assembly",
-  "third_party_goods_store",
-]);
+const DEPARTMENTS = new Set(["ready_goods_store", "packing_assembly", "third_party_goods_store"]);
 
 const PRODUCTION_DEPARTMENTS = new Set([
   "arabic_sweets",

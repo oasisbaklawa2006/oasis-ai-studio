@@ -4,9 +4,7 @@ export type InboundValidationResult =
   | { ok: true; value: WhatsAppInboundInput }
   | { ok: false; error: string };
 
-export function validateWhatsAppInboundInput(
-  input: WhatsAppInboundInput,
-): InboundValidationResult {
+export function validateWhatsAppInboundInput(input: WhatsAppInboundInput): InboundValidationResult {
   const phone = input.sender_phone?.trim() ?? "";
   if (!phone) {
     return { ok: false, error: "sender_phone is required" };

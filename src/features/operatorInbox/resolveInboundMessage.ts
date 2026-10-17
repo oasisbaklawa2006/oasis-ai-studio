@@ -1,8 +1,8 @@
 import {
   loadRuntimeCatalog,
-  resolveProductUtterance,
   type ProductUtteranceResolution,
   type RuntimeCatalog,
+  resolveProductUtterance,
 } from "@/features/productIntelligence/runtime";
 
 export type CatalogLoader = () => Promise<RuntimeCatalog>;

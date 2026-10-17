@@ -6,21 +6,42 @@ describe("summarizeCatalogueMedia", () => {
     const summary = summarizeCatalogueMedia(
       { hero_image_url: "https://cdn.example/legacy-hero.jpg" },
       [
-        { id: "m1", type: "hero_image", status: "approved", file_url: "https://cdn.example/hero.jpg", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "m1",
+          type: "hero_image",
+          status: "approved",
+          file_url: "https://cdn.example/hero.jpg",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ],
     );
     expect(summary.heroUrl).toBe("https://cdn.example/hero.jpg");
   });
 
   it("falls back to the product row hero when no approved hero media row exists", () => {
-    const summary = summarizeCatalogueMedia({ hero_image_url: "https://cdn.example/legacy-hero.jpg" }, []);
+    const summary = summarizeCatalogueMedia(
+      { hero_image_url: "https://cdn.example/legacy-hero.jpg" },
+      [],
+    );
     expect(summary.heroUrl).toBe("https://cdn.example/legacy-hero.jpg");
   });
 
   it("lists approved non-hero media, newest first, with human-readable type labels", () => {
     const summary = summarizeCatalogueMedia(null, [
-      { id: "a", type: "closeup", status: "approved", file_url: "https://cdn.example/a.jpg", created_at: "2026-01-01T00:00:00Z" },
-      { id: "b", type: "lifestyle", status: "approved", file_url: "https://cdn.example/b.jpg", created_at: "2026-06-01T00:00:00Z" },
+      {
+        id: "a",
+        type: "closeup",
+        status: "approved",
+        file_url: "https://cdn.example/a.jpg",
+        created_at: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        type: "lifestyle",
+        status: "approved",
+        file_url: "https://cdn.example/b.jpg",
+        created_at: "2026-06-01T00:00:00Z",
+      },
     ]);
     expect(summary.approvedMedia.map((m) => m.id)).toEqual(["b", "a"]);
     expect(summary.approvedMedia[0].typeLabel).toBe("Lifestyle");
@@ -28,7 +49,12 @@ describe("summarizeCatalogueMedia", () => {
 
   it("excludes pending/draft/rejected media from the approved list", () => {
     const summary = summarizeCatalogueMedia(null, [
-      { id: "p", type: "closeup", status: "pending_approval", file_url: "https://cdn.example/p.jpg" },
+      {
+        id: "p",
+        type: "closeup",
+        status: "pending_approval",
+        file_url: "https://cdn.example/p.jpg",
+      },
       { id: "r", type: "closeup", status: "rejected", file_url: "https://cdn.example/r.jpg" },
     ]);
     expect(summary.approvedMedia).toEqual([]);
@@ -55,7 +81,14 @@ describe("summarizeCatalogueMedia", () => {
   it("does NOT fall back to the legacy hero column when product_media rows exist but none is an approved hero", () => {
     const summary = summarizeCatalogueMedia(
       { hero_image_url: "https://cdn.example/legacy-hero.jpg" },
-      [{ id: "p", type: "hero_image", status: "pending_approval", file_url: "https://cdn.example/p.jpg" }],
+      [
+        {
+          id: "p",
+          type: "hero_image",
+          status: "pending_approval",
+          file_url: "https://cdn.example/p.jpg",
+        },
+      ],
     );
     expect(summary.heroUrl).toBeNull();
   });

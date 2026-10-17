@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { derivePackFields, isPackBasedSelling, isWeightBasedSelling, labelStarterFromPack } from "./packLogic";
+import {
+  derivePackFields,
+  isPackBasedSelling,
+  isWeightBasedSelling,
+  labelStarterFromPack,
+} from "./packLogic";
 
 describe("derivePackFields", () => {
   it("maps the Misr 15 guided answers onto existing fields", () => {
@@ -39,7 +44,9 @@ describe("labelStarterFromPack", () => {
   });
 
   it("appends packaging label when available", () => {
-    expect(labelStarterFromPack(6, "box", "Printed Paper Box")).toBe("6 pcs box · Printed Paper Box");
+    expect(labelStarterFromPack(6, "box", "Printed Paper Box")).toBe(
+      "6 pcs box · Printed Paper Box",
+    );
   });
 
   it("never invents a quantity", () => {

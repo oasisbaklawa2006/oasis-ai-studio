@@ -1,5 +1,9 @@
-import { getBuildMeterStatus, getMissingFieldChips, type ReadinessCategoryLike } from "@/features/productAuthority/buildMeter";
 import { Badge } from "@/components/ui/badge";
+import {
+  getBuildMeterStatus,
+  getMissingFieldChips,
+  type ReadinessCategoryLike,
+} from "@/features/productAuthority/buildMeter";
 
 interface BuildMeterBarProps {
   score: number;
@@ -20,7 +24,9 @@ export function BuildMeterBar({ score, categories, onChipClick, sticky }: BuildM
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-baseline gap-2">
           <span className="text-lg font-semibold text-foreground">{status.score}%</span>
-          <span className={`text-xs font-medium ${status.meetsThreshold ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}>
+          <span
+            className={`text-xs font-medium ${status.meetsThreshold ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"}`}
+          >
             {status.headline}
           </span>
         </div>
@@ -32,7 +38,11 @@ export function BuildMeterBar({ score, categories, onChipClick, sticky }: BuildM
           className={`h-full rounded-full ${status.meetsThreshold ? "bg-emerald-500" : "bg-amber-500"}`}
           style={{ width: `${status.score}%` }}
         />
-        <div className="absolute top-0 bottom-0 w-px bg-foreground/40" style={{ left: "70%" }} title="70% benchmark" />
+        <div
+          className="absolute top-0 bottom-0 w-px bg-foreground/40"
+          style={{ left: "70%" }}
+          title="70% benchmark"
+        />
       </div>
 
       {chips.length > 0 && (

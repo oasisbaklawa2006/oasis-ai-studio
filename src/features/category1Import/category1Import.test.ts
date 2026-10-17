@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
-import { mapRawRowToCategory1 } from "./columnMapping";
-import { parseCsvText } from "./parseFile";
 import { buildCategory1DraftPayload } from "./buildDraftPayload";
-import { validateCategory1Row } from "./validate";
+import { mapRawRowToCategory1 } from "./columnMapping";
 import { detectInFileDuplicates } from "./duplicateDetection";
 import { createImportLogEntry } from "./importLogService";
+import { parseCsvText } from "./parseFile";
 import type { StagedCategory1Row } from "./types";
+import { validateCategory1Row } from "./validate";
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
@@ -32,9 +32,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 describe("category1Import", () => {
   it("parses CSV with header aliases", () => {
-    const rows = parseCsvText(
-      "name,sku,category,mrp\nCashew Pyramid,OB-001,Baklawa,1200\n",
-    );
+    const rows = parseCsvText("name,sku,category,mrp\nCashew Pyramid,OB-001,Baklawa,1200\n");
     expect(rows).toHaveLength(1);
     const mapped = mapRawRowToCategory1(rows[0], 1, "test.csv");
     expect(mapped.product_name).toBe("Cashew Pyramid");
@@ -44,9 +42,7 @@ describe("category1Import", () => {
   });
 
   it("requires product_name and category", () => {
-    const issues = validateCategory1Row(
-      mapRawRowToCategory1({ sku: "X" }, 1, "f"),
-    );
+    const issues = validateCategory1Row(mapRawRowToCategory1({ sku: "X" }, 1, "f"));
     expect(issues.some((i) => i.code === "missing_product_name")).toBe(true);
     expect(issues.some((i) => i.code === "missing_category")).toBe(true);
   });

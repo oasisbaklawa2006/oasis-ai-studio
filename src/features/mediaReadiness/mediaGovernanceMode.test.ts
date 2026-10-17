@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   getMediaGovernanceMode,
-  governedRequiredProfileSlots,
   governedRecommendedProfileSlots,
+  governedRequiredProfileSlots,
 } from "./mediaGovernanceMode";
 import { evaluateMediaReadiness, getMissingMediaAssets } from "./mediaReadinessEngine";
 import type { MediaAsset, ProductMediaContext } from "./types";
@@ -12,10 +12,7 @@ const baklawaProduct: ProductMediaContext = {
   subcategory: "Pyramid",
 };
 
-function asset(
-  type: MediaAsset["type"],
-  status: MediaAsset["status"] = "approved",
-): MediaAsset {
+function asset(type: MediaAsset["type"], status: MediaAsset["status"] = "approved"): MediaAsset {
   return {
     type,
     url: `https://cdn.example/${type}.jpg`,

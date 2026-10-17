@@ -1,14 +1,14 @@
+import { Search } from "lucide-react";
 import { useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   loadRuntimeCatalog,
-  resolveProductUtterance,
   type ProductUtteranceResolution,
+  resolveProductUtterance,
 } from "@/features/productIntelligence/runtime";
-import { Search } from "lucide-react";
 
 const BAND_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   HIGH: "default",
@@ -87,10 +87,14 @@ export default function ResolverPreview() {
               <div className="font-mono text-xs">{result.resolved_sku ?? "—"}</div>
             </div>
             <div>
-              <div className="text-muted-foreground text-xs uppercase tracking-wide">Normalized</div>
+              <div className="text-muted-foreground text-xs uppercase tracking-wide">
+                Normalized
+              </div>
               <div>{result.normalized_text || "—"}</div>
               {result.pack_count != null && (
-                <div className="text-xs text-muted-foreground">Pack qty hint: {result.pack_count}</div>
+                <div className="text-xs text-muted-foreground">
+                  Pack qty hint: {result.pack_count}
+                </div>
               )}
             </div>
           </div>
@@ -117,7 +121,10 @@ export default function ResolverPreview() {
                 </thead>
                 <tbody>
                   {result.alternatives.map((alt) => (
-                    <tr key={`${alt.sku}-${alt.matched_term}`} className="border-b border-border/50">
+                    <tr
+                      key={`${alt.sku}-${alt.matched_term}`}
+                      className="border-b border-border/50"
+                    >
                       <td className="py-2 pr-4 font-mono text-xs">{alt.sku}</td>
                       <td className="py-2 pr-4">{alt.product_name}</td>
                       <td className="py-2 pr-4">{alt.matched_term}</td>

@@ -1,12 +1,12 @@
+import { AlertTriangle, CheckCircle2, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import type { ProductReadinessResult } from "../productReadiness";
-import type { ReadinessBadge } from "../types";
 import {
   dimensionReadinessLabel,
   isTestingMediaGovernance,
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
-import { AlertTriangle, CheckCircle2, Lock } from "lucide-react";
+import type { ProductReadinessResult } from "../productReadiness";
+import type { ReadinessBadge } from "../types";
 
 const badgeTone = (b: ReadinessBadge) => {
   switch (b) {
@@ -36,7 +36,8 @@ export function ProductReadinessPanel({ readiness }: { readiness: ProductReadine
         <div>
           <h4 className="font-medium">Product readiness</h4>
           <p className="text-xs text-muted-foreground">
-            Score {readiness.score}/{readiness.maxScore} · {readiness.isLegacy ? "Legacy / incomplete" : "Active record"}
+            Score {readiness.score}/{readiness.maxScore} ·{" "}
+            {readiness.isLegacy ? "Legacy / incomplete" : "Active record"}
           </p>
         </div>
         {readiness.readyForCentralSync ? (
@@ -61,7 +62,9 @@ export function ProductReadinessPanel({ readiness }: { readiness: ProductReadine
       </div>
 
       <div className="rounded-md border p-3 bg-muted/20">
-        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">Next action</div>
+        <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-1">
+          Next action
+        </div>
         <p className="text-sm">{readiness.nextAction}</p>
       </div>
 

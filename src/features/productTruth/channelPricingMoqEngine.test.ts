@@ -103,14 +103,34 @@ describe("channelPricingMoqEngine", () => {
     });
 
     it("breaks ties by id even when neither row has an approvedAt", () => {
-      const a: ChannelPriceRecord = { id: "aaa", channel: "retail", priceStatus: "approved", sellingPrice: 400 };
-      const b: ChannelPriceRecord = { id: "bbb", channel: "retail", priceStatus: "approved", sellingPrice: 450 };
+      const a: ChannelPriceRecord = {
+        id: "aaa",
+        channel: "retail",
+        priceStatus: "approved",
+        sellingPrice: 400,
+      };
+      const b: ChannelPriceRecord = {
+        id: "bbb",
+        channel: "retail",
+        priceStatus: "approved",
+        sellingPrice: 450,
+      };
       expect(getChannelPrice([b, a], "retail")?.id).toBe("aaa");
     });
 
     it("compareChannelPriceRows sorts newest-first with a stable id tie-break", () => {
-      const a: ChannelPriceRecord = { id: "aaa", channel: "retail", priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" };
-      const b: ChannelPriceRecord = { id: "bbb", channel: "retail", priceStatus: "approved", approvedAt: "2026-06-01T00:00:00Z" };
+      const a: ChannelPriceRecord = {
+        id: "aaa",
+        channel: "retail",
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      };
+      const b: ChannelPriceRecord = {
+        id: "bbb",
+        channel: "retail",
+        priceStatus: "approved",
+        approvedAt: "2026-06-01T00:00:00Z",
+      };
       const sorted = [a, b].sort(compareChannelPriceRows);
       expect(sorted.map((r) => r.id)).toEqual(["bbb", "aaa"]);
     });

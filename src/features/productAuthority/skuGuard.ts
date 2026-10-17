@@ -45,7 +45,10 @@ export function isPilotSku(sku: string | null | undefined): boolean {
  * this only extracts a segment for cross-checking, it doesn't gate SKU validity.
  */
 export function skuPackagingSegment(sku: string | null | undefined): string | null {
-  const parts = String(sku ?? "").trim().toUpperCase().split("-");
+  const parts = String(sku ?? "")
+    .trim()
+    .toUpperCase()
+    .split("-");
   return parts.length === 6 && parts[0] === "OAS" ? parts[4] : null;
 }
 

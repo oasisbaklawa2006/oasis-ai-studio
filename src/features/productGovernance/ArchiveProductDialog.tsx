@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -9,10 +10,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { archiveProduct } from "@/features/productGovernance/productGovernanceService";
 import { productGovernanceLabel } from "@/features/productGovernance/duplicateDetection";
+import { archiveProduct } from "@/features/productGovernance/productGovernanceService";
 import type { ProductGovernanceRow } from "@/features/productGovernance/types";
-import { toast } from "sonner";
 
 type Props = {
   product: ProductGovernanceRow | null;
@@ -21,12 +21,7 @@ type Props = {
   onArchived?: () => void;
 };
 
-export function ArchiveProductDialog({
-  product,
-  open,
-  onOpenChange,
-  onArchived,
-}: Props) {
+export function ArchiveProductDialog({ product, open, onOpenChange, onArchived }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleArchive = async () => {
@@ -51,7 +46,11 @@ export function ArchiveProductDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Archive product</AlertDialogTitle>
           <AlertDialogDescription>
-            Archive <span className="font-medium">{product ? productGovernanceLabel(product) : "this product"}</span>? It will become inactive and hidden from default Product Master searches.
+            Archive{" "}
+            <span className="font-medium">
+              {product ? productGovernanceLabel(product) : "this product"}
+            </span>
+            ? It will become inactive and hidden from default Product Master searches.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

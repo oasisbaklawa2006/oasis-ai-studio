@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  allowedSubcategoryCodes,
   allowedPackagingCodes,
+  allowedSubcategoryCodes,
   filterSkuCodeOptions,
   isValidSkuTaxonomyCombination,
 } from "./skuTaxonomyMap";

@@ -1,14 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
-  configuredChannels,
-  mapMoqRules,
-  mapPricingRules,
-} from "./channelAuthorityMappers";
-import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
-import { formToDbProductPayload } from "@/features/productAuthority/productSchemaAdapter";
-import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFromForm";
+  mediaAssetsFromSources,
+  productMediaContextFromForm,
+} from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
-import { productMediaContextFromForm } from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { formToDbProductPayload } from "@/features/productAuthority/productSchemaAdapter";
+import { configuredChannels, mapMoqRules, mapPricingRules } from "./channelAuthorityMappers";
+import { evaluateProductReadiness, productTruthInputFromForm } from "./productReadiness";
 
 describe("channel authority mappers", () => {
   it("maps pricing rows to Product Truth channel records", () => {

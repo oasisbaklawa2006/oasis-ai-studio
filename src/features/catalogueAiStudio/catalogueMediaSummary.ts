@@ -3,12 +3,13 @@
  * hero/media authority as the rest of the app (resolveProductCardHeroUrl, isApprovedHeroMediaRow)
  * — never invents a new hero rule, never approves or generates anything.
  */
+
+import { mediaTypeLabel } from "@/features/productAuthority/productMediaPersistence";
 import {
   isApprovedHeroMediaRow,
-  resolveProductCardHeroUrl,
   type ProductHeroMediaRow,
+  resolveProductCardHeroUrl,
 } from "@/lib/productImage";
-import { mediaTypeLabel } from "@/features/productAuthority/productMediaPersistence";
 
 export type CatalogueMediaRow = ProductHeroMediaRow & { id?: string };
 
@@ -32,7 +33,9 @@ export function summarizeCatalogueMedia(
   const heroUrl = resolveProductCardHeroUrl(rows.length > 0 ? null : productHero, rows);
 
   const approvedMedia = rows
-    .filter((r) => String(r.status ?? "").toLowerCase() === "approved" && !isApprovedHeroMediaRow(r))
+    .filter(
+      (r) => String(r.status ?? "").toLowerCase() === "approved" && !isApprovedHeroMediaRow(r),
+    )
     .filter((r) => (r.file_url ?? "").trim())
     .sort((a, b) => (Date.parse(b.created_at ?? "") || 0) - (Date.parse(a.created_at ?? "") || 0))
     .map((r, i) => ({

@@ -15,8 +15,16 @@ const ROOT = join(__dirname, "..");
 const FILLER = new Set(["need", "send", "want", "please", "order", "kg", "chahiye", "bhejo"]);
 
 function normalizeUtterance(input) {
-  let text = input.toLowerCase().replace(/[₹$,;:!?()[\]{}'"`]/g, " ").replace(/\b\d+(?:\.\d+)?\b/g, " ").replace(/\s+/g, " ").trim();
-  return text.split(" ").filter((t) => t && !FILLER.has(t)).join(" ");
+  const text = input
+    .toLowerCase()
+    .replace(/[₹$,;:!?()[\]{}'"`]/g, " ")
+    .replace(/\b\d+(?:\.\d+)?\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return text
+    .split(" ")
+    .filter((t) => t && !FILLER.has(t))
+    .join(" ");
 }
 
 function tokenOverlapScore(query, target) {
@@ -37,7 +45,11 @@ function tokenOverlapScore(query, target) {
 
 const SKU_PATTERN = /^OAS-[A-Z0-9-]+$/i;
 
-function resolveProduct(input, catalog, config = { min_threshold: 0.72, ambiguity_delta: 0.08, max_candidates: 3 }) {
+function resolveProduct(
+  input,
+  catalog,
+  config = { min_threshold: 0.72, ambiguity_delta: 0.08, max_candidates: 3 },
+) {
   const raw = input.trim();
   const skuQuery = SKU_PATTERN.test(raw) ? raw.toLowerCase() : null;
   const normalized_text = skuQuery ?? normalizeUtterance(input);
@@ -47,12 +59,32 @@ function resolveProduct(input, catalog, config = { min_threshold: 0.72, ambiguit
   for (const product of catalog.products) {
     const sku = product.sku.toLowerCase();
     const name = product.name.toLowerCase();
-    if (sku === normalized_text) candidateMap.set(product.id, { product_id: product.id, sku: product.sku, product_name: product.name, matched_term: product.sku, confidence: 1 });
-    else if (sku.includes(normalized_text)) candidateMap.set(product.id, { product_id: product.id, sku: product.sku, product_name: product.name, matched_term: product.sku, confidence: 0.95 });
+    if (sku === normalized_text)
+      candidateMap.set(product.id, {
+        product_id: product.id,
+        sku: product.sku,
+        product_name: product.name,
+        matched_term: product.sku,
+        confidence: 1,
+      });
+    else if (sku.includes(normalized_text))
+      candidateMap.set(product.id, {
+        product_id: product.id,
+        sku: product.sku,
+        product_name: product.name,
+        matched_term: product.sku,
+        confidence: 0.95,
+      });
     const nameScore = tokenOverlapScore(normalized_text, name);
     if (nameScore > 0) {
       const cur = candidateMap.get(product.id);
-      const next = { product_id: product.id, sku: product.sku, product_name: product.name, matched_term: product.name, confidence: Math.min(0.92, nameScore) };
+      const next = {
+        product_id: product.id,
+        sku: product.sku,
+        product_name: product.name,
+        matched_term: product.name,
+        confidence: Math.min(0.92, nameScore),
+      };
       if (!cur || next.confidence > cur.confidence) candidateMap.set(product.id, next);
     }
   }
@@ -63,12 +95,28 @@ function resolveProduct(input, catalog, config = { min_threshold: 0.72, ambiguit
     const score = tokenOverlapScore(normalized_text, alias.alias_text.toLowerCase());
     if (score <= 0) continue;
     const cur = candidateMap.get(product.id);
-    const next = { product_id: product.id, sku: product.sku, product_name: product.name, matched_term: alias.alias_text, confidence: Math.min(0.94, score) };
+    const next = {
+      product_id: product.id,
+      sku: product.sku,
+      product_name: product.name,
+      matched_term: alias.alias_text,
+      confidence: Math.min(0.94, score),
+    };
     if (!cur || next.confidence > cur.confidence) candidateMap.set(product.id, next);
   }
 
-  const candidates = [...candidateMap.values()].sort((a, b) => b.confidence - a.confidence).slice(0, config.max_candidates);
-  if (!candidates.length) return { input, normalized_text, clarification_required: true, matched_sku: null, confidence: 0, candidates: [] };
+  const candidates = [...candidateMap.values()]
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, config.max_candidates);
+  if (!candidates.length)
+    return {
+      input,
+      normalized_text,
+      clarification_required: true,
+      matched_sku: null,
+      confidence: 0,
+      candidates: [],
+    };
 
   const top = candidates[0];
   const second = candidates[1];
@@ -112,7 +160,11 @@ const PRODUCTS = [
   { id: PRODUCT_IDS["OAS-AS-BKL-0003"], sku: "OAS-AS-BKL-0003", name: "Cashew Ring" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0007"], sku: "OAS-AS-BKL-0007", name: "Cashew Finger" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0010"], sku: "OAS-AS-BKL-0010", name: "Pistachio Ring" },
-  { id: PRODUCT_IDS["OAS-AS-BKL-0012"], sku: "OAS-AS-BKL-0012", name: "Chocolate Pistachio Asiyah" },
+  {
+    id: PRODUCT_IDS["OAS-AS-BKL-0012"],
+    sku: "OAS-AS-BKL-0012",
+    name: "Chocolate Pistachio Asiyah",
+  },
   { id: PRODUCT_IDS["OAS-AS-BKL-0013"], sku: "OAS-AS-BKL-0013", name: "Chocolate Cashew Asiyah" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0014"], sku: "OAS-AS-BKL-0014", name: "Mor Cashew Asiyah" },
   { id: PRODUCT_IDS["OAS-AS-BKL-0015"], sku: "OAS-AS-BKL-0015", name: "Mor Pistachio Asiyah" },
@@ -128,9 +180,24 @@ const PRODUCTS = [
 ];
 
 function loadAliases() {
-  const phase1 = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview/batch001_phase1_drafts_payload.json"), "utf8"));
-  const wave2a = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview/batch001_wave2a_drafts_payload.json"), "utf8"));
-  const wave2b = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview/batch001_wave2b_drafts_payload.json"), "utf8"));
+  const phase1 = JSON.parse(
+    readFileSync(
+      join(ROOT, "data/product-language-preview/batch001_phase1_drafts_payload.json"),
+      "utf8",
+    ),
+  );
+  const wave2a = JSON.parse(
+    readFileSync(
+      join(ROOT, "data/product-language-preview/batch001_wave2a_drafts_payload.json"),
+      "utf8",
+    ),
+  );
+  const wave2b = JSON.parse(
+    readFileSync(
+      join(ROOT, "data/product-language-preview/batch001_wave2b_drafts_payload.json"),
+      "utf8",
+    ),
+  );
   return [...phase1, ...wave2a, ...wave2b].map((d) => ({
     alias_text: d.payload.alias_text,
     canonical_name: d.payload.canonical_name,
@@ -191,11 +258,17 @@ for (const tc of TEST_CASES) {
 }
 
 const score = Math.round((passed / TEST_CASES.length) * 100);
-console.log(JSON.stringify({
-  covered_skus: PRODUCTS.length,
-  alias_count: catalog.aliases.length,
-  passed,
-  total: TEST_CASES.length,
-  readiness_score: score,
-  results,
-}, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      covered_skus: PRODUCTS.length,
+      alias_count: catalog.aliases.length,
+      passed,
+      total: TEST_CASES.length,
+      readiness_score: score,
+      results,
+    },
+    null,
+    2,
+  ),
+);

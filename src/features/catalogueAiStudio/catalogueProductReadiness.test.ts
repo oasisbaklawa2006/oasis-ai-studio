@@ -3,7 +3,9 @@ import { computeCatalogueProductReadiness } from "./catalogueProductReadiness";
 
 describe("computeCatalogueProductReadiness — hero image category", () => {
   it("passes when hero_image_url is set directly on the input", () => {
-    const { categories } = computeCatalogueProductReadiness({ hero_image_url: "https://cdn.example/hero.jpg" });
+    const { categories } = computeCatalogueProductReadiness({
+      hero_image_url: "https://cdn.example/hero.jpg",
+    });
     expect(categories.find((c) => c.key === "hero_image")?.state).toBe("pass");
   });
 

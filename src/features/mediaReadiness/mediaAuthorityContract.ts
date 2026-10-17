@@ -1,15 +1,13 @@
-import { supabase } from "@/integrations/supabase/client";
-import { heroUrlWritePayload, latestApprovedHeroUrlFromMediaRows, resolveProductHeroUrl } from "@/lib/productImage";
 import { insertProductMediaRow } from "@/features/productAuthority/productMediaPersistence";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  heroUrlWritePayload,
+  latestApprovedHeroUrlFromMediaRows,
+  resolveProductHeroUrl,
+} from "@/lib/productImage";
+import { mediaAssetsFromProductMedia, type ProductMediaRow } from "./mediaAssetsFromForm";
+import { getMediaGovernanceMode, governedRequiredUploaderTypes } from "./mediaGovernanceMode";
 import type { MediaAsset } from "./types";
-import {
-  getMediaGovernanceMode,
-  governedRequiredUploaderTypes,
-} from "./mediaGovernanceMode";
-import {
-  mediaAssetsFromProductMedia,
-  type ProductMediaRow,
-} from "./mediaAssetsFromForm";
 
 export type DerivedMediaStatus = "approved" | "pending_approval" | "missing";
 
@@ -48,16 +46,10 @@ export function deriveMediaStatusFromRows(
     if (!withUrl.length) return "missing";
 
     for (const reqType of governedRequired) {
-      const row = rows.find(
-        (r) => String(r.type ?? "").toLowerCase() === reqType && r.file_url,
-      );
+      const row = rows.find((r) => String(r.type ?? "").toLowerCase() === reqType && r.file_url);
       if (!row) {
         const fallback = opts?.fallbackHeroUrl?.trim();
-        if (
-          reqType === "hero_image" &&
-          fallback &&
-          !fallback.includes("/_pdf_pages/")
-        ) {
+        if (reqType === "hero_image" && fallback && !fallback.includes("/_pdf_pages/")) {
           continue;
         }
         return "missing";
@@ -191,7 +183,5 @@ export async function repairDirectMasterMediaRows(
     return rows;
   }
 
-  return rows.map((r) =>
-    ids.includes(String(r.id)) ? { ...r, status: "approved" } : r,
-  );
+  return rows.map((r) => (ids.includes(String(r.id)) ? { ...r, status: "approved" } : r));
 }

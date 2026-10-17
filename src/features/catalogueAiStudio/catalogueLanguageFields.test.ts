@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { isLanguageMessagingField, LANGUAGE_MESSAGING_CONTENT_KEYS } from "./catalogueLanguageFields";
-import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
 import { DRAFT_BLOCK_META } from "./catalogueContentGenerators";
-import { computeCatalogueProductReadiness, type ReadinessProductInput } from "./catalogueProductReadiness";
+import { CATALOGUE_DRAFT_CONTENT_KEYS } from "./catalogueDraftTypes";
+import {
+  isLanguageMessagingField,
+  LANGUAGE_MESSAGING_CONTENT_KEYS,
+} from "./catalogueLanguageFields";
+import {
+  computeCatalogueProductReadiness,
+  type ReadinessProductInput,
+} from "./catalogueProductReadiness";
 
 describe("catalogueLanguageFields", () => {
   it("classifies hindi_description and whatsapp_product_message as language/messaging fields", () => {
@@ -47,6 +53,10 @@ describe("catalogueLanguageFields", () => {
     } as ReadinessProductInput);
     expect(withLanguage.score).toBe(withoutLanguage.score);
     expect(withLanguage.overallLabel).toBe(withoutLanguage.overallLabel);
-    expect(withLanguage.categories.some((c) => c.key === "hindi_description" || c.key === "whatsapp_product_message")).toBe(false);
+    expect(
+      withLanguage.categories.some(
+        (c) => c.key === "hindi_description" || c.key === "whatsapp_product_message",
+      ),
+    ).toBe(false);
   });
 });

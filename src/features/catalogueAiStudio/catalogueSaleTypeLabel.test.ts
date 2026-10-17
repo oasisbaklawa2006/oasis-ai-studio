@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { saleTypeLabelFromForm } from "./catalogueSaleTypeLabel";
 import { SALE_TYPES } from "@/features/productAuthority/saleType";
+import { saleTypeLabelFromForm } from "./catalogueSaleTypeLabel";
 
 describe("saleTypeLabelFromForm", () => {
   it("never returns a raw internal slug — always a human label from SALE_TYPES (Bugbot regression)", () => {

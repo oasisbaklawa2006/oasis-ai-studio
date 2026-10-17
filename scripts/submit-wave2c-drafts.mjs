@@ -21,7 +21,10 @@ const chunkIdx = Number(chunkArg);
 const chunkSize = 15;
 
 const all = JSON.parse(
-  readFileSync(join(ROOT, "data/product-language-preview/batch001_wave2c_drafts_payload.json"), "utf8"),
+  readFileSync(
+    join(ROOT, "data/product-language-preview/batch001_wave2c_drafts_payload.json"),
+    "utf8",
+  ),
 );
 const rows = all.slice(chunkIdx * chunkSize, (chunkIdx + 1) * chunkSize);
 const chunkCount = Math.ceil(all.length / chunkSize);

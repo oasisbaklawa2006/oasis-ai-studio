@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fullEditorDeepLink, fullEditorTabForCategory } from "./catalogueStudioNavigation";
 import { computeCatalogueProductReadiness } from "./catalogueProductReadiness";
+import { fullEditorDeepLink, fullEditorTabForCategory } from "./catalogueStudioNavigation";
 
 describe("fullEditorTabForCategory", () => {
   it("maps every category produced by computeCatalogueProductReadiness to a real tab", () => {

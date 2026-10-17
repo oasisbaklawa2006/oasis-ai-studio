@@ -4,16 +4,18 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  mediaAssetsFromSources,
+  productMediaContextFromForm,
+} from "@/features/mediaReadiness/mediaAssetsFromForm";
+import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
+import {
   CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
   CHANNEL_PRICING_FORM_FIELD_KEYS,
   extractChannelPricingFromForm,
-  formToDbProductPayload,
   findPricingLeaksInProductPayload,
+  formToDbProductPayload,
 } from "@/features/productAuthority/productSchemaAdapter";
 import { mapPricingRules } from "@/features/productTruth/channelAuthorityMappers";
-import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFromForm";
-import { evaluateMediaReadiness } from "@/features/mediaReadiness/mediaReadinessEngine";
-import { productMediaContextFromForm } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import { formatSupabaseDiagnostic } from "@/lib/supabase/diagnostics";
 
 const MOR_SKU = "OAS-AS-BKL-0024";
@@ -46,7 +48,10 @@ describe("Mor Pistachio Durum smoke contract", () => {
     const payload = formToDbProductPayload(morForm);
     expect(findPricingLeaksInProductPayload(payload)).toEqual([]);
 
-    for (const key of [...CHANNEL_PRICING_FORM_FIELD_KEYS, ...CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS]) {
+    for (const key of [
+      ...CHANNEL_PRICING_FORM_FIELD_KEYS,
+      ...CHANNEL_PRICING_BASIS_FORM_FIELD_KEYS,
+    ]) {
       expect(payload[key]).toBeUndefined();
     }
     for (const key of Object.keys(payload)) {
@@ -73,9 +78,7 @@ describe("Mor Pistachio Durum smoke contract", () => {
 
   it("hero upload shows draft pending approval in media readiness", () => {
     const form = { category: "Baklawa", subcategory: "Durum", sku: MOR_SKU };
-    const mediaRows = [
-      { type: "hero_image", file_url: "https://cdn/hero.jpg", status: "raw" },
-    ];
+    const mediaRows = [{ type: "hero_image", file_url: "https://cdn/hero.jpg", status: "raw" }];
     const assets = mediaAssetsFromSources({ form, productMediaRows: mediaRows });
     const readiness = evaluateMediaReadiness(productMediaContextFromForm(form), assets);
     expect(readiness.canPublishMedia).toBe(false);

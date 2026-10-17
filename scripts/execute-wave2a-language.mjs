@@ -166,7 +166,10 @@ function buildDraftRow(row) {
  * @param {Array<{norm_text:string, product_id:string|null}>} existingAliases
  */
 export function prepareWave2aDrafts(existingAliases) {
-  const path = join(ROOT, "data/product-language-preview/batch001_language_terms_safe_to_draft.csv");
+  const path = join(
+    ROOT,
+    "data/product-language-preview/batch001_language_terms_safe_to_draft.csv",
+  );
   const rows = parseCsv(readFileSync(path, "utf8"));
 
   const wave2aSet = new Set(WAVE2A_SKUS);
@@ -204,20 +207,32 @@ export function prepareWave2aDrafts(existingAliases) {
     const productId = PRODUCT_IDS[row.sku];
 
     if (isBareGeneric(row.term_text)) {
-      scan.excluded_bare_generic.push({ sku: row.sku, term: row.term_text, reason: "bare_generic" });
+      scan.excluded_bare_generic.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "bare_generic",
+      });
       continue;
     }
 
     const dedupeKey = `${n}|${productId}`;
     if (seen.has(dedupeKey)) {
-      scan.excluded_within_batch_dupe.push({ sku: row.sku, term: row.term_text, reason: "case_variant_dupe" });
+      scan.excluded_within_batch_dupe.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "case_variant_dupe",
+      });
       continue;
     }
     seen.set(dedupeKey, row);
 
     const existingOwners = existingByNorm.get(n) ?? [];
     if (existingOwners.includes(productId)) {
-      scan.excluded_existing_same_product.push({ sku: row.sku, term: row.term_text, reason: "already_approved" });
+      scan.excluded_existing_same_product.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "already_approved",
+      });
       continue;
     }
 
@@ -260,7 +275,11 @@ export function prepareWave2aDrafts(existingAliases) {
     const skus = new Set(group.map((r) => r.sku));
     if (skus.size > 1) {
       for (const row of group) {
-        scan.excluded_cross_wave2a.push({ sku: row.sku, term: row.term_text, reason: "cross_wave2a_ambiguity" });
+        scan.excluded_cross_wave2a.push({
+          sku: row.sku,
+          term: row.term_text,
+          reason: "cross_wave2a_ambiguity",
+        });
       }
       continue;
     }
@@ -275,7 +294,10 @@ export function prepareWave2aDrafts(existingAliases) {
 function loadExistingAliases() {
   const existing = [];
 
-  const phase1Path = join(ROOT, "data/product-language-preview/batch001_phase1_drafts_payload.json");
+  const phase1Path = join(
+    ROOT,
+    "data/product-language-preview/batch001_phase1_drafts_payload.json",
+  );
   try {
     const phase1 = JSON.parse(readFileSync(phase1Path, "utf8"));
     for (const d of phase1) {
@@ -288,12 +310,11 @@ function loadExistingAliases() {
     /* phase1 snapshot optional */
   }
 
-  for (const path of [
-    "_wave2a_existing_aliases.json",
-    "wave2a_existing_aliases_snapshot.json",
-  ]) {
+  for (const path of ["_wave2a_existing_aliases.json", "wave2a_existing_aliases_snapshot.json"]) {
     try {
-      const extra = JSON.parse(readFileSync(join(ROOT, "data/product-language-preview", path), "utf8"));
+      const extra = JSON.parse(
+        readFileSync(join(ROOT, "data/product-language-preview", path), "utf8"),
+      );
       existing.push(...extra);
     } catch {
       /* optional snapshot */
@@ -323,14 +344,23 @@ function main() {
     );
   }
 
-  console.log(JSON.stringify({ final_count, scan_summary: {
-    raw: scan.raw_count,
-    bare: scan.excluded_bare_generic.length,
-    existing: scan.excluded_existing_same_product.length,
-    phase1_cross: scan.excluded_phase1_cross_sku.length,
-    cross_wave2a: scan.excluded_cross_wave2a.length,
-    dupes: scan.excluded_within_batch_dupe.length,
-  }}, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        final_count,
+        scan_summary: {
+          raw: scan.raw_count,
+          bare: scan.excluded_bare_generic.length,
+          existing: scan.excluded_existing_same_product.length,
+          phase1_cross: scan.excluded_phase1_cross_sku.length,
+          cross_wave2a: scan.excluded_cross_wave2a.length,
+          dupes: scan.excluded_within_batch_dupe.length,
+        },
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 if (process.argv[1]?.endsWith("execute-wave2a-language.mjs")) main();

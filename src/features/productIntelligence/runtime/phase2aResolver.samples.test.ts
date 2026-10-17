@@ -1,6 +1,6 @@
 import { describe, it } from "vitest";
-import { resolveProductUtterance } from "./resolveProductUtterance";
 import { PHASE2A_FIXTURE_CATALOG } from "./fixtures/phase2aCatalog";
+import { resolveProductUtterance } from "./resolveProductUtterance";
 
 const SAMPLES = [
   "pista bulbul",

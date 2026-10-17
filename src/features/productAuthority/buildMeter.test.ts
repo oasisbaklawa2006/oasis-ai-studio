@@ -30,7 +30,12 @@ describe("getMissingFieldChips", () => {
     { key: "identity", label: "Identity", state: "pass" as const, nextAction: null },
     { key: "sku", label: "SKU", state: "missing" as const, nextAction: "Generate a SKU." },
     { key: "pricing", label: "Pricing", state: "warn" as const, nextAction: "Set MRP." },
-    { key: "hero_image", label: "Hero Image", state: "missing" as const, nextAction: "Add an image." },
+    {
+      key: "hero_image",
+      label: "Hero Image",
+      state: "missing" as const,
+      nextAction: "Add an image.",
+    },
   ];
 
   it("surfaces missing fields before warn fields", () => {

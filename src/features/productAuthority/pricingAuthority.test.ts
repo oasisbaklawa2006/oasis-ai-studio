@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pricingBlockers, resolvePricing, type ChannelPriceLike } from "./pricingAuthority";
+import { type ChannelPriceLike, pricingBlockers, resolvePricing } from "./pricingAuthority";
 
 describe("resolvePricing", () => {
   it("recognizes product-row MRP and B2B price when no channel rules exist", () => {
@@ -11,16 +11,17 @@ describe("resolvePricing", () => {
   });
 
   it("prefers an approved mrp-channel rule over the product-field fallback", () => {
-    const pricing = resolvePricing(
-      { mrp: "450" },
-      [{ channel: "mrp", mrp: 499, sellingPrice: null, priceStatus: "approved" }],
-    );
+    const pricing = resolvePricing({ mrp: "450" }, [
+      { channel: "mrp", mrp: 499, sellingPrice: null, priceStatus: "approved" },
+    ]);
     expect(pricing.mrp).toBe(499);
     expect(pricing.source).toBe("mixed");
   });
 
   it("uses positive products.mrp when no approved mrp-channel rule exists", () => {
-    const pricing = resolvePricing({ mrp: 450 }, [{ channel: "b2b", sellingPrice: 300, priceStatus: "approved" }]);
+    const pricing = resolvePricing({ mrp: 450 }, [
+      { channel: "b2b", sellingPrice: 300, priceStatus: "approved" },
+    ]);
     expect(pricing.mrp).toBe(450);
     expect(pricing.source).toBe("mixed");
   });
@@ -28,15 +29,16 @@ describe("resolvePricing", () => {
   it("does not silently redefine a retail-channel selling-price rule as MRP", () => {
     // "retail" and "mrp" are distinct channels — an approved retail-channel rule must never
     // be treated as the MRP authority (the pre-fix defect).
-    const pricing = resolvePricing(
-      {},
-      [{ channel: "retail", sellingPrice: 1000, priceStatus: "approved" }],
-    );
+    const pricing = resolvePricing({}, [
+      { channel: "retail", sellingPrice: 1000, priceStatus: "approved" },
+    ]);
     expect(pricing.mrp).toBeNull();
   });
 
   it("ignores unapproved channel rules", () => {
-    const pricing = resolvePricing({}, [{ channel: "b2b", sellingPrice: 300, priceStatus: "pending_approval" }]);
+    const pricing = resolvePricing({}, [
+      { channel: "b2b", sellingPrice: 300, priceStatus: "pending_approval" },
+    ]);
     expect(pricing.b2bPrice).toBeNull();
     expect(pricing.source).toBe("none");
   });
@@ -52,18 +54,35 @@ describe("resolvePricing", () => {
 
   describe("deterministic multi-row selection (Defect 3 regression)", () => {
     it("selects the single approved rule when only one exists", () => {
-      const pricing = resolvePricing(
-        {},
-        [{ id: "a", channel: "mrp", mrp: 400, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" }],
-      );
+      const pricing = resolvePricing({}, [
+        {
+          id: "a",
+          channel: "mrp",
+          mrp: 400,
+          priceStatus: "approved",
+          approvedAt: "2026-01-01T00:00:00Z",
+        },
+      ]);
       expect(pricing.mrp).toBe(400);
       expect(pricing.reviewRequiredChannels).toEqual([]);
     });
 
     it("with multiple approved rules, deterministically selects the newest by approvedAt", () => {
       const rows: ChannelPriceLike[] = [
-        { id: "old", channel: "mrp", mrp: 400, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-        { id: "new", channel: "mrp", mrp: 450, priceStatus: "approved", approvedAt: "2026-06-01T00:00:00Z" },
+        {
+          id: "old",
+          channel: "mrp",
+          mrp: 400,
+          priceStatus: "approved",
+          approvedAt: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "new",
+          channel: "mrp",
+          mrp: 450,
+          priceStatus: "approved",
+          approvedAt: "2026-06-01T00:00:00Z",
+        },
       ];
       const pricing = resolvePricing({}, rows);
       expect(pricing.mrp).toBe(450);
@@ -97,7 +116,13 @@ describe("resolvePricing", () => {
     it("does not flag reviewRequiredChannels when disagreeing rows are not both currently valid", () => {
       const at = new Date("2026-06-01T00:00:00Z");
       const rows: ChannelPriceLike[] = [
-        { id: "expired", channel: "mrp", mrp: 999, priceStatus: "approved", effectiveTo: "2026-01-01T00:00:00Z" },
+        {
+          id: "expired",
+          channel: "mrp",
+          mrp: 999,
+          priceStatus: "approved",
+          effectiveTo: "2026-01-01T00:00:00Z",
+        },
         { id: "current", channel: "mrp", mrp: 450, priceStatus: "approved" },
       ];
       const pricing = resolvePricing({}, rows, at);
@@ -109,7 +134,15 @@ describe("resolvePricing", () => {
       const at = new Date("2026-06-01T00:00:00Z");
       const pricing = resolvePricing(
         { mrp: 300 },
-        [{ id: "expired", channel: "mrp", mrp: 999, priceStatus: "approved", effectiveTo: "2026-01-01T00:00:00Z" }],
+        [
+          {
+            id: "expired",
+            channel: "mrp",
+            mrp: 999,
+            priceStatus: "approved",
+            effectiveTo: "2026-01-01T00:00:00Z",
+          },
+        ],
         at,
       );
       expect(pricing.mrp).toBe(300);
@@ -120,29 +153,51 @@ describe("resolvePricing", () => {
       const at = new Date("2026-01-01T00:00:00Z");
       const pricing = resolvePricing(
         {},
-        [{ id: "future", channel: "mrp", mrp: 999, priceStatus: "approved", effectiveFrom: "2026-06-01T00:00:00Z" }],
+        [
+          {
+            id: "future",
+            channel: "mrp",
+            mrp: 999,
+            priceStatus: "approved",
+            effectiveFrom: "2026-06-01T00:00:00Z",
+          },
+        ],
         at,
       );
       expect(pricing.mrp).toBeNull();
     });
 
     it("treats a zero or negative selected mrp-channel price as unusable", () => {
-      const pricing = resolvePricing(
-        {},
-        [{ id: "a", channel: "mrp", mrp: 0, priceStatus: "approved" }],
-      );
+      const pricing = resolvePricing({}, [
+        { id: "a", channel: "mrp", mrp: 0, priceStatus: "approved" },
+      ]);
       expect(pricing.mrp).toBeNull();
     });
 
     it("keeps different channels independent of each other — b2b/export selection is unchanged by the MRP fix", () => {
-      const pricing = resolvePricing(
-        {},
-        [
-          { id: "r1", channel: "mrp", mrp: 450, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-          { id: "b1", channel: "b2b", sellingPrice: 380, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-          { id: "e1", channel: "export", sellingPrice: 500, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-        ],
-      );
+      const pricing = resolvePricing({}, [
+        {
+          id: "r1",
+          channel: "mrp",
+          mrp: 450,
+          priceStatus: "approved",
+          approvedAt: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "b1",
+          channel: "b2b",
+          sellingPrice: 380,
+          priceStatus: "approved",
+          approvedAt: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "e1",
+          channel: "export",
+          sellingPrice: 500,
+          priceStatus: "approved",
+          approvedAt: "2026-01-01T00:00:00Z",
+        },
+      ]);
       expect(pricing.mrp).toBe(450);
       expect(pricing.b2bPrice).toBe(380);
       expect(pricing.exportPrice).toBe(500);
@@ -153,10 +208,9 @@ describe("resolvePricing", () => {
   describe("mrp-channel-rule vs products.mrp field conflict diagnostic", () => {
     it("flags review-required when the approved mrp-channel rule disagrees with a positive products.mrp field", () => {
       // OAS-AS-BKL-0007 production case: approved mrp-channel rule = 25, products.mrp = 40.
-      const pricing = resolvePricing(
-        { mrp: 40 },
-        [{ id: "a", channel: "mrp", mrp: 25, priceStatus: "approved" }],
-      );
+      const pricing = resolvePricing({ mrp: 40 }, [
+        { id: "a", channel: "mrp", mrp: 25, priceStatus: "approved" },
+      ]);
       // The channel rule remains authoritative (product_pricing_rules is the declared write
       // authority) — the conflict does not silently pass.
       expect(pricing.mrp).toBe(25);
@@ -165,10 +219,9 @@ describe("resolvePricing", () => {
     });
 
     it("does not flag review-required when the mrp-channel rule and products.mrp agree", () => {
-      const pricing = resolvePricing(
-        { mrp: 750 },
-        [{ id: "a", channel: "mrp", mrp: 750, priceStatus: "approved" }],
-      );
+      const pricing = resolvePricing({ mrp: 750 }, [
+        { id: "a", channel: "mrp", mrp: 750, priceStatus: "approved" },
+      ]);
       expect(pricing.mrp).toBe(750);
       expect(pricing.reviewRequiredChannels).toEqual([]);
     });
@@ -194,7 +247,9 @@ describe("pricingBlockers", () => {
 
   it("B2B enabled ready pack additionally requires B2B price", () => {
     const pricing = resolvePricing({ mrp: 450 });
-    expect(pricingBlockers(pricing, "retail_ready_pack", { b2bEnabled: true })).toContain("B2B price missing");
+    expect(pricingBlockers(pricing, "retail_ready_pack", { b2bEnabled: true })).toContain(
+      "B2B price missing",
+    );
   });
 
   it("internal products never demand customer-facing prices", () => {
@@ -209,8 +264,20 @@ describe("pricingBlockers", () => {
 
   it("flags a review-required MRP even though a (disputed) value was resolved", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "old", channel: "mrp", mrp: 400, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "new", channel: "mrp", mrp: 450, priceStatus: "approved", approvedAt: "2026-06-01T00:00:00Z" },
+      {
+        id: "old",
+        channel: "mrp",
+        mrp: 400,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "new",
+        channel: "mrp",
+        mrp: 450,
+        priceStatus: "approved",
+        approvedAt: "2026-06-01T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.mrp).toBe(450);
@@ -221,28 +288,31 @@ describe("pricingBlockers", () => {
 
 describe("production-evidence fixtures (POST-R1A pricing-authority recovery)", () => {
   it("ASS-RBOX-0002 fixture resolves ₹750 MRP from the approved mrp-channel rule", () => {
-    const pricing = resolvePricing(
-      { mrp: null },
-      [{ id: "rbox-mrp", channel: "mrp", mrp: 750, priceStatus: "approved", approvedAt: "2026-07-09T21:58:17Z" }],
-    );
+    const pricing = resolvePricing({ mrp: null }, [
+      {
+        id: "rbox-mrp",
+        channel: "mrp",
+        mrp: 750,
+        priceStatus: "approved",
+        approvedAt: "2026-07-09T21:58:17Z",
+      },
+    ]);
     expect(pricing.mrp).toBe(750);
     expect(pricingBlockers(pricing, "retail_ready_pack")).not.toContain("MRP missing");
   });
 
   it("PST-RBOX-0001 fixture resolves ₹350 MRP from the approved mrp-channel rule", () => {
-    const pricing = resolvePricing(
-      { mrp: null },
-      [{ id: "pst-rbox-mrp", channel: "mrp", mrp: 350, priceStatus: "approved" }],
-    );
+    const pricing = resolvePricing({ mrp: null }, [
+      { id: "pst-rbox-mrp", channel: "mrp", mrp: 350, priceStatus: "approved" },
+    ]);
     expect(pricing.mrp).toBe(350);
     expect(pricingBlockers(pricing, "retail_ready_pack")).not.toContain("MRP missing");
   });
 
   it("OAS-AS-BKL-0007 fixture surfaces the ₹25-vs-₹40 disagreement as review-required, not a silent pick", () => {
-    const pricing = resolvePricing(
-      { mrp: 40 },
-      [{ id: "0007-mrp", channel: "mrp", mrp: 25, priceStatus: "approved" }],
-    );
+    const pricing = resolvePricing({ mrp: 40 }, [
+      { id: "0007-mrp", channel: "mrp", mrp: 25, priceStatus: "approved" },
+    ]);
     expect(pricing.mrp).toBe(25);
     expect(pricing.reviewRequiredChannels).toContain("mrp");
   });
@@ -251,8 +321,20 @@ describe("production-evidence fixtures (POST-R1A pricing-authority recovery)", (
 describe("review-required compares effective price, not raw fields (Bugbot regression)", () => {
   it("mrp channel with only mrp set on both rows — same effective price, no false positive", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "mrp", mrp: 450, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "mrp", mrp: 450, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "mrp",
+        mrp: 450,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "mrp",
+        mrp: 450,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.mrp).toBe(450);
@@ -261,8 +343,20 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
 
   it("mrp channel with only sellingPrice set on both rows — same effective price, no false positive", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "mrp", sellingPrice: 450, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "mrp", sellingPrice: 450, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "mrp",
+        sellingPrice: 450,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "mrp",
+        sellingPrice: 450,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.mrp).toBe(450);
@@ -270,10 +364,9 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
   });
 
   it("mrp channel with both mrp and sellingPrice set — mrp wins per resolvePricing()'s own precedence", () => {
-    const pricing = resolvePricing(
-      {},
-      [{ id: "a", channel: "mrp", mrp: 450, sellingPrice: 300, priceStatus: "approved" }],
-    );
+    const pricing = resolvePricing({}, [
+      { id: "a", channel: "mrp", mrp: 450, sellingPrice: 300, priceStatus: "approved" },
+    ]);
     expect(pricing.mrp).toBe(450);
   });
 
@@ -282,8 +375,22 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
     // wins. Both resolve to the same effective price 500 — comparing raw fields would see
     // mrp differ (500 vs null) and wrongly flag this as disagreeing.
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "mrp", mrp: 500, sellingPrice: null, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "mrp", mrp: null, sellingPrice: 500, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "mrp",
+        mrp: 500,
+        sellingPrice: null,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "mrp",
+        mrp: null,
+        sellingPrice: 500,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.mrp).toBe(500);
@@ -292,8 +399,20 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
 
   it("mrp channel: a genuinely different effective price is still flagged as changed", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "mrp", mrp: 500, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "mrp", mrp: 550, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "mrp",
+        mrp: 500,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "mrp",
+        mrp: 550,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.mrp).toBe(550);
@@ -302,8 +421,20 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
 
   it("b2b: identical sellingPrice across rows is not flagged", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "b2b", sellingPrice: 380, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "b2b", sellingPrice: 380, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "b2b",
+        sellingPrice: 380,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "b2b",
+        sellingPrice: 380,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.b2bPrice).toBe(380);
@@ -312,8 +443,20 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
 
   it("b2b: differing sellingPrice across rows is flagged", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "b2b", sellingPrice: 380, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "b2b", sellingPrice: 400, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "b2b",
+        sellingPrice: 380,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "b2b",
+        sellingPrice: 400,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.b2bPrice).toBe(400);
@@ -322,8 +465,20 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
 
   it("export: identical sellingPrice across rows is not flagged", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "export", sellingPrice: 20, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "export", sellingPrice: 20, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "export",
+        sellingPrice: 20,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "export",
+        sellingPrice: 20,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.exportPrice).toBe(20);
@@ -332,8 +487,20 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
 
   it("export: differing sellingPrice across rows is flagged", () => {
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "export", sellingPrice: 20, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "export", sellingPrice: 25, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "export",
+        sellingPrice: 20,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "export",
+        sellingPrice: 25,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.exportPrice).toBe(25);
@@ -343,8 +510,22 @@ describe("review-required compares effective price, not raw fields (Bugbot regre
   it("export: an mrp field difference is irrelevant to export's sellingPrice-only precedence", () => {
     // export never reads .mrp at all — a difference there must not trigger review-required.
     const rows: ChannelPriceLike[] = [
-      { id: "a", channel: "export", mrp: 999, sellingPrice: 20, priceStatus: "approved", approvedAt: "2026-01-01T00:00:00Z" },
-      { id: "b", channel: "export", mrp: 111, sellingPrice: 20, priceStatus: "approved", approvedAt: "2026-01-02T00:00:00Z" },
+      {
+        id: "a",
+        channel: "export",
+        mrp: 999,
+        sellingPrice: 20,
+        priceStatus: "approved",
+        approvedAt: "2026-01-01T00:00:00Z",
+      },
+      {
+        id: "b",
+        channel: "export",
+        mrp: 111,
+        sellingPrice: 20,
+        priceStatus: "approved",
+        approvedAt: "2026-01-02T00:00:00Z",
+      },
     ];
     const pricing = resolvePricing({}, rows);
     expect(pricing.exportPrice).toBe(20);

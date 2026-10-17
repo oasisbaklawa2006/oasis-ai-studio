@@ -12,10 +12,10 @@
 import type { CatalogueDraftStatus } from "@/features/catalogueAiStudio/catalogueDraftTypes";
 import {
   assertValidWorkflowTransition,
+  type ContributorDraftStatus,
   evaluateWorkflowTransition,
   mapCatalogueDraftStatus,
   mapContributorDraftStatus,
-  type ContributorDraftStatus,
   type WorkflowActorRole,
 } from "./productWorkflowState";
 
@@ -45,9 +45,7 @@ export function assertRejectionReasonRequired(reason: string): void {
   }
 }
 
-export function correctionKindFromPredecessorStatus(
-  status: CatalogueDraftStatus,
-): CorrectionKind {
+export function correctionKindFromPredecessorStatus(status: CatalogueDraftStatus): CorrectionKind {
   if (status === "REJECTED") return "post_rejection";
   if (status === "APPROVED") return "post_approval";
   return "initial";

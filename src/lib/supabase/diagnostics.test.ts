@@ -45,10 +45,7 @@ describe("formatSupabaseDiagnostic", () => {
   });
 
   it("formats network failure diagnostic", () => {
-    const msg = formatSupabaseDiagnostic(
-      { message: "Failed to fetch" },
-      "products load",
-    );
+    const msg = formatSupabaseDiagnostic({ message: "Failed to fetch" }, "products load");
     expect(msg).toBe("Supabase network connection failed.");
   });
 

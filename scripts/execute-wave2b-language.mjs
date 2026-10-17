@@ -155,11 +155,32 @@ function hasSufficientContext(termText, officialName) {
 
   if (n.includes("pistachio nut asiyah") || n.includes("pista nut asiyah")) return true;
   if (n.includes("pistachio nut tart") || n.includes("pista nut tart")) return true;
-  if (n.includes("asiyah") && (n.includes("chocolate") || n.includes("mor") || n.includes("beetroot") || n.includes("purple"))) return true;
-  if (n.includes("tart") && (n.includes("almond") || n.includes("badam") || n.includes("mix nut") || n.includes("pistachio nut") || n.includes("cashew"))) return true;
+  if (
+    n.includes("asiyah") &&
+    (n.includes("chocolate") || n.includes("mor") || n.includes("beetroot") || n.includes("purple"))
+  )
+    return true;
+  if (
+    n.includes("tart") &&
+    (n.includes("almond") ||
+      n.includes("badam") ||
+      n.includes("mix nut") ||
+      n.includes("pistachio nut") ||
+      n.includes("cashew"))
+  )
+    return true;
 
-  if (n.includes("asiyah") && (n.includes("baklawa") || n.includes("baklava") || n.includes("lebanese"))) {
-    if (n.includes("chocolate") || n.includes("mor") || n.includes("beetroot") || n.includes("purple")) return true;
+  if (
+    n.includes("asiyah") &&
+    (n.includes("baklawa") || n.includes("baklava") || n.includes("lebanese"))
+  ) {
+    if (
+      n.includes("chocolate") ||
+      n.includes("mor") ||
+      n.includes("beetroot") ||
+      n.includes("purple")
+    )
+      return true;
     if (n.includes("pistachio nut") || n.includes("pista nut")) return true;
     if (n.startsWith("pistachio asiyah ") || n.startsWith("pista asiyah ")) return true;
   }
@@ -168,8 +189,20 @@ function hasSufficientContext(termText, officialName) {
   if (prefixed) {
     const rest = prefixed[2];
     if (rest === "pistachio asiyah" || rest === "pista asiyah") return true;
-    if (rest.includes("chocolate") || rest.includes("mor") || rest.includes("almond") || rest.includes("badam")) return true;
-    if (rest.includes("beetroot") || rest.includes("purple") || rest.includes("pistachio nut") || rest.includes("pista nut")) return true;
+    if (
+      rest.includes("chocolate") ||
+      rest.includes("mor") ||
+      rest.includes("almond") ||
+      rest.includes("badam")
+    )
+      return true;
+    if (
+      rest.includes("beetroot") ||
+      rest.includes("purple") ||
+      rest.includes("pistachio nut") ||
+      rest.includes("pista nut")
+    )
+      return true;
     return hasSufficientContext(rest, officialName);
   }
 
@@ -227,7 +260,10 @@ function loadPayloadAliases() {
  * @param {Array<{norm_text:string, product_id:string|null}>} existingAliases
  */
 export function prepareWave2bDrafts(existingAliases) {
-  const path = join(ROOT, "data/product-language-preview/batch001_language_terms_safe_to_draft.csv");
+  const path = join(
+    ROOT,
+    "data/product-language-preview/batch001_language_terms_safe_to_draft.csv",
+  );
   const rows = parseCsv(readFileSync(path, "utf8"));
 
   const wave2bSet = new Set(WAVE2B_SKUS);
@@ -271,20 +307,32 @@ export function prepareWave2bDrafts(existingAliases) {
     }
 
     if (!hasSufficientContext(row.term_text, row.official_name)) {
-      scan.excluded_insufficient_context.push({ sku: row.sku, term: row.term_text, reason: "insufficient_context" });
+      scan.excluded_insufficient_context.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "insufficient_context",
+      });
       continue;
     }
 
     const dedupeKey = `${n}|${productId}`;
     if (seen.has(dedupeKey)) {
-      scan.excluded_within_batch_dupe.push({ sku: row.sku, term: row.term_text, reason: "case_variant_dupe" });
+      scan.excluded_within_batch_dupe.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "case_variant_dupe",
+      });
       continue;
     }
     seen.set(dedupeKey, row);
 
     const existingOwners = existingByNorm.get(n) ?? [];
     if (existingOwners.includes(productId)) {
-      scan.excluded_existing_same_product.push({ sku: row.sku, term: row.term_text, reason: "already_approved" });
+      scan.excluded_existing_same_product.push({
+        sku: row.sku,
+        term: row.term_text,
+        reason: "already_approved",
+      });
       continue;
     }
 
@@ -315,7 +363,11 @@ export function prepareWave2bDrafts(existingAliases) {
     const skus = new Set(group.map((r) => r.sku));
     if (skus.size > 1) {
       for (const row of group) {
-        scan.excluded_cross_wave2b.push({ sku: row.sku, term: row.term_text, reason: "cross_wave2b_ambiguity" });
+        scan.excluded_cross_wave2b.push({
+          sku: row.sku,
+          term: row.term_text,
+          reason: "cross_wave2b_ambiguity",
+        });
       }
       continue;
     }
@@ -347,19 +399,25 @@ function main() {
     bySku[pid] = (bySku[pid] ?? 0) + 1;
   }
 
-  console.log(JSON.stringify({
-    final_count,
-    by_sku_count: bySku,
-    scan_summary: {
-      raw: scan.raw_count,
-      bare: scan.excluded_bare_generic.length,
-      context: scan.excluded_insufficient_context.length,
-      existing: scan.excluded_existing_same_product.length,
-      prior_cross: scan.excluded_prior_wave_cross_sku.length,
-      cross_wave2b: scan.excluded_cross_wave2b.length,
-      dupes: scan.excluded_within_batch_dupe.length,
-    },
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        final_count,
+        by_sku_count: bySku,
+        scan_summary: {
+          raw: scan.raw_count,
+          bare: scan.excluded_bare_generic.length,
+          context: scan.excluded_insufficient_context.length,
+          existing: scan.excluded_existing_same_product.length,
+          prior_cross: scan.excluded_prior_wave_cross_sku.length,
+          cross_wave2b: scan.excluded_cross_wave2b.length,
+          dupes: scan.excluded_within_batch_dupe.length,
+        },
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 if (process.argv[1]?.endsWith("execute-wave2b-language.mjs")) main();
