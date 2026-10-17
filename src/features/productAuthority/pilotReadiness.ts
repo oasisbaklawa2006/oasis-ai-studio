@@ -62,10 +62,6 @@ export type PilotReadinessReport = {
   };
 };
 
-const WHATSAPP_ALIAS_TYPES = new Set(["whatsapp_keyword", "whatsapp", "wa_keyword"]);
-
-const SEARCH_ALIAS_TYPES = new Set(["search_keyword", "search_term", "search", "discovery"]);
-
 async function fetchPilotProduct(sku: PilotSkuCode) {
   const { data, error } = await supabase.from("products").select("*").eq("sku", sku).maybeSingle();
   if (error) throw new Error(error.message);
@@ -92,26 +88,11 @@ function evaluateSchemaSave(row: Record<string, unknown> | null): {
   };
 }
 
-function countAliasTypes(aliases: Array<{ alias_type?: string | null } | { id: string }>) {
-  let whatsapp = 0;
-  let search = 0;
-  for (const a of aliases) {
-    const t = String("alias_type" in a ? (a.alias_type ?? "") : "").toLowerCase();
-    if (WHATSAPP_ALIAS_TYPES.has(t)) whatsapp += 1;
-    if (SEARCH_ALIAS_TYPES.has(t)) search += 1;
-  }
-  return { whatsapp, search };
-}
-
-function evaluateAliasTermTypes(
-  aliasCount: number,
-  whatsapp: number,
-  search: number,
-): PilotCheckStatus {
+function evaluateAliasTermTypes(aliasCount: number): PilotCheckStatus {
   if (aliasCount === 0) return "fail";
-  if (whatsapp >= 1 && search >= 1 && aliasCount >= 3) return "pass";
-  if (whatsapp >= 1 || search >= 1 || aliasCount >= 3) return "partial";
-  return "fail";
+  // Canonical Core product_aliases currently exposes alias_text/canonical_name only.
+  // Channel/type activity cannot be asserted from that table, so remain fail-closed.
+  return "unknown";
 }
 
 function evaluateApprovalReady(
@@ -122,6 +103,7 @@ function evaluateApprovalReady(
   packaging: PilotCheckStatus,
   heroImage: PilotCheckStatus,
   aliasCount: number,
+  aliasTermTypes: PilotCheckStatus,
 ): { status: PilotCheckStatus; reasons: string[] } {
   const reasons: string[] = [];
   if (!row) reasons.push("Product row missing");
@@ -129,7 +111,12 @@ function evaluateApprovalReady(
   if (hsnGst !== "pass") reasons.push("HSN and GST must both be set");
   if (packaging !== "pass") reasons.push("grams_per_piece and pieces_per_kg required");
   if (heroImage !== "pass") reasons.push("Hero image required");
-  if (aliasCount < 3) reasons.push("At least 3 active aliases required for pilot approval");
+  if (aliasCount < 3) reasons.push("At least 3 canonical aliases required for pilot approval");
+  if (aliasTermTypes !== "pass") {
+    reasons.push(
+      "Alias channel/type readiness cannot be verified from the canonical product_aliases schema.",
+    );
+  }
   if (infra.approveProductDraftRpc.status === "fail") {
     reasons.push("approve_catalogue_product_draft RPC not deployed");
   }
@@ -214,23 +201,24 @@ async function evaluatePilotSku(
   }
 
   let aliasCount = 0;
-  let whatsappAliasCount = 0;
-  let searchAliasCount = 0;
+  const whatsappAliasCount = 0;
+  const searchAliasCount = 0;
   if (row?.id) {
-    const { data: aliases } = await supabase
+    const { data: aliases, error: aliasError } = await supabase
       .from("product_aliases")
       .select("id, alias_text, canonical_name, product_id")
       .eq("product_id", String(row.id));
-    aliasCount = aliases?.length ?? 0;
-    const typed = countAliasTypes(aliases ?? []);
-    whatsappAliasCount = typed.whatsapp;
-    searchAliasCount = typed.search;
-    if (aliasCount < 3) blockedReasons.push(`Only ${aliasCount} active aliases (need ≥3)`);
-    if (whatsappAliasCount < 1) blockedReasons.push("No WhatsApp keyword alias in DB (alias_type)");
-    if (searchAliasCount < 1) blockedReasons.push("No search keyword alias in DB (alias_type)");
+    if (aliasError) {
+      blockedReasons.push(`Alias authority load failed: ${aliasError.message}`);
+    }
+    aliasCount = aliasError ? 0 : (aliases?.length ?? 0);
+    if (aliasCount < 3) blockedReasons.push(`Only ${aliasCount} canonical aliases (need ≥3)`);
+    blockedReasons.push(
+      "Canonical product_aliases does not expose alias_type/is_active; WhatsApp/search alias readiness remains unverified.",
+    );
   }
 
-  const aliasTermTypes = evaluateAliasTermTypes(aliasCount, whatsappAliasCount, searchAliasCount);
+  const aliasTermTypes = evaluateAliasTermTypes(aliasCount);
 
   const collision = PILOT_COLLISION_HINTS[sku];
   const resolverCollisions: PilotCheckStatus = collision.status;
@@ -254,6 +242,7 @@ async function evaluatePilotSku(
     packaging,
     heroImage,
     aliasCount,
+    aliasTermTypes,
   );
   if (approval.status !== "pass") blockedReasons.push(...approval.reasons);
 
