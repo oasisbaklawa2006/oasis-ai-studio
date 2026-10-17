@@ -1,10 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { type PilotInfraReport, probePilotInfra } from "./infraProbe";
-import {
-  evaluatePilotMediaForProduct,
-  type probeProductMediaBucket,
-} from "./mediaReadiness";
+import { evaluatePilotMediaForProduct, type probeProductMediaBucket } from "./mediaReadiness";
 import { PILOT_COLLISION_HINTS } from "./pilotCollisionHints";
 import {
   dbRowToProductForm,
