@@ -1,19 +1,16 @@
-import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { fetchProductLanguageSnapshot } from "@/features/productIntelligence/fetchLanguageTerms";
 import {
   isProductLanguageTermsSchemaDeployed,
   LANGUAGE_TERMS_INFORMATIONAL_NOTICE,
 } from "@/features/productIntelligence/languageSchema";
-import {
-  PRODUCT_LANGUAGE_TERM_TYPES,
-  TERM_TYPE_LABELS,
-} from "@/features/productLanguage/terms";
-import { fetchProductLanguageSnapshot } from "@/features/productIntelligence/fetchLanguageTerms";
 import { capabilityReadinessScore } from "@/features/productIntelligence/productLanguageReadiness";
 import type { ProductLanguageReadinessResult } from "@/features/productIntelligence/types";
+import { PRODUCT_LANGUAGE_TERM_TYPES, TERM_TYPE_LABELS } from "@/features/productLanguage/terms";
 
 type Props = {
   productId: string;
@@ -34,6 +31,7 @@ export function ProductLanguageTermsPanel({
   const [gaps, setGaps] = useState<string[]>([]);
 
   useEffect(() => {
+    void refreshKey; // An explicit alias update requires a fresh snapshot.
     let cancelled = false;
     (async () => {
       setLoading(true);
@@ -70,7 +68,8 @@ export function ProductLanguageTermsPanel({
         <div>
           <h4 className="font-medium">Product language terms</h4>
           <p className="text-xs text-muted-foreground mt-1">
-            Seven-class Oasis language model — official name plus six editable term types for search and channels.
+            Seven-class Oasis language model — official name plus six editable term types for search
+            and channels.
           </p>
         </div>
 
@@ -111,7 +110,8 @@ export function ProductLanguageTermsPanel({
             <p className="text-[11px] text-muted-foreground">{readiness.nextAction}</p>
             {capability && (
               <p className="text-[11px] text-muted-foreground">
-                Product Intelligence capability layer: {capability.score}/{capability.maxScore} ({capability.label.replace(/_/g, " ")})
+                Product Intelligence capability layer: {capability.score}/{capability.maxScore} (
+                {capability.label.replace(/_/g, " ")})
               </p>
             )}
           </div>
@@ -119,8 +119,8 @@ export function ProductLanguageTermsPanel({
           <div className="rounded-md border border-dashed p-3 space-y-1 bg-muted/5">
             <div className="text-xs font-medium text-muted-foreground">Discoverability preview</div>
             <p className="text-[11px] text-muted-foreground">
-              Scoring is paused until <code className="text-[10px]">product_language_terms</code> ships.
-              Alias inventory below is informational only.
+              Scoring is paused until <code className="text-[10px]">product_language_terms</code>{" "}
+              ships. Alias inventory below is informational only.
             </p>
           </div>
         ) : null}
@@ -128,9 +128,12 @@ export function ProductLanguageTermsPanel({
         <div className="rounded-md border border-muted bg-muted/10 p-3 flex gap-2">
           <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-xs space-y-1">
-            <p className="font-medium text-foreground">WhatsApp keywords — approval workflow not active</p>
+            <p className="font-medium text-foreground">
+              WhatsApp keywords — approval workflow not active
+            </p>
             <p className="text-muted-foreground">
-              WhatsApp term matching is informational until the durable approval workflow is deployed.
+              WhatsApp term matching is informational until the durable approval workflow is
+              deployed.
               {whatsappCount > 0
                 ? ` ${whatsappCount} keyword${whatsappCount === 1 ? "" : "s"} in local inventory.`
                 : " No WhatsApp keywords in inventory yet."}

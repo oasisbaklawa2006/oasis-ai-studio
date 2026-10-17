@@ -1,4 +1,4 @@
-export type ReadinessLevel = "missing" | "partial" | "ready" | "warning" | "locked";
+type ReadinessLevel = "missing" | "partial" | "ready" | "warning" | "locked";
 
 export interface Product {
   id: string;
@@ -14,23 +14,10 @@ export interface Product {
   is_active?: boolean | null;
 }
 
-export const skuReadiness = (p: Product): ReadinessLevel => {
-  if (!p.sku) return "missing";
-  if (p.legacy_sku && !p.sku.startsWith("OAS-")) return "warning";
-  if (p.sku_locked) return "locked";
-  return "ready";
-};
-
-export const mediaReadiness = (p: Product): ReadinessLevel => {
+const mediaReadiness = (p: Product): ReadinessLevel => {
   if (p.hero_image_url || p.media_status === "approved") return "ready";
   if (p.media_status && p.media_status !== "missing") return "partial";
   return "missing";
-};
-
-export const aliasReadiness = (count: number): ReadinessLevel => {
-  if (count === 0) return "missing";
-  if (count === 1) return "partial";
-  return "ready";
 };
 
 export interface ReadinessReport {
@@ -51,14 +38,4 @@ export const catalogueReadiness = (p: Product): ReadinessReport => {
   if (mediaReadiness(p) === "missing") missing.push("Hero image");
   if (p.label_status === "rejected") warnings.push("Label rejected");
   return { ready: missing.length === 0, missing, warnings };
-};
-
-export const readinessToneClass = (l: ReadinessLevel) => {
-  switch (l) {
-    case "ready":
-    case "locked": return "bg-success/10 text-success";
-    case "partial": return "bg-warning/10 text-warning";
-    case "warning": return "bg-warning/15 text-warning";
-    default: return "bg-destructive/10 text-destructive";
-  }
 };

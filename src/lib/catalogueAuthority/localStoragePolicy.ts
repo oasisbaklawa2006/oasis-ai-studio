@@ -3,7 +3,7 @@
  * Writes to localStorage for catalogue collections/versions are opt-in dev-only.
  */
 
-export class LocalCatalogueFallbackDisabledError extends Error {
+class LocalCatalogueFallbackDisabledError extends Error {
   constructor(context: string) {
     super(
       `${context}: Supabase is required for catalogue authority data. ` +
@@ -16,8 +16,7 @@ export class LocalCatalogueFallbackDisabledError extends Error {
 /** Dev-only explicit opt-in for local catalogue persistence writes. */
 export function isLocalCatalogueFallbackWriteEnabled(): boolean {
   return (
-    import.meta.env.DEV === true &&
-    import.meta.env.VITE_ALLOW_LOCAL_CATALOGUE_FALLBACK === "true"
+    import.meta.env.DEV === true && import.meta.env.VITE_ALLOW_LOCAL_CATALOGUE_FALLBACK === "true"
   );
 }
 

@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export async function getMyRoleKeys(): Promise<string[]> {
+async function getMyRoleKeys(): Promise<string[]> {
   try {
     const { data, error } = await supabase.rpc("get_my_role_keys");
 

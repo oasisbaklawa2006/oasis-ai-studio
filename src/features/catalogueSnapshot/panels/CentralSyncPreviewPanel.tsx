@@ -356,7 +356,9 @@ export function CentralSyncPreviewPanel({
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">{v.status}</Badge>
                     {isImmutableVersion(v.status) && (
-                      <Lock className="h-3 w-3 text-muted-foreground" title="Immutable" />
+                      <span title="Immutable">
+                        <Lock className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
+                      </span>
                     )}
                   </div>
                 </li>

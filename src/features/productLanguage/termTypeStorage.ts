@@ -49,11 +49,9 @@ export function removeStoredTermType(productId: string, rowKey: string): void {
   writeMap(productId, map);
 }
 
-export function getAllStoredTermTypes(productId: string): TermTypeMap {
-  return readMap(productId);
-}
-
-export function countStoredTermTypes(productId: string): Partial<Record<ProductLanguageTermType, number>> {
+export function countStoredTermTypes(
+  productId: string,
+): Partial<Record<ProductLanguageTermType, number>> {
   const counts: Partial<Record<ProductLanguageTermType, number>> = {};
   for (const t of Object.values(readMap(productId))) {
     counts[t] = (counts[t] ?? 0) + 1;

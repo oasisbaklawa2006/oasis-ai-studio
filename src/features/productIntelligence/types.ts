@@ -44,7 +44,7 @@ export type SnapshotLanguageIntelligence = {
   search_consumption: {
     matches_name: true;
     matches_sku: true;
-    matches_alias_text: true;
+    matches_alias_text: boolean;
     matches_canonical_name: true;
     matches_typed_terms: false;
   };
@@ -56,7 +56,12 @@ export type Batch001SkuAssessment = {
   official_name: string;
   authority_aliases_expected: number;
   authority_whatsapp_expected: number;
-  central_status: "not_assessed" | "sku_missing" | "no_language_terms" | "partial" | "authority_ready";
+  central_status:
+    | "not_assessed"
+    | "sku_missing"
+    | "no_language_terms"
+    | "partial"
+    | "authority_ready";
   language_gaps: string[];
   search_gaps: string[];
   discoverability_gaps: string[];

@@ -1,4 +1,4 @@
-export type SupabaseFailureKind =
+type SupabaseFailureKind =
   | "missing_table"
   | "missing_column"
   | "missing_rpc"

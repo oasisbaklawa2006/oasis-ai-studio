@@ -51,14 +51,3 @@ export function useFeatureFlags() {
   }, []);
   return { flags, loading, refresh };
 }
-
-export function useFeatureFlag(key: string) {
-  const { flags, loading } = useFeatureFlags();
-  const flag = flags.find((f) => f.feature_key === key) ?? null;
-  return {
-    flag,
-    loading,
-    isEnabled: !!flag?.is_enabled,
-    isVisible: !!flag?.is_visible,
-  };
-}

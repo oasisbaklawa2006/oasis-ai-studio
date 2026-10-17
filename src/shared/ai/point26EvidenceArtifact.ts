@@ -1,7 +1,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-export const POINT26_EVIDENCE_OUT_PATH = join(
+const POINT26_EVIDENCE_OUT_PATH = join(
   process.cwd(),
   "audit-artifacts",
   "point26-inference-audit",
@@ -29,13 +29,13 @@ export function augmentPoint26EvidenceWithCertificationChecks(
   };
 }
 
-export function readPoint26EvidenceArtifact(
+function readPoint26EvidenceArtifact(
   path: string = POINT26_EVIDENCE_OUT_PATH,
 ): Record<string, unknown> {
   return JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
 }
 
-export function writePoint26EvidenceArtifact(
+function writePoint26EvidenceArtifact(
   evidence: Record<string, unknown>,
   path: string = POINT26_EVIDENCE_OUT_PATH,
 ): void {

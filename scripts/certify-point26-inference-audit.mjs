@@ -6,6 +6,7 @@
 
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const EVIDENCE_OUT_PATH = join(
   process.cwd(),
@@ -72,24 +73,32 @@ function runBoundaries() {
 }
 
 async function emitEvidence() {
-  const proc = spawnSync("npx", ["vite-node", "scripts/emit-point26-census-evidence.ts"], {
-    encoding: "utf8",
-    cwd: process.cwd(),
-  });
+  const proc = spawnSync(
+    "npx",
+    ["vite-node", fileURLToPath(new URL("./emit-point26-census-evidence.ts", import.meta.url))],
+    {
+      encoding: "utf8",
+      cwd: process.cwd(),
+    },
+  );
 
   if (proc.status !== 0) {
     record("emit census evidence", false, (proc.stdout + proc.stderr).slice(-400));
     throw new Error("Failed to emit census evidence");
   }
 
-  const finalize = spawnSync("npx", ["vite-node", "scripts/finalize-point26-census-evidence.ts"], {
-    encoding: "utf8",
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      POINT26_CERTIFICATION_CHECKS: JSON.stringify(results),
+  const finalize = spawnSync(
+    "npx",
+    ["vite-node", fileURLToPath(new URL("./finalize-point26-census-evidence.ts", import.meta.url))],
+    {
+      encoding: "utf8",
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        POINT26_CERTIFICATION_CHECKS: JSON.stringify(results),
+      },
     },
-  });
+  );
 
   if (finalize.status !== 0) {
     record(

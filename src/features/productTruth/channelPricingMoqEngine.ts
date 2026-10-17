@@ -1,5 +1,10 @@
+import type {
+  ChannelMoqRule,
+  ChannelPriceRecord,
+  PackagingHierarchy,
+  ProductTruthChannel,
+} from "./types";
 import { convertOrderedQtyToBaseQty, normalizeUom } from "./uomPackagingEngine";
-import type { ChannelMoqRule, ChannelPriceRecord, PackagingHierarchy, ProductTruthChannel } from "./types";
 
 export function isPriceEffective(price: ChannelPriceRecord, at = new Date()): boolean {
   if (price.priceStatus === "archived") return false;
@@ -43,7 +48,7 @@ export function getChannelPrice(
   return [...pool].sort(compareChannelPriceRows)[0];
 }
 
-export function validateMOQ(
+function validateMOQ(
   orderQty: number,
   orderUom: string,
   rule: ChannelMoqRule,
@@ -68,7 +73,7 @@ export function validateMOQ(
   return { valid: true };
 }
 
-export function validateIncrement(
+function validateIncrement(
   orderQty: number,
   orderUom: string,
   rule: ChannelMoqRule,
@@ -80,7 +85,11 @@ export function validateIncrement(
   if (inc == null || inc <= 0) return { valid: true };
 
   const orderBase = convertOrderedQtyToBaseQty(orderQty, orderUom, hierarchy);
-  const moqBase = convertOrderedQtyToBaseQty(rule.moqValue ?? 0, String(rule.moqUom ?? incUom), hierarchy);
+  const moqBase = convertOrderedQtyToBaseQty(
+    rule.moqValue ?? 0,
+    String(rule.moqUom ?? incUom),
+    hierarchy,
+  );
   const incBase = convertOrderedQtyToBaseQty(inc, String(incUom), hierarchy);
   if (orderBase == null || incBase == null) {
     return { valid: false, message: "Cannot validate increment — check UOM rules" };

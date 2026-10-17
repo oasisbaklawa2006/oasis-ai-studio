@@ -1,7 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { ProductUtteranceResolution } from "@/features/productIntelligence/runtime";
-import { resolveInboundMessage } from "./resolveInboundMessage";
+import { supabase } from "@/integrations/supabase/client";
 import { rowFromRpcPayload } from "./mapInboundMessage";
+import { resolveInboundMessage } from "./resolveInboundMessage";
 import { validateWhatsAppInboundInput } from "./validateWhatsAppInbound";
 import type {
   IngestInboundResult,
@@ -23,14 +23,18 @@ export type IngestDeps = {
 const defaultDeps: IngestDeps = {
   resolve: resolveInboundMessage,
   rpc: async (fn, args) => {
-    const { data, error } = await supabase.rpc(fn as "ingest_whatsapp_inbound_message", args as never);
+    const { data, error } = await supabase.rpc(
+      fn as "ingest_whatsapp_inbound_message",
+      args as never,
+    );
     return { data: data as Record<string, unknown> | null, error };
   },
 };
 
-export function buildResolverPayload(
-  resolution: ProductUtteranceResolution | null,
-): { resolver_status: "resolved" | "failed"; resolver_result_json: ProductUtteranceResolution | null } {
+export function buildResolverPayload(resolution: ProductUtteranceResolution | null): {
+  resolver_status: "resolved" | "failed";
+  resolver_result_json: ProductUtteranceResolution | null;
+} {
   if (!resolution) {
     return { resolver_status: "failed", resolver_result_json: null };
   }
@@ -39,18 +43,19 @@ export function buildResolverPayload(
 
 export async function ingestInboundMessage(
   input: WhatsAppInboundInput,
-  deps: IngestDeps = defaultDeps,
+  deps: Partial<IngestDeps> = {},
 ): Promise<IngestInboundResult> {
+  const authority = { ...defaultDeps, ...deps };
   const validated = validateWhatsAppInboundInput(input);
-  if (!validated.ok) {
+  if (validated.ok !== true) {
     throw new Error(validated.error);
   }
 
   const value = validated.value;
-  const resolution = await deps.resolve(value.message_body);
+  const resolution = await authority.resolve(value.message_body);
   const resolverPayload = buildResolverPayload(resolution);
 
-  const { data, error } = await deps.rpc("ingest_whatsapp_inbound_message", {
+  const { data, error } = await authority.rpc("ingest_whatsapp_inbound_message", {
     _provider_message_id: value.provider_message_id,
     _sender_phone: value.sender_phone,
     _sender_name: value.sender_name,
@@ -86,12 +91,12 @@ export function createInMemoryIngestStore() {
       const providerId = (args._provider_message_id as string | null) ?? null;
       if (providerId) {
         const existing = [...rows.values()].find((r) => r.provider_message_id === providerId);
-      if (existing) {
-        return {
-          data: { ...(existing as unknown as Record<string, unknown>), __ingest_duplicate: true },
-          error: null,
-        };
-      }
+        if (existing) {
+          return {
+            data: { ...(existing as unknown as Record<string, unknown>), __ingest_duplicate: true },
+            error: null,
+          };
+        }
       }
 
       const id = crypto.randomUUID();
@@ -104,8 +109,10 @@ export function createInMemoryIngestStore() {
         message_type: String(args._message_type ?? "text"),
         received_at: String(args._received_at ?? new Date().toISOString()),
         raw_payload: (args._raw_payload as Record<string, unknown> | null) ?? null,
-        resolver_status: (args._resolver_status as WhatsAppInboundMessageRow["resolver_status"]) ?? "pending",
-        resolver_result_json: (args._resolver_result_json as ProductUtteranceResolution | null) ?? null,
+        resolver_status:
+          (args._resolver_status as WhatsAppInboundMessageRow["resolver_status"]) ?? "pending",
+        resolver_result_json:
+          (args._resolver_result_json as ProductUtteranceResolution | null) ?? null,
         created_at: new Date().toISOString(),
       };
       rows.set(id, row);

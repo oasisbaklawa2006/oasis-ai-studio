@@ -1,18 +1,21 @@
+import { AlertTriangle, Copy, ExternalLink, FileCheck, Send, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { toast } from "sonner";
+import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { PageHeader } from "@/components/PageHeader";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from "sonner";
-import { Upload, FileCheck, AlertTriangle, Copy, Send, ExternalLink } from "lucide-react";
-import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { CATEGORY1_TARGET_FIELDS } from "@/features/category1Import/columnMapping";
 import { detectExistingProductDuplicates } from "@/features/category1Import/duplicateDetection";
-import { parseCategory1File } from "@/features/category1Import/parseFile";
 import { isImportLogsTableAvailable } from "@/features/category1Import/importLogService";
-import { newBatchId, submitCategory1StagingBatch } from "@/features/category1Import/submitStagingBatch";
+import { parseCategory1File } from "@/features/category1Import/parseFile";
+import {
+  newBatchId,
+  submitCategory1StagingBatch,
+} from "@/features/category1Import/submitStagingBatch";
 import type { ParseFileResult, StagedCategory1Row } from "@/features/category1Import/types";
 
 /** Served from /public — downloadable import template (not auto-loaded). */
@@ -128,11 +131,13 @@ export default function Category1ImportStaging() {
           }}
         />
         <p className="text-xs text-muted-foreground">
-          Category 1 product master only. Channel pricing, tags, and catalogue compositions are out of scope.
+          Category 1 product master only. Channel pricing, tags, and catalogue compositions are out
+          of scope.
         </p>
         {importLogsUnavailable && (
           <p className="text-xs text-warning border border-warning/30 rounded-md px-3 py-2 bg-warning/5">
-            Import audit log unavailable — draft submission still recorded in catalogue_product_drafts.
+            Import audit log unavailable — draft submission still recorded in
+            catalogue_product_drafts.
           </p>
         )}
       </div>
@@ -149,9 +154,9 @@ export default function Category1ImportStaging() {
         </div>
         <div className="text-sm text-muted-foreground space-y-2 border-t border-border/40 pt-3">
           <p>
-            <strong className="text-foreground">No file is bundled with the app.</strong> Upload your
-            Category 1 authority export (CSV or JSON). Rows are validated read-only, then submitted as
-            drafts for approval — never auto-published.
+            <strong className="text-foreground">No file is bundled with the app.</strong> Upload
+            your Category 1 authority export (CSV or JSON). Rows are validated read-only, then
+            submitted as drafts for approval — never auto-published.
           </p>
           <p>
             <a
@@ -163,7 +168,8 @@ export default function Category1ImportStaging() {
               Download CSV template ({CATEGORY1_IMPORT_TEMPLATE_FILENAME})
             </a>
             {" · "}
-            Preview batch: <code className="text-xs">data/category1-preview/CATEGORY1_IMPORT_BATCH_001.csv</code>
+            Preview batch:{" "}
+            <code className="text-xs">data/category1-preview/CATEGORY1_IMPORT_BATCH_001.csv</code>
           </p>
         </div>
         {parsed && (
@@ -206,7 +212,9 @@ export default function Category1ImportStaging() {
                     <tr key={m.authorityColumn} className="border-b border-border/40">
                       <td className="py-2 pr-4 font-mono text-xs">{m.authorityColumn}</td>
                       <td className="py-2 pr-4">{String(m.targetField)}</td>
-                      <td className="py-2 text-muted-foreground truncate max-w-xs">{m.sampleValue}</td>
+                      <td className="py-2 text-muted-foreground truncate max-w-xs">
+                        {m.sampleValue}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -220,8 +228,11 @@ export default function Category1ImportStaging() {
           <TabsContent value="validation">
             <div className="card-elevated p-4 space-y-2 max-h-96 overflow-auto">
               {staged.flatMap((s) =>
-                s.issues.map((issue, idx) => (
-                  <div key={`${s.row.rowIndex}-${idx}`} className="text-sm flex gap-2">
+                s.issues.map((issue) => (
+                  <div
+                    key={`${s.row.rowIndex}-${issue.level}-${issue.message}`}
+                    className="text-sm flex gap-2"
+                  >
                     <Badge variant={issue.level === "error" ? "destructive" : "outline"}>
                       row {s.row.rowIndex}
                     </Badge>
@@ -238,8 +249,11 @@ export default function Category1ImportStaging() {
           <TabsContent value="duplicates">
             <div className="card-elevated p-4 space-y-2 max-h-96 overflow-auto">
               {staged.flatMap((s) =>
-                s.duplicates.map((d, idx) => (
-                  <div key={`${s.row.rowIndex}-d-${idx}`} className="text-sm flex gap-2 items-start">
+                s.duplicates.map((d) => (
+                  <div
+                    key={`${s.row.rowIndex}-${d.kind}-${d.existingProductId ?? d.matchedRowIndex}-${d.matchedValue}`}
+                    className="text-sm flex gap-2 items-start"
+                  >
                     <Badge variant="outline">row {s.row.rowIndex}</Badge>
                     <div>
                       <div className="font-medium">{d.kind.replace(/_/g, " ")}</div>
@@ -349,9 +363,9 @@ export default function Category1ImportStaging() {
           <Upload className="h-4 w-4 mt-0.5 shrink-0" />
           <div className="space-y-2">
             <p>
-              Choose a <strong className="text-foreground">CSV or JSON</strong> file above to begin staging.
-              Required column: <code className="text-xs">product_name</code>. Optional: SKU, category, UOM,
-              GST, departments, pack fields — see template.
+              Choose a <strong className="text-foreground">CSV or JSON</strong> file above to begin
+              staging. Required column: <code className="text-xs">product_name</code>. Optional:
+              SKU, category, UOM, GST, departments, pack fields — see template.
             </p>
             <p>
               After upload, review mapping and validation tabs, then submit selected rows as{" "}

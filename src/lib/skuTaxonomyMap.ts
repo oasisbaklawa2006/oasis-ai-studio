@@ -3,7 +3,7 @@
  * Division → category is not enforced here; subcategory and packaging are filtered by category_code.
  */
 
-export const CATEGORY_SUBCATEGORY_MAP: Readonly<Record<string, readonly string[]>> = {
+const CATEGORY_SUBCATEGORY_MAP: Readonly<Record<string, readonly string[]>> = {
   BKL: ["PYR", "ROL", "BIR", "KAT", "SQR", "ASS", "PST", "CSH", "ALM", "MIX"],
   KNF: ["KNF", "KDF", "KTF"],
   DAT: ["ASS", "MIX", "PST"],
@@ -20,7 +20,7 @@ export const CATEGORY_SUBCATEGORY_MAP: Readonly<Record<string, readonly string[]
 };
 
 /** Division FR uses frozen subcategory set when category is not more specific */
-export const FROZEN_DIVISION_SUBCATEGORIES = CATEGORY_SUBCATEGORY_MAP.FRZ;
+const FROZEN_DIVISION_SUBCATEGORIES = CATEGORY_SUBCATEGORY_MAP.FRZ;
 
 const BULK_PACKAGING = ["LOOSE", "BULK", "TRAY1KG", "JAR500", "MAAPET"];
 const RETAIL_PACKAGING = ["RBOX", "TIN", "PAPERBOX", "CRYSTAL", "666", "888", "MAAPET"];
@@ -96,7 +96,7 @@ export function filterSkuCodeOptions(
   return filtered.length ? filtered : options;
 }
 
-export function isSubcategoryAllowedForCategory(
+function isSubcategoryAllowedForCategory(
   categoryCode: string | null | undefined,
   subcategoryCode: string | null | undefined,
   divisionCode?: string | null,
@@ -107,7 +107,7 @@ export function isSubcategoryAllowedForCategory(
   return allowed.includes(subcategoryCode.toUpperCase());
 }
 
-export function isPackagingAllowed(
+function isPackagingAllowed(
   categoryCode: string | null | undefined,
   packagingCode: string | null | undefined,
   productClass?: string | null,
@@ -128,14 +128,22 @@ export function isValidSkuTaxonomyCombination(args: {
 }): { valid: boolean; message?: string } {
   const { category_code, subcategory_code, packaging_code, division_code, product_class } = args;
 
-  if (category_code && subcategory_code && !isSubcategoryAllowedForCategory(category_code, subcategory_code, division_code)) {
+  if (
+    category_code &&
+    subcategory_code &&
+    !isSubcategoryAllowedForCategory(category_code, subcategory_code, division_code)
+  ) {
     return {
       valid: false,
       message: `Subcategory ${subcategory_code} is not valid for category ${category_code}. Choose a matching subcategory.`,
     };
   }
 
-  if (category_code && packaging_code && !isPackagingAllowed(category_code, packaging_code, product_class, division_code)) {
+  if (
+    category_code &&
+    packaging_code &&
+    !isPackagingAllowed(category_code, packaging_code, product_class, division_code)
+  ) {
     return {
       valid: false,
       message: `Packaging ${packaging_code} is not valid for this product type. Choose retail/bulk/frozen packaging as appropriate.`,

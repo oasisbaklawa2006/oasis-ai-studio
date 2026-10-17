@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export const BOM_RUNTIME_TABLE = "product_bom" as const;
-export const BOM_MIGRATION_TABLE = "product_bom_items" as const;
+const BOM_RUNTIME_TABLE = "product_bom" as const;
+const BOM_MIGRATION_TABLE = "product_bom_items" as const;
 
 export type BomTableProbeResult = {
   runtimeTableAvailable: boolean;
@@ -18,8 +18,8 @@ function isMissingRelationError(message: string): boolean {
  * BomBuilder writes to `product_bom` (Central runtime); migrations define `product_bom_items`.
  */
 export async function probeBomTables(): Promise<BomTableProbeResult> {
-  const runtime = await (supabase as any).from(BOM_RUNTIME_TABLE).select("id").limit(1);
-  const migration = await (supabase as any).from(BOM_MIGRATION_TABLE).select("id").limit(1);
+  const runtime = await supabase.from(BOM_RUNTIME_TABLE).select("id").limit(1);
+  const migration = await supabase.from(BOM_MIGRATION_TABLE).select("id").limit(1);
 
   const runtimeMissing = !!runtime.error && isMissingRelationError(runtime.error.message);
   const migrationMissing = !!migration.error && isMissingRelationError(migration.error.message);

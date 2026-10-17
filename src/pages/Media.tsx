@@ -41,11 +41,11 @@ import type { Role } from "@/lib/permissions";
 const MEDIA_DRAFT_SUCCESS =
   "Media change submitted for approval. Uploaded media remains visible as raw while approval is pending.";
 
-type MediaLibraryProduct = { id: string; product_name: string; sku: string | null };
+type MediaLibraryProduct = { id: string; product_name: string | null; sku: string | null };
 
 type MediaLibraryRow = ProductMediaRow & {
   id: string;
-  products?: { product_name: string; sku: string | null } | null;
+  products?: { product_name: string | null; sku: string | null } | null;
 };
 
 const Media = () => {

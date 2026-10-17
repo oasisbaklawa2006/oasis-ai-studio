@@ -1,49 +1,53 @@
-import { AlertTriangle, Database, ShieldCheck } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
 
 type CapabilityUnavailableProps = {
   title: string;
   capability: string;
   retained?: string;
+  publicView?: boolean;
 };
 
-/** Honest fail-closed state for modules whose governed backend is not deployed. */
+/** Keep unavailable Core capabilities separate from Studio's product editing workspace. */
 export function CapabilityUnavailable({
   title,
-  capability,
-  retained = "No production data was changed.",
+  retained,
+  publicView = false,
 }: CapabilityUnavailableProps) {
   return (
     <>
       <PageHeader
         title={title}
-        subtitle="Frontend workspace retained; governed production capability is not deployed."
+        subtitle={
+          publicView
+            ? "This catalogue link is not available."
+            : "This capability is managed in Oasis Core."
+        }
       />
-      <div className="card-elevated mx-auto max-w-3xl border-warning/40 p-6">
-        <div className="mb-4 flex items-start gap-3">
-          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
+      <div className="card-elevated mx-auto max-w-3xl border-warning/40 p-6" role="status">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning" aria-hidden="true" />
           <div>
-            <h2 className="font-display text-lg">Module safely on hold</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              The canonical production database does not currently expose {capability}. The app has
-              stopped sending invalid requests instead of pretending the module is operational.
+            <h2 className="font-display text-lg">
+              {publicView ? "Catalogue unavailable" : "Capability awaiting activation"}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {publicView
+                ? "Ask the catalogue owner for an approved, published catalogue. This link cannot display one yet."
+                : "Ask your catalogue administrator to enable the governed capability in Oasis Core. You can continue editing products in AI Studio while it is on hold."}
             </p>
+            {!publicView && (
+              <Button asChild className="mt-4">
+                <Link to="/products">Open products</Link>
+              </Button>
+            )}
+            {!publicView && retained && (
+              <p className="mt-3 text-sm text-muted-foreground">{retained}</p>
+            )}
           </div>
         </div>
-        <div className="grid gap-3 text-sm sm:grid-cols-2">
-          <div className="rounded-md border p-3">
-            <Database className="mb-2 h-4 w-4 text-accent" />
-            Backend status: not deployed
-          </div>
-          <div className="rounded-md border p-3">
-            <ShieldCheck className="mb-2 h-4 w-4 text-success" />
-            {retained}
-          </div>
-        </div>
-        <p className="mt-4 text-xs text-muted-foreground">
-          Re-enable only after forward-only schema ownership, RLS, generated types, and acceptance
-          tests are approved in the backend repository.
-        </p>
       </div>
     </>
   );
