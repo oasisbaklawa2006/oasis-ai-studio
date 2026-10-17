@@ -5,7 +5,7 @@
  * the URL. Pulled out as pure functions so the fallback/URL-building rules are unit-testable without
  * a router or DOM; the page itself wires these to `useSearchParams()`.
  */
-const CATALOGUE_STUDIO_TABS = ["content", "language", "media", "packaging", "export"] as const;
+export const CATALOGUE_STUDIO_TABS = ["content", "language", "media", "packaging", "export"] as const;
 export type CatalogueStudioTab = (typeof CATALOGUE_STUDIO_TABS)[number];
 
 /** A stale/invalid ?tab= (old bookmark, hand-edited URL) must fall back to "content", never crash. */
