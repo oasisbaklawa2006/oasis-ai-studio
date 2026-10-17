@@ -41,7 +41,7 @@ const nestedRead = (payload: Record<string, unknown> | null | undefined, path: s
   }, payload);
 };
 
-export function readMediaPayloadField(
+function readMediaPayloadField(
   payload: Record<string, unknown> | null | undefined,
   ...paths: string[]
 ): string {
@@ -88,7 +88,7 @@ export function summarizeMediaSubmissionPayload(
   };
 }
 
-export function isDisplayableMediaUrl(url: string | null | undefined): boolean {
+function isDisplayableMediaUrl(url: string | null | undefined): boolean {
   if (!url?.trim()) return false;
   return /^https?:\/\//i.test(url.trim());
 }
@@ -96,7 +96,7 @@ export function isDisplayableMediaUrl(url: string | null | undefined): boolean {
 /** Returns url only when it passes isDisplayableMediaUrl — fail-closed for DOM href/src binding. */
 export function safeDisplayableMediaUrl(url: string | null | undefined): string | null {
   if (!isDisplayableMediaUrl(url)) return null;
-  return url.trim();
+  return typeof url === "string" ? url.trim() : null;
 }
 
 export function formatSubmissionAge(dateStr?: string | null): string {
