@@ -9,7 +9,7 @@ import type { ProductIntakeResult } from "./types";
  */
 export async function intakeFromBarcode(raw: string): Promise<ProductIntakeResult> {
   const normalized = normalizeBarcodeInput(raw);
-  if (normalized.ok !== true) {
+  if (!normalized.ok) {
     return {
       mode: "barcode",
       status: "unsupported",
