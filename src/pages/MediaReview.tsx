@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
@@ -41,20 +41,27 @@ const MediaReview = () => {
   const [reasons, setReasons] = useState<Map<string, string>>(() => new Map());
   const [loadError, setLoadError] = useState<string | null>(null);
   const [inFlight, setInFlight] = useState<Set<string>>(() => new Set());
+  const actionLocks = useRef(new Set<string>());
+  const loadSequence = useRef(0);
   const mediaApprovalAvailable = isMediaCatalogueApprovalAvailable();
 
   const load = async () => {
+    const sequence = ++loadSequence.current;
     setLoading(true);
+    setItems([]);
     try {
       const rows = await fetchMediaSubmissions(["pending_approval", "approved", "rejected"]);
+      if (sequence !== loadSequence.current) return;
       setItems(rows);
       setLoadError(null);
     } catch (e) {
+      if (sequence !== loadSequence.current) return;
+      setItems([]);
       const message = e instanceof Error ? e.message : "Failed to load media submissions";
       setLoadError(message);
       toast.error(message);
     } finally {
-      setLoading(false);
+      if (sequence === loadSequence.current) setLoading(false);
     }
   };
 
@@ -64,6 +71,9 @@ const MediaReview = () => {
     // so this page-level effect only loads data — it never re-checks or re-derives
     // access itself, keeping one shared resolver as the sole authority (#228).
     void load();
+    return () => {
+      loadSequence.current += 1;
+    };
   }, []);
 
   const groupedByStatus = useMemo(
@@ -89,24 +99,50 @@ const MediaReview = () => {
   const rejectionReasonFor = (submissionId: string): string => reasons.get(submissionId) ?? "";
 
   const approve = async (row: MediaSubmissionRow) => {
-    const res = await approveMediaSubmission(row.id);
-    if (!res.ok) {
-      if (/not finalized/i.test(res.message)) toast.warning(res.message);
-      else toast.error(res.message);
+    if (
+      loading ||
+      loadError ||
+      row.status !== "pending_approval" ||
+      actionLocks.current.has(row.id)
+    )
       return;
+    actionLocks.current.add(row.id);
+    setInFlight((prev) => new Set(prev).add(row.id));
+    try {
+      const res = await approveMediaSubmission(row.id);
+      if (!res.ok) {
+        toast.error(res.message);
+        await load();
+        return;
+      }
+      toast.success("Media approved");
+      await load();
+    } finally {
+      actionLocks.current.delete(row.id);
+      setInFlight((prev) => {
+        const next = new Set(prev);
+        next.delete(row.id);
+        return next;
+      });
     }
-    toast.success("Media approved");
-    await load();
   };
 
   const reject = async (row: MediaSubmissionRow) => {
-    if (inFlight.has(row.id)) return;
+    if (
+      loading ||
+      loadError ||
+      row.status !== "pending_approval" ||
+      actionLocks.current.has(row.id)
+    )
+      return;
+    actionLocks.current.add(row.id);
     setInFlight((prev) => new Set(prev).add(row.id));
     try {
       const reason = rejectionReasonFor(row.id);
       const res = await rejectMediaSubmission(row.id, reason);
       if (!res.ok) {
         toast.error(res.message);
+        await load();
         return;
       }
       toast.success("Media rejected");
@@ -117,6 +153,7 @@ const MediaReview = () => {
       });
       await load();
     } finally {
+      actionLocks.current.delete(row.id);
       setInFlight((prev) => {
         const next = new Set(prev);
         next.delete(row.id);
@@ -164,6 +201,9 @@ const MediaReview = () => {
         {!loading && loadError && (
           <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
             Failed to load media submissions: {loadError}
+            <Button variant="outline" onClick={() => void load()} className="ml-3">
+              Retry
+            </Button>
           </div>
         )}
 
@@ -179,6 +219,7 @@ const MediaReview = () => {
           )}
 
         {!loading &&
+          !loadError &&
           currentItems.map((row) => {
             const summary = summarizeMediaSubmissionPayload(row.payload);
             const isPending = row.status === "pending_approval";
@@ -288,7 +329,11 @@ const MediaReview = () => {
                           Reject
                         </Button>
                         {mediaApprovalAvailable && (
-                          <Button className="rounded-full" onClick={() => approve(row)}>
+                          <Button
+                            className="rounded-full"
+                            onClick={() => approve(row)}
+                            disabled={inFlight.has(row.id)}
+                          >
                             Approve
                           </Button>
                         )}

@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   type CatalogueVersionStatus,
   IMMUTABLE_VERSION_STATUSES,
@@ -7,6 +8,10 @@ import type { ProductLabelBarcodeRow } from "@/features/productGovernance/types"
 import type { MoqRuleRow, PricingRuleRow } from "@/features/productTruth/channelAuthorityMappers";
 import { groupRowsByProductId } from "@/features/readiness/productReadinessSnapshot";
 import { supabase } from "@/integrations/supabase/client";
+import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+
+const authorityDb = supabase as unknown as SupabaseClient<ExtendedDatabase>;
+
 import {
   matchesProductListView,
   type ProductListRow,
@@ -19,7 +24,7 @@ export type ProductsFetchResult = {
 };
 
 export type ProductAuthorityBundleResult = {
-  rules: Record<string, unknown>[];
+  rules: { code: string; code_type: string; label: string }[];
   moqCounts: Record<string, number>;
   priceCounts: Record<string, { total: number; approved: number }>;
   mediaByProduct: Record<string, ProductMediaRow[]>;
@@ -100,7 +105,7 @@ export async function fetchProductAuthorityBundle(): Promise<ProductAuthorityBun
       .from("product_media")
       .select("id, product_id, type, file_url, status, alt_text, angle, created_at")
       .order("created_at", { ascending: false }),
-    supabase
+    authorityDb
       .from("catalogue_versions")
       .select("product_id, status, version_number")
       .order("version_number", { ascending: false }),

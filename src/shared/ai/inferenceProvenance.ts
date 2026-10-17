@@ -29,12 +29,9 @@ export type InferenceOperationProvenance = {
 };
 
 export const CATALOGUE_AI_COPY_SERVICE: InferenceServiceId = "catalogue-ai-copy";
-export const OASIS_AI_CHAT_SERVICE: InferenceServiceId = "oasis-ai-chat";
-export const GENERATE_PRODUCT_ATTRIBUTES_SERVICE: InferenceServiceId =
-  "generate-product-attributes";
 
 /** Legacy persisted drafts used oasis-ai-chat before catalogue-ai-copy gateway landed. */
-export const LEGACY_CATALOGUE_AI_SERVICE_MARKERS = ["oasis-ai-chat", "catalogue-ai-copy"] as const;
+const LEGACY_CATALOGUE_AI_SERVICE_MARKERS = ["oasis-ai-chat", "catalogue-ai-copy"] as const;
 
 export type LegacyCatalogueAiServiceMarker = (typeof LEGACY_CATALOGUE_AI_SERVICE_MARKERS)[number];
 

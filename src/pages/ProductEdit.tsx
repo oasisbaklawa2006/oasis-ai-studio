@@ -847,7 +847,7 @@ const ProductEdit = () => {
     if (!isNew || duplicateFrom) return;
     const fastDraft = loadFastCreateDraft();
     const draftName = fastDraft?.productName;
-    if (typeof draftName !== "string" || !draftName.trim()) return;
+    if (!fastDraft || typeof draftName !== "string" || !draftName.trim()) return;
     const patch = fastCreateFormPatchFromDraft(fastDraft);
     setForm((prev: Record<string, unknown>) => ({ ...prev, ...patch }));
     setDirty(true);
@@ -1078,7 +1078,7 @@ const ProductEdit = () => {
     // clear it (Bugbot-flagged regression on this same fix). Packaging taxonomy loading
     // state is handled inside autoClearGate itself, not here.
     if (!authorityLoaded) return;
-    if (form.is_catalogue_ready && !autoClearGate.allowed) {
+    if (form.is_catalogue_ready && autoClearGate.allowed !== true) {
       set("is_catalogue_ready", false);
       toast.warning(
         `Catalogue-ready was turned off — ${catalogueReadyBlockedMessage(autoClearGate)}`,
@@ -1204,7 +1204,7 @@ const ProductEdit = () => {
   // identity (id/isNew/loadedId) actually changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above — reloadProductAuthority is an unstable closure, only id/isNew/loadedId should retrigger this fetch.
   useEffect(() => {
-    if (!shouldFetchById(isNew, id, loadedId)) {
+    if (!id || !shouldFetchById(isNew, id, loadedId)) {
       // No fetch will start on this effect run. Force-clear pending rather than leaving it
       // as whatever a previous, now-abandoned effect instance (for a different id) last set
       // it to — that abandoned fetch's own .then() will never run (it's superseded) or
@@ -1491,7 +1491,7 @@ const ProductEdit = () => {
     // A false block during the brief hydration window just costs the user a retry;
     // a false allow could persist a genuinely-blocked product (e.g. invalid SKU, read
     // directly from form with no async dependency) as catalogue-ready.
-    if (form.is_catalogue_ready && !catalogueReadyGate.allowed) {
+    if (form.is_catalogue_ready && catalogueReadyGate.allowed !== true) {
       const message = catalogueReadyBlockedMessage(catalogueReadyGate);
       setSubmitError(message);
       toast.error(`Cannot save as catalogue-ready — ${message}`);
@@ -1506,14 +1506,14 @@ const ProductEdit = () => {
       loadedId,
     });
 
-    if (!savePath.allowed) {
+    if (savePath.allowed !== true) {
       setSubmitError(savePath.reason);
       toast.error(savePath.reason);
       return;
     }
 
     const factualValidation = factualCompositionSaveValidation(form);
-    if (!factualValidation.ok) {
+    if (factualValidation.ok !== true) {
       setLoading(false);
       setSubmitError(factualValidation.message);
       toast.error(factualValidation.message);
@@ -1556,7 +1556,7 @@ const ProductEdit = () => {
       );
 
       const skuGuard = assertStructuredSkuForSave(safePayload.sku as string | null | undefined);
-      // Explicit `=== false` (not `!skuGuard.ok`) — with strictNullChecks off in this
+      // Explicit `=== false` (not `skuGuard.ok !== true`) — with strictNullChecks off in this
       // project's tsconfig, boolean-negation doesn't narrow discriminated unions reliably.
       if (skuGuard.ok === false) {
         setLoading(false);
@@ -1586,7 +1586,7 @@ const ProductEdit = () => {
       }
 
       const validation = validateProductSavePayload(productRow, isNew ? "create" : "update");
-      if (!validation.ok) {
+      if (validation.ok !== true) {
         const message = productSaveValidationMessage(validation);
         setLoading(false);
         setSubmitError(message);
@@ -1635,7 +1635,7 @@ const ProductEdit = () => {
 
       const savedId = res.data.id as string;
       const pricingSync = await syncChannelPricingFromForm(safePayload, savedId);
-      if (!pricingSync.ok && pricingSync.message) {
+      if (pricingSync.ok !== true && pricingSync.message) {
         toast.warning(`Product saved; channel pricing sync failed: ${pricingSync.message}`);
       } else if (pricingSync.count > 0) {
         toast.message(
@@ -1809,7 +1809,7 @@ const ProductEdit = () => {
 
       setLoading(false);
 
-      if (!draftRes.ok) {
+      if (draftRes.ok !== true) {
         const message = `Draft submit failed: ${draftRes.message}`;
         setSubmitError(message);
         toast.error(message);
@@ -3049,7 +3049,7 @@ const ProductEdit = () => {
               <Switch
                 checked={!!form.is_catalogue_ready}
                 onCheckedChange={(v) => {
-                  if (v && !catalogueReadyGate.allowed) {
+                  if (v && catalogueReadyGate.allowed !== true) {
                     toast.error(catalogueReadyBlockedMessage(catalogueReadyGate));
                     return;
                   }
@@ -3057,7 +3057,7 @@ const ProductEdit = () => {
                 }}
               />
             </div>
-            {!catalogueReadyGate.allowed && (
+            {catalogueReadyGate.allowed !== true && (
               <ul className="text-[11px] text-amber-700 dark:text-amber-400 space-y-0.5 list-disc pl-4">
                 {catalogueReadyGate.blockers.map((b) => (
                   <li key={b}>{b}</li>

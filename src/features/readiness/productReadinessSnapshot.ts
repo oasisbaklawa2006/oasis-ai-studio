@@ -1,25 +1,28 @@
-import { dbRowToProductForm } from "@/features/productAuthority/productSchemaAdapter";
+import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
 import {
   authoritativeMediaAssets,
-  deriveMediaStatusFromRows,
   type DerivedMediaStatus,
+  deriveMediaStatusFromRows,
 } from "@/features/mediaReadiness/mediaAuthorityContract";
-import { resolveProductCardHeroUrl } from "@/lib/productImage";
-import { dimensionMediaCardLabel, productCardMediaNeedLabel } from "@/features/mediaReadiness/mediaGovernanceDisplay";
-import type { ProductMediaRow } from "@/features/mediaReadiness/mediaAssetsFromForm";
-import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 import {
+  dimensionMediaCardLabel,
+  productCardMediaNeedLabel,
+} from "@/features/mediaReadiness/mediaGovernanceDisplay";
+import { dbRowToProductForm } from "@/features/productAuthority/productSchemaAdapter";
+import {
+  type MoqRuleRow,
   mapMoqRules,
   mapPricingRules,
-  type MoqRuleRow,
   type PricingRuleRow,
 } from "@/features/productTruth/channelAuthorityMappers";
 import { getChannelPrice } from "@/features/productTruth/channelPricingMoqEngine";
 import {
   evaluateProductReadiness,
-  productTruthInputFromForm,
   type ProductReadinessResult,
+  productTruthInputFromForm,
 } from "@/features/productTruth/productReadiness";
+import { resolveProductCardHeroUrl } from "@/lib/productImage";
+import { deriveComplianceApprovedForReadiness } from "@/shared/ai/compliancePersistence";
 
 /** Persisted authority tables — single snapshot for list + detail readiness. */
 export type ProductAuthorityBundle = {
@@ -98,7 +101,7 @@ export function buildProductReadinessSnapshot(
   };
 }
 
-export type ProductCardStatusTone = "ok" | "warn" | "destructive";
+type ProductCardStatusTone = "ok" | "warn" | "destructive";
 
 export type ProductCardTopLevelStatus = {
   label: string;
@@ -166,34 +169,12 @@ export function productCardTopLevelStatus(
   return { label: `${readiness.score}/${readiness.maxScore}`, tone: "warn" };
 }
 
-export function readinessSummaryLabel(
-  readiness: ProductReadinessResult,
-  opts?: ProductCardStatusOpts,
-): string {
-  return productCardTopLevelStatus(readiness, opts).label;
-}
-
-export function dimensionBadgeLabel(
-  readiness: ProductReadinessResult,
-  dimension: string,
-): string | null {
-  const dim = readiness.dimensions.find((d) => d.dimension === dimension);
-  if (!dim) return null;
-  return dim.badge.replace(/_/g, " ");
-}
-
-export function dimensionIsComplete(
-  readiness: ProductReadinessResult,
-  dimension: string,
-): boolean {
+export function dimensionIsComplete(readiness: ProductReadinessResult, dimension: string): boolean {
   return readiness.dimensions.find((d) => d.dimension === dimension)?.complete ?? false;
 }
 
 /** User-facing card label — uses complete flag, not internal badge names like "human edited". */
-export function dimensionCardLabel(
-  readiness: ProductReadinessResult,
-  dimension: string,
-): string {
+export function dimensionCardLabel(readiness: ProductReadinessResult, dimension: string): string {
   if (dimension === "media_status") {
     return dimensionMediaCardLabel(readiness);
   }
@@ -202,13 +183,4 @@ export function dimensionCardLabel(
   if (dim.complete) return "complete";
   if (dim.badge === "pending_approval") return "pending";
   return "missing";
-}
-
-/** @deprecated Use buildProductReadinessSnapshot */
-export function evaluateListProductReadiness(
-  productRow: Record<string, unknown>,
-  bundle: Partial<ProductAuthorityBundle> = {},
-  opts?: { complianceApproved?: boolean; complianceMetaPending?: boolean },
-): ProductReadinessResult {
-  return buildProductReadinessSnapshot(productRow, bundle, opts).readiness;
 }

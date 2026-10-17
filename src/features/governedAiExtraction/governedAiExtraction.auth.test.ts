@@ -125,3 +125,40 @@ describe("oasis-ai-chat authenticated alias enrichment", () => {
     ).toBe(true);
   });
 });
+
+describe("alias enrichment deadline", () => {
+  it.each(["request", "body"])("aborts a stalled %s and never retries inference", async (stage) => {
+    vi.useFakeTimers();
+    getSessionMock.mockResolvedValue({
+      data: { session: { access_token: "staff-token" } },
+      error: null,
+    });
+    let signal: AbortSignal | undefined;
+    fetchMock.mockImplementation((_url: string, init: RequestInit) => {
+      signal = init.signal ?? undefined;
+      const stalled = () =>
+        new Promise((_resolve, reject) =>
+          signal?.addEventListener(
+            "abort",
+            () => reject(new DOMException("Request timed out", "AbortError")),
+            { once: true },
+          ),
+        );
+      return stage === "request" ? stalled() : Promise.resolve({ ok: true, text: stalled });
+    });
+    try {
+      const pending = enrichFastCreateWithGovernedAi(buildBaseSuggestions(), "Baklawa", "baklawa");
+      await vi.advanceTimersByTimeAsync(15_000);
+      const result = await pending;
+      expect(signal?.aborted).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(invokeMock.mock.calls[0][1]).toMatchObject({ timeout: 30_000 });
+      expect(result.provenance).toContainEqual(
+        expect.objectContaining({ service: "oasis-ai-chat", fail_closed: true }),
+      );
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

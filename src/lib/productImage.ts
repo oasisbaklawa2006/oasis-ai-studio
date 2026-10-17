@@ -2,7 +2,7 @@
 export const AI_STUDIO_MEDIA_BUCKET = "product-media" as const;
 
 /** Canonical product media roles (product_media.type). */
-export const PRODUCT_MEDIA_ROLES = [
+const PRODUCT_MEDIA_ROLES = [
   "hero_image",
   "square_image",
   "detail_image",
@@ -22,21 +22,8 @@ export const PRODUCT_MEDIA_ROLES = [
   "source_pdf_page",
 ] as const;
 
-export {
-  MEDIA_TYPE_LABELS,
-  mediaTypeLabel,
-} from "@/features/productAuthority/productMediaPersistence";
-
-export type ProductMediaRole = (typeof PRODUCT_MEDIA_ROLES)[number];
-
 /** Oasis Central Product Master hero uploads (shared Supabase). */
-export const CENTRAL_PRODUCT_IMAGES_BUCKET = "product-images" as const;
-
-/** Buckets referenced across Oasis apps (read any public URL; write via AI Studio uploader). */
-export const PRODUCT_MEDIA_BUCKETS = {
-  studio: AI_STUDIO_MEDIA_BUCKET,
-  central: CENTRAL_PRODUCT_IMAGES_BUCKET,
-} as const;
+const CENTRAL_PRODUCT_IMAGES_BUCKET = "product-images" as const;
 
 export type ProductImageRow = {
   hero_image_url?: string | null;
@@ -56,8 +43,8 @@ export type ProductHeroMediaRow = {
 
 const NON_HERO_MEDIA_STATUSES = new Set(["deleted", "rejected", "archived"]);
 
-function trimUrl(url: string | null | undefined): string | null {
-  const v = url?.trim();
+function trimUrl(url: unknown): string | null {
+  const v = typeof url === "string" ? url.trim() : null;
   return v ? v : null;
 }
 
@@ -84,7 +71,7 @@ export function latestApprovedHeroUrlFromMediaRows(rows: ProductHeroMediaRow[]):
  * Precedence: latest approved hero_image media → products.hero_image_url → products.image_url.
  */
 export function resolveProductCardHeroUrl(
-  product: ProductImageRow | null | undefined,
+  product: ProductImageRow | Record<string, unknown> | null | undefined,
   mediaRows: ProductHeroMediaRow[] = [],
 ): string | null {
   return resolveProductCardHeroMeta(product, mediaRows).url;
@@ -102,8 +89,8 @@ type ProductHeroDimensionRow = ProductImageRow & {
   hero_image_height_px?: number | null;
 };
 
-function normalizePx(value: number | null | undefined): number | null {
-  if (value == null || !Number.isFinite(value) || value <= 0) return null;
+function normalizePx(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
   return Math.round(value);
 }
 
@@ -113,7 +100,7 @@ function normalizePx(value: number | null | undefined): number | null {
  * Product-column heroes may use stored width/height when the URL matches.
  */
 export function resolveProductCardHeroMeta(
-  product: ProductHeroDimensionRow | null | undefined,
+  product: ProductHeroDimensionRow | Record<string, unknown> | null | undefined,
   mediaRows: ProductHeroMediaRow[] = [],
 ): ProductCardHeroMeta {
   const heroes = mediaRows.filter(isApprovedHeroMediaRow).sort((a, b) => {
@@ -140,8 +127,8 @@ export function resolveProductCardHeroMeta(
     return { url: null, widthPx: null, heightPx: null, source: null };
   }
 
-  const productW = product?.hero_image_width_px ?? null;
-  const productH = product?.hero_image_height_px ?? null;
+  const productW = normalizePx(product?.hero_image_width_px);
+  const productH = normalizePx(product?.hero_image_height_px);
   const urlMatchesProductColumn = url === heroCol || url === imageCol;
 
   return {
@@ -153,14 +140,19 @@ export function resolveProductCardHeroMeta(
 }
 
 /** Unified hero URL — Central writes `image_url`; AI Studio media uploader writes `hero_image_url`. */
-export function resolveProductHeroUrl(row: ProductImageRow | null | undefined): string | null {
+export function resolveProductHeroUrl(
+  row: ProductImageRow | Record<string, unknown> | null | undefined,
+): string | null {
   if (!row) return null;
   const url = row.hero_image_url ?? row.image_url ?? null;
   return trimUrl(url);
 }
 
 /** Payload fields to keep Central + AI Studio hero URLs in sync on write. */
-export function heroUrlWritePayload(url: string | null): Record<string, string | null> {
+export function heroUrlWritePayload(url: string | null): {
+  hero_image_url: string | null;
+  image_url: string | null;
+} {
   return {
     hero_image_url: url,
     image_url: url,

@@ -52,7 +52,24 @@ const SOURCES = [
 // removed for this reason - every role goes through the draft/approval path.
 type WriteMode = "draft" | "readonly";
 
-type PricingRuleRow = Record<string, any>;
+type PricingRuleRow = {
+  id: string;
+  product_id?: string;
+  base_price?: number | string | null;
+  discount_percent?: number | string | null;
+  calculated_price?: number | string | null;
+  gst_rate?: number | string | null;
+  price_channel?: string | null;
+  price_type?: string | null;
+  currency?: string | null;
+  uom?: string | null;
+  valid_from?: string | null;
+  valid_until?: string | null;
+  notes?: string | null;
+  source?: string | null;
+  approval_status?: string | null;
+  tax_inclusive?: boolean | null;
+};
 
 const isLocalRowId = (id: string) => id.startsWith("local-");
 
@@ -134,10 +151,10 @@ const priceSummary = (r: PricingRuleRow) => {
 
 const normalizePricingPatch = (
   current: PricingRuleRow,
-  patch: Record<string, any>,
+  patch: Partial<PricingRuleRow>,
   mrp?: number | null,
 ) => {
-  const normalizedPatch: Record<string, any> = { ...patch };
+  const normalizedPatch: Partial<PricingRuleRow> = { ...patch };
 
   if ("base_price" in normalizedPatch) {
     normalizedPatch.base_price = asNumberOrNull(normalizedPatch.base_price);
@@ -190,7 +207,14 @@ export const ChannelPricingRules = ({
   onRulesChange,
 }: {
   productId: string;
-  product: any;
+  product: {
+    primary_uom?: string | null;
+    carton_uom?: string | null;
+    product_class?: string | null;
+    main_department?: string | null;
+    mrp?: number | null;
+    [key: string]: unknown;
+  };
   onRulesChange?: () => void;
 }) => {
   const { roles } = useAuth();
@@ -296,7 +320,7 @@ export const ChannelPricingRules = ({
     });
   };
 
-  const stagePatch = (id: string, patch: Record<string, any>) => {
+  const stagePatch = (id: string, patch: Partial<PricingRuleRow>) => {
     const current = allDisplayRows.find((r) => r.id === id) ?? baselineRow(id);
     if (!current) return;
 
@@ -320,7 +344,7 @@ export const ChannelPricingRules = ({
     }));
   };
 
-  const applyFieldChange = (id: string, patch: Record<string, any>) => {
+  const applyFieldChange = (id: string, patch: Partial<PricingRuleRow>) => {
     if ("price_channel" in patch && !("uom" in patch)) {
       const derived = resolveChannelUom(String(patch.price_channel ?? ""), product ?? {});
       if (derived) patch = { ...patch, uom: derived };

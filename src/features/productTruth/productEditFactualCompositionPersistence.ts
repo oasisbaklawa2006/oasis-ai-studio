@@ -17,7 +17,7 @@ export function assertFactualCompositionValidForProductsWrite(
   record: Record<string, unknown>,
 ): void {
   const validation = factualCompositionSaveValidation(record);
-  if (!validation.ok) {
+  if (validation.ok !== true) {
     throw new Error(validation.message);
   }
 }

@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { type FeatureFlag, refreshFeatureFlags, useFeatureFlags } from "@/hooks/useFeatureFlags";
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { PRODUCTION_CAPABILITIES } from "@/lib/productionCapabilities";
 
 type Integration = {
@@ -30,7 +31,7 @@ type Integration = {
   secret_status: string;
   test_endpoint: string | null;
   last_tested_at: string | null;
-  last_test_result: any;
+  last_test_result: Json;
   notes: string | null;
 };
 
@@ -70,8 +71,8 @@ const PdfHeroCleanup = () => {
         .from("products")
         .select("id, hero_image_url")
         .ilike("hero_image_url", "%/_pdf_pages/%");
-      const urls = (products ?? []).map((p: any) => p.hero_image_url).filter(Boolean) as string[];
-      const ids = (products ?? []).map((p: any) => p.id);
+      const urls = (products ?? []).map((p) => p.hero_image_url).filter(Boolean) as string[];
+      const ids = (products ?? []).map((p) => p.id);
       if (urls.length)
         await supabase
           .from("product_media")
@@ -137,7 +138,7 @@ const FeatureCard = ({
   const update = async (patch: Partial<FeatureFlag>, action: string) => {
     setBusy(action);
     const old = f.status;
-    const next: any = { ...patch };
+    const next = { ...patch };
     const { error } = await supabase
       .from("feature_flags")
       .update(next)
@@ -294,7 +295,7 @@ const Settings = () => {
       return;
     }
     const { data } = await supabase.from("integration_settings").select("*");
-    setIntegs((data ?? []) as any);
+    setIntegs((data ?? []) as Integration[]);
   }, []);
   useEffect(() => {
     loadIntegs();
@@ -383,7 +384,23 @@ const Settings = () => {
   );
 };
 
-const Section = ({ title, tone, items, integByKey, canManage, onChange, empty }: any) => (
+const Section = ({
+  title,
+  tone,
+  items,
+  integByKey,
+  canManage,
+  onChange,
+  empty,
+}: {
+  title: string;
+  tone: string;
+  items: FeatureFlag[];
+  integByKey: Record<string, Integration>;
+  canManage: boolean;
+  onChange: () => void;
+  empty: string;
+}) => (
   <section>
     <div className="flex items-center gap-2 mb-3">
       {tone === "warn" && <AlertTriangle className="h-4 w-4 text-warning" />}

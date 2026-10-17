@@ -313,7 +313,7 @@ export default function CatalogueBuilder() {
 
   const handleExportPdf = async () => {
     if (!composition || !activeCollection) return;
-    if (printValidation && !printValidation.ok) {
+    if (printValidation && printValidation.ok !== true) {
       toast.error("Resolve print validation blockers before exporting production PDF");
       return;
     }
@@ -377,7 +377,7 @@ export default function CatalogueBuilder() {
           <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-sm flex gap-2">
             <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
             <span>
-              Collections persistence: {loadFailure.kind} — {loadFailure.userMessage}
+              Collections persistence: {loadFailure.kind} — {loadFailure.message}
               {persistenceSource === "local_only" && " Using browser-local fallback."}
             </span>
           </div>
@@ -563,7 +563,11 @@ export default function CatalogueBuilder() {
               </Card>
 
               {printValidation && (
-                <Card className={printValidation.ok ? "border-success/30" : "border-warning/40"}>
+                <Card
+                  className={
+                    printValidation.ok === true ? "border-success/30" : "border-warning/40"
+                  }
+                >
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
                       <FileText className="h-4 w-4" />

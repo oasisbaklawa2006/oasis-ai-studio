@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { PRODUCTION_CAPABILITIES } from "./productionCapabilities";
 
 describe("canonical production capabilities", () => {
-  it("keeps absent backend capabilities fail-closed", () => {
+  it("keeps unaccepted browser capabilities fail-closed", () => {
     expect(PRODUCTION_CAPABILITIES).toEqual({
       auditLog: false,
       catalogues: false,

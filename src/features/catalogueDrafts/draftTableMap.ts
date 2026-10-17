@@ -1,7 +1,18 @@
 export type DraftType = "product" | "media" | "alias" | "bom" | "moq" | "pricing" | "tag";
 export const draftTableMap: Record<
   DraftType,
-  { table: string; permission: string; targetTable: string }
+  {
+    table:
+      | "catalogue_product_drafts"
+      | "catalogue_media_submissions"
+      | "catalogue_alias_drafts"
+      | "catalogue_bom_drafts"
+      | "catalogue_moq_drafts"
+      | "catalogue_pricing_drafts"
+      | "catalogue_tag_drafts";
+    permission: string;
+    targetTable: string;
+  }
 > = {
   product: {
     table: "catalogue_product_drafts",

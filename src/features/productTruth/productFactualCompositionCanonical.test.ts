@@ -106,7 +106,7 @@ describe("productFactualCompositionCanonical", () => {
       post_processing_shelf_life_days: "0",
     });
     expect(invalid.ok).toBe(false);
-    if (!invalid.ok) {
+    if (invalid.ok !== true) {
       expect(invalid.message).toContain("shelf_life_days");
       expect(invalid.message).toContain("frozen_shelf_life_days");
       expect(invalid.message).toContain("post_processing_shelf_life_days");

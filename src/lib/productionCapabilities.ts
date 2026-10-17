@@ -1,6 +1,7 @@
 /**
- * Read-only contract captured from canonical production project
- * tcxvcatsqqertcnycuop on 2026-07-15.
+ * Browser capability acceptance policy for canonical Core project tcxvcatsqqertcnycuop.
+ * Schema metadata rechecked on 2026-10-15; table presence alone is not acceptance.
+ * Core audit_logs exists, but this workspace has no accepted scoped audit projection.
  *
  * False entries are intentionally disabled in the browser. They must only be
  * changed after the capability exists in production and its generated types,
