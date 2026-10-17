@@ -11,7 +11,7 @@ export type { CoreKnowledgeSnapshotRow };
 export const CORE_SUBMIT_KNOWLEDGE_DRAFT_RPC =
   "whatsapp_submit_intelligence_knowledge_draft" as const;
 
-type KnowledgeSubmissionFailureCode =
+export type KnowledgeSubmissionFailureCode =
   | "AUTHENTICATION_REQUIRED"
   | "NOT_AUTHORIZED"
   | "CANDIDATE_NOT_HANDOFF_READY"
