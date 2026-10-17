@@ -31,7 +31,15 @@ function latestForProduct(productId: string): DraftRow | null {
 }
 
 function chainForTable(table: string) {
-  const state: Record<string, unknown> = {
+  const state: {
+    table: string;
+    filters: Array<[string, unknown]>;
+    pendingUpdate: Record<string, unknown> | null;
+    pendingInsert: Record<string, unknown> | null;
+    op?: string;
+    single?: boolean;
+    payload?: Record<string, unknown>;
+  } = {
     table,
     filters: [] as Array<[string, unknown]>,
     pendingUpdate: null as Record<string, unknown> | null,
@@ -127,6 +135,7 @@ function chainForTable(table: string) {
     state.pendingInsert = payload;
     const thenable = {
       ...chain,
+      // biome-ignore lint/suspicious/noThenProperty: Supabase query builders are intentionally thenable.
       then: (resolve: (v: unknown) => void) => resolve(resolveFn()),
     };
     return thenable;
@@ -135,6 +144,7 @@ function chainForTable(table: string) {
   const resolveFn = () => resolve();
 
   // Make the chain awaitable for bare `.insert()` calls (audit log).
+  // biome-ignore lint/suspicious/noThenProperty: The mock must implement the SDK awaitable query contract.
   (chain as { then?: (resolve: (v: unknown) => void) => void }).then = (resolve) =>
     resolve(resolveFn());
   return chain;
@@ -200,10 +210,7 @@ describe("catalogueDraftRepository Point39 correction contract", () => {
   });
 
   it("blocks save while UNDER_REVIEW (no correction during active review)", async () => {
-    draftStore.set(
-      "d1",
-      makeDraft({ id: "d1", product_id: "p1", status: "UNDER_REVIEW" }),
-    );
+    draftStore.set("d1", makeDraft({ id: "d1", product_id: "p1", status: "UNDER_REVIEW" }));
     await expect(
       saveDraft({
         productId: "p1",
