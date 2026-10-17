@@ -6,11 +6,16 @@ import type {
 } from "@/features/productIntelligence/runtime";
 import { extractOrderQuantity } from "@/features/productIntelligence/runtime/parseOrderQuantity";
 
-const BAND_DEFAULT_CONFIDENCE: Record<ConfidenceBand, number> = {
-  HIGH: 0.9,
-  MEDIUM: 0.78,
-  LOW: 0.55,
-};
+function defaultConfidenceForBand(band: ConfidenceBand): number {
+  switch (band) {
+    case "HIGH":
+      return 0.9;
+    case "MEDIUM":
+      return 0.78;
+    case "LOW":
+      return 0.55;
+  }
+}
 
 function isConfidenceBand(value: unknown): value is ConfidenceBand {
   return value === "HIGH" || value === "MEDIUM" || value === "LOW";
@@ -85,7 +90,7 @@ export function normalizeStoredResolution(
       typeof raw.resolved_product_id === "string" ? raw.resolved_product_id : null,
     resolved_sku,
     resolved_name,
-    confidence: typeof raw.confidence === "number" ? raw.confidence : BAND_DEFAULT_CONFIDENCE[band],
+    confidence: typeof raw.confidence === "number" ? raw.confidence : defaultConfidenceForBand(band),
     confidence_band: band,
     action: isResolverAction(raw.action)
       ? raw.action
