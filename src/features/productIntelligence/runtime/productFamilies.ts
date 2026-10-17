@@ -1,7 +1,7 @@
 import type { RuntimeCatalogProduct } from "./types";
 
 /** Accepted SKUs for the Cashew Tart / Tart Cashew product family. */
-const CASHEW_TART_FAMILY_SKUS = [
+export const CASHEW_TART_FAMILY_SKUS = [
   "OAS-AS-BKL-0020",
   "OAS-AS-BKL-CSH-BULK-0003",
   "OAS-AS-BKL-CSH-BULK-0004",
