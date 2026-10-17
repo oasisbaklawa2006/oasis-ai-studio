@@ -2,7 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { AI_STUDIO_MEDIA_BUCKET } from "@/lib/productImage";
 
 /** Canonical uploader media type → human label (single source for UI). */
-const MEDIA_TYPE_LABELS: Record<string, string> = {
+export const MEDIA_TYPE_LABELS: Record<string, string> = {
   raw_photo: "Raw photo",
   hero_image: "Hero image",
   white_background: "White background",
