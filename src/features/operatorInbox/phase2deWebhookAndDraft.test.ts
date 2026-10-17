@@ -142,9 +142,13 @@ describe("Phase 2D — webhook adapter", () => {
         rpc: store.deps.rpc,
       },
     );
-    const outbound = fetchSpy.mock.calls.filter(([url]) =>
-      String(url).includes("graph.facebook.com"),
-    );
+    const outbound = fetchSpy.mock.calls.filter(([url]) => {
+      try {
+        return new URL(String(url)).hostname === "graph.facebook.com";
+      } catch {
+        return false;
+      }
+    });
     expect(outbound).toHaveLength(0);
     fetchSpy.mockRestore();
   });
