@@ -28,4 +28,8 @@ if (import.meta.env.DEV) {
   schedule();
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Application root element #root is missing.");
+}
+createRoot(rootElement).render(<App />);

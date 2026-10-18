@@ -8,12 +8,8 @@ import {
   type ComplianceFieldMetaMap,
   canApproveComplianceFields,
   prepareFormForComplianceSave,
-  stripComplianceFromDraftPayload,
 } from "@/shared/ai/complianceApproval";
 import {
-  AI_COMPLIANCE_LEGAL_DISCLAIMER,
-  AI_COMPLIANCE_UI_DISCLAIMER,
-  COMPLIANCE_APPROVER_ROLES,
   COMPLIANCE_SENSITIVE_FIELDS,
   type ComplianceSensitiveField,
 } from "@/shared/ai/complianceConstants";

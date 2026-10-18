@@ -112,7 +112,6 @@ export function parsePredecessorLinkage(
 }
 
 export function auditEventReason(
-  entry: CatalogueDraftAuditRow,
   safeMetadata: Record<string, unknown>,
 ): string | null {
   const rejection = safeMetadata.rejection_reason;
@@ -259,7 +258,7 @@ export function buildProductVersionHistory(input: {
         to_status: entry.to_status,
         actor_id: entry.actor_id,
         created_at: entry.created_at,
-        reason: auditEventReason(entry, metadataSafe),
+        reason: auditEventReason(metadataSafe),
         change_summary: summarizeAuditAction(entry),
         metadata_safe: metadataSafe,
       });

@@ -1,30 +1,6 @@
 /** AI Studio canonical media bucket (see supabase migrations). */
 export const AI_STUDIO_MEDIA_BUCKET = "product-media" as const;
 
-/** Canonical product media roles (product_media.type). */
-const PRODUCT_MEDIA_ROLES = [
-  "hero_image",
-  "square_image",
-  "detail_image",
-  "packaging_image",
-  "lifestyle_image",
-  "label_image",
-  "raw_photo",
-  "white_background",
-  "lifestyle",
-  "closeup",
-  "side_angle",
-  "top_angle",
-  "45_angle",
-  "hamper_open",
-  "hamper_closed",
-  "video",
-  "source_pdf_page",
-] as const;
-
-/** Oasis Central Product Master hero uploads (shared Supabase). */
-const CENTRAL_PRODUCT_IMAGES_BUCKET = "product-images" as const;
-
 export type ProductImageRow = {
   hero_image_url?: string | null;
   image_url?: string | null;

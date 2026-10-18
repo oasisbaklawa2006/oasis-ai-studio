@@ -249,7 +249,7 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
               size="icon"
               variant="ghost"
               onClick={() => {
-                navigator.clipboard.writeText(value.sku!);
+                void navigator.clipboard.writeText(value.sku ?? "");
                 toast.success("Copied");
               }}
             >
