@@ -130,7 +130,7 @@ const nestedRead = (payload: Record<string, unknown> | null | undefined, path: s
     if (!current || typeof current !== "object") return undefined;
     const record = current as Record<string, unknown>;
     if (!Object.hasOwn(record, key)) return undefined;
-    current = record[key];
+    current = Reflect.get(record, key);
   }
   return current;
 };
@@ -188,7 +188,13 @@ const formatBom = (payload: Record<string, unknown> | null | undefined) => {
   const required = nestedRead(payload, "bom.required");
   const expectedType = nestedRead(payload, "bom.expected_type");
   const requiredText = required === true ? "Required" : required === false ? "Not required" : null;
-  if (requiredText && expectedType) return `${requiredText} (${expectedType})`;
+  const expectedTypeLabel =
+    typeof expectedType === "string"
+      ? expectedType
+      : typeof expectedType === "number" || typeof expectedType === "boolean"
+        ? String(expectedType)
+        : null;
+  if (requiredText && expectedTypeLabel) return `${requiredText} (${expectedTypeLabel})`;
   if (requiredText) return requiredText;
   if (expectedType) return String(expectedType);
 

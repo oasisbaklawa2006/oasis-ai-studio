@@ -323,14 +323,16 @@ const Products = () => {
   ]);
 
   const by = (t: string) => rules.filter((r) => r.code_type === t);
-  const copy = async (e: React.MouseEvent, sku: string) => {
+  const copy = (e: React.MouseEvent, sku: string) => {
     e.preventDefault();
-    try {
-      await navigator.clipboard.writeText(sku);
-      toast.success("SKU copied");
-    } catch {
-      toast.error("Could not copy SKU");
-    }
+    void navigator.clipboard.writeText(sku).then(
+      () => {
+        toast.success("SKU copied");
+      },
+      () => {
+        toast.error("Could not copy SKU");
+      },
+    );
   };
 
   const activeFilterCount = [
@@ -712,7 +714,7 @@ const Products = () => {
                         <button
                           type="button"
                           onClick={(e) => {
-                            void copy(e, p.sku ?? "");
+                            copy(e, p.sku ?? "");
                           }}
                           className="hover:text-foreground shrink-0"
                         >

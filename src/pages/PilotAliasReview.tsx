@@ -154,7 +154,9 @@ const PilotAliasReview = () => {
               key={sku}
               variant={activeSku === sku ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveSku(sku)}
+              onClick={() => {
+                setActiveSku(sku);
+              }}
             >
               {PILOT_SKU_LABELS[sku]}
               {b && (
