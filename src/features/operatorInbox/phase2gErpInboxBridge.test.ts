@@ -13,7 +13,7 @@ describe("Phase 2G — ERP row mapping", () => {
     const row = SAMPLE_ERP_WHATSAPP_ROWS[0];
     const mapped = mapErpWhatsAppMessage(row);
     expect(mapped.ok).toBe(true);
-    if (mapped.ok && !("skipped" in mapped && mapped.skipped)) {
+    if (mapped.ok === true && "value" in mapped) {
       expect(mapped.value.sender_phone).toBe("+919891162212");
       expect(mapped.value.message_body).toBe("10 kg Midya pista");
       expect(mapped.value.provider_message_id).toContain("wamid.");
@@ -154,8 +154,8 @@ describe("Phase 2G — ERP bridge ingest", () => {
       from(table: string) {
         tables.push(table);
         return {
-          select: () => ({
-            eq: () => ({
+          select: (_columns?: string) => ({
+            eq: (_column?: string, _value?: unknown) => ({
               gt: () => ({
                 order: () => ({
                   order: () => ({

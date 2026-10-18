@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
 const CENTRAL_URL = process.env.CENTRAL_URL || "https://cursor-central-vercel.vercel.app";
@@ -287,6 +287,7 @@ test.describe("Product authoring UX audit", () => {
       !email || !password,
       "Set TEST_STUDIO_EMAIL and TEST_STUDIO_PASSWORD for live authoring metrics",
     );
+    if (!email || !password) return;
 
     ensureDirs();
     const screenshots: string[] = [];
@@ -297,7 +298,7 @@ test.describe("Product authoring UX audit", () => {
     let tabNav = 0;
 
     const t0 = Date.now();
-    await loginStudio(page, email!, password!);
+    await loginStudio(page, email, password);
     await page.goto(`${STUDIO_URL}/products`, { waitUntil: "networkidle" });
     await snap(page, "ai-studio", "03-products-list-auth", screenshots);
 
@@ -397,6 +398,7 @@ test.describe("Product authoring UX audit", () => {
       !email || !password,
       "Set TEST_CENTRAL_EMAIL and TEST_CENTRAL_PASSWORD for live authoring metrics",
     );
+    if (!email || !password) return;
 
     ensureDirs();
     const screenshots: string[] = [];
@@ -406,7 +408,7 @@ test.describe("Product authoring UX audit", () => {
     let manualFieldsEntered = 0;
 
     const t0 = Date.now();
-    await loginCentral(page, email!, password!);
+    await loginCentral(page, email, password);
     await page.goto(`${CENTRAL_URL}/admin/products`, { waitUntil: "networkidle" });
     await snap(page, "central", "02-products-list-auth", screenshots);
 

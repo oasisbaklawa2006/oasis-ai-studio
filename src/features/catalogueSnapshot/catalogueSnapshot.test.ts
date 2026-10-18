@@ -126,7 +126,8 @@ describe("catalogueSnapshot", () => {
     expect(snap.product_variant_hierarchy.variant_graph.persistence).toBe("product_variants_row");
     expect(snap.channel_rules).toHaveLength(1);
     expect(snap.pricing_rules).toHaveLength(1);
-    expect(snap.fulfillment_transform.conversion_rules?.length).toBeGreaterThan(0);
+    const conversionRules = snap.fulfillment_transform.conversion_rules;
+    expect(Array.isArray(conversionRules) ? conversionRules.length : 0).toBeGreaterThan(0);
     expect(snap.language_intelligence).toBeTruthy();
     expect(snap.language_intelligence.schema_available).toBe(false);
     expect(snap.language_intelligence.official_name).toBe("Cashew Pyramid");

@@ -33,7 +33,7 @@ describe("fastCreateSuggestions", () => {
 
 describe("applyCreationBaselineDefaults", () => {
   it("fills empty compliance defaults", () => {
-    const out = applyCreationBaselineDefaults({ product_name: "Test" });
+    const out = applyCreationBaselineDefaults({ product_name: "Test" }) as Record<string, unknown>;
     expect(out.hsn_code).toBe("19059090");
     expect(out.gst_rate).toBe("18");
     expect(out.shelf_life_days).toBe("90");

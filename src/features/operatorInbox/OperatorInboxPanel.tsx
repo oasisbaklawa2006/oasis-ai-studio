@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { ProductSuggestionCard } from "@/features/productIntelligence/components/ProductSuggestionCard";
@@ -56,6 +56,9 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
   const [draftStatus, setDraftStatus] = useState<string | null>(existingDraft?.status ?? null);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const existingDraftRef = useRef(existingDraft);
+  existingDraftRef.current = existingDraft;
+  const existingDraftId = existingDraft?.id ?? null;
 
   useEffect(() => {
     if (message.resolver_status === "failed") {
@@ -72,7 +75,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
 
     if (stored) {
       setResolution(stored);
-      setOperator((prev) => mergeOperatorStateOnResolution(prev, stored, existingDraft));
+      setOperator((prev) => mergeOperatorStateOnResolution(prev, stored, existingDraftRef.current));
       setResolverError(null);
       setLoading(false);
       return;
@@ -87,7 +90,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
         if (cancelled) return;
         if (res) {
           setResolution(res);
-          setOperator((prev) => mergeOperatorStateOnResolution(prev, res, existingDraft));
+          setOperator((prev) => mergeOperatorStateOnResolution(prev, res, existingDraftRef.current));
         } else {
           setResolution(null);
           setResolverError("Resolver unavailable — message shown without suggestion.");
@@ -104,7 +107,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
     return () => {
       cancelled = true;
     };
-  }, [message.body, message.resolver_status, message.stored_resolution, existingDraft]);
+  }, [message.body, message.resolver_status, message.stored_resolution, existingDraftId]);
 
   useEffect(() => {
     if (!existingDraft) return;

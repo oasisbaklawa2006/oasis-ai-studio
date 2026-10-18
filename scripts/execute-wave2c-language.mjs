@@ -4,9 +4,9 @@
  * Prepares governed draft payloads only — does NOT write product_aliases.
  */
 
-import { readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -318,11 +318,11 @@ function main() {
   if (process.argv.includes("--write-json")) {
     writeFileSync(
       join(ROOT, "data/product-language-preview/batch001_wave2c_drafts_payload.json"),
-      JSON.stringify(drafts, null, 2) + "\n",
+      `${JSON.stringify(drafts, null, 2)}\n`,
     );
     writeFileSync(
       join(ROOT, "data/product-language-preview/batch001_wave2c_collision_report.json"),
-      JSON.stringify(scan, null, 2) + "\n",
+      `${JSON.stringify(scan, null, 2)}\n`,
     );
   }
 

@@ -51,7 +51,7 @@ The canonical Core correction and governed snapshot refresh must be routed throu
 | --- | --- |
 | `npm ci --ignore-scripts --no-audit --no-fund` | PASS, deterministic lockfile; an offline attempt lacked cached zlibjs, normal clean install succeeded |
 | `npm run quality:local` | PASS: application typecheck, coverage, production build and repository boundaries |
-| `npm run test:coverage` | **163 files / 1,493 tests PASS**; 42 added cases over original 1,451-test baseline |
+| `npm run test:coverage` | **163 files / 1,498 tests PASS**; 47 added cases over original 1,451-test baseline |
 | Configured coverage thresholds | PASS: statements/lines **47.75%**, branches **77.29%**, functions **77.63%**; these are threshold results, not complete workflow coverage |
 | `npm run lint` | PASS, zero errors / 11 non-blocking warnings |
 | `npm run lint:biome` | PASS, zero errors; 81 warnings / 53 informational diagnostics remain, not represented as a clean-warning certificate |

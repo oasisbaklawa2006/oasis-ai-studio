@@ -1,5 +1,6 @@
 import { AlertTriangle, CheckCircle2, ExternalLink } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -41,6 +42,12 @@ export function ProductLanguageTermsPanel({
         setReadiness(snap.readiness);
         setCounts(snap.counts);
         setGaps(snap.readiness.gaps);
+      } catch (error) {
+        if (cancelled) return;
+        setReadiness(null);
+        setCounts({});
+        setGaps([]);
+        toast.error(error instanceof Error ? error.message : "Alias authority unavailable");
       } finally {
         if (!cancelled) setLoading(false);
       }

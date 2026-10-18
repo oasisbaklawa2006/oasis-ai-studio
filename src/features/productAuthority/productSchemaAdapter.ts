@@ -45,14 +45,8 @@ export type ProductsInsert = Database["public"]["Tables"]["products"]["Insert"];
 export type ProductsRow = Database["public"]["Tables"]["products"]["Row"];
 
 /** Candidate product fields recognized by Studio; live write filtering/mapping is applied below. */
-export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
-  Object.keys({
+const PRODUCTS_INSERT_ALLOWLIST_OBJECT = {
     allergen_warnings: true,
-    approximate_piece_weight_g: true,
-    avg_qty_per_tray_g: true,
-    b2b_price: true,
-    b2b_price_basis: true,
-    b2b_price_inr: true,
     b2b_uom: true,
     basis_product_id: true,
     bom_required: true,
@@ -74,19 +68,15 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     dimension_l_cm: true,
     dimension_w_cm: true,
     division_code: true,
-    export_price: true,
-    export_price_usd: true,
     external_reference_code: true,
     fixed_carton_required: true,
     frozen_shelf_life_days: true,
-    grammage_g: true,
     gross_weight_g: true,
     gross_weight_kg: true,
     gst_rate: true,
     hero_image_url: true,
     hsn_code: true,
     id: true,
-    import_confidence: true,
     ingredients: true,
     increment_uom: true,
     increment_value: true,
@@ -113,14 +103,7 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     packaging_code: true,
     pcs_per_carton: true,
     pcs_per_pack: true,
-    pdf_primary_packaging: true,
-    pdf_secondary_packaging: true,
-    pdf_shelf_life: true,
-    pdf_status: true,
-    pdf_storage_condition: true,
-    pieces_per_kg: true,
     post_processing_shelf_life_days: true,
-    price_basis: true,
     pricing_notes: true,
     primary_uom: true,
     private_label_allowed: true,
@@ -133,30 +116,24 @@ export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
     product_name: true,
     product_type: true,
     production_department: true,
-    qty_per_carton_kg: true,
-    retail_price_basis: true,
     retail_uom: true,
     serial_no: true,
     shelf_life_days: true,
     short_description: true,
     short_name: true,
     sku: true,
-    sku_generated_at: true,
     sku_locked: true,
-    sku_version: true,
-    source_collection: true,
-    source_document: true,
-    source_notes: true,
-    source_page: true,
-    source_pdf_sku: true,
     storage_instructions: true,
     subcategory: true,
     subcategory_code: true,
     temperature_requirement: true,
     thawing_instruction: true,
     unit_conversion_note: true,
-    updated_at: true,
-  }),
+
+} satisfies Partial<Record<keyof ProductsInsert, true>>;
+
+export const PRODUCTS_INSERT_ALLOWLIST: ReadonlySet<string> = new Set(
+  Object.keys(PRODUCTS_INSERT_ALLOWLIST_OBJECT),
 );
 
 export const LIVE_PRODUCTS_WRITE_ALLOWLIST: ReadonlySet<string> = new Set([

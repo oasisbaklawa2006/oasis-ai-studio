@@ -1,6 +1,6 @@
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from "node:fs";
+import * as path from "node:path";
 
 const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
 const EMAIL = process.env.TEST_STUDIO_EMAIL ?? "";
