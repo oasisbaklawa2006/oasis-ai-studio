@@ -111,9 +111,7 @@ export function parsePredecessorLinkage(
   return linkage;
 }
 
-export function auditEventReason(
-  safeMetadata: Record<string, unknown>,
-): string | null {
+export function auditEventReason(safeMetadata: Record<string, unknown>): string | null {
   const rejection = safeMetadata.rejection_reason;
   if (typeof rejection === "string" && rejection.trim()) return rejection.trim();
   const prior = safeMetadata.previous_version_rejection_reason;

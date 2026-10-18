@@ -72,7 +72,6 @@ const SidebarProvider = React.forwardRef<
         } else {
           _setOpen(openState);
         }
-
       },
       [setOpenProp, open],
     );

@@ -27,8 +27,7 @@ export const ReadinessBadge = ({
   if (loading) {
     return (
       <span className="badge-soft bg-muted/60 text-muted-foreground animate-pulse">
-        <AlertCircle className="h-3 w-3" />
-        …
+        <AlertCircle className="h-3 w-3" />…
       </span>
     );
   }
@@ -77,7 +76,9 @@ export const ReadinessBadge = ({
             </p>
             {truth.blockers.length > 0 && (
               <>
-                <div className="text-xs uppercase tracking-wider text-destructive mb-1">Blockers</div>
+                <div className="text-xs uppercase tracking-wider text-destructive mb-1">
+                  Blockers
+                </div>
                 <ul className="text-xs space-y-0.5 mb-2">
                   {truth.blockers.map((m) => (
                     <li key={m}>• {m}</li>
@@ -85,7 +86,9 @@ export const ReadinessBadge = ({
                 </ul>
               </>
             )}
-            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Dimensions</div>
+            <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">
+              Dimensions
+            </div>
             <ul className="text-xs space-y-0.5">
               {truth.dimensions.map((d) => (
                 <li key={d.dimension}>
@@ -102,7 +105,9 @@ export const ReadinessBadge = ({
             )}
             {legacy.missing.length > 0 && (
               <>
-                <div className="text-xs uppercase tracking-wider text-destructive mb-1">Missing</div>
+                <div className="text-xs uppercase tracking-wider text-destructive mb-1">
+                  Missing
+                </div>
                 <ul className="text-xs space-y-0.5 mb-2">
                   {legacy.missing.map((m) => (
                     <li key={m}>• {m}</li>
