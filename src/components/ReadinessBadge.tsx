@@ -1,15 +1,15 @@
-import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
-import {
-  productCardTopLevelStatus,
-  type ProductCardStatusOpts,
-} from "@/features/readiness/productReadinessSnapshot";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   dimensionReadinessLabel,
   isTestingMediaGovernance,
 } from "@/features/mediaReadiness/mediaGovernanceDisplay";
+import type { ProductReadinessResult } from "@/features/productTruth/productReadiness";
+import {
+  type ProductCardStatusOpts,
+  productCardTopLevelStatus,
+} from "@/features/readiness/productReadinessSnapshot";
 import { catalogueReadiness, type Product } from "@/lib/readiness";
-import { CheckCircle2, AlertCircle } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export const ReadinessBadge = ({
   product,
@@ -60,7 +60,7 @@ export const ReadinessBadge = ({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button onClick={(e) => e.preventDefault()} className={`badge-soft ${tone}`}>
+        <button type="button" onClick={(e) => e.preventDefault()} className={`badge-soft ${tone}`}>
           <Icon className="h-3 w-3" />
           {label}
         </button>

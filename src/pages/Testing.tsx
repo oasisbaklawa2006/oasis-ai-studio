@@ -228,7 +228,7 @@ const Testing = () => {
   };
 
   const uploadPdf = async (files: FileList | null) => {
-    if (!files || !files[0]) return;
+    if (!files?.[0]) return;
     const f = files[0];
     if (!f.type.includes("pdf")) return toast.error("Only PDF files are accepted");
     setUploading(true);

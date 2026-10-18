@@ -507,17 +507,15 @@ export function AliasManager({ productId, productName, id: sectionId, onAliasesC
                       </select>
                     )}
                     {canMutate ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => remove(item)}
-                          disabled={submitting}
-                          className="text-muted-foreground hover:text-destructive disabled:opacity-40"
-                          aria-label={`Remove ${aliasText}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        onClick={() => remove(item)}
+                        disabled={submitting}
+                        className="text-muted-foreground hover:text-destructive disabled:opacity-40"
+                        aria-label={`Remove ${aliasText}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     ) : (
                       <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                         View only
