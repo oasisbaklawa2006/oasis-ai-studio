@@ -323,16 +323,14 @@ const Products = () => {
   ]);
 
   const by = (t: string) => rules.filter((r) => r.code_type === t);
-  const copy = (e: React.MouseEvent, sku: string) => {
+  const copy = async (e: React.MouseEvent, sku: string) => {
     e.preventDefault();
-    void navigator.clipboard.writeText(sku).then(
-      () => {
-        toast.success("SKU copied");
-      },
-      () => {
-        toast.error("Could not copy SKU");
-      },
-    );
+    try {
+      await navigator.clipboard.writeText(sku);
+      toast.success("SKU copied");
+    } catch {
+      toast.error("Could not copy SKU");
+    }
   };
 
   const activeFilterCount = [
@@ -397,7 +395,9 @@ const Products = () => {
             <Search className="h-4 w-4 text-accent shrink-0" />
             <Input
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                setQ(e.target.value);
+              }}
               placeholder="Search by name, SKU, alias…"
               className="border-0 focus-visible:ring-0 px-0 bg-transparent text-sm min-w-0 flex-1"
             />
@@ -416,7 +416,9 @@ const Products = () => {
             <Button
               variant={showArchived ? "secondary" : "outline"}
               size="sm"
-              onClick={() => setShowArchived((v) => !v)}
+              onClick={() => {
+                setShowArchived((v) => !v);
+              }}
               className="shrink-0 rounded-full sm:hidden"
             >
               {showArchived ? "Archived" : "Active"}
@@ -452,7 +454,13 @@ const Products = () => {
           {showFilters && (
             <div className="space-y-3 pt-3 border-t border-border/60 min-w-0">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 min-w-0">
-                <select className={sel} value={pclass} onChange={(e) => setPclass(e.target.value)}>
+                <select
+                  className={sel}
+                  value={pclass}
+                  onChange={(e) => {
+                    setPclass(e.target.value);
+                  }}
+                >
                   <option value="">All product classes</option>
                   {PRODUCT_CLASSES.map((c) => (
                     <option key={c.v} value={c.v}>
@@ -489,7 +497,13 @@ const Products = () => {
                     </option>
                   ))}
                 </select>
-                <select className={sel} value={uom} onChange={(e) => setUom(e.target.value)}>
+                <select
+                  className={sel}
+                  value={uom}
+                  onChange={(e) => {
+                    setUom(e.target.value);
+                  }}
+                >
                   <option value="">All UOM</option>
                   {UOMS.map((u) => (
                     <option key={u} value={u}>
@@ -497,22 +511,46 @@ const Products = () => {
                     </option>
                   ))}
                 </select>
-                <select className={sel} value={pl} onChange={(e) => setPl(e.target.value)}>
+                <select
+                  className={sel}
+                  value={pl}
+                  onChange={(e) => {
+                    setPl(e.target.value);
+                  }}
+                >
                   <option value="">Private label: all</option>
                   <option value="yes">Private label: yes</option>
                   <option value="no">Private label: no</option>
                 </select>
-                <select className={sel} value={bom} onChange={(e) => setBom(e.target.value)}>
+                <select
+                  className={sel}
+                  value={bom}
+                  onChange={(e) => {
+                    setBom(e.target.value);
+                  }}
+                >
                   <option value="">BOM: all</option>
                   <option value="yes">BOM required</option>
                   <option value="no">No BOM</option>
                 </select>
-                <select className={sel} value={carton} onChange={(e) => setCarton(e.target.value)}>
+                <select
+                  className={sel}
+                  value={carton}
+                  onChange={(e) => {
+                    setCarton(e.target.value);
+                  }}
+                >
                   <option value="">Carton: all</option>
                   <option value="yes">Fixed carton</option>
                   <option value="no">No fixed carton</option>
                 </select>
-                <select className={sel} value={ready} onChange={(e) => setReady(e.target.value)}>
+                <select
+                  className={sel}
+                  value={ready}
+                  onChange={(e) => {
+                    setReady(e.target.value);
+                  }}
+                >
                   <option value="">Catalogue: all</option>
                   <option value="yes">Catalogue ready</option>
                   <option value="no">Not ready</option>
@@ -535,12 +573,20 @@ const Products = () => {
                   <input
                     type="checkbox"
                     checked={showArchived}
-                    onChange={(e) => setShowArchived(e.target.checked)}
+                    onChange={(e) => {
+                      setShowArchived(e.target.checked);
+                    }}
                     className="rounded border-border"
                   />
                   Show archived
                 </label>
-                <select className={sel} value={div} onChange={(e) => setDiv(e.target.value)}>
+                <select
+                  className={sel}
+                  value={div}
+                  onChange={(e) => {
+                    setDiv(e.target.value);
+                  }}
+                >
                   <option value="">All divisions</option>
                   {by("division").map((r) => (
                     <option key={r.code} value={r.code}>
@@ -548,7 +594,13 @@ const Products = () => {
                     </option>
                   ))}
                 </select>
-                <select className={sel} value={cat} onChange={(e) => setCat(e.target.value)}>
+                <select
+                  className={sel}
+                  value={cat}
+                  onChange={(e) => {
+                    setCat(e.target.value);
+                  }}
+                >
                   <option value="">All SKU categories</option>
                   {by("category").map((r) => (
                     <option key={r.code} value={r.code}>
@@ -556,7 +608,13 @@ const Products = () => {
                     </option>
                   ))}
                 </select>
-                <select className={sel} value={pack} onChange={(e) => setPack(e.target.value)}>
+                <select
+                  className={sel}
+                  value={pack}
+                  onChange={(e) => {
+                    setPack(e.target.value);
+                  }}
+                >
                   <option value="">All packaging</option>
                   {by("packaging").map((r) => (
                     <option key={r.code} value={r.code}>
@@ -567,7 +625,9 @@ const Products = () => {
                 <select
                   className={`${sel} sm:hidden`}
                   value={sort}
-                  onChange={(e) => setSort(e.target.value)}
+                  onChange={(e) => {
+                    setSort(e.target.value);
+                  }}
                 >
                   {SORTS.map((s) => (
                     <option key={s.v} value={s.v}>
@@ -652,7 +712,7 @@ const Products = () => {
                         <button
                           type="button"
                           onClick={(e) => {
-                            copy(e, p.sku ?? "");
+                            void copy(e, p.sku ?? "");
                           }}
                           className="hover:text-foreground shrink-0"
                         >

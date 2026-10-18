@@ -219,7 +219,9 @@ const PilotAliasReview = () => {
                     size="icon"
                     variant="outline"
                     disabled={term.collision.level === "block"}
-                    onClick={() => updateStatus(term.id, "approved")}
+                    onClick={() => {
+                      updateStatus(term.id, "approved");
+                    }}
                   >
                     <Check className="h-4 w-4" />
                   </Button>

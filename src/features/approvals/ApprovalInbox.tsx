@@ -120,14 +120,17 @@ const formatAge = (dateStr?: string | null) => {
   return `Submitted ${days} day${days === 1 ? "" : "s"} ago`;
 };
 
+const NESTED_PATH_SEGMENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
 const nestedRead = (payload: Record<string, unknown> | null | undefined, path: string) => {
   if (!payload) return undefined;
   let current: unknown = payload;
   for (const key of path.split(".")) {
+    if (!NESTED_PATH_SEGMENT.test(key)) return undefined;
     if (!current || typeof current !== "object") return undefined;
-    const descriptor = Object.getOwnPropertyDescriptor(current, key);
-    if (!descriptor) return undefined;
-    current = descriptor.value;
+    const record = current as Record<string, unknown>;
+    if (!Object.hasOwn(record, key)) return undefined;
+    current = record[key];
   }
   return current;
 };

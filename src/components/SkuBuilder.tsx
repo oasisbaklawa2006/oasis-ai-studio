@@ -48,7 +48,9 @@ const Sel = ({
     <select
       className="w-full h-10 px-2 rounded border bg-background text-sm"
       value={value ?? ""}
-      onChange={(e) => onChange(e.target.value || null)}
+      onChange={(e) => {
+        onChange(e.target.value || null);
+      }}
     >
       <option value="">— Select —</option>
       {options.map((o) => (
@@ -249,14 +251,14 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
               size="icon"
               variant="ghost"
               onClick={() => {
-                void navigator.clipboard.writeText(value.sku ?? "").then(
-                  () => {
+                void (async () => {
+                  try {
+                    await navigator.clipboard.writeText(value.sku ?? "");
                     toast.success("Copied");
-                  },
-                  () => {
+                  } catch {
                     toast.error("Could not copy SKU");
-                  },
-                );
+                  }
+                })();
               }}
             >
               <Copy className="h-4 w-4" />
@@ -275,13 +277,17 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
           label="Division"
           value={value.division_code}
           options={by("division")}
-          onChange={patchDivision}
+          onChange={(v) => {
+            patchDivision(v);
+          }}
         />
         <Sel
           label="Category"
           value={value.category_code}
           options={by("category")}
-          onChange={patchCategory}
+          onChange={(v) => {
+            patchCategory(v);
+          }}
         />
         <Sel
           label="Subcategory"
@@ -324,7 +330,12 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={generate} disabled={!ready || rulesMissing}>
+        <Button
+          onClick={() => {
+            void generate();
+          }}
+          disabled={!ready || rulesMissing}
+        >
           Generate SKU
         </Button>
         {!value.sku_locked && !typingIn && (

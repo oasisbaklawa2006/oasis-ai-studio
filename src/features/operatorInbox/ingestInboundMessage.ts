@@ -109,8 +109,13 @@ export function createInMemoryIngestStore() {
         message_type: String(args._message_type ?? "text"),
         received_at: String(args._received_at ?? new Date().toISOString()),
         raw_payload: (args._raw_payload as Record<string, unknown> | null) ?? null,
-        resolver_status: (args._resolver_status ??
-          "pending") as WhatsAppInboundMessageRow["resolver_status"],
+        resolver_status: (() => {
+          const status = args._resolver_status;
+          if (status === "pending" || status === "resolved" || status === "failed") {
+            return status;
+          }
+          return "pending";
+        })(),
         resolver_result_json:
           (args._resolver_result_json as ProductUtteranceResolution | null) ?? null,
         created_at: new Date().toISOString(),
