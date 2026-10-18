@@ -1,6 +1,6 @@
-import { mkdirSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { buildAllPilotAliasBundles } from "../src/features/productAuthority/pilotAliasEngine";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -13,7 +13,7 @@ const payload = { generated_at: new Date().toISOString(), bundles, rows };
 mkdirSync(OUT, { recursive: true });
 writeFileSync(
   join(OUT, "pilot_5sku_alias_suggestions.json"),
-  JSON.stringify(payload, null, 2) + "\n",
+  `${JSON.stringify(payload, null, 2)}\n`,
 );
 
 const headers = [
@@ -42,5 +42,5 @@ const csv = [
       .join(","),
   ),
 ].join("\n");
-writeFileSync(join(OUT, "pilot_5sku_alias_suggestions.csv"), csv + "\n");
+writeFileSync(join(OUT, "pilot_5sku_alias_suggestions.csv"), `${csv}\n`);
 console.log("Exported pilot alias suggestions to data/pilot/");

@@ -385,11 +385,11 @@ function main() {
   if (process.argv.includes("--write-json")) {
     writeFileSync(
       join(ROOT, "data/product-language-preview/batch001_wave2b_drafts_payload.json"),
-      JSON.stringify(drafts, null, 2) + "\n",
+      `${JSON.stringify(drafts, null, 2)}\n`,
     );
     writeFileSync(
       join(ROOT, "data/product-language-preview/batch001_wave2b_collision_report.json"),
-      JSON.stringify(scan, null, 2) + "\n",
+      `${JSON.stringify(scan, null, 2)}\n`,
     );
   }
 

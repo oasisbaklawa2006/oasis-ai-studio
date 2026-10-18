@@ -8,9 +8,9 @@
  *   node scripts/submit-batch001-language-phase1.mjs --json > /tmp/phase1-drafts.json
  */
 
-import { readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -142,7 +142,7 @@ function main() {
 
   if (process.argv.includes("--write-json")) {
     const out = join(ROOT, "data/product-language-preview/batch001_phase1_drafts_payload.json");
-    writeFileSync(out, JSON.stringify(drafts, null, 2) + "\n");
+    writeFileSync(out, `${JSON.stringify(drafts, null, 2)}\n`);
     console.log(`Wrote ${drafts.length} drafts to ${out}`);
     return;
   }
