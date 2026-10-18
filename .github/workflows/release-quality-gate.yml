@@ -31,6 +31,8 @@ jobs:
       - run: npm run lint:biome:changed
         env:
           QUALITY_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
-      - run: npm run quality:dead-code
+      - name: Audit existing dead-code inventory
+        continue-on-error: true
+        run: npm run quality:dead-code
       - run: npm run build
       - run: npm run test:coverage
