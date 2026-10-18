@@ -63,7 +63,7 @@ function editorSavePayload(
   metaMap: ComplianceFieldMetaMap,
 ): Record<string, unknown> {
   const validation = factualCompositionSaveValidation(form);
-  if (!validation.ok) throw new Error(validation.message);
+  if (validation.ok !== true) throw new Error(validation.message);
   const payload = coerceShelfLifeNumericFields(form);
   const safe = stripUnapprovedComplianceFields(payload, roles, baseline, metaMap);
   return productEditDirectProductsRow(safe);

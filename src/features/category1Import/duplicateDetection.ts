@@ -23,7 +23,7 @@ export function detectInFileDuplicates(staged: StagedCategory1Row[]): {
       if (first != null) {
         dupes.push({
           kind: "in_file_sku",
-          matchedValue: entry.row.sku ?? sku,
+          matchedValue: entry.row.sku ?? sku ?? "",
           matchedRowIndex: first,
         });
       } else {
@@ -89,7 +89,7 @@ export async function detectExistingProductDuplicates(
   let existing: ExistingProduct[] = [];
 
   if (skuValues.length) {
-    const { data: bySku } = await (supabase as any)
+    const { data: bySku } = await supabase
       .from("products")
       .select("id, sku, name, pack_size")
       .in("sku", skuValues);
@@ -100,7 +100,7 @@ export async function detectExistingProductDuplicates(
   const names = [...new Set(staged.map((s) => s.row.product_name.trim()).filter(Boolean))];
 
   for (const name of names.slice(0, 25)) {
-    const { data: byName } = await (supabase as any)
+    const { data: byName } = await supabase
       .from("products")
       .select("id, sku, name, pack_size")
       .eq("name", name);
@@ -133,7 +133,7 @@ export async function detectExistingProductDuplicates(
     if (match) {
       duplicates.push({
         kind: "existing_sku",
-        matchedValue: entry.row.sku ?? sku,
+        matchedValue: entry.row.sku ?? sku ?? "",
         existingProductId: match.id,
         existingLabel: productLabel(match),
       });

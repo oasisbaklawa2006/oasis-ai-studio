@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { validateReviewResult } from "@/features/approvals/reviewResult";
 import { supabase } from "@/integrations/supabase/client";
 import type { CatalogueDraftRow, ExtendedDatabase } from "@/integrations/supabase/types.extensions";
 
@@ -32,13 +33,24 @@ export async function fetchMediaSubmissions(
 export async function approveMediaSubmission(
   submissionId: string,
 ): Promise<{ ok: boolean; message: string }> {
-  const { error } = await draftDb.rpc("approve_catalogue_media_submission", {
-    draft_id: submissionId,
-  });
-  if (error) {
-    return { ok: false, message: error.message };
+  try {
+    const { data, error } = await draftDb.rpc("approve_catalogue_media_submission", {
+      draft_id: submissionId,
+    });
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+    return validateReviewResult(data, {
+      action: "approved",
+      draftId: submissionId,
+      draftTable: MEDIA_SUBMISSIONS_TABLE,
+    });
+  } catch {
+    return {
+      ok: false,
+      message: "Approval could not be confirmed. Refresh submissions before retrying.",
+    };
   }
-  return { ok: true, message: "Approved" };
 }
 
 export async function rejectMediaSubmission(
@@ -49,12 +61,23 @@ export async function rejectMediaSubmission(
   if (!trimmed) {
     return { ok: false, message: "Rejection reason is required" };
   }
-  const { error } = await draftDb.rpc("reject_catalogue_media_submission", {
-    draft_id: submissionId,
-    reason: trimmed,
-  });
-  if (error) {
-    return { ok: false, message: error.message };
+  try {
+    const { data, error } = await draftDb.rpc("reject_catalogue_media_submission", {
+      draft_id: submissionId,
+      reason: trimmed,
+    });
+    if (error) {
+      return { ok: false, message: error.message };
+    }
+    return validateReviewResult(data, {
+      action: "rejected",
+      draftId: submissionId,
+      draftTable: MEDIA_SUBMISSIONS_TABLE,
+    });
+  } catch {
+    return {
+      ok: false,
+      message: "Rejection could not be confirmed. Refresh submissions before retrying.",
+    };
   }
-  return { ok: true, message: "Rejected" };
 }

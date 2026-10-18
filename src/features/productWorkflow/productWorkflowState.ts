@@ -43,7 +43,7 @@ export type ContributorDraftStatus = "pending_approval" | "approved" | "rejected
 
 export type WorkflowActorRole = "contributor" | "reviewer";
 
-export type WorkflowTransitionAction =
+type WorkflowTransitionAction =
   | "save"
   | "submit"
   | "approve"
@@ -63,27 +63,6 @@ export type WorkflowTransitionResult = {
   toPhase: ProductWorkflowPhaseWithPublication | null;
   blockReason: string | null;
 };
-
-export const POINT_38_BOUNDARIES = {
-  point39:
-    "Correction/resubmission after rejection — save creates a new DRAFT version; Point 39 owns audit persistence.",
-  point54:
-    "Publication (`published` / `synced`) — Core/Central authority; AI Studio never transitions directly.",
-} as const;
-
-export const POINT_38_CORE_DEPENDENCIES = {
-  catalogueAiStudioDrafts: ["catalogue_ai_studio_drafts", "catalogue_ai_studio_draft_audit_log"],
-  contributorDrafts: [
-    "catalogue_product_drafts",
-    "catalogue_media_submissions",
-    "catalogue_alias_drafts",
-    "catalogue_bom_drafts",
-    "catalogue_tag_drafts",
-    "catalogue_moq_drafts",
-    "catalogue_pricing_drafts",
-  ],
-  catalogueVersions: ["catalogue_versions"],
-} as const;
 
 const PHASE_LABEL: Record<ProductWorkflowPhaseWithPublication, string> = {
   pre_draft: "Pre-draft (readiness gating)",
@@ -160,7 +139,7 @@ export function mapCatalogueVersionStatus(
   }
 }
 
-export function phaseLabel(phase: ProductWorkflowPhaseWithPublication): string {
+function phaseLabel(phase: ProductWorkflowPhaseWithPublication): string {
   return PHASE_LABEL[phase];
 }
 

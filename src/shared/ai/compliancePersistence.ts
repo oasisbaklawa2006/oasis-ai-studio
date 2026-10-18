@@ -17,8 +17,6 @@ export const PERSISTED_COMPLIANCE_PRODUCT_COLUMNS = [
   ...FACTUAL_COMPLIANCE_FORM_KEYS,
 ] as const;
 
-export type PersistedComplianceColumn = (typeof PERSISTED_COMPLIANCE_PRODUCT_COLUMNS)[number];
-
 /** DB column alias — UI edits `nutritional_info`, writes `nutrition_facts`. */
 export const UI_ONLY_COMPLIANCE_FIELDS = ["nutrition_facts"] as const;
 

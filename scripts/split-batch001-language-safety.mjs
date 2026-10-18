@@ -4,9 +4,9 @@
  * Preview only — no DB writes, drafts, or imports.
  */
 
-import { readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -288,7 +288,7 @@ function writeCsv(path, rows, extraCols) {
   for (const r of rows) {
     lines.push(base.map((h) => escapeCsv(r[h])).join(","));
   }
-  writeFileSync(path, lines.join("\n") + "\n");
+  writeFileSync(path, `${lines.join("\n")}\n`);
 }
 
 function main() {

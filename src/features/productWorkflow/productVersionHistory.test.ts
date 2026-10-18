@@ -98,7 +98,7 @@ describe("Point40 metadata safety", () => {
       metadata: { rejection_reason: "  Missing B2B  " },
     });
     const safe = stripSecretAuditMetadata(row.metadata);
-    expect(auditEventReason(row, safe)).toBe("Missing B2B");
+    expect(auditEventReason(safe)).toBe("Missing B2B");
     expect(summarizeAuditAction(row)).toMatch(/Rejected/);
   });
 });

@@ -109,10 +109,7 @@ export function buildFastCreateGroupedDraftPayload(
       {
         hsn_code: form.hsn_code,
         gst_rate: form.gst_rate,
-        shelf_life_days: form.shelf_life_days,
-        ingredients: form.ingredients,
         allergen_warnings: form.allergen_warnings,
-        storage_instructions: form.storage_instructions,
         ...factualCompositionDraftPayload(form),
       },
       form,

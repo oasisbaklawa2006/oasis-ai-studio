@@ -5,7 +5,7 @@ export type AliasSeed = {
   alias_type?: string;
 };
 
-export const ALIAS_SEED_RULES: { match: RegExp; aliases: AliasSeed[] }[] = [
+const ALIAS_SEED_RULES: { match: RegExp; aliases: AliasSeed[] }[] = [
   {
     match: /kunafa|kadayif|kataifi|knafe|shredded filo/i,
     aliases: [
@@ -35,19 +35,11 @@ export const ALIAS_SEED_RULES: { match: RegExp; aliases: AliasSeed[] }[] = [
   },
   {
     match: /dragee|choco ball|chocolate ball/i,
-    aliases: [
-      { alias: "Dragee" },
-      { alias: "Chocolate Ball" },
-      { alias: "Choco Ball" },
-    ],
+    aliases: [{ alias: "Dragee" }, { alias: "Chocolate Ball" }, { alias: "Choco Ball" }],
   },
   {
     match: /hamper|gift box|assorted/i,
-    aliases: [
-      { alias: "Gift Hamper" },
-      { alias: "Assorted Hamper" },
-      { alias: "Gift Box" },
-    ],
+    aliases: [{ alias: "Gift Hamper" }, { alias: "Assorted Hamper" }, { alias: "Gift Box" }],
   },
 ];
 
@@ -66,7 +58,7 @@ export function seedAliasesFromName(productName: string): AliasSeed[] {
     }
   }
 
-  const short = productName.split(/[\/,|]/)[0]?.trim();
+  const short = productName.split(/[/,|]/)[0]?.trim();
   if (short && short.length > 2 && !seen.has(short.toLowerCase())) {
     out.unshift({ alias: short, alias_type: "official_alias" });
   }

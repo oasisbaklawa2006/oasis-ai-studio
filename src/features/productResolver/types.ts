@@ -1,13 +1,13 @@
-export type ResolverCatalogProduct = {
+type ResolverCatalogProduct = {
   id: string;
   sku: string;
   name: string;
 };
 
-export type ResolverCatalogAlias = {
+type ResolverCatalogAlias = {
   alias_text: string;
   canonical_name: string;
-  product_id: string;
+  product_id: string | null;
 };
 
 export type ResolverCatalog = {

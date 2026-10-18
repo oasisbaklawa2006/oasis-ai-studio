@@ -22,7 +22,7 @@ export type ProductVariantRow = Database["public"]["Tables"]["product_variants"]
 export type BasisProductCandidate = {
   id: string;
   sku: string;
-  product_name: string;
+  product_name: string | null;
 };
 
 export type VariantMutationErrorCode =

@@ -1,4 +1,9 @@
+import { AlertTriangle, Copy, Lock, Unlock } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
 import {
@@ -8,11 +13,6 @@ import {
   invalidSkuTaxonomyMessage,
   isValidSkuTaxonomyCombination,
 } from "@/lib/skuTaxonomyMap";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Copy, Lock, Unlock, AlertTriangle } from "lucide-react";
-import { toast } from "sonner";
 
 type Rule = { code: string; label: string; code_type: string };
 
@@ -32,17 +32,31 @@ interface Props {
   onChange: (patch: Record<string, unknown>) => void;
 }
 
-const Sel = ({ label, value, options, onChange }: any) => (
+const Sel = ({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string | null | undefined;
+  options: { code: string; label: string }[];
+  onChange: (value: string | null) => void;
+}) => (
   <div>
     <Label className="text-xs">{label}</Label>
     <select
       className="w-full h-10 px-2 rounded border bg-background text-sm"
       value={value ?? ""}
-      onChange={(e) => onChange(e.target.value || null)}
+      onChange={(e) => {
+        onChange(e.target.value || null);
+      }}
     >
       <option value="">— Select —</option>
-      {options.map((o: Rule) => (
-        <option key={o.code} value={o.code}>{o.code} · {o.label}</option>
+      {options.map((o) => (
+        <option key={o.code} value={o.code}>
+          {o.code} · {o.label}
+        </option>
       ))}
     </select>
   </div>
@@ -76,7 +90,7 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
   const subcategoryOptions = useMemo(
     () =>
       filterSkuCodeOptions(
-        by("subcategory"),
+        rules.filter((r) => r.code_type === "subcategory"),
         allowedSubcategoryCodes(value.category_code, value.division_code),
       ),
     [rules, value.category_code, value.division_code],
@@ -85,7 +99,7 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
   const packagingOptions = useMemo(
     () =>
       filterSkuCodeOptions(
-        by("packaging"),
+        rules.filter((r) => r.code_type === "packaging"),
         allowedPackagingCodes(value.category_code, effectiveProductClass, value.division_code),
       ),
     [rules, value.category_code, effectiveProductClass, value.division_code],
@@ -147,9 +161,16 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
 
   const generate = async () => {
     if (rulesMissing) {
-      return toast.error("sku_code_rules has no active rows — use Type SKU below or ask admin to seed rules.");
+      return toast.error(
+        "sku_code_rules has no active rows — use Type SKU below or ask admin to seed rules.",
+      );
     }
-    if (!value.division_code || !value.category_code || !value.subcategory_code || !value.packaging_code) {
+    if (
+      !value.division_code ||
+      !value.category_code ||
+      !value.subcategory_code ||
+      !value.packaging_code
+    ) {
       return toast.error("Pick all four codes first.");
     }
     const combo = isValidSkuTaxonomyCombination({
@@ -210,27 +231,80 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
     <div className="card-elevated p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-xl">SKU · System identity</h3>
-        {value.sku_locked ? <Lock className="h-4 w-4 text-muted-foreground" /> : <Unlock className="h-4 w-4 text-warning" />}
+        {value.sku_locked ? (
+          <Lock className="h-4 w-4 text-muted-foreground" />
+        ) : (
+          <Unlock className="h-4 w-4 text-warning" />
+        )}
       </div>
 
       <div className="rounded-lg bg-muted/50 p-3">
-        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Current SKU</div>
+        <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+          Current SKU
+        </div>
         <div className="flex items-center gap-2">
-          <code className="text-base font-mono flex-1 truncate">{value.sku ?? "Not generated yet"}</code>
+          <code className="text-base font-mono flex-1 truncate">
+            {value.sku ?? "Not generated yet"}
+          </code>
           {value.sku && (
-            <Button size="icon" variant="ghost" onClick={() => { navigator.clipboard.writeText(value.sku!); toast.success("Copied"); }}>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => {
+                void (async () => {
+                  try {
+                    await navigator.clipboard.writeText(value.sku ?? "");
+                    toast.success("Copied");
+                  } catch {
+                    toast.error("Could not copy SKU");
+                  }
+                })();
+              }}
+            >
               <Copy className="h-4 w-4" />
             </Button>
           )}
         </div>
-        {value.legacy_sku && <div className="text-[11px] text-muted-foreground mt-1">Legacy: <code>{value.legacy_sku}</code></div>}
+        {value.legacy_sku && (
+          <div className="text-[11px] text-muted-foreground mt-1">
+            Legacy: <code>{value.legacy_sku}</code>
+          </div>
+        )}
       </div>
 
       <div className="grid sm:grid-cols-2 gap-3">
-        <Sel label="Division" value={value.division_code} options={by("division")} onChange={patchDivision} />
-        <Sel label="Category" value={value.category_code} options={by("category")} onChange={patchCategory} />
-        <Sel label="Subcategory" value={value.subcategory_code} options={subcategoryOptions} onChange={(v: string | null) => onChange({ subcategory_code: v })} />
-        <Sel label="Packaging" value={value.packaging_code} options={packagingOptions} onChange={(v: string | null) => onChange({ packaging_code: v })} />
+        <Sel
+          label="Division"
+          value={value.division_code}
+          options={by("division")}
+          onChange={(v) => {
+            patchDivision(v);
+          }}
+        />
+        <Sel
+          label="Category"
+          value={value.category_code}
+          options={by("category")}
+          onChange={(v) => {
+            patchCategory(v);
+          }}
+        />
+        <Sel
+          label="Subcategory"
+          value={value.subcategory_code}
+          options={subcategoryOptions}
+          onChange={(v: string | null) => {
+            onChange({ subcategory_code: v });
+          }}
+        />
+        <Sel
+          label="Packaging"
+          value={value.packaging_code}
+          options={packagingOptions}
+          onChange={(v: string | null) => {
+            onChange({ packaging_code: v });
+          }}
+        />
       </div>
 
       {taxonomyInvalid && (
@@ -239,33 +313,76 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
         </p>
       )}
 
-      <div className="text-xs text-muted-foreground">Preview: <code className="font-mono">{preview}</code></div>
+      <div className="text-xs text-muted-foreground">
+        Preview: <code className="font-mono">{preview}</code>
+      </div>
 
       {rulesMissing && (
         <p className="text-xs text-warning border border-warning/30 bg-warning/5 rounded-md px-2 py-1.5">
-          sku_code_rules table has no active rows — Generate SKU is disabled. You can still type a SKU manually below.
+          sku_code_rules table has no active rows — Generate SKU is disabled. You can still type a
+          SKU manually below.
           {rulesError && (
-            <span className="block mt-1 font-mono text-[10px] text-muted-foreground break-all">{rulesError}</span>
+            <span className="block mt-1 font-mono text-[10px] text-muted-foreground break-all">
+              {rulesError}
+            </span>
           )}
         </p>
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button onClick={generate} disabled={!ready || rulesMissing}>Generate SKU</Button>
+        <Button
+          onClick={() => {
+            void generate();
+          }}
+          disabled={!ready || rulesMissing}
+        >
+          Generate SKU
+        </Button>
         {!value.sku_locked && !typingIn && (
-          <Button variant="outline" onClick={() => setTypingIn(true)}>Type SKU</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setTypingIn(true);
+            }}
+          >
+            Type SKU
+          </Button>
         )}
         {canOverride && !overriding && value.sku_locked && (
-          <Button variant="outline" onClick={() => setOverriding(true)}>Override SKU</Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setOverriding(true);
+            }}
+          >
+            Override SKU
+          </Button>
         )}
       </div>
 
       {typingIn && (
         <div className="border rounded-lg p-3 space-y-2 bg-muted/20">
-          <Input placeholder="Enter SKU code" value={manualSku} onChange={(e) => setManualSku(e.target.value)} />
+          <Input
+            placeholder="Enter SKU code"
+            value={manualSku}
+            onChange={(e) => {
+              setManualSku(e.target.value);
+            }}
+          />
           <div className="flex gap-2">
-            <Button size="sm" onClick={applyManualSku}>Save SKU to form</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setTypingIn(false); setManualSku(""); }}>Cancel</Button>
+            <Button size="sm" onClick={applyManualSku}>
+              Save SKU to form
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setTypingIn(false);
+                setManualSku("");
+              }}
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       )}
@@ -274,13 +391,38 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
         <div className="border rounded-lg p-3 space-y-2 bg-warning/5">
           <div className="flex gap-2 text-warning text-xs items-start">
             <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
-            <span>SKU is used across catalogue, labels, barcode, inventory and future integrations. Changing it may break external references.</span>
+            <span>
+              SKU is used across catalogue, labels, barcode, inventory and future integrations.
+              Changing it may break external references.
+            </span>
           </div>
-          <Input placeholder="New SKU" value={overrideSku} onChange={(e) => setOverrideSku(e.target.value)} />
-          <Input placeholder="Reason for override" value={reason} onChange={(e) => setReason(e.target.value)} />
+          <Input
+            placeholder="New SKU"
+            value={overrideSku}
+            onChange={(e) => {
+              setOverrideSku(e.target.value);
+            }}
+          />
+          <Input
+            placeholder="Reason for override"
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value);
+            }}
+          />
           <div className="flex gap-2">
-            <Button size="sm" onClick={applyOverride}>Apply override</Button>
-            <Button size="sm" variant="ghost" onClick={() => setOverriding(false)}>Cancel</Button>
+            <Button size="sm" onClick={applyOverride}>
+              Apply override
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setOverriding(false);
+              }}
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       )}

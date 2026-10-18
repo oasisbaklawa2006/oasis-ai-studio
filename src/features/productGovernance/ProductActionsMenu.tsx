@@ -1,6 +1,6 @@
+import { Archive, Copy, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Archive, Copy, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,9 +9,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { isSuperAdmin } from "@/shared/auth/centralPermissions";
 import { ArchiveProductDialog } from "./ArchiveProductDialog";
 import { PermanentDeleteProductDialog } from "./PermanentDeleteProductDialog";
-import { isSuperAdmin } from "@/shared/auth/centralPermissions";
+import { PRODUCT_ARCHIVE_AVAILABLE, PRODUCT_DELETE_AVAILABLE } from "./productGovernanceService";
 import type { ProductGovernanceRow } from "./types";
 
 type Props = {
@@ -79,6 +80,8 @@ export function ProductActionsMenu({ product, onChanged, className }: Props) {
           </DropdownMenuItem>
           {!isArchived && (
             <DropdownMenuItem
+              disabled={!PRODUCT_ARCHIVE_AVAILABLE}
+              title="Core archive capability is not available"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -94,6 +97,8 @@ export function ProductActionsMenu({ product, onChanged, className }: Props) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
+                disabled={!PRODUCT_DELETE_AVAILABLE}
+                title="Core deletion capability is not available"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();

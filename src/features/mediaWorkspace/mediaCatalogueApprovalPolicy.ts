@@ -1,12 +1,12 @@
 /**
- * Core `approve_catalogue_media_submission` is intentionally fail-closed in PR06B until
- * approval mapping is finalized. AI Studio must not expose a knowingly nonfunctional Approve action.
+ * Core #406 deployed the media approval mapping. The reviewer-gated UI can call the
+ * canonical RPC; backend reviewer authorization and atomic pending-state checks remain authoritative.
  */
 export const MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE =
   "Media approval is not yet available — Core approval mapping is not finalized. Rejections remain available.";
 
 export function isMediaCatalogueApprovalAvailable(): boolean {
-  return false;
+  return true;
 }
 
 /** True when Approval Inbox / Media Review must hide the Approve action for a media draft. */

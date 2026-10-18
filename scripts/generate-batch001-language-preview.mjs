@@ -5,9 +5,9 @@
  *         data/product-language-preview/batch001_language_conflicts.md
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -443,7 +443,7 @@ function main() {
     ...allRows.map((r) => header.map((h) => escapeCsv(r[h])).join(",")),
   ];
 
-  writeFileSync(join(OUT_DIR, "batch001_language_terms_preview.csv"), csvLines.join("\n") + "\n");
+  writeFileSync(join(OUT_DIR, "batch001_language_terms_preview.csv"), `${csvLines.join("\n")}\n`);
 
   const md = [];
   md.push("# Batch 001 Language Term Conflicts — Preview Only\n");

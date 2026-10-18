@@ -71,19 +71,11 @@ const MATRIX: Record<PageKey, Role[]> = {
   audit_log: ["owner", "admin"],
   data_correction: ["owner", "admin", "product_manager"],
   category1_import: ["owner", "admin", "product_manager", "catalogue_contributor"],
-  compliance_approve: COMPLIANCE_APPROVER_ROLES,
+  compliance_approve: [...COMPLIANCE_APPROVER_ROLES],
 };
-
-export const canApproveComplianceFields = (roles: Role[] | string[]) =>
-  COMPLIANCE_APPROVER_ROLES.some((r) => (roles as string[]).includes(r));
-
-export const hasRole = (roles: Role[] | string[], role: Role) =>
-  roles.includes(role as any);
 
 export const canAccessPage = (roles: Role[] | string[], page: PageKey) => {
   if (!roles?.length) return false;
-  if (roles.includes("owner" as any)) return true;
-  return MATRIX[page]?.some((r) => (roles as any).includes(r)) ?? false;
+  if ((roles as readonly string[]).includes("owner")) return true;
+  return MATRIX[page]?.some((r) => (roles as readonly string[]).includes(r)) ?? false;
 };
-
-export const canPerformAction = canAccessPage;

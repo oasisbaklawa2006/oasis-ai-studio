@@ -1,10 +1,10 @@
+import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
 import { supabase } from "@/integrations/supabase/client";
 import { insertProductAlias } from "@/lib/aliasSchemaAdapter";
-import { submitCatalogueDraft } from "@/features/catalogueDrafts/draftService";
-import { canWriteMasterDirectly } from "@/shared/auth/centralPermissions";
 import type { Role } from "@/lib/permissions";
+import { canWriteMasterDirectly } from "@/shared/auth/centralPermissions";
 import type { PilotAliasSkuBundle, PilotAliasTermSuggestion } from "./pilotAliasTypes";
-import { toDbAliasType, PILOT_ALIAS_DISCLAIMER } from "./pilotAliasTypes";
+import { PILOT_ALIAS_DISCLAIMER, toDbAliasType } from "./pilotAliasTypes";
 
 export type PilotAliasSaveResult = {
   ok: boolean;
@@ -34,7 +34,7 @@ function buildDraftPayload(term: PilotAliasTermSuggestion) {
 /** Persist only user-approved terms — never auto-save suggestions. */
 export async function saveApprovedPilotAliases(
   bundle: PilotAliasSkuBundle,
-  roles: Role[],
+  _roles: Role[],
 ): Promise<PilotAliasSaveResult> {
   const approved = bundle.terms.filter((t) => t.review_status === "approved");
   const skipped = bundle.terms.length - approved.length;
@@ -55,12 +55,14 @@ export async function saveApprovedPilotAliases(
       ok: false,
       saved: 0,
       skipped,
-      errors: blocked.map((t) => `Blocked term cannot be saved: "${t.alias_text}" — ${t.collision.reason}`),
+      errors: blocked.map(
+        (t) => `Blocked term cannot be saved: "${t.alias_text}" — ${t.collision.reason}`,
+      ),
       mode: "none",
     };
   }
 
-  const direct = await canWriteMasterDirectly(roles);
+  const direct = await canWriteMasterDirectly();
   const errors: string[] = [];
   let saved = 0;
 

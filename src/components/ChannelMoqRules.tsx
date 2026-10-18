@@ -60,7 +60,21 @@ type TemplateKey = (typeof TEMPLATE_OPTIONS)[number];
 // removed for this reason - every role goes through the draft/approval path.
 type WriteMode = "draft" | "readonly";
 
-type MoqRuleRow = Record<string, any>;
+type MoqRuleRow = {
+  id: string;
+  product_id?: string;
+  moq_value?: number | string | null;
+  increment_value?: number | string | null;
+  min_carton_qty?: number | string | null;
+  channel?: string | null;
+  customer_type?: string | null;
+  moq_uom?: string | null;
+  increment_uom?: string | null;
+  carton_logic?: string | null;
+  notes?: string | null;
+  moq_applicable?: boolean | null;
+  allow_override?: boolean | null;
+};
 
 const templateLabel = (v: TemplateKey) =>
   ({
@@ -154,8 +168,8 @@ const isDuplicateChannel = (
   );
 };
 
-const normalizeMoqPatch = (current: MoqRuleRow, patch: Record<string, any>) => {
-  const normalizedPatch: Record<string, any> = { ...patch };
+const normalizeMoqPatch = (current: MoqRuleRow, patch: Partial<MoqRuleRow>) => {
+  const normalizedPatch: Partial<MoqRuleRow> = { ...patch };
 
   if ("moq_value" in normalizedPatch) {
     normalizedPatch.moq_value = asNumberOrNull(normalizedPatch.moq_value);
@@ -200,10 +214,20 @@ const buildCatalogueMoqDraftPayload = (productId: string, row: MoqRuleRow) => ({
   notes: row.notes ?? null,
 });
 
-const buildTemplateDefaults = (template: TemplateKey, product: any): MoqRuleRow[] => {
+const buildTemplateDefaults = (
+  template: TemplateKey,
+  product: {
+    primary_uom?: string | null;
+    carton_uom?: string | null;
+    product_class?: string | null;
+    main_department?: string | null;
+    mrp?: number | null;
+    [key: string]: unknown;
+  },
+): MoqRuleRow[] => {
   const defaults: MoqRuleRow[] = [];
-  const push = (r: Record<string, any>) =>
-    defaults.push({ customer_type: null, moq_applicable: false, ...r });
+  const push = (r: Partial<MoqRuleRow>) =>
+    defaults.push({ id: "", customer_type: null, moq_applicable: false, ...r });
 
   if (template === "bulk_wholesale") {
     push({
@@ -342,7 +366,14 @@ export const ChannelMoqRules = ({
   onRulesChange,
 }: {
   productId: string;
-  product: any;
+  product: {
+    primary_uom?: string | null;
+    carton_uom?: string | null;
+    product_class?: string | null;
+    main_department?: string | null;
+    mrp?: number | null;
+    [key: string]: unknown;
+  };
   onRulesChange?: () => void;
 }) => {
   const { roles } = useAuth();
@@ -457,7 +488,7 @@ export const ChannelMoqRules = ({
     });
   };
 
-  const stagePatch = (id: string, patch: Record<string, any>) => {
+  const stagePatch = (id: string, patch: Partial<MoqRuleRow>) => {
     const current = allDisplayRows.find((r) => r.id === id) ?? baselineRow(id);
     if (!current) return;
 
@@ -481,7 +512,7 @@ export const ChannelMoqRules = ({
     }));
   };
 
-  const applyFieldChange = (id: string, patch: Record<string, any>) => {
+  const applyFieldChange = (id: string, patch: Partial<MoqRuleRow>) => {
     if (writeMode === "draft") {
       stagePatch(id, patch);
     }

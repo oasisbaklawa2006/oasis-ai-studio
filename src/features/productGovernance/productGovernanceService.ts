@@ -1,75 +1,23 @@
-import { supabase } from "@/integrations/supabase/client";
 import type { GovernanceActionResult, ProductDeleteAssessment } from "./types";
 
-function parseAssessment(data: unknown): ProductDeleteAssessment {
-  const row = (data ?? {}) as Record<string, unknown>;
-  const blockers = Array.isArray(row.blockers)
-    ? row.blockers.map(String)
-    : [];
-  return {
-    eligible: !!row.eligible,
-    blockers,
-    sku: row.sku != null ? String(row.sku) : null,
-    product_name: row.product_name != null ? String(row.product_name) : null,
-  };
-}
-
-function parseActionResult(data: unknown): GovernanceActionResult {
-  const row = (data ?? {}) as Record<string, unknown>;
-  const blockers = Array.isArray(row.blockers)
-    ? row.blockers.map(String)
-    : undefined;
-  return {
-    ok: !!row.ok,
-    message: String(row.message ?? (row.ok ? "OK" : "Request failed")),
-    blockers,
-    sku: row.sku != null ? String(row.sku) : undefined,
-  };
-}
-
+/** Current Core metadata has no product archive/delete RPC. Do not fabricate write authority. */
+export const PRODUCT_ARCHIVE_AVAILABLE = false;
+export const PRODUCT_DELETE_AVAILABLE = false;
+const UNAVAILABLE =
+  "Product archive/deletion is unavailable in Core. Contact the administrator for the governed lifecycle action.";
 export async function assessProductDeleteEligibility(
-  productId: string,
+  _productId: string,
 ): Promise<ProductDeleteAssessment> {
-  const { data, error } = await supabase.rpc("assess_product_delete_eligibility", {
-    _product_id: productId,
-  });
-
-  if (error) {
-    return {
-      eligible: false,
-      blockers: [error.message],
-    };
-  }
-
-  return parseAssessment(data);
+  return { eligible: false, blockers: [UNAVAILABLE] };
 }
-
-export async function archiveProduct(productId: string): Promise<GovernanceActionResult> {
-  const { data, error } = await supabase.rpc("archive_product", {
-    _product_id: productId,
-  });
-
-  if (error) {
-    return { ok: false, message: error.message };
-  }
-
-  return parseActionResult(data);
+export async function archiveProduct(_productId: string): Promise<GovernanceActionResult> {
+  return { ok: false, message: UNAVAILABLE };
 }
-
 export async function permanentlyDeleteProduct(
-  productId: string,
+  _productId: string,
 ): Promise<GovernanceActionResult> {
-  const { data, error } = await supabase.rpc("permanently_delete_product", {
-    _product_id: productId,
-  });
-
-  if (error) {
-    return { ok: false, message: error.message };
-  }
-
-  return parseActionResult(data);
+  return { ok: false, message: UNAVAILABLE };
 }
-
 export function permanentDeleteConfirmationPhrase(sku: string): string {
   return `DELETE ${sku.trim()}`;
 }

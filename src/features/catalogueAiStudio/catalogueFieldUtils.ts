@@ -1,11 +1,11 @@
 /** Shared field-presence guards for catalogue draft content/prompt generation and readiness scoring. */
 
-export function hasText(value: string | null | undefined): boolean {
+export function hasText(value: string | null | undefined): value is string {
   return Boolean(value && value.trim().length > 0);
 }
 
 /** Strict typeof check — only true for an already-numeric, finite, positive value. */
-export function hasNumber(value: number | null | undefined): boolean {
+export function hasNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
@@ -15,7 +15,9 @@ export function hasNumber(value: number | null | undefined): boolean {
  * already-numeric value. Returns null for blank/whitespace strings, non-numeric text,
  * NaN, Infinity, and non-positive values — never a global truthiness check.
  */
-export function parsePositiveNumericInput(value: number | string | null | undefined): number | null {
+export function parsePositiveNumericInput(
+  value: number | string | null | undefined,
+): number | null {
   if (typeof value === "number") {
     return Number.isFinite(value) && value > 0 ? value : null;
   }

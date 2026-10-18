@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { Check, RefreshCw, Save, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Check, X, Save, RefreshCw } from "lucide-react";
+import { PageHeader } from "@/components/PageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   buildAllPilotAliasBundles,
@@ -12,15 +12,22 @@ import {
   setTermReviewStatus,
 } from "@/features/productAuthority/pilotAliasEngine";
 import {
+  loadPilotAliasReview,
+  setPilotTermReview,
+} from "@/features/productAuthority/pilotAliasReviewStorage";
+import { saveApprovedPilotAliases } from "@/features/productAuthority/pilotAliasSave";
+import {
   PILOT_ALIAS_DISCLAIMER,
   PILOT_ALIAS_TYPE_LABELS,
   PILOT_CHANNEL_LABELS,
   type PilotAliasSkuBundle,
   type PilotReviewStatus,
 } from "@/features/productAuthority/pilotAliasTypes";
-import { PILOT_SKUS, PILOT_SKU_LABELS, type PilotSkuCode } from "@/features/productAuthority/skuGuard";
-import { loadPilotAliasReview, setPilotTermReview } from "@/features/productAuthority/pilotAliasReviewStorage";
-import { saveApprovedPilotAliases } from "@/features/productAuthority/pilotAliasSave";
+import {
+  PILOT_SKU_LABELS,
+  PILOT_SKUS,
+  type PilotSkuCode,
+} from "@/features/productAuthority/skuGuard";
 
 function collisionBadge(level: string) {
   if (level === "block") return <Badge variant="destructive">collision</Badge>;
@@ -47,7 +54,7 @@ const PilotAliasReview = () => {
   const [bundles, setBundles] = useState<PilotAliasSkuBundle[]>(() => buildAllPilotAliasBundles());
   const [saving, setSaving] = useState(false);
 
-  const applyStoredReview = () => {
+  const applyStoredReview = useCallback(() => {
     const stored = loadPilotAliasReview();
     setBundles(
       buildAllPilotAliasBundles().map((b) => {
@@ -59,11 +66,11 @@ const PilotAliasReview = () => {
         return next;
       }),
     );
-  };
+  }, []);
 
   useEffect(() => {
     applyStoredReview();
-  }, []);
+  }, [applyStoredReview]);
 
   const bundle = useMemo(
     () => bundles.find((b) => b.sku === activeSku) ?? buildPilotAliasBundle(activeSku),
@@ -92,7 +99,7 @@ const PilotAliasReview = () => {
   const saveApproved = async () => {
     setSaving(true);
     try {
-      const res = await saveApprovedPilotAliases(bundle, roles as any);
+      const res = await saveApprovedPilotAliases(bundle, roles);
       if (!res.ok) {
         toast.error(res.errors[0] ?? "Save failed");
         return;
@@ -110,7 +117,10 @@ const PilotAliasReview = () => {
   };
 
   const groups: Array<{ title: string; filter: (t: (typeof bundle.terms)[number]) => boolean }> = [
-    { title: "Official / search (5)", filter: (t) => t.alias_type === "official" || t.alias_type === "search_keyword" },
+    {
+      title: "Official / search (5)",
+      filter: (t) => t.alias_type === "official" || t.alias_type === "search_keyword",
+    },
     { title: "WhatsApp keywords (5)", filter: (t) => t.alias_type === "whatsapp_keyword" },
     { title: "Phonetic variants (3)", filter: (t) => t.alias_type === "phonetic" },
     { title: "Sales terms (3)", filter: (t) => t.alias_type === "sales_term" },
@@ -144,7 +154,9 @@ const PilotAliasReview = () => {
               key={sku}
               variant={activeSku === sku ? "default" : "outline"}
               size="sm"
-              onClick={() => setActiveSku(sku)}
+              onClick={() => {
+                setActiveSku(sku);
+              }}
             >
               {PILOT_SKU_LABELS[sku]}
               {b && (
@@ -166,7 +178,11 @@ const PilotAliasReview = () => {
           <Button size="sm" variant="secondary" onClick={approveAllSafe}>
             Approve safe terms
           </Button>
-          <Button size="sm" onClick={saveApproved} disabled={saving || bundle.summary.approved === 0}>
+          <Button
+            size="sm"
+            onClick={saveApproved}
+            disabled={saving || bundle.summary.approved === 0}
+          >
             <Save className="h-4 w-4 mr-1" />
             Save approved ({bundle.summary.approved})
           </Button>
@@ -191,7 +207,9 @@ const PilotAliasReview = () => {
                     {collisionBadge(term.collision.level)}
                   </div>
                   {term.collision.level !== "none" && (
-                    <p className="text-xs text-amber-700 dark:text-amber-300">{term.collision.reason}</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      {term.collision.reason}
+                    </p>
                   )}
                   {term.review_notes && (
                     <p className="text-xs text-destructive">{term.review_notes}</p>
@@ -203,11 +221,19 @@ const PilotAliasReview = () => {
                     size="icon"
                     variant="outline"
                     disabled={term.collision.level === "block"}
-                    onClick={() => updateStatus(term.id, "approved")}
+                    onClick={() => {
+                      updateStatus(term.id, "approved");
+                    }}
                   >
                     <Check className="h-4 w-4" />
                   </Button>
-                  <Button size="icon" variant="outline" onClick={() => updateStatus(term.id, "rejected")}>
+                  <Button
+                    size="icon"
+                    variant="outline"
+                    onClick={() => {
+                      updateStatus(term.id, "rejected");
+                    }}
+                  >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
