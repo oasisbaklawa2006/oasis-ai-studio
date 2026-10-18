@@ -1,6 +1,6 @@
-import { expect, type Page, test } from "@playwright/test";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { expect, type Page, test } from "@playwright/test";
 
 const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
 const CENTRAL_URL = process.env.CENTRAL_URL || "https://cursor-central-vercel.vercel.app";

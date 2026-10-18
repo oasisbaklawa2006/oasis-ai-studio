@@ -9,7 +9,7 @@ export async function processErpInboundRow(
   if (!mapped.ok) {
     return { ok: false, error: mapped.error };
   }
-  if ("skipped" in mapped && mapped.skipped) {
+  if ("skipped" in mapped) {
     return { ok: true, skipped: true, reason: mapped.reason };
   }
 

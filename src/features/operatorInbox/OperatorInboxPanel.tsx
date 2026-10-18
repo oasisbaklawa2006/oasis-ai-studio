@@ -26,7 +26,7 @@ import {
   seedPhase2cTestMessagesToDatabase,
 } from "./seedPhase2cTestMessages";
 import { appendSuggestionAudit } from "./suggestionAudit";
-import type { InboundMessageView, InboundWhatsAppMessage, OperatorSuggestionState } from "./types";
+import type { InboundWhatsAppMessage, OperatorSuggestionState } from "./types";
 import { useOperatorInboxRealtime } from "./useOperatorInboxRealtime";
 import type { InboxFeedMode } from "./whatsappInboundTypes";
 
@@ -61,6 +61,9 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
   const existingDraftId = existingDraft?.id ?? null;
 
   useEffect(() => {
+    const draftForResolution = () =>
+      existingDraftRef.current?.id === existingDraftId ? existingDraftRef.current : null;
+
     if (message.resolver_status === "failed") {
       setResolution(null);
       setOperator(initialOperatorState(null));
@@ -75,7 +78,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
 
     if (stored) {
       setResolution(stored);
-      setOperator((prev) => mergeOperatorStateOnResolution(prev, stored, existingDraftRef.current));
+      setOperator((prev) => mergeOperatorStateOnResolution(prev, stored, draftForResolution()));
       setResolverError(null);
       setLoading(false);
       return;
@@ -90,7 +93,9 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
         if (cancelled) return;
         if (res) {
           setResolution(res);
-          setOperator((prev) => mergeOperatorStateOnResolution(prev, res, existingDraftRef.current));
+          setOperator((prev) =>
+            mergeOperatorStateOnResolution(prev, res, draftForResolution()),
+          );
         } else {
           setResolution(null);
           setResolverError("Resolver unavailable — message shown without suggestion.");
