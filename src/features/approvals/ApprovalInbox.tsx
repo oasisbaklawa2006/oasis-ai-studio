@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { evaluateMobileApprovalAction } from "@/features/mobileApproval/mobileApprovalAuthority";
 import {
   isMediaDraftApprovalUiBlocked,
   MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE,
 } from "@/features/mediaWorkspace/mediaCatalogueApprovalPolicy";
+import { evaluateMobileApprovalAction } from "@/features/mobileApproval/mobileApprovalAuthority";
 import {
   blockPilotApprovalMessage,
   isDraftSku,
@@ -15,13 +16,30 @@ import {
 } from "@/features/productAuthority/skuGuard";
 import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { supabase } from "@/integrations/supabase/client";
+import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+import { validateReviewResult } from "./reviewResult";
+
+type ReviewDatabase = Omit<ExtendedDatabase, "public"> & {
+  public: Omit<ExtendedDatabase["public"], "Functions"> & {
+    Functions: ExtendedDatabase["public"]["Functions"] &
+      Record<
+        (typeof SOURCES)[number]["approve"],
+        { Args: { draft_id: string }; Returns: unknown }
+      > &
+      Record<
+        (typeof SOURCES)[number]["reject"],
+        { Args: { draft_id: string; reason: string }; Returns: unknown }
+      >;
+  };
+};
+const draftDb = supabase as unknown as SupabaseClient<ReviewDatabase>;
 
 type ApprovalStatus = "pending_approval" | "approved" | "rejected";
 
 type ApprovalItem = {
   id: string;
   status: ApprovalStatus;
-  payload?: Record<string, any> | null;
+  payload?: Record<string, unknown> | null;
   operation?: string | null;
   submitted_at?: string | null;
   submitted_by?: string | null;
@@ -102,12 +120,22 @@ const formatAge = (dateStr?: string | null) => {
   return `Submitted ${days} day${days === 1 ? "" : "s"} ago`;
 };
 
-const nestedRead = (payload: Record<string, any> | null | undefined, path: string) => {
+const NESTED_PATH_SEGMENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+const nestedRead = (payload: Record<string, unknown> | null | undefined, path: string) => {
   if (!payload) return undefined;
-  return path.split(".").reduce<any>((acc, key) => (acc == null ? undefined : acc[key]), payload);
+  let current: unknown = payload;
+  for (const key of path.split(".")) {
+    if (!NESTED_PATH_SEGMENT.test(key)) return undefined;
+    if (!current || typeof current !== "object") return undefined;
+    const record = current as Record<string, unknown>;
+    if (!Object.hasOwn(record, key)) return undefined;
+    current = Reflect.get(record, key);
+  }
+  return current;
 };
 
-const read = (payload: Record<string, any> | null | undefined, ...paths: string[]) => {
+const read = (payload: Record<string, unknown> | null | undefined, ...paths: string[]) => {
   for (const path of paths) {
     const value = nestedRead(payload, path);
     if (value !== undefined && value !== null && value !== "") return String(value);
@@ -115,7 +143,7 @@ const read = (payload: Record<string, any> | null | undefined, ...paths: string[
   return "—";
 };
 
-const formatProductMoq = (payload: Record<string, any> | null | undefined) => {
+const formatProductMoq = (payload: Record<string, unknown> | null | undefined) => {
   const moqValue = nestedRead(payload, "moq.moq_value");
   const moqUom = nestedRead(payload, "moq.moq_uom");
   const incValue = nestedRead(payload, "moq.increment_value");
@@ -136,7 +164,7 @@ const formatProductMoq = (payload: Record<string, any> | null | undefined) => {
   return `${base}, increment ${increment}`;
 };
 
-const formatPricing = (payload: Record<string, any> | null | undefined) => {
+const formatPricing = (payload: Record<string, unknown> | null | undefined) => {
   const mrp = nestedRead(payload, "pricing.mrp");
   const b2b = nestedRead(payload, "pricing.b2b_price");
   const exportPrice = nestedRead(payload, "pricing.export_price");
@@ -156,11 +184,17 @@ const formatPricing = (payload: Record<string, any> | null | undefined) => {
   return legacy !== "—" ? legacy : "—";
 };
 
-const formatBom = (payload: Record<string, any> | null | undefined) => {
+const formatBom = (payload: Record<string, unknown> | null | undefined) => {
   const required = nestedRead(payload, "bom.required");
   const expectedType = nestedRead(payload, "bom.expected_type");
   const requiredText = required === true ? "Required" : required === false ? "Not required" : null;
-  if (requiredText && expectedType) return `${requiredText} (${expectedType})`;
+  const expectedTypeLabel =
+    typeof expectedType === "string"
+      ? expectedType
+      : typeof expectedType === "number" || typeof expectedType === "boolean"
+        ? String(expectedType)
+        : null;
+  if (requiredText && expectedTypeLabel) return `${requiredText} (${expectedTypeLabel})`;
   if (requiredText) return requiredText;
   if (expectedType) return String(expectedType);
 
@@ -174,7 +208,7 @@ const formatBom = (payload: Record<string, any> | null | undefined) => {
   return "—";
 };
 
-const getReviewFlags = (payload: Record<string, any> | null | undefined) => {
+const getReviewFlags = (payload: Record<string, unknown> | null | undefined) => {
   const flags = nestedRead(payload, "needs_admin_review_flags");
   if (!flags || typeof flags !== "object") return [];
   return Object.entries(flags)
@@ -182,7 +216,7 @@ const getReviewFlags = (payload: Record<string, any> | null | undefined) => {
     .map(([key]) => key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()));
 };
 
-const getDisplayReviewFlags = (payload: Record<string, any> | null | undefined) => {
+const getDisplayReviewFlags = (payload: Record<string, unknown> | null | undefined) => {
   const dynamic = getReviewFlags(payload);
   return dynamic.length > 0 ? dynamic : FLAG_CHIPS;
 };
@@ -193,56 +227,80 @@ export default function ApprovalInbox() {
   const [reasons, setReasons] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<ApprovalStatus>("pending_approval");
 
-  const fetchDraftRows = async (table: string): Promise<Record<string, unknown>[]> => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic draft table name, not in generated types (same escape hatch used throughout this codebase, e.g. BomBuilder.tsx)
-    const { data, error } = await (supabase as any)
+  const actionLocks = useRef(new Set<string>());
+  const loadSequence = useRef(0);
+  const [loading, setLoading] = useState(false);
+  const [inFlight, setInFlight] = useState<Set<string>>(() => new Set());
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const fetchDraftRows = async (
+    table: (typeof SOURCES)[number]["table"] | (typeof CENTRAL_GOVERNED_SOURCES)[number]["table"],
+  ): Promise<Record<string, unknown>[]> => {
+    const { data, error } = await draftDb
       .from(table)
       .select("*")
       .in("status", ["pending_approval", "approved", "rejected"])
       .order("submitted_at", { ascending: false });
     if (error) {
-      toast.error(`Failed to load ${table}: ${error.message}`);
-      return [];
+      throw new Error(`Failed to load ${table}: ${error.message}`);
     }
     return data ?? [];
   };
 
   const load = async () => {
-    const all: ApprovalItem[] = [];
-    const [standardRows, centralRows] = await Promise.all([
-      Promise.all(SOURCES.map((s) => fetchDraftRows(s.table).then((rows) => ({ s, rows })))),
-      Promise.all(
-        CENTRAL_GOVERNED_SOURCES.map((s) => fetchDraftRows(s.table).then((rows) => ({ s, rows }))),
-      ),
-    ]);
-    for (const { s, rows } of standardRows) {
-      rows.forEach((d) => {
-        all.push({
-          ...d,
-          draftType: s.type,
-          approveFn: s.approve,
-          rejectFn: s.reject,
-          governedByCentral: false,
-        } as ApprovalItem);
-      });
+    const sequence = ++loadSequence.current;
+    setLoading(true);
+    setItems([]);
+    try {
+      const all: ApprovalItem[] = [];
+      const [standardRows, centralRows] = await Promise.all([
+        Promise.all(SOURCES.map((s) => fetchDraftRows(s.table).then((rows) => ({ s, rows })))),
+        Promise.all(
+          CENTRAL_GOVERNED_SOURCES.map((s) =>
+            fetchDraftRows(s.table).then((rows) => ({ s, rows })),
+          ),
+        ),
+      ]);
+      for (const { s, rows } of standardRows) {
+        rows.forEach((d) => {
+          all.push({
+            ...d,
+            draftType: s.type,
+            approveFn: s.approve,
+            rejectFn: s.reject,
+            governedByCentral: false,
+          } as ApprovalItem);
+        });
+      }
+      for (const { s, rows } of centralRows) {
+        rows.forEach((d) => {
+          all.push({
+            ...d,
+            draftType: s.type,
+            approveFn: null,
+            rejectFn: null,
+            governedByCentral: true,
+          } as ApprovalItem);
+        });
+      }
+      if (sequence !== loadSequence.current) return;
+      setItems(all);
+      setLoadError(null);
+    } catch {
+      if (sequence !== loadSequence.current) return;
+      setItems([]);
+      setLoadError("Could not refresh approval inbox. Retry before reviewing drafts.");
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
     }
-    for (const { s, rows } of centralRows) {
-      rows.forEach((d) => {
-        all.push({
-          ...d,
-          draftType: s.type,
-          approveFn: null,
-          rejectFn: null,
-          governedByCentral: true,
-        } as ApprovalItem);
-      });
-    }
-    setItems(all);
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: run once when reviewer resolves; load() identity is stable in intent
   useEffect(() => {
-    if (isReviewer) load();
+    if (isReviewer) void load();
+    else setItems([]);
+    return () => {
+      loadSequence.current += 1;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isReviewer]);
 
@@ -287,14 +345,39 @@ export default function ApprovalInbox() {
       }
     }
 
-    const { error } = await (supabase as any).rpc(r.approveFn, { draft_id: r.id });
-    if (error) {
-      if (/not finalized/i.test(error.message)) toast.warning(error.message);
-      else toast.error(error.message);
-      return;
+    const key = `${r.draftType}:${r.id}`;
+    if (loading || loadError || actionLocks.current.has(key)) return;
+    actionLocks.current.add(key);
+    setInFlight(new Set(actionLocks.current));
+    try {
+      const { data, error } = await draftDb.rpc(
+        r.approveFn as (typeof SOURCES)[number]["approve"],
+        { draft_id: r.id },
+      );
+      if (error) {
+        if (/not finalized/i.test(error.message)) toast.warning(error.message);
+        else toast.error(error.message);
+        return;
+      }
+      const outcome = validateReviewResult(data, {
+        action: "approved",
+        draftId: r.id,
+        draftTable: SOURCES.find((s) => s.type === r.draftType)?.table ?? "",
+      });
+      if (!outcome.ok) {
+        toast.error(outcome.message);
+        await load();
+        return;
+      }
+      toast.success("Approved");
+      await load();
+    } catch {
+      toast.error("Approval could not be confirmed. Refresh before retrying.");
+      await load();
+    } finally {
+      actionLocks.current.delete(key);
+      setInFlight(new Set(actionLocks.current));
     }
-    toast.success("Approved");
-    load();
   };
 
   const reject = async (r: ApprovalItem) => {
@@ -315,11 +398,36 @@ export default function ApprovalInbox() {
       toast.error("Rejection reason is required");
       return;
     }
-    const { error } = await (supabase as any).rpc(r.rejectFn, { draft_id: r.id, reason });
-    if (error) return toast.error(error.message);
-    toast.success("Rejected");
-    setReasons((x) => ({ ...x, [r.id]: "" }));
-    load();
+    const key = `${r.draftType}:${r.id}`;
+    if (loading || loadError || actionLocks.current.has(key)) return;
+    actionLocks.current.add(key);
+    setInFlight(new Set(actionLocks.current));
+    try {
+      const { data, error } = await draftDb.rpc(r.rejectFn as (typeof SOURCES)[number]["reject"], {
+        draft_id: r.id,
+        reason,
+      });
+      if (error) return toast.error(error.message);
+      const outcome = validateReviewResult(data, {
+        action: "rejected",
+        draftId: r.id,
+        draftTable: SOURCES.find((s) => s.type === r.draftType)?.table ?? "",
+      });
+      if (!outcome.ok) {
+        toast.error(outcome.message);
+        await load();
+        return;
+      }
+      toast.success("Rejected");
+      setReasons((x) => ({ ...x, [r.id]: "" }));
+      await load();
+    } catch {
+      toast.error("Rejection could not be confirmed. Refresh before retrying.");
+      await load();
+    } finally {
+      actionLocks.current.delete(key);
+      setInFlight(new Set(actionLocks.current));
+    }
   };
 
   if (reviewerLoading) {
@@ -340,6 +448,13 @@ export default function ApprovalInbox() {
       />
 
       <div className="space-y-4">
+        {loading && <div role="status">Loading drafts…</div>}
+        {loadError && (
+          <div role="alert">
+            {loadError}
+            <Button onClick={() => void load()}>Retry</Button>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {TABS.map((tab) => {
             const count = groupedByStatus[tab.key].length;
@@ -532,12 +647,18 @@ export default function ApprovalInbox() {
                         variant="outline"
                         className="rounded-full"
                         onClick={() => reject(r)}
-                        disabled={!(reasons[r.id] || "").trim()}
+                        disabled={
+                          !(reasons[r.id] || "").trim() || inFlight.has(`${r.draftType}:${r.id}`)
+                        }
                       >
                         Reject
                       </Button>
                       {!mediaApprovalBlocked && (
-                        <Button className="rounded-full" onClick={() => approve(r)}>
+                        <Button
+                          className="rounded-full"
+                          onClick={() => approve(r)}
+                          disabled={inFlight.has(`${r.draftType}:${r.id}`)}
+                        >
                           Approve
                         </Button>
                       )}

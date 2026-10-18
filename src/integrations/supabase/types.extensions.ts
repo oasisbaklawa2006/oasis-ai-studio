@@ -5,6 +5,7 @@
  * - supabase/migrations/20260603120000_product_governance_archive_delete.sql
  * - scripts/supabase/PR06B_draft_approval_migration.sql (draft table shape)
  */
+import type { CatalogueSourceTableDefinitions } from "@/features/catalogueSourceIntake/types";
 import type { Database } from "./types";
 
 export type CatalogueDraftRow = {
@@ -24,7 +25,7 @@ export type CatalogueDraftRow = {
   updated_at: string;
 };
 
-export type CatalogueAuthorityTableDefinitions = {
+type CatalogueAuthorityTableDefinitions = {
   catalogue_versions: {
     Row: {
       id: string;
@@ -288,7 +289,7 @@ export type CoreKnowledgeSnapshotRow =
   CatalogueAuthorityTableDefinitions["whatsapp_intelligence_knowledge_snapshots"]["Row"];
 
 /** In-repo contract: scripts/supabase/PR06B_draft_approval_migration.sql */
-export type CatalogueDraftApprovalRpc = {
+type CatalogueDraftApprovalRpc = {
   approve_catalogue_media_submission: {
     Args: { draft_id: string };
     Returns: undefined;
@@ -378,10 +379,9 @@ export type ProductGovernanceRpc = {
 
 export type ExtendedDatabase = Database & {
   public: Database["public"] & {
-    Tables: Database["public"]["Tables"] & CatalogueAuthorityTableDefinitions;
+    Tables: Database["public"]["Tables"] &
+      CatalogueAuthorityTableDefinitions &
+      CatalogueSourceTableDefinitions;
     Functions: Database["public"]["Functions"] & ProductGovernanceRpc & CatalogueDraftApprovalRpc;
   };
 };
-
-/** Refreshed-at marker for audit trail (in-repo migration sources). */
-export const CATALOGUE_AUTHORITY_TYPES_REFRESHED_AT = "2026-06-09";

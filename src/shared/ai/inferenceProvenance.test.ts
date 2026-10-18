@@ -67,6 +67,6 @@ describe("inferenceProvenance", () => {
     );
     const result = assertOperationalProvenanceComplete(incomplete);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.missing).toContain("human_review_required");
+    if (result.ok !== true) expect(result.missing).toContain("human_review_required");
   });
 });

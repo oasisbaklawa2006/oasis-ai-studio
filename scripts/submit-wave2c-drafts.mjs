@@ -4,9 +4,9 @@
  * Default: dry-run summary. Live SQL requires --live and CONFIRM_LIVE_SUBMIT=true.
  */
 
-import { readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { guardSubmit } from "./lib/submitGuardrails.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

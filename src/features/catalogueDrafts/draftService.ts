@@ -1,10 +1,14 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { draftTableMap, type DraftType } from "./draftTableMap";
+import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+import { type DraftType, draftTableMap } from "./draftTableMap";
+
+const draftDb = supabase as unknown as SupabaseClient<ExtendedDatabase>;
 
 type SubmitCatalogueDraftInput = {
   draftType: DraftType;
   operation: "create" | "update" | "delete_request";
-  payload: Record<string, any>;
+  payload: Record<string, unknown>;
   targetRecordId?: string | null;
 };
 
@@ -51,7 +55,7 @@ export async function submitCatalogueDraft({
     target_record_id: targetRecordId ?? null,
     operation,
     payload,
-    status: "pending_approval",
+    status: "pending_approval" as const,
     submitted_by: user.id,
     submitted_at: nowIso,
     created_at: nowIso,
@@ -61,14 +65,9 @@ export async function submitCatalogueDraft({
   if (import.meta.env.DEV) {
     console.log("[CatalogueDraft] auth user id:", user.id);
     console.log("[CatalogueDraft] insert table:", map.table);
-    console.log("[CatalogueDraft] insert object:", insertRow);
   }
 
-  const { data, error } = await (supabase as any)
-    .from(map.table)
-    .insert(insertRow)
-    .select("id")
-    .single();
+  const { data, error } = await draftDb.from(map.table).insert(insertRow).select("id").single();
 
   if (error) {
     if (import.meta.env.DEV) {

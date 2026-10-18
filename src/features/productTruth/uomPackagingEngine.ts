@@ -67,8 +67,7 @@ export function convertOrderedQtyToBaseQty(
   if (!normalized || !Number.isFinite(qty)) return null;
 
   const piecesPerKg =
-    hierarchy.piecesPerKg ??
-    (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
+    hierarchy.piecesPerKg ?? (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
 
   switch (normalized) {
     case "kg":
@@ -107,8 +106,7 @@ export function convertBaseKgToUom(
   const normalized = normalizeUom(targetUom);
   if (!normalized) return null;
   const piecesPerKg =
-    hierarchy.piecesPerKg ??
-    (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
+    hierarchy.piecesPerKg ?? (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
 
   switch (normalized) {
     case "kg":
@@ -131,25 +129,6 @@ export function convertBaseKgToUom(
   }
 }
 
-export function calculateReadyGoodsPickQty(
-  orderQty: number,
-  orderUom: string,
-  hierarchy: PackagingHierarchy,
-): number | null {
-  const base = convertOrderedQtyToBaseQty(orderQty, orderUom, hierarchy);
-  if (base == null) return null;
-  return applyRoundingRule(base, hierarchy.roundingRule ?? "nearest");
-}
-
-export function calculateProductionDemandQty(
-  pickKg: number,
-  hierarchy: PackagingHierarchy,
-  yieldFactor = 1,
-): number | null {
-  if (!Number.isFinite(pickKg)) return null;
-  return applyRoundingRule(pickKg * yieldFactor, hierarchy.roundingRule ?? "ceil");
-}
-
 export function calculateDispatchPackagingQty(
   baseKg: number,
   packUom: string,
@@ -170,9 +149,10 @@ export function calculateDispatchPackagingQty(
   return rounded;
 }
 
-export function validateConversionRuleChain(
-  hierarchy: PackagingHierarchy,
-): { valid: boolean; messages: string[] } {
+export function validateConversionRuleChain(hierarchy: PackagingHierarchy): {
+  valid: boolean;
+  messages: string[];
+} {
   const messages: string[] = [];
   if (!hierarchy.piecesPerKg && !hierarchy.gramsPerPiece) {
     messages.push("piecesPerKg or gramsPerPiece required for pcs ↔ kg");
@@ -200,5 +180,9 @@ export function describeConversion(
   if (base == null) return "Cannot convert";
   const trays = convertBaseKgToUom(base, "tray", hierarchy);
   const pcs = convertBaseKgToUom(base, "pcs", hierarchy);
-  return `${qty} ${uom} ≈ ${base} kg` + (trays != null ? ` ≈ ${applyRoundingRule(trays, "nearest", 2)} tray(s)` : "") + (pcs != null ? ` (${applyRoundingRule(pcs, "nearest", 0)} pcs)` : "");
+  return (
+    `${qty} ${uom} ≈ ${base} kg` +
+    (trays != null ? ` ≈ ${applyRoundingRule(trays, "nearest", 2)} tray(s)` : "") +
+    (pcs != null ? ` (${applyRoundingRule(pcs, "nearest", 0)} pcs)` : "")
+  );
 }

@@ -21,6 +21,7 @@ import {
   mapCatalogueDraftStatus,
 } from "@/features/productWorkflow/productWorkflowState";
 import { supabase } from "@/integrations/supabase/client";
+import { jsonPayload } from "@/lib/jsonPayload";
 import type {
   CatalogueDraftAuditRow,
   CatalogueDraftContentKey,
@@ -98,7 +99,7 @@ export async function fetchDraftAuditLog(draftId: string): Promise<CatalogueDraf
 }
 
 /** All draft versions for a product, ascending by version_number (Point 40 read path). */
-export async function fetchAllDraftVersions(productId: string): Promise<CatalogueDraftRow[]> {
+async function fetchAllDraftVersions(productId: string): Promise<CatalogueDraftRow[]> {
   const { data, error } = await supabase
     .from("catalogue_ai_studio_drafts")
     .select("*")
@@ -109,7 +110,7 @@ export async function fetchAllDraftVersions(productId: string): Promise<Catalogu
 }
 
 /** Audit rows for multiple draft ids — grouped by draft_id (Point 40 read path). */
-export async function fetchAuditLogsForDraftIds(
+async function fetchAuditLogsForDraftIds(
   draftIds: string[],
 ): Promise<Map<string, CatalogueDraftAuditRow[]>> {
   const grouped = new Map<string, CatalogueDraftAuditRow[]>();
@@ -156,7 +157,7 @@ async function insertAudit(
     from_status: fromStatus,
     to_status: toStatus,
     actor_id: actorId,
-    ...(metadata ? { metadata } : {}),
+    ...(metadata ? { metadata: jsonPayload(metadata) } : {}),
   });
   if (error) throw new Error(error.message);
 }
@@ -172,6 +173,11 @@ export async function saveDraft(params: {
   content: DraftContentAndPrompts;
   actorId: string | null;
 }): Promise<CatalogueDraftRow> {
+  const { source_snapshot, ...draftContent } = params.content;
+  const content = {
+    ...draftContent,
+    ...(source_snapshot ? { source_snapshot: jsonPayload(source_snapshot) } : {}),
+  };
   const latest = await fetchLatestDraft(params.productId);
 
   if (latest) {
@@ -191,7 +197,7 @@ export async function saveDraft(params: {
     assertTerminalSnapshotNotMutatedInPlace(latest.status as CatalogueDraftStatus);
     const { data, error } = await supabase
       .from("catalogue_ai_studio_drafts")
-      .update({ ...params.content })
+      .update({ ...content })
       .eq("id", latest.id)
       .eq("status", "DRAFT")
       .select("*")
@@ -217,7 +223,7 @@ export async function saveDraft(params: {
       version_number: nextVersion,
       status: "DRAFT",
       created_by: params.actorId,
-      ...params.content,
+      ...content,
     })
     .select("*")
     .single();

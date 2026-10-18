@@ -229,7 +229,7 @@ describe("saveFastCreateProduct — governed draft only", () => {
       categoryKey: "other",
       saleType: "b2b_horeca",
     });
-    expect(result.draft).toBe(true);
+    expect("draft" in result && result.draft).toBe(true);
   });
 
   it("carries intake barcode into the draft and checks exact duplicate collisions", async () => {

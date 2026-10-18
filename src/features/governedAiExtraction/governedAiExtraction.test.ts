@@ -318,11 +318,11 @@ describe("enrichFastCreateWithGovernedAi", () => {
   it("records degraded provenance when alias fetch times out", async () => {
     const base = buildBaseSuggestions();
     invokeMock.mockResolvedValue({ data: null, error: { message: "offline" } });
-    const controller = new AbortController();
+    vi.useFakeTimers();
     const timeoutDescriptor = Object.getOwnPropertyDescriptor(AbortSignal, "timeout");
     Object.defineProperty(AbortSignal, "timeout", {
       configurable: true,
-      value: vi.fn().mockReturnValue(controller.signal),
+      value: undefined,
     });
     fetchMock.mockImplementation((_url: string, init?: RequestInit) => {
       return new Promise((_resolve, reject) => {
@@ -344,9 +344,9 @@ describe("enrichFastCreateWithGovernedAi", () => {
 
     try {
       const enrichmentPromise = enrichFastCreateWithGovernedAi(base, "Pyramid Baklawa", "baklawa");
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-      expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(controller.signal);
-      controller.abort();
+      await vi.advanceTimersByTimeAsync(15_000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock.mock.calls[0]?.[1]?.signal.aborted).toBe(true);
 
       const { provenance } = await enrichmentPromise;
 
@@ -360,6 +360,7 @@ describe("enrichFastCreateWithGovernedAi", () => {
         ),
       ).toBe(true);
     } finally {
+      vi.useRealTimers();
       if (timeoutDescriptor) {
         Object.defineProperty(AbortSignal, "timeout", timeoutDescriptor);
       } else {

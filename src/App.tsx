@@ -72,6 +72,7 @@ const App = () => (
                 element={
                   <CapabilityUnavailable
                     title="Public Catalogue"
+                    publicView
                     capability="the governed catalogues table"
                   />
                 }

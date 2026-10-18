@@ -9,6 +9,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 const baseUrl = (
   process.env.CERT_SUPABASE_URL ?? "https://tcxvcatsqqertcnycuop.supabase.co"
@@ -83,23 +84,27 @@ function runUnitHarness() {
   record(
     "unit harness (governed extraction + stale guard)",
     passed,
-    passed ? "18/18 tests passed" : (proc.stdout + proc.stderr).slice(-400),
+    passed ? "all targeted tests passed" : (proc.stdout + proc.stderr).slice(-400),
   );
   return passed;
 }
 
 function runRuntimeHarness(compliancePayload, aliasText) {
-  const proc = spawnSync("npx", ["vite-node", "scripts/certify-point30-runtime-harness.ts"], {
-    encoding: "utf8",
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      VITE_SUPABASE_URL: baseUrl,
-      VITE_SUPABASE_PUBLISHABLE_KEY: publishableKey ?? "cert-placeholder-key",
-      CERT_COMPLIANCE_PAYLOAD: JSON.stringify(compliancePayload),
-      CERT_ALIAS_TEXT: aliasText,
+  const proc = spawnSync(
+    "npx",
+    ["vite-node", fileURLToPath(new URL("./certify-point30-runtime-harness.ts", import.meta.url))],
+    {
+      encoding: "utf8",
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        VITE_SUPABASE_URL: baseUrl,
+        VITE_SUPABASE_PUBLISHABLE_KEY: publishableKey ?? "cert-placeholder-key",
+        CERT_COMPLIANCE_PAYLOAD: JSON.stringify(compliancePayload),
+        CERT_ALIAS_TEXT: aliasText,
+      },
     },
-  });
+  );
   return proc;
 }
 
@@ -109,7 +114,19 @@ async function main() {
   console.log(`Synthetic input: ${SYNTHETIC.product_name} / ${SYNTHETIC.category}`);
   console.log("");
 
-  runUnitHarness();
+  const unitPassed = runUnitHarness();
+  if (process.argv.includes("--local-only")) {
+    console.log("LIVE_PROVIDER_GATED: authenticated provider inference was not executed.");
+    console.log(
+      JSON.stringify({
+        scope: "local-governance",
+        live_provider: "LIVE_PROVIDER_GATED",
+        checks: results,
+      }),
+    );
+    process.exitCode = unitPassed ? 0 : 1;
+    return;
+  }
 
   const compliance = await fetchComplianceEdge();
   record(

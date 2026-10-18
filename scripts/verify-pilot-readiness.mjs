@@ -5,10 +5,10 @@
  * No master writes. Safe to run in CI with read-only anon key.
  */
 
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
@@ -198,7 +198,7 @@ async function main() {
     ...rows.map((r) => headers.map((h) => csvEscape(r[h])).join(",")),
   ].join("\n");
   const outPath = join(outDir, "ai_studio_5sku_readiness_matrix.csv");
-  writeFileSync(outPath, csv + "\n");
+  writeFileSync(outPath, `${csv}\n`);
   console.log(`\nWrote ${outPath}`);
 }
 

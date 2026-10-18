@@ -91,6 +91,7 @@ export function ComplianceAiPanel({
     const formFingerprintAtStart = complianceFormRevisionFingerprint(formRef.current);
     try {
       const { data, error } = await supabase.functions.invoke("generate-product-attributes", {
+        timeout: 30_000,
         body: {
           product_name: form.product_name,
           category: form.category,

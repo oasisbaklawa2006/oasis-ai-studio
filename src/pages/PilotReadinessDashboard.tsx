@@ -1,15 +1,15 @@
-import { useEffect, useState } from "react";
+import { ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "@/components/PageHeader";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
 import {
   evaluateAllPilotSkus,
   type PilotReadinessReport,
   type PilotSkuReadiness,
 } from "@/features/productAuthority/pilotReadiness";
-import { MEDIA_BUCKET_OWNER_ACTION } from "@/features/productAuthority/mediaReadiness";
 
 function statusBadge(status: string) {
   const map: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
@@ -64,7 +64,9 @@ function PilotSkuCard({ row }: { row: PilotSkuReadiness }) {
       </div>
 
       <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        <div>HSN: {row.hsnCode ?? "—"} · GST: {row.gstRate ?? "—"}</div>
+        <div>
+          HSN: {row.hsnCode ?? "—"} · GST: {row.gstRate ?? "—"}
+        </div>
         <div>
           g/pc: {row.gramsPerPiece ?? "—"} · pcs/kg: {row.piecesPerKg ?? "—"}
         </div>
@@ -75,7 +77,10 @@ function PilotSkuCard({ row }: { row: PilotSkuReadiness }) {
 
       <div className="grid sm:grid-cols-2 gap-2 text-sm">
         {checks.map(([label, status]) => (
-          <div key={label} className="flex items-center justify-between gap-2 rounded border px-2 py-1">
+          <div
+            key={label}
+            className="flex items-center justify-between gap-2 rounded border px-2 py-1"
+          >
             <span className="text-muted-foreground">{label}</span>
             {statusBadge(status)}
           </div>
@@ -112,7 +117,7 @@ const PilotReadinessDashboard = () => {
   const [error, setError] = useState<string | null>(null);
   const [report, setReport] = useState<PilotReadinessReport | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -123,11 +128,11 @@ const PilotReadinessDashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   return (
     <>
@@ -143,7 +148,11 @@ const PilotReadinessDashboard = () => {
               <Link to="/testing">Testing hub</Link>
             </Button>
             <Button variant="secondary" onClick={load} disabled={loading}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
               <span className="ml-2">Refresh</span>
             </Button>
           </div>
@@ -171,7 +180,8 @@ const PilotReadinessDashboard = () => {
             </div>
             {report.infra.projectRef && (
               <div className="text-xs text-muted-foreground">
-                Probed {new Date(report.infra.probedAt).toLocaleString()} · project {report.infra.projectRef}
+                Probed {new Date(report.infra.probedAt).toLocaleString()} · project{" "}
+                {report.infra.projectRef}
               </div>
             )}
           </div>
@@ -180,7 +190,13 @@ const PilotReadinessDashboard = () => {
             <h3 className="font-display text-lg mb-2">Infrastructure</h3>
             <InfraRow
               label="product-media bucket"
-              status={report.bucket.status === "available" ? "pass" : report.bucket.status === "missing" ? "fail" : "partial"}
+              status={
+                report.bucket.status === "available"
+                  ? "pass"
+                  : report.bucket.status === "missing"
+                    ? "fail"
+                    : "partial"
+              }
               message={report.bucket.message}
             />
             <InfraRow
@@ -226,8 +242,7 @@ const PilotReadinessDashboard = () => {
       )}
 
       <p className="mt-6 text-xs text-muted-foreground">
-        Reports:{" "}
-        <code>docs/AI_STUDIO_5SKU_PILOT_COMPLETION_REPORT.md</code> ·{" "}
+        Reports: <code>docs/AI_STUDIO_5SKU_PILOT_COMPLETION_REPORT.md</code> ·{" "}
         <code>data/pilot/ai_studio_5sku_readiness_matrix.csv</code>
       </p>
     </>

@@ -28,9 +28,7 @@ export type MoqRuleRow = {
   customer_type?: string | null;
 };
 
-function normalizePriceStatus(
-  raw: string | null | undefined,
-): ChannelPriceRecord["priceStatus"] {
+function normalizePriceStatus(raw: string | null | undefined): ChannelPriceRecord["priceStatus"] {
   const s = String(raw ?? "draft").toLowerCase();
   if (s === "approved") return "approved";
   if (s === "needs_review" || s === "pending_approval" || s === "pending") {
@@ -40,7 +38,7 @@ function normalizePriceStatus(
   return "draft";
 }
 
-export function pricingRuleRowToChannelPrice(row: PricingRuleRow): ChannelPriceRecord {
+function pricingRuleRowToChannelPrice(row: PricingRuleRow): ChannelPriceRecord {
   const channel = String(row.price_channel ?? "").trim();
   const calculated = row.calculated_price ?? null;
   const base = row.base_price ?? null;
@@ -62,7 +60,7 @@ export function pricingRuleRowToChannelPrice(row: PricingRuleRow): ChannelPriceR
   };
 }
 
-export function moqRuleRowToChannelMoq(row: MoqRuleRow): ChannelMoqRule {
+function moqRuleRowToChannelMoq(row: MoqRuleRow): ChannelMoqRule {
   return {
     channel: String(row.channel ?? "").trim(),
     moqApplicable: row.moq_applicable ?? true,
@@ -100,8 +98,4 @@ export function configuredChannels(
     if (m.channel) channels.add(String(m.channel));
   }
   return Array.from(channels).sort((a, b) => a.localeCompare(b));
-}
-
-export function formatChannelLabel(channel: string): string {
-  return channel.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
 }

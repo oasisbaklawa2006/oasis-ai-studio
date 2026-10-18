@@ -13,13 +13,10 @@ import type {
   CatalogueDraftRow,
   CatalogueDraftStatus,
 } from "@/features/catalogueAiStudio/catalogueDraftTypes";
-import {
-  type PredecessorLinkage,
-  isTerminalDraftStatus,
-} from "./productCorrectionContract";
+import { isTerminalDraftStatus, type PredecessorLinkage } from "./productCorrectionContract";
 import { mapCatalogueDraftStatus } from "./productWorkflowState";
 
-export const POINT_40_READ_MODEL_SCHEMA = "point40_v1" as const;
+const POINT_40_READ_MODEL_SCHEMA = "point40_v1" as const;
 
 /** Metadata keys that must never surface in version history UI. */
 const SECRET_METADATA_KEYS = new Set([
@@ -39,7 +36,7 @@ const GOVERNED_AUDIT_ACTIONS = new Set([
   "REJECT",
 ]);
 
-export type ProductWorkflowVersionRecord = {
+type ProductWorkflowVersionRecord = {
   draft_id: string;
   version_number: number;
   status: CatalogueDraftStatus;
@@ -55,7 +52,7 @@ export type ProductWorkflowVersionRecord = {
   predecessor: PredecessorLinkage | null;
 };
 
-export type ProductWorkflowAuditEvent = {
+type ProductWorkflowAuditEvent = {
   id: string;
   draft_id: string;
   version_number: number;
@@ -114,10 +111,7 @@ export function parsePredecessorLinkage(
   return linkage;
 }
 
-export function auditEventReason(
-  entry: CatalogueDraftAuditRow,
-  safeMetadata: Record<string, unknown>,
-): string | null {
+export function auditEventReason(safeMetadata: Record<string, unknown>): string | null {
   const rejection = safeMetadata.rejection_reason;
   if (typeof rejection === "string" && rejection.trim()) return rejection.trim();
   const prior = safeMetadata.previous_version_rejection_reason;
@@ -164,9 +158,7 @@ export function buildProductVersionHistory(input: {
 }): ProductVersionHistoryReadModel {
   const sortedDrafts = [...input.drafts].sort((a, b) => a.version_number - b.version_number);
   const headVersionNumber =
-    sortedDrafts.length > 0
-      ? Math.max(...sortedDrafts.map((d) => d.version_number))
-      : 0;
+    sortedDrafts.length > 0 ? Math.max(...sortedDrafts.map((d) => d.version_number)) : 0;
 
   const draftByVersion = new Map(sortedDrafts.map((d) => [d.version_number, d]));
   const chainErrors: string[] = [];
@@ -207,7 +199,10 @@ export function buildProductVersionHistory(input: {
           `Version v${draft.version_number} predecessor_draft_id does not match v${predecessor.predecessor_version_number} row.`,
         );
       }
-      if (predDraft && new Date(draft.created_at).getTime() < new Date(predDraft.created_at).getTime()) {
+      if (
+        predDraft &&
+        new Date(draft.created_at).getTime() < new Date(predDraft.created_at).getTime()
+      ) {
         chainErrors.push(
           `Version v${draft.version_number} created_at precedes predecessor v${predecessor.predecessor_version_number}.`,
         );
@@ -217,8 +212,7 @@ export function buildProductVersionHistory(input: {
     const status = draft.status as CatalogueDraftStatus;
     const terminalSave = audits.some(
       (e) =>
-        e.action === "SAVE_DRAFT" &&
-        (e.from_status === "APPROVED" || e.from_status === "REJECTED"),
+        e.action === "SAVE_DRAFT" && (e.from_status === "APPROVED" || e.from_status === "REJECTED"),
     );
     if (terminalSave) {
       chainErrors.push(
@@ -262,16 +256,14 @@ export function buildProductVersionHistory(input: {
         to_status: entry.to_status,
         actor_id: entry.actor_id,
         created_at: entry.created_at,
-        reason: auditEventReason(entry, metadataSafe),
+        reason: auditEventReason(metadataSafe),
         change_summary: summarizeAuditAction(entry),
         metadata_safe: metadataSafe,
       });
     }
   }
 
-  events.sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-  );
+  events.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   for (let i = 1; i < versions.length; i++) {
     const prev = versions[i - 1];

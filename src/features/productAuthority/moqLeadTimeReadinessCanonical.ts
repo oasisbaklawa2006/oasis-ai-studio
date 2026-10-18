@@ -362,7 +362,7 @@ export function evaluateLeadTimeAuthority(
     };
   }
 
-  if (rawProduct != null && rawProduct !== "" && productDays == null) {
+  if (rawProduct != null && productDays == null) {
     return {
       persistence: "products_row",
       state: "invalid",

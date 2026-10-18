@@ -7,21 +7,29 @@ if (import.meta.env.DEV) {
     const sw = document.documentElement.scrollWidth;
     const cw = document.documentElement.clientWidth;
     if (sw > cw) {
-      // eslint-disable-next-line no-console
-      console.warn(`[overflow] ${location.pathname} scrollWidth=${sw} > clientWidth=${cw} (overflow ${sw - cw}px)`);
+      console.warn(
+        `[overflow] ${location.pathname} scrollWidth=${sw} > clientWidth=${cw} (overflow ${sw - cw}px)`,
+      );
     }
   };
   let t: number | undefined;
-  const schedule = () => { window.clearTimeout(t); t = window.setTimeout(check, 400); };
+  const schedule = () => {
+    window.clearTimeout(t);
+    t = window.setTimeout(check, 400);
+  };
   window.addEventListener("popstate", schedule);
   window.addEventListener("resize", schedule);
   const origPush = history.pushState;
   history.pushState = function (...args) {
-    const r = origPush.apply(this, args as any);
+    const r = origPush.apply(this, args);
     schedule();
     return r;
   };
   schedule();
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Application root element #root is missing.");
+}
+createRoot(rootElement).render(<App />);
