@@ -226,7 +226,9 @@ const PilotAliasReview = () => {
                   <Button
                     size="icon"
                     variant="outline"
-                    onClick={() => updateStatus(term.id, "rejected")}
+                    onClick={() => {
+                      updateStatus(term.id, "rejected");
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </Button>

@@ -93,15 +93,13 @@ const Badge = ({
   children: React.ReactNode;
   title?: string;
 }) => {
-  const map = {
-    ok: "bg-success/10 text-success",
-    warn: "bg-warning/10 text-warning",
-    muted: "bg-muted text-muted-foreground",
-    accent: "bg-accent-soft text-accent-foreground",
-    primary: "bg-primary/10 text-primary",
-  } as const;
+  let toneClass = "bg-muted text-muted-foreground";
+  if (tone === "ok") toneClass = "bg-success/10 text-success";
+  else if (tone === "warn") toneClass = "bg-warning/10 text-warning";
+  else if (tone === "accent") toneClass = "bg-accent-soft text-accent-foreground";
+  else if (tone === "primary") toneClass = "bg-primary/10 text-primary";
   return (
-    <span title={title} className={`badge-soft ${map[tone]}`}>
+    <span title={title} className={`badge-soft ${toneClass}`}>
       {children}
     </span>
   );
@@ -327,8 +325,14 @@ const Products = () => {
   const by = (t: string) => rules.filter((r) => r.code_type === t);
   const copy = (e: React.MouseEvent, sku: string) => {
     e.preventDefault();
-    navigator.clipboard.writeText(sku);
-    toast.success("SKU copied");
+    void navigator.clipboard.writeText(sku).then(
+      () => {
+        toast.success("SKU copied");
+      },
+      () => {
+        toast.error("Could not copy SKU");
+      },
+    );
   };
 
   const activeFilterCount = [
@@ -400,7 +404,9 @@ const Products = () => {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowFilters((v) => !v)}
+              onClick={() => {
+                setShowFilters((v) => !v);
+              }}
               className="shrink-0 rounded-full"
             >
               <Filter className="h-3.5 w-3.5 mr-1" />
@@ -418,7 +424,9 @@ const Products = () => {
             <select
               className="h-9 px-2 rounded-full border border-border/60 bg-background text-xs hidden sm:block max-w-[160px] truncate"
               value={sort}
-              onChange={(e) => setSort(e.target.value)}
+              onChange={(e) => {
+                setSort(e.target.value);
+              }}
             >
               {SORTS.map((s) => (
                 <option key={s.v} value={s.v}>
@@ -470,7 +478,9 @@ const Products = () => {
                 <select
                   className={sel}
                   value={prodDept}
-                  onChange={(e) => setProdDept(e.target.value)}
+                  onChange={(e) => {
+                    setProdDept(e.target.value);
+                  }}
                 >
                   <option value="">All production depts</option>
                   {PROD_DEPTS.map((d) => (
@@ -510,7 +520,9 @@ const Products = () => {
                 <select
                   className={sel}
                   value={labelStatus}
-                  onChange={(e) => setLabelStatus(e.target.value)}
+                  onChange={(e) => {
+                    setLabelStatus(e.target.value);
+                  }}
                 >
                   <option value="">Label: all</option>
                   {LABEL_STATUSES.map((s) => (
@@ -639,7 +651,9 @@ const Products = () => {
                         <span className="truncate">{p.sku}</span>
                         <button
                           type="button"
-                          onClick={(e) => copy(e, p.sku ?? "")}
+                          onClick={(e) => {
+                            copy(e, p.sku ?? "");
+                          }}
                           className="hover:text-foreground shrink-0"
                         >
                           <Copy className="h-3 w-3" />

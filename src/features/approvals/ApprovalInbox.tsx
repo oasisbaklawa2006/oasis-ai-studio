@@ -122,13 +122,14 @@ const formatAge = (dateStr?: string | null) => {
 
 const nestedRead = (payload: Record<string, unknown> | null | undefined, path: string) => {
   if (!payload) return undefined;
-  return path
-    .split(".")
-    .reduce<unknown>(
-      (acc, key) =>
-        acc && typeof acc === "object" ? (acc as Record<string, unknown>)[key] : undefined,
-      payload,
-    );
+  let current: unknown = payload;
+  for (const key of path.split(".")) {
+    if (!current || typeof current !== "object") return undefined;
+    const descriptor = Object.getOwnPropertyDescriptor(current, key);
+    if (!descriptor) return undefined;
+    current = descriptor.value;
+  }
+  return current;
 };
 
 const read = (payload: Record<string, unknown> | null | undefined, ...paths: string[]) => {

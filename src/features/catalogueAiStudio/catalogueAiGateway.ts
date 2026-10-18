@@ -170,7 +170,9 @@ export async function generateCatalogueContentDraft(
   let resp: Response;
   let payload: unknown;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), CATALOGUE_AI_TIMEOUT_MS);
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, CATALOGUE_AI_TIMEOUT_MS);
   try {
     resp = await fetch(`${supabaseUrl}/functions/v1/catalogue-ai-copy`, {
       method: "POST",

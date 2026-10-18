@@ -153,8 +153,8 @@ export function resolveProductFromCatalog(
   }
 
   const top = candidates[0];
-  const second = candidates[1];
-  const ambiguous = second != null && top.confidence - second.confidence < config.ambiguity_delta;
+  const second = candidates.at(1);
+  const ambiguous = second !== undefined && top.confidence - second.confidence < config.ambiguity_delta;
   const belowThreshold = top.confidence < config.min_threshold;
   const clarification_required = ambiguous || belowThreshold;
 

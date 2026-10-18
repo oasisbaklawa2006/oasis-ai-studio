@@ -249,8 +249,14 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
               size="icon"
               variant="ghost"
               onClick={() => {
-                void navigator.clipboard.writeText(value.sku ?? "");
-                toast.success("Copied");
+                void navigator.clipboard.writeText(value.sku ?? "").then(
+                  () => {
+                    toast.success("Copied");
+                  },
+                  () => {
+                    toast.error("Could not copy SKU");
+                  },
+                );
               }}
             >
               <Copy className="h-4 w-4" />
@@ -281,13 +287,17 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
           label="Subcategory"
           value={value.subcategory_code}
           options={subcategoryOptions}
-          onChange={(v: string | null) => onChange({ subcategory_code: v })}
+          onChange={(v: string | null) => {
+            onChange({ subcategory_code: v });
+          }}
         />
         <Sel
           label="Packaging"
           value={value.packaging_code}
           options={packagingOptions}
-          onChange={(v: string | null) => onChange({ packaging_code: v })}
+          onChange={(v: string | null) => {
+            onChange({ packaging_code: v });
+          }}
         />
       </div>
 
@@ -318,12 +328,22 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
           Generate SKU
         </Button>
         {!value.sku_locked && !typingIn && (
-          <Button variant="outline" onClick={() => setTypingIn(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setTypingIn(true);
+            }}
+          >
             Type SKU
           </Button>
         )}
         {canOverride && !overriding && value.sku_locked && (
-          <Button variant="outline" onClick={() => setOverriding(true)}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setOverriding(true);
+            }}
+          >
             Override SKU
           </Button>
         )}
@@ -334,7 +354,9 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
           <Input
             placeholder="Enter SKU code"
             value={manualSku}
-            onChange={(e) => setManualSku(e.target.value)}
+            onChange={(e) => {
+              setManualSku(e.target.value);
+            }}
           />
           <div className="flex gap-2">
             <Button size="sm" onClick={applyManualSku}>
@@ -366,18 +388,28 @@ export function SkuBuilder({ value, canOverride, productClass, onChange }: Props
           <Input
             placeholder="New SKU"
             value={overrideSku}
-            onChange={(e) => setOverrideSku(e.target.value)}
+            onChange={(e) => {
+              setOverrideSku(e.target.value);
+            }}
           />
           <Input
             placeholder="Reason for override"
             value={reason}
-            onChange={(e) => setReason(e.target.value)}
+            onChange={(e) => {
+              setReason(e.target.value);
+            }}
           />
           <div className="flex gap-2">
             <Button size="sm" onClick={applyOverride}>
               Apply override
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setOverriding(false)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setOverriding(false);
+              }}
+            >
               Cancel
             </Button>
           </div>
