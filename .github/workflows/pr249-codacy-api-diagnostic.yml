@@ -1,0 +1,20 @@
+name: PR249 Codacy API diagnostic
+
+on:
+  push:
+    branches:
+      - fix/240-review-recovery-ai-timeout
+
+permissions:
+  contents: read
+
+jobs:
+  issues:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Codacy public PR issue data
+        run: |
+          set -euo pipefail
+          curl -fsSL -H 'Accept: application/json' \
+            'https://api.codacy.com/api/v3/analysis/organizations/gh/oasisbaklawa2006/repositories/oasis-ai-studio/pull-requests/249/issues?status=new&limit=100' \
+            | jq -c '.data[] | {issueId,filePath,lineNumber,patternInfo,toolInfo,potentialFalsePositive,commitInfo,message}'
