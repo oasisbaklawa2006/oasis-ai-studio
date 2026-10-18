@@ -1,0 +1,21 @@
+name: PR249 Codacy diagnostic
+
+on:
+  push:
+    branches:
+      - fix/240-review-recovery-ai-timeout
+
+permissions:
+  contents: read
+  checks: read
+
+jobs:
+  annotations:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Codacy check annotations
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/check-runs/117546116808/annotations?per_page=100" --paginate             --jq '.[] | {path,start_line,end_line,annotation_level,title,message,raw_details}'
