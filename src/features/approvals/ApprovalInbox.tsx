@@ -165,23 +165,28 @@ const formatProductMoq = (payload: Record<string, unknown> | null | undefined) =
 };
 
 const formatPricing = (payload: Record<string, unknown> | null | undefined) => {
-  const mrp = nestedRead(payload, "pricing.mrp");
-  const b2b = nestedRead(payload, "pricing.b2b_price");
-  const exportPrice = nestedRead(payload, "pricing.export_price");
-  const gst = nestedRead(payload, "pricing.gst_rate");
+  // Never coerce arbitrary draft JSON to a string: objects render as "[object Object]".
+  const displayValue = (value: unknown): string | null =>
+    typeof value === "string" && value.trim()
+      ? value.trim()
+      : typeof value === "number" && Number.isFinite(value)
+        ? String(value)
+        : null;
 
-  const lines = [
-    mrp !== undefined && mrp !== null && mrp !== "" ? `MRP: ${mrp}` : null,
-    b2b !== undefined && b2b !== null && b2b !== "" ? `B2B: ${b2b}` : null,
-    exportPrice !== undefined && exportPrice !== null && exportPrice !== ""
-      ? `Export: ${exportPrice}`
-      : null,
-    gst !== undefined && gst !== null && gst !== "" ? `GST: ${gst}` : null,
-  ].filter(Boolean);
-
+  const fields = [
+    ["MRP", "pricing.mrp"],
+    ["B2B", "pricing.b2b_price"],
+    ["Export", "pricing.export_price"],
+    ["GST", "pricing.gst_rate"],
+  ] as const;
+  const lines = fields.flatMap(([label, path]) => {
+    const value = displayValue(nestedRead(payload, path));
+    return value === null ? [] : [`${label}: ${value}`];
+  });
   if (lines.length) return lines.join(" • ");
-  const legacy = read(payload, "pricing");
-  return legacy !== "—" ? legacy : "—";
+
+  // Older drafts may contain a scalar instead of the current structured pricing.
+  return displayValue(nestedRead(payload, "pricing")) ?? "—";
 };
 
 const formatBom = (payload: Record<string, unknown> | null | undefined) => {
