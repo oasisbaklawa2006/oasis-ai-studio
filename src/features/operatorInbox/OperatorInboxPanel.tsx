@@ -93,9 +93,7 @@ function MessageRow({ message, existingDraft, onDraftCreated }: MessageRowProps)
         if (cancelled) return;
         if (res) {
           setResolution(res);
-          setOperator((prev) =>
-            mergeOperatorStateOnResolution(prev, res, draftForResolution()),
-          );
+          setOperator((prev) => mergeOperatorStateOnResolution(prev, res, draftForResolution()));
         } else {
           setResolution(null);
           setResolverError("Resolver unavailable — message shown without suggestion.");
