@@ -22,7 +22,11 @@ import type {
   ChannelPriceRecord,
   ProductTruthInput,
 } from "@/features/productTruth/types";
-import { isImmutableVersion, updateCatalogueVersionSnapshot } from "./catalogueVersionStore";
+import {
+  catalogueVersionApprovalPatch,
+  isImmutableVersion,
+  updateCatalogueVersionSnapshot,
+} from "./catalogueVersionStore";
 import {
   buildCentralSyncPreviewBundle,
   isStaleCatalogueVersion,
@@ -83,6 +87,18 @@ const completeInput: ProductTruthInput = {
 };
 
 describe("catalogueSnapshot", () => {
+  it("keeps approval distinct from publication", () => {
+    const patch = catalogueVersionApprovalPatch("2026-10-30T00:00:00.000Z", "reviewer-1");
+
+    expect(patch).toEqual({
+      status: "approved",
+      approved_by: "reviewer-1",
+      approved_at: "2026-10-30T00:00:00.000Z",
+      updated_at: "2026-10-30T00:00:00.000Z",
+    });
+    expect(patch).not.toHaveProperty("published_at");
+  });
+
   it("blocks snapshot when compliance pending", () => {
     const readiness = evaluateProductReadiness({
       ...completeInput,

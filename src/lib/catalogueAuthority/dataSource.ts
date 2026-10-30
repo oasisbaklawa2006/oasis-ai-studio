@@ -15,6 +15,12 @@ export function getCollectionsPersistenceSource(): CataloguePersistenceSource {
   return collectionsSource;
 }
 
+export function isCatalogueCollectionAuthoringAvailable(
+  source: CataloguePersistenceSource,
+): boolean {
+  return source === "supabase" || source === "local_only";
+}
+
 export function setCollectionsLoadFailure(failure: SupabaseFailure | null) {
   collectionsLoadFailure = failure;
 }

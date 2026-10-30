@@ -1,6 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
 import {
+  setVersionsLoadFailure,
+  setVersionsPersistenceSource,
+} from "@/lib/catalogueAuthority/dataSource";
+import {
   assertLocalCatalogueFallbackWrite,
   isLocalCatalogueFallbackReadEnabled,
   isLocalCatalogueFallbackWriteEnabled,
@@ -9,25 +13,21 @@ import {
   supabaseAuthorityErrorMessage,
   throwSupabaseAuthorityError,
 } from "@/lib/catalogueAuthority/supabaseAuthorityError";
-import {
-  getVersionsPersistenceSource,
-  setVersionsLoadFailure,
-  setVersionsPersistenceSource,
-} from "@/lib/catalogueAuthority/dataSource";
 import { diagnoseSupabaseFailure } from "@/lib/supabase/diagnostics";
 import {
-  IMMUTABLE_VERSION_STATUSES,
   type CatalogueSnapshotJson,
   type CatalogueSyncEventRow,
   type CatalogueVersionRow,
   type CatalogueVersionStatus,
   type CentralSyncPreviewBundle,
+  IMMUTABLE_VERSION_STATUSES,
 } from "./types";
 
 const STORAGE_PREFIX = "oasis_catalogue_versions_";
 const EVENTS_PREFIX = "oasis_catalogue_sync_events_";
 
-const authorityDb = supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
+const authorityDb =
+  supabase as unknown as import("@supabase/supabase-js").SupabaseClient<ExtendedDatabase>;
 
 function storageKey(productId: string) {
   return `${STORAGE_PREFIX}${productId}`;
@@ -71,7 +71,10 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
-export { getVersionsPersistenceSource, getVersionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
+export {
+  getVersionsLoadFailure,
+  getVersionsPersistenceSource,
+} from "@/lib/catalogueAuthority/dataSource";
 
 export function nextVersionNumber(existing: CatalogueVersionRow[]): number {
   if (!existing.length) return 1;
@@ -87,9 +90,16 @@ export function isImmutableVersion(status: CatalogueVersionStatus): boolean {
   return IMMUTABLE_VERSION_STATUSES.includes(status);
 }
 
-export async function listCatalogueVersions(
-  productId: string,
-): Promise<CatalogueVersionRow[]> {
+export function catalogueVersionApprovalPatch(now: string, approvedBy?: string | null) {
+  return {
+    status: "approved" as const,
+    approved_by: approvedBy ?? null,
+    approved_at: now,
+    updated_at: now,
+  };
+}
+
+export async function listCatalogueVersions(productId: string): Promise<CatalogueVersionRow[]> {
   try {
     const { data, error } = await authorityDb
       .from("catalogue_versions")
@@ -199,25 +209,16 @@ export async function approveCatalogueVersion(args: {
   }
 
   const now = new Date().toISOString();
+  const approvalPatch = catalogueVersionApprovalPatch(now, args.approvedBy);
   const updated: CatalogueVersionRow = {
     ...current,
-    status: "approved",
-    approved_by: args.approvedBy ?? null,
-    approved_at: now,
-    published_at: now,
-    updated_at: now,
+    ...approvalPatch,
   };
 
   try {
     const { data, error } = await authorityDb
       .from("catalogue_versions")
-      .update({
-        status: updated.status,
-        approved_by: updated.approved_by,
-        approved_at: updated.approved_at,
-        published_at: updated.published_at,
-        updated_at: updated.updated_at,
-      })
+      .update(approvalPatch)
       .eq("id", args.versionId)
       .select("*")
       .single();
@@ -247,7 +248,9 @@ export async function approveCatalogueVersion(args: {
     return {
       ok: false,
       message:
-        err instanceof Error ? err.message : "Local catalogue fallback is disabled for this action.",
+        err instanceof Error
+          ? err.message
+          : "Local catalogue fallback is disabled for this action.",
     };
   }
 
@@ -315,7 +318,9 @@ export async function updateCatalogueVersionSnapshot(args: {
     return {
       ok: false,
       message:
-        err instanceof Error ? err.message : "Local catalogue fallback is disabled for this action.",
+        err instanceof Error
+          ? err.message
+          : "Local catalogue fallback is disabled for this action.",
     };
   }
 
@@ -389,9 +394,7 @@ export async function recordSyncPreviewEvent(args: {
   return event;
 }
 
-export async function listSyncPreviewEvents(
-  productId: string,
-): Promise<CatalogueSyncEventRow[]> {
+export async function listSyncPreviewEvents(productId: string): Promise<CatalogueSyncEventRow[]> {
   try {
     const versions = await listCatalogueVersions(productId);
     const versionIds = versions.map((v) => v.id);

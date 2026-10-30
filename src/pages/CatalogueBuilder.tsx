@@ -76,7 +76,10 @@ import {
   productDisplayName,
   productVisibleInActiveView,
 } from "@/features/productMaster/productListModel";
-import { getCollectionsLoadFailure } from "@/lib/catalogueAuthority/dataSource";
+import {
+  getCollectionsLoadFailure,
+  isCatalogueCollectionAuthoringAvailable,
+} from "@/lib/catalogueAuthority/dataSource";
 import { resolveProductCardHeroUrl } from "@/lib/productImage";
 
 const COLLECTION_TYPE_LABELS: Record<CatalogueCollectionType, string> = {
@@ -118,6 +121,7 @@ export default function CatalogueBuilder() {
   );
   const persistenceSource = getCollectionsPersistenceSource();
   const loadFailure = getCollectionsLoadFailure();
+  const collectionsAvailable = isCatalogueCollectionAuthoringAvailable(persistenceSource);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -224,22 +228,32 @@ export default function CatalogueBuilder() {
   }, [products, items]);
 
   const handleCreateCollection = async () => {
+    if (!collectionsAvailable) {
+      toast.error(
+        "Catalogue collections are unavailable until the governed Core contract is deployed.",
+      );
+      return;
+    }
     if (!newTitle.trim()) {
       toast.error("Enter a collection title");
       return;
     }
-    const col = await createCollection({
-      title: newTitle.trim(),
-      catalogue_type: newType,
-    });
-    setCollections((prev) => [col, ...prev]);
-    setActiveId(col.id);
-    setNewTitle("");
-    toast.success("Collection created");
+    try {
+      const col = await createCollection({
+        title: newTitle.trim(),
+        catalogue_type: newType,
+      });
+      setCollections((prev) => [col, ...prev]);
+      setActiveId(col.id);
+      setNewTitle("");
+      toast.success("Collection created");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not create collection");
+    }
   };
 
   const handleAddProduct = async () => {
-    if (!activeId || !addProductId) return;
+    if (!collectionsAvailable || !activeId || !addProductId) return;
     try {
       await addProductToCollection({ collectionId: activeId, productId: addProductId });
       const next = await listCollectionItems(activeId);
@@ -252,13 +266,17 @@ export default function CatalogueBuilder() {
   };
 
   const handleRemove = async (productId: string) => {
-    if (!activeId) return;
-    await removeProductFromCollection(activeId, productId);
-    setItems(await listCollectionItems(activeId));
+    if (!collectionsAvailable || !activeId) return;
+    try {
+      await removeProductFromCollection(activeId, productId);
+      setItems(await listCollectionItems(activeId));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not remove product");
+    }
   };
 
   const moveProduct = async (productId: string, direction: -1 | 1) => {
-    if (!activeId) return;
+    if (!collectionsAvailable || !activeId) return;
     const ids = items
       .slice()
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -280,9 +298,13 @@ export default function CatalogueBuilder() {
     productId: string,
     visibility: CatalogueCollectionItemRow["price_visibility"],
   ) => {
-    if (!activeId) return;
-    await updateCollectionItem(activeId, productId, { price_visibility: visibility });
-    setItems(await listCollectionItems(activeId));
+    if (!collectionsAvailable || !activeId) return;
+    try {
+      await updateCollectionItem(activeId, productId, { price_visibility: visibility });
+      setItems(await listCollectionItems(activeId));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update price visibility");
+    }
   };
 
   const handleWhatsAppPreview = () => {
@@ -382,6 +404,16 @@ export default function CatalogueBuilder() {
             </span>
           </div>
         )}
+        {!collectionsAvailable && (
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-sm flex gap-2">
+            <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+            <span>
+              Collection authoring is unavailable because the governed Core collection tables are
+              not deployed. Product editing and approved per-product catalogue snapshots remain
+              available; no browser-local collection will be created in production.
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -433,7 +465,12 @@ export default function CatalogueBuilder() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button className="w-full" size="sm" onClick={handleCreateCollection}>
+                <Button
+                  className="w-full"
+                  size="sm"
+                  onClick={handleCreateCollection}
+                  disabled={loading || !collectionsAvailable}
+                >
                   <Plus className="h-4 w-4 mr-1" />
                   Create collection
                 </Button>
@@ -465,7 +502,9 @@ export default function CatalogueBuilder() {
           {!activeCollection ? (
             <Card>
               <CardContent className="py-12 text-center text-muted-foreground">
-                Create or select a collection to start building a print catalogue.
+                {collectionsAvailable
+                  ? "Create or select a collection to start building a print catalogue."
+                  : "Collection authoring is blocked until the governed Core collection contract is deployed."}
               </CardContent>
             </Card>
           ) : (
@@ -555,7 +594,10 @@ export default function CatalogueBuilder() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button onClick={handleAddProduct} disabled={!addProductId}>
+                    <Button
+                      onClick={handleAddProduct}
+                      disabled={!collectionsAvailable || !addProductId}
+                    >
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -642,6 +684,7 @@ export default function CatalogueBuilder() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
+                                    disabled={!collectionsAvailable}
                                     onClick={() => moveProduct(item.product_id, -1)}
                                   >
                                     <ArrowUp className="h-4 w-4" />
@@ -649,6 +692,7 @@ export default function CatalogueBuilder() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
+                                    disabled={!collectionsAvailable}
                                     onClick={() => moveProduct(item.product_id, 1)}
                                   >
                                     <ArrowDown className="h-4 w-4" />
@@ -656,6 +700,7 @@ export default function CatalogueBuilder() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
+                                    disabled={!collectionsAvailable}
                                     onClick={() => handleRemove(item.product_id)}
                                   >
                                     <Trash2 className="h-4 w-4 text-destructive" />
@@ -665,6 +710,7 @@ export default function CatalogueBuilder() {
                               <div className="mt-2 flex flex-wrap gap-2 items-center">
                                 <Select
                                   value={item.price_visibility}
+                                  disabled={!collectionsAvailable}
                                   onValueChange={(v) =>
                                     handlePriceVisibility(
                                       item.product_id,
