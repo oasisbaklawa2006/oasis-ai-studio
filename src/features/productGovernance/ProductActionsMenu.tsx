@@ -1,4 +1,4 @@
-import { Archive, Copy, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Archive, Copy, Image, MoreVertical, Pencil, Trash2, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  productCatalogueCopyRoute,
+  productMediaRoute,
+} from "@/features/productJourney/productJourneyRoutes";
 import { isSuperAdmin } from "@/shared/auth/centralPermissions";
 import { ArchiveProductDialog } from "./ArchiveProductDialog";
 import { PermanentDeleteProductDialog } from "./PermanentDeleteProductDialog";
@@ -66,7 +70,27 @@ export function ProductActionsMenu({ product, onChanged, className }: Props) {
             }}
           >
             <Pencil className="h-4 w-4 mr-2" />
-            Edit
+            Edit product
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(productMediaRoute(product.id));
+            }}
+          >
+            <Image className="h-4 w-4 mr-2" />
+            Manage images
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              navigate(productCatalogueCopyRoute(product.id));
+            }}
+          >
+            <Wand2 className="h-4 w-4 mr-2" />
+            Prepare catalogue copy
           </DropdownMenuItem>
           <DropdownMenuItem
             onClick={(e) => {
