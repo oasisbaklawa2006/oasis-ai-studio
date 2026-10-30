@@ -81,6 +81,7 @@ import {
   isCatalogueCollectionAuthoringAvailable,
 } from "@/lib/catalogueAuthority/dataSource";
 import { resolveProductCardHeroUrl } from "@/lib/productImage";
+import { formatSupabaseFailure } from "@/lib/supabase/diagnostics";
 
 const COLLECTION_TYPE_LABELS: Record<CatalogueCollectionType, string> = {
   b2b_catalogue: "B2B Catalogue",
@@ -408,9 +409,12 @@ export default function CatalogueBuilder() {
           <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-sm flex gap-2">
             <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
             <span>
-              Collection authoring is unavailable because the governed Core collection tables are
-              not deployed. Product editing and approved per-product catalogue snapshots remain
-              available; no browser-local collection will be created in production.
+              Collection authoring is unavailable.{" "}
+              {loadFailure
+                ? formatSupabaseFailure(loadFailure)
+                : "The governed Core collection contract could not be verified."}{" "}
+              Product editing and approved per-product catalogue snapshots remain available; no
+              browser-local collection will be created in production.
             </span>
           </div>
         )}
