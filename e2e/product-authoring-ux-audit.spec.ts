@@ -159,8 +159,15 @@ async function countFormControls(page: Page) {
 
 async function loginStudio(page: Page, email: string, password: string) {
   await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
+  await page.waitForURL(/\/auth(?:$|[?#])/, { timeout: 30_000 });
+  const emailInput = page
+    .locator('input[type="email"], input[name="email"], input[autocomplete="username"]')
+    .first();
+  const passwordInput = page.locator('input[type="password"]').first();
+  await emailInput.waitFor({ state: "visible", timeout: 30_000 });
+  await passwordInput.waitFor({ state: "visible", timeout: 30_000 });
+  await emailInput.fill(email);
+  await passwordInput.fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL((url) => !url.pathname.includes("/auth"), { timeout: 45_000 });
 }

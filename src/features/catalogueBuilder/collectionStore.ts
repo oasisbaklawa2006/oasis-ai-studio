@@ -82,9 +82,33 @@ export async function listCollections(): Promise<CatalogueCollectionRow[]> {
       .select("*")
       .order("updated_at", { ascending: false });
     if (!error) {
-      setCollectionsPersistenceSource("supabase");
-      setCollectionsLoadFailure(null);
-      return (data ?? []) as CatalogueCollectionRow[];
+      const collections = (data ?? []) as CatalogueCollectionRow[];
+
+      try {
+        const { error: itemsError } = await authorityDb
+          .from("catalogue_collection_items")
+          .select("id")
+          .limit(1);
+        if (!itemsError) {
+          setCollectionsPersistenceSource("supabase");
+          setCollectionsLoadFailure(null);
+          return collections;
+        }
+
+        setCollectionsLoadFailure(
+          diagnoseSupabaseFailure(itemsError, "catalogue_collection_items availability"),
+        );
+      } catch (err) {
+        setCollectionsLoadFailure(
+          diagnoseSupabaseFailure(
+            err instanceof Error ? { message: err.message } : { message: String(err) },
+            "catalogue_collection_items availability",
+          ),
+        );
+      }
+
+      setCollectionsPersistenceSource("supabase_unavailable");
+      return collections;
     }
 
     const failure = diagnoseSupabaseFailure(error, "catalogue_collections list");
