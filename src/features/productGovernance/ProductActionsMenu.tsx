@@ -30,6 +30,10 @@ type Props = {
   hasUnsavedChanges?: boolean;
 };
 
+/**
+ * Role-aware product actions that preserve canonical identity and guard unsaved editor changes.
+ * Visibility improves UX only; destination routes and backend policies remain authoritative.
+ */
 export function ProductActionsMenu({
   product,
   onChanged,

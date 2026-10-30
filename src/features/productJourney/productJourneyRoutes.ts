@@ -22,6 +22,7 @@ export const catalogueBuilderRoute = "/admin/catalogue-builder";
 
 export const UNSAVED_PRODUCT_LEAVE_MESSAGE = "You have unsaved changes. Leave this form?";
 
+/** Skip prompting for a clean form; otherwise honor the caller's explicit leave decision. */
 export function canLeaveProductEditor(
   hasUnsavedChanges: boolean,
   confirmLeave: () => boolean,
