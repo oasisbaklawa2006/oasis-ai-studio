@@ -55,7 +55,7 @@ export function ProductJourneyActions({ productId, hasUnsavedChanges = false }: 
               </Link>
             </Button>
             <Button asChild variant="outline" className="justify-start">
-              <Link to={catalogueBuilderRoute} onClick={guardNavigation}>
+              <Link to={catalogueBuilderRoute(productId)} onClick={guardNavigation}>
                 <BookOpen className="mr-2 h-4 w-4" /> Build a catalogue
               </Link>
             </Button>

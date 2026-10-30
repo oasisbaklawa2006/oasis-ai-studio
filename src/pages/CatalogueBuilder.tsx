@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { PageHeader } from "@/components/PageHeader";
@@ -99,9 +99,12 @@ const COLLECTION_TYPE_LABELS: Record<CatalogueCollectionType, string> = {
 const PUBLIC_SHARE_RESOLVER_ENABLED = false;
 
 export default function CatalogueBuilder() {
+  const [searchParams] = useSearchParams();
+  const requestedProductId = searchParams.get("product")?.trim() ?? "";
   const [collections, setCollections] = useState<CatalogueCollectionRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [items, setItems] = useState<CatalogueCollectionItemRow[]>([]);
+  const [itemsLoadedFor, setItemsLoadedFor] = useState<string | null>(null);
   const [products, setProducts] = useState<Array<Record<string, unknown> & { id: string }>>([]);
   const [authorityBundle, setAuthorityBundle] = useState<Awaited<
     ReturnType<typeof fetchProductAuthorityBundle>
@@ -162,15 +165,20 @@ export default function CatalogueBuilder() {
 
     if (!activeId) {
       setItems([]);
+      setItemsLoadedFor(null);
       setSnapshots([]);
       setWhatsappText(null);
       return;
     }
 
     setItems([]);
+    setItemsLoadedFor(null);
     setWhatsappText(null);
     void listCollectionItems(activeId).then((next) => {
-      if (!cancelled) setItems(next);
+      if (!cancelled) {
+        setItems(next);
+        setItemsLoadedFor(activeId);
+      }
     });
     setSnapshots(listPrintSnapshots(activeId));
 
@@ -227,6 +235,19 @@ export default function CatalogueBuilder() {
     const inCollection = new Set(items.map((i) => i.product_id));
     return products.filter((p) => !inCollection.has(p.id));
   }, [products, items]);
+
+  useEffect(() => {
+    if (
+      !requestedProductId ||
+      !activeId ||
+      itemsLoadedFor !== activeId ||
+      addProductId ||
+      !availableProducts.some((product) => product.id === requestedProductId)
+    ) {
+      return;
+    }
+    setAddProductId(requestedProductId);
+  }, [requestedProductId, activeId, itemsLoadedFor, addProductId, availableProducts]);
 
   const handleCreateCollection = async () => {
     if (!collectionsAvailable) {

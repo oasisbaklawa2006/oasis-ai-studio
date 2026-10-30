@@ -16,8 +16,10 @@ describe("product journey routes", () => {
     );
   });
 
-  it("uses the existing governed catalogue builder", () => {
-    expect(catalogueBuilderRoute).toBe("/admin/catalogue-builder");
+  it("preselects the canonical product in the existing governed catalogue builder", () => {
+    expect(catalogueBuilderRoute(" product/id ")).toBe(
+      "/admin/catalogue-builder?product=product%2Fid",
+    );
   });
 
   it("only asks for confirmation when product edits are unsaved", () => {

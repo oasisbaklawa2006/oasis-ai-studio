@@ -18,7 +18,9 @@ export function productCatalogueCopyRoute(productId: string): string {
   return `/admin/catalogue-product-studio?product=${encodedProductId(productId)}`;
 }
 
-export const catalogueBuilderRoute = "/admin/catalogue-builder";
+export function catalogueBuilderRoute(productId: string): string {
+  return `/admin/catalogue-builder?product=${encodedProductId(productId)}`;
+}
 
 export const UNSAVED_PRODUCT_LEAVE_MESSAGE = "You have unsaved changes. Leave this form?";
 
