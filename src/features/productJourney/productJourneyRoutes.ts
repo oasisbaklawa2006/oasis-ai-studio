@@ -19,3 +19,12 @@ export function productCatalogueCopyRoute(productId: string): string {
 }
 
 export const catalogueBuilderRoute = "/admin/catalogue-builder";
+
+export const UNSAVED_PRODUCT_LEAVE_MESSAGE = "You have unsaved changes. Leave this form?";
+
+export function canLeaveProductEditor(
+  hasUnsavedChanges: boolean,
+  confirmLeave: () => boolean,
+): boolean {
+  return !hasUnsavedChanges || confirmLeave();
+}

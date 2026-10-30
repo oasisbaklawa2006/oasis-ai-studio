@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canLeaveProductEditor,
   catalogueBuilderRoute,
   productCatalogueCopyRoute,
   productEditorRoute,
@@ -17,5 +18,18 @@ describe("product journey routes", () => {
 
   it("uses the existing governed catalogue builder", () => {
     expect(catalogueBuilderRoute).toBe("/admin/catalogue-builder");
+  });
+
+  it("only asks for confirmation when product edits are unsaved", () => {
+    let confirmations = 0;
+    const confirmLeave = () => {
+      confirmations += 1;
+      return false;
+    };
+
+    expect(canLeaveProductEditor(false, confirmLeave)).toBe(true);
+    expect(confirmations).toBe(0);
+    expect(canLeaveProductEditor(true, confirmLeave)).toBe(false);
+    expect(confirmations).toBe(1);
   });
 });

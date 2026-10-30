@@ -1,6 +1,15 @@
 import { AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
-import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  startTransition,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AliasManager } from "@/components/AliasManager";
@@ -1847,9 +1856,11 @@ const ProductEdit = () => {
   };
 
   const saveShortcutRef = useRef(handleSave);
-  saveShortcutRef.current = handleSave;
   const saveShortcutDisabledRef = useRef(false);
-  saveShortcutDisabledRef.current = loading || productFetchPending;
+  useLayoutEffect(() => {
+    saveShortcutRef.current = handleSave;
+    saveShortcutDisabledRef.current = loading || productFetchPending;
+  });
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!isProductSaveShortcut(event) || saveShortcutDisabledRef.current) return;
@@ -1893,6 +1904,7 @@ const ProductEdit = () => {
                   archived_at: form.archived_at,
                 }}
                 onChanged={() => nav("/products")}
+                hasUnsavedChanges={dirty}
               />
             )}
             <Button
@@ -3074,7 +3086,9 @@ const ProductEdit = () => {
         </div>
 
         <div className="space-y-6">
-          {!isNew && savedProductId && <ProductJourneyActions productId={savedProductId} />}
+          {!isNew && savedProductId && (
+            <ProductJourneyActions productId={savedProductId} hasUnsavedChanges={dirty} />
+          )}
           <div className="card-elevated p-6 space-y-4">
             <h3 className="font-display text-xl">Status</h3>
 
