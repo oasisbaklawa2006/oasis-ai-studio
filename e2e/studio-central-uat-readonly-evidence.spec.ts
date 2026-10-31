@@ -1,7 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { expect, test } from "@playwright/test";
-import { collectReadOnlyUatContractViolations } from "../src/features/uatEvidence/readOnlyUatAuditContract";
+import {
+  collectReadOnlyUatContractViolations,
+  isForbiddenReadOnlyUatPersistenceRequest,
+} from "../src/features/uatEvidence/readOnlyUatAuditContract";
 import {
   STUDIO_CENTRAL_UAT_EVIDENCE_CASES,
   type StudioCentralUatCase,
@@ -78,11 +81,25 @@ async function collectRouteSignals(page: import("@playwright/test").Page) {
     if (response.status() >= 400) networkFailures.push(`${response.status()} ${url}`);
   };
 
+  const routeHandler = async (route: import("@playwright/test").Route) => {
+    const request = route.request();
+    const method = request.method();
+    const url = request.url();
+    if (isForbiddenReadOnlyUatPersistenceRequest(method, url)) {
+      persistenceRequests.push({ method, url });
+      await route.abort("blockedbyclient");
+      return;
+    }
+    await route.fallback();
+  };
+
+  await page.route("**/*", routeHandler);
   page.on("console", consoleListener);
   page.on("response", responseListener);
 
   return {
-    finish: () => {
+    finish: async () => {
+      await page.unroute("**/*", routeHandler);
       page.off("console", consoleListener);
       page.off("response", responseListener);
       return {
@@ -180,7 +197,7 @@ async function exerciseCase(
   );
   await page.screenshot({ path: screenshotPath, fullPage: false }).catch(() => undefined);
 
-  const { consoleErrors, networkFailures, persistenceViolations } = signals.finish();
+  const { consoleErrors, networkFailures, persistenceViolations } = await signals.finish();
 
   const authResult: UatEvidenceRow["authResult"] = inaccessible
     ? finalUrl.includes("/auth")
