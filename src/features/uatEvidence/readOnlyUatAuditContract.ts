@@ -32,7 +32,7 @@ export function isForbiddenReadOnlyUatPersistenceRequest(method: string, url: st
 
   if (/supabase\.co/i.test(url)) {
     if (/storage\/v1\/object/i.test(url)) return true;
-    const rpcName = url.match(/supabase\\.co\\/rest\\/v1\\/rpc\\/([^/?#]+)/i)?.[1].toLowerCase();
+    const rpcName = url.match(/supabase\.co\/rest\/v1\/rpc\/([^/?#]+)/i)?.[1].toLowerCase();
     if (rpcName) return !READ_ONLY_RPC_FUNCTIONS.has(rpcName);
     if (/rest\/v1\//i.test(url)) return true;
   }
