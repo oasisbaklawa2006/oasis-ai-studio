@@ -18,6 +18,7 @@ export const READ_ONLY_UAT_FORBIDDEN_CONTROL_LABELS: readonly string[] = [
 ];
 
 const MUTATING_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const READ_ONLY_RPC_FUNCTIONS = new Set(["get_current_user_roles", "generate_oasis_sku"]);
 
 /**
  * Returns true when a network request would violate the read-only audit contract.
