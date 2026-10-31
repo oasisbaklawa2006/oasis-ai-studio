@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AuthorityStatusBadges } from "@/components/catalogueAuthority/AuthorityStatusBadges";
 import { PageHeader } from "@/components/PageHeader";
@@ -60,6 +60,7 @@ import {
   type PrintTemplateId,
 } from "@/features/catalogueBuilder/printTemplates";
 import { buildCatalogueProductCard } from "@/features/catalogueBuilder/productCardBuilder";
+import { isSelectedCatalogueProductAvailable } from "@/features/catalogueBuilder/productSelection";
 import {
   CATALOGUE_COLLECTION_TYPES,
   type CatalogueCollectionItemRow,
@@ -99,9 +100,12 @@ const COLLECTION_TYPE_LABELS: Record<CatalogueCollectionType, string> = {
 const PUBLIC_SHARE_RESOLVER_ENABLED = false;
 
 export default function CatalogueBuilder() {
+  const [searchParams] = useSearchParams();
+  const requestedProductId = searchParams.get("product")?.trim() ?? "";
   const [collections, setCollections] = useState<CatalogueCollectionRow[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [items, setItems] = useState<CatalogueCollectionItemRow[]>([]);
+  const [itemsLoadedFor, setItemsLoadedFor] = useState<string | null>(null);
   const [products, setProducts] = useState<Array<Record<string, unknown> & { id: string }>>([]);
   const [authorityBundle, setAuthorityBundle] = useState<Awaited<
     ReturnType<typeof fetchProductAuthorityBundle>
@@ -162,15 +166,20 @@ export default function CatalogueBuilder() {
 
     if (!activeId) {
       setItems([]);
+      setItemsLoadedFor(null);
       setSnapshots([]);
       setWhatsappText(null);
       return;
     }
 
     setItems([]);
+    setItemsLoadedFor(null);
     setWhatsappText(null);
     void listCollectionItems(activeId).then((next) => {
-      if (!cancelled) setItems(next);
+      if (!cancelled) {
+        setItems(next);
+        setItemsLoadedFor(activeId);
+      }
     });
     setSnapshots(listPrintSnapshots(activeId));
 
@@ -228,6 +237,35 @@ export default function CatalogueBuilder() {
     return products.filter((p) => !inCollection.has(p.id));
   }, [products, items]);
 
+  const canAddSelectedProduct = isSelectedCatalogueProductAvailable(
+    addProductId,
+    availableProducts,
+    activeId,
+    itemsLoadedFor,
+  );
+
+  // Switching collections may make a previously selected product unavailable.
+  // Clear the stale selection only after that collection has actually loaded.
+  useEffect(() => {
+    if (!activeId || itemsLoadedFor !== activeId || !addProductId || canAddSelectedProduct) {
+      return;
+    }
+    setAddProductId("");
+  }, [activeId, itemsLoadedFor, addProductId, canAddSelectedProduct]);
+
+  useEffect(() => {
+    if (
+      !requestedProductId ||
+      !activeId ||
+      itemsLoadedFor !== activeId ||
+      addProductId ||
+      !availableProducts.some((product) => product.id === requestedProductId)
+    ) {
+      return;
+    }
+    setAddProductId(requestedProductId);
+  }, [requestedProductId, activeId, itemsLoadedFor, addProductId, availableProducts]);
+
   const handleCreateCollection = async () => {
     if (!collectionsAvailable) {
       toast.error(
@@ -254,7 +292,7 @@ export default function CatalogueBuilder() {
   };
 
   const handleAddProduct = async () => {
-    if (!collectionsAvailable || !activeId || !addProductId) return;
+    if (!collectionsAvailable || !activeId || !canAddSelectedProduct) return;
     try {
       await addProductToCollection({ collectionId: activeId, productId: addProductId });
       const next = await listCollectionItems(activeId);
@@ -585,7 +623,11 @@ export default function CatalogueBuilder() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Select value={addProductId} onValueChange={setAddProductId}>
+                    <Select
+                      value={addProductId}
+                      onValueChange={setAddProductId}
+                      disabled={!collectionsAvailable || !activeId || itemsLoadedFor !== activeId}
+                    >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Add governed product…" />
                       </SelectTrigger>
@@ -600,7 +642,7 @@ export default function CatalogueBuilder() {
                     </Select>
                     <Button
                       onClick={handleAddProduct}
-                      disabled={!collectionsAvailable || !addProductId}
+                      disabled={!collectionsAvailable || !canAddSelectedProduct}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>

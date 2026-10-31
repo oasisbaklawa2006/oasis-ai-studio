@@ -1,6 +1,15 @@
 import { AlertTriangle } from "lucide-react";
 import type { ReactNode } from "react";
-import { lazy, Suspense, startTransition, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  startTransition,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AliasManager } from "@/components/AliasManager";
@@ -72,6 +81,8 @@ import {
 } from "@/features/productAuthority/fullEditorArchitecture";
 import { ProductVariantHierarchyPanel } from "@/features/productAuthority/panels/ProductVariantHierarchyPanel";
 import { ProductVariantRelationshipEditor } from "@/features/productAuthority/panels/ProductVariantRelationshipEditor";
+import { isProductSaveShortcut } from "@/features/productAuthority/productEditorKeyboard";
+import { isAdvancedProductEditTab } from "@/features/productAuthority/productEditTabs";
 import { subscribeToProductMediaAuthority } from "@/features/productAuthority/productMediaMutationAuthority";
 import {
   buildDimensionsText,
@@ -92,6 +103,7 @@ import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChan
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
 import { assertNoBlockingProductCollisions } from "@/features/productGovernance/productDuplicateContract";
+import { ProductJourneyActions } from "@/features/productJourney/ProductJourneyActions";
 import {
   type MoqRuleRow,
   mapMoqRules,
@@ -706,6 +718,9 @@ const ProductEdit = () => {
     appliedLocationKey: "",
   });
   const [tab, setTab] = useState<string>(() => tabState.initialTab);
+  const [showAdvancedTabs, setShowAdvancedTabs] = useState(() =>
+    isAdvancedProductEditTab(tabState.initialTab),
+  );
 
   // Bugbot-caught (twice): the initializer above only seeds `tab` on first mount, so a later
   // `?tab=` was silently ignored when React Router re-renders this same component instance (no
@@ -722,6 +737,7 @@ const ProductEdit = () => {
     });
     if (nextTabState.shouldApplyDeepLink && nextTabState.deepLinkTab) {
       setTab(nextTabState.deepLinkTab);
+      if (isAdvancedProductEditTab(nextTabState.deepLinkTab)) setShowAdvancedTabs(true);
     }
     appliedLocationKeyRef.current = location.key;
   }, [location.key, rawDeepLinkTab]);
@@ -1839,6 +1855,22 @@ const ProductEdit = () => {
     });
   };
 
+  const saveShortcutRef = useRef(handleSave);
+  const saveShortcutDisabledRef = useRef(false);
+  useLayoutEffect(() => {
+    saveShortcutRef.current = handleSave;
+    saveShortcutDisabledRef.current = loading || productFetchPending;
+  });
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isProductSaveShortcut(event) || saveShortcutDisabledRef.current) return;
+      event.preventDefault();
+      saveShortcutRef.current();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   if (editorIdentity.kind === "invalid") {
     return (
       <PageHeader
@@ -1872,6 +1904,7 @@ const ProductEdit = () => {
                   archived_at: form.archived_at,
                 }}
                 onChanged={() => nav("/products")}
+                hasUnsavedChanges={dirty}
               />
             )}
             <Button
@@ -1929,97 +1962,114 @@ const ProductEdit = () => {
               startTransition(() => setTab(value));
             }}
           >
-            <div className="-mx-3 sm:mx-0 overflow-x-auto border-b border-border/60 mb-4">
-              <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 bg-transparent px-3 sm:px-0 py-0">
-                <TabsTrigger
-                  value="identity"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+            <div className="-mx-3 sm:mx-0 border-b border-border/60 mb-4">
+              <div className="overflow-x-auto">
+                <TabsList className="flex h-auto w-max min-w-full justify-start gap-1 bg-transparent px-3 sm:px-0 py-0">
+                  <TabsTrigger
+                    value="identity"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
+                    Identity
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="uom"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
+                    UOM / MOQ
+                  </TabsTrigger>
+                  {!isNew && (
+                    <TabsTrigger
+                      value="media"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      {isTestingMediaGovernance() ? "Hero image" : "Media"}
+                    </TabsTrigger>
+                  )}
+                  {showAdvancedTabs && showPrivateLabel && (
+                    <TabsTrigger
+                      value="private_label"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      Private Label
+                    </TabsTrigger>
+                  )}
+                  {showAdvancedTabs && showCustomization && (
+                    <TabsTrigger
+                      value="customisation"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      Customisation
+                    </TabsTrigger>
+                  )}
+                  {showAdvancedTabs && showDimensions && (
+                    <TabsTrigger
+                      value="dimensions"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      Dimensions
+                    </TabsTrigger>
+                  )}
+                  {showAdvancedTabs && showFrozen && (
+                    <TabsTrigger
+                      value="frozen"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      Frozen
+                    </TabsTrigger>
+                  )}
+                  {showAdvancedTabs && showBom && (
+                    <TabsTrigger
+                      value="bom"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      BOM
+                    </TabsTrigger>
+                  )}
+                  {!isNew && (
+                    <TabsTrigger
+                      value="channels"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      Business Rules
+                    </TabsTrigger>
+                  )}
+                  <TabsTrigger
+                    value="compliance"
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                  >
+                    Compliance
+                  </TabsTrigger>
+                  {showAdvancedTabs && (
+                    <TabsTrigger
+                      value="ops"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      Ops Notes
+                    </TabsTrigger>
+                  )}
+                  {!isNew && (
+                    <TabsTrigger
+                      value="product_truth"
+                      className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
+                    >
+                      Product Truth
+                    </TabsTrigger>
+                  )}
+                </TabsList>
+              </div>
+              <div className="flex justify-end px-3 pb-2 sm:px-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    if (showAdvancedTabs && isAdvancedProductEditTab(tab)) setTab("identity");
+                    setShowAdvancedTabs((visible) => !visible);
+                  }}
                 >
-                  Identity
-                </TabsTrigger>
-                <TabsTrigger
-                  value="uom"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                >
-                  UOM / MOQ
-                </TabsTrigger>
-                {!isNew && (
-                  <TabsTrigger
-                    value="media"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    {isTestingMediaGovernance() ? "Hero image" : "Media"}
-                  </TabsTrigger>
-                )}
-                {showPrivateLabel && (
-                  <TabsTrigger
-                    value="private_label"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    Private Label
-                  </TabsTrigger>
-                )}
-                {showCustomization && (
-                  <TabsTrigger
-                    value="customisation"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    Customisation
-                  </TabsTrigger>
-                )}
-                {showDimensions && (
-                  <TabsTrigger
-                    value="dimensions"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    Dimensions
-                  </TabsTrigger>
-                )}
-                {showFrozen && (
-                  <TabsTrigger
-                    value="frozen"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    Frozen
-                  </TabsTrigger>
-                )}
-                {showBom && (
-                  <TabsTrigger
-                    value="bom"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    BOM
-                  </TabsTrigger>
-                )}
-                {!isNew && (
-                  <TabsTrigger
-                    value="channels"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    Business Rules
-                  </TabsTrigger>
-                )}
-                <TabsTrigger
-                  value="compliance"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                >
-                  Compliance
-                </TabsTrigger>
-                <TabsTrigger
-                  value="ops"
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                >
-                  Ops Notes
-                </TabsTrigger>
-                {!isNew && (
-                  <TabsTrigger
-                    value="product_truth"
-                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent data-[state=active]:shadow-none px-3 py-2 luxe-sub data-[state=active]:text-foreground"
-                  >
-                    Product Truth
-                  </TabsTrigger>
-                )}
-              </TabsList>
+                  {showAdvancedTabs ? "Hide specialist details" : "Show specialist details"}
+                </Button>
+              </div>
             </div>
 
             <TabsContent value="identity" className="space-y-6">
@@ -3036,6 +3086,9 @@ const ProductEdit = () => {
         </div>
 
         <div className="space-y-6">
+          {!isNew && savedProductId && (
+            <ProductJourneyActions productId={savedProductId} hasUnsavedChanges={dirty} />
+          )}
           <div className="card-elevated p-6 space-y-4">
             <h3 className="font-display text-xl">Status</h3>
 

@@ -1,4 +1,4 @@
-import { Archive, Copy, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Archive, Copy, Image, MoreVertical, Pencil, Trash2, Wand2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  canLeaveProductEditor,
+  productCatalogueCopyRoute,
+  productMediaRoute,
+  UNSAVED_PRODUCT_LEAVE_MESSAGE,
+} from "@/features/productJourney/productJourneyRoutes";
+import { canAccessPage } from "@/lib/permissions";
 import { isSuperAdmin } from "@/shared/auth/centralPermissions";
 import { ArchiveProductDialog } from "./ArchiveProductDialog";
 import { PermanentDeleteProductDialog } from "./PermanentDeleteProductDialog";
@@ -19,10 +27,21 @@ type Props = {
   product: ProductGovernanceRow;
   onChanged?: () => void;
   className?: string;
+  hasUnsavedChanges?: boolean;
 };
 
-export function ProductActionsMenu({ product, onChanged, className }: Props) {
+/**
+ * Role-aware product actions that preserve canonical identity and guard unsaved editor changes.
+ * Visibility improves UX only; destination routes and backend policies remain authoritative.
+ */
+export function ProductActionsMenu({
+  product,
+  onChanged,
+  className,
+  hasUnsavedChanges = false,
+}: Props) {
   const navigate = useNavigate();
+  const { roles } = useAuth();
   const [superAdmin, setSuperAdmin] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -38,6 +57,10 @@ export function ProductActionsMenu({ product, onChanged, className }: Props) {
   }, []);
 
   const isArchived = !!product.archived_at;
+  const canOpenMedia = canAccessPage(roles, "media");
+  const canOpenCatalogues = canAccessPage(roles, "catalogues");
+  const guardNavigation = () =>
+    canLeaveProductEditor(hasUnsavedChanges, () => window.confirm(UNSAVED_PRODUCT_LEAVE_MESSAGE));
 
   return (
     <>
@@ -66,8 +89,34 @@ export function ProductActionsMenu({ product, onChanged, className }: Props) {
             }}
           >
             <Pencil className="h-4 w-4 mr-2" />
-            Edit
+            Edit product
           </DropdownMenuItem>
+          {canOpenMedia && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!guardNavigation()) return;
+                navigate(productMediaRoute(product.id));
+              }}
+            >
+              <Image className="h-4 w-4 mr-2" />
+              Manage images
+            </DropdownMenuItem>
+          )}
+          {canOpenCatalogues && (
+            <DropdownMenuItem
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!guardNavigation()) return;
+                navigate(productCatalogueCopyRoute(product.id));
+              }}
+            >
+              <Wand2 className="h-4 w-4 mr-2" />
+              Prepare catalogue copy
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             onClick={(e) => {
               e.preventDefault();
