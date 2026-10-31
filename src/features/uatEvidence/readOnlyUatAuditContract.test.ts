@@ -33,6 +33,24 @@ describe("readOnlyUatAuditContract", () => {
     ).toBe(true);
     expect(
       isForbiddenReadOnlyUatPersistenceRequest(
+        "POST",
+        "https://xyz.supabase.co/rest/v1/rpc/get_current_user_roles",
+      ),
+    ).toBe(false);
+    expect(
+      isForbiddenReadOnlyUatPersistenceRequest(
+        "POST",
+        "https://xyz.supabase.co/rest/v1/rpc/generate_oasis_sku",
+      ),
+    ).toBe(false);
+    expect(
+      isForbiddenReadOnlyUatPersistenceRequest(
+        "POST",
+        "https://xyz.supabase.co/rest/v1/rpc/write_product",
+      ),
+    ).toBe(true);
+    expect(
+      isForbiddenReadOnlyUatPersistenceRequest(
         "GET",
         "https://xyz.supabase.co/rest/v1/product_media?select=id",
       ),
