@@ -60,6 +60,7 @@ import {
   type PrintTemplateId,
 } from "@/features/catalogueBuilder/printTemplates";
 import { buildCatalogueProductCard } from "@/features/catalogueBuilder/productCardBuilder";
+import { isSelectedCatalogueProductAvailable } from "@/features/catalogueBuilder/productSelection";
 import {
   CATALOGUE_COLLECTION_TYPES,
   type CatalogueCollectionItemRow,
@@ -236,6 +237,22 @@ export default function CatalogueBuilder() {
     return products.filter((p) => !inCollection.has(p.id));
   }, [products, items]);
 
+  const canAddSelectedProduct = isSelectedCatalogueProductAvailable(
+    addProductId,
+    availableProducts,
+    activeId,
+    itemsLoadedFor,
+  );
+
+  // Switching collections may make a previously selected product unavailable.
+  // Clear the stale selection only after that collection has actually loaded.
+  useEffect(() => {
+    if (!activeId || itemsLoadedFor !== activeId || !addProductId || canAddSelectedProduct) {
+      return;
+    }
+    setAddProductId("");
+  }, [activeId, itemsLoadedFor, addProductId, canAddSelectedProduct]);
+
   useEffect(() => {
     if (
       !requestedProductId ||
@@ -275,7 +292,7 @@ export default function CatalogueBuilder() {
   };
 
   const handleAddProduct = async () => {
-    if (!collectionsAvailable || !activeId || !addProductId) return;
+    if (!collectionsAvailable || !activeId || !canAddSelectedProduct) return;
     try {
       await addProductToCollection({ collectionId: activeId, productId: addProductId });
       const next = await listCollectionItems(activeId);
@@ -606,7 +623,11 @@ export default function CatalogueBuilder() {
                   </div>
 
                   <div className="flex gap-2">
-                    <Select value={addProductId} onValueChange={setAddProductId}>
+                    <Select
+                      value={addProductId}
+                      onValueChange={setAddProductId}
+                      disabled={!collectionsAvailable || !activeId || itemsLoadedFor !== activeId}
+                    >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Add governed product…" />
                       </SelectTrigger>
@@ -621,7 +642,7 @@ export default function CatalogueBuilder() {
                     </Select>
                     <Button
                       onClick={handleAddProduct}
-                      disabled={!collectionsAvailable || !addProductId}
+                      disabled={!collectionsAvailable || !canAddSelectedProduct}
                     >
                       <Plus className="h-4 w-4" />
                     </Button>
