@@ -1,7 +1,8 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import ApprovalInbox, { formatPricing } from "./ApprovalInbox";
+import ApprovalInbox from "./ApprovalInbox";
+import { formatPricing } from "./formatPricing";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), rows: vi.fn(), success: vi.fn(), error: vi.fn() }));
 vi.mock("@/hooks/useCatalogueReviewer", () => ({

@@ -17,6 +17,7 @@ import {
 import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+import { formatPricing } from "./formatPricing";
 import { validateReviewResult } from "./reviewResult";
 
 type ReviewDatabase = Omit<ExtendedDatabase, "public"> & {
@@ -162,31 +163,6 @@ const formatProductMoq = (payload: Record<string, unknown> | null | undefined) =
   }
   if (!increment) return base;
   return `${base}, increment ${increment}`;
-};
-
-export const formatPricing = (payload: Record<string, unknown> | null | undefined) => {
-  // Draft JSON is untrusted: never coerce objects to the user-visible "[object Object]".
-  const displayValue = (value: unknown): string | null =>
-    typeof value === "string" && value.trim()
-      ? value.trim()
-      : typeof value === "number" && Number.isFinite(value)
-        ? String(value)
-        : null;
-
-  const fields = [
-    ["MRP", "pricing.mrp"],
-    ["B2B", "pricing.b2b_price"],
-    ["Export", "pricing.export_price"],
-    ["GST", "pricing.gst_rate"],
-  ] as const;
-  const lines = fields.flatMap(([label, path]) => {
-    const value = displayValue(nestedRead(payload, path));
-    return value === null ? [] : [`${label}: ${value}`];
-  });
-  if (lines.length) return lines.join(" • ");
-
-  // Older drafts may contain a scalar instead of the current structured pricing.
-  return displayValue(nestedRead(payload, "pricing")) ?? "—";
 };
 
 const formatBom = (payload: Record<string, unknown> | null | undefined) => {
