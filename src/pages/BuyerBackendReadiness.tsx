@@ -74,7 +74,12 @@ const BuyerBackendReadinessPage = () => {
 
     const readinessTask = (async () => {
       try {
-        const callRpc = supabase.rpc as unknown as ReadinessRpc;
+        // Keep the RPC method bound to the Supabase client. Detaching `rpc` and
+        // invoking the function reference loses its `this` context, causing
+        // supabase-js to throw `Cannot read properties of undefined (reading
+        // 'rest')` before the governed backend response can be handled.
+        const callRpc = (fn: string) =>
+          (supabase.rpc as unknown as ReadinessRpc).call(supabase, fn);
         const { data, error: rpcError } = await callRpc("connect_staff_readiness_v1");
 
         if (rpcError) {
@@ -390,3 +395,4 @@ const Fact = ({ label, value }: { label: string; value: string }) => (
 );
 
 export default BuyerBackendReadinessPage;
+
