@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import ApprovalInbox from "./ApprovalInbox";
+import { formatPricing } from "./formatPricing";
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), rows: vi.fn(), success: vi.fn(), error: vi.fn() }));
 vi.mock("@/hooks/useCatalogueReviewer", () => ({
@@ -60,4 +61,16 @@ it("fails closed with retry UX when one draft source fails", async () => {
   expect(
     Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Approve"),
   ).toBeUndefined();
+});
+
+it("formats only trusted scalar pricing values", () => {
+  expect(
+    formatPricing({ pricing: { mrp: 125, b2b_price: " 100 ", export_price: 0, gst_rate: 5 } }),
+  ).toBe("MRP: 125 • B2B: 100 • Export: 0 • GST: 5");
+  expect(formatPricing({ pricing: { mrp: { amount: 125 } } })).toBe("—");
+  expect(formatPricing({ pricing: "legacy price" })).toBe("legacy price");
+  expect(formatPricing({ pricing: { nested: { value: "bad fallback" } } })).toBe("—");
+  expect(formatPricing({ pricing: null })).toBe("—");
+  expect(formatPricing({ pricing: { mrp: "   " } })).toBe("—");
+  expect(formatPricing({ pricing: "   " })).toBe("—");
 });

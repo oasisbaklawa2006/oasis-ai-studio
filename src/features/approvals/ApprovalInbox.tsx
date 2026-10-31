@@ -17,6 +17,7 @@ import {
 import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { supabase } from "@/integrations/supabase/client";
 import type { ExtendedDatabase } from "@/integrations/supabase/types.extensions";
+import { formatPricing } from "./formatPricing";
 import { validateReviewResult } from "./reviewResult";
 
 type ReviewDatabase = Omit<ExtendedDatabase, "public"> & {
@@ -162,26 +163,6 @@ const formatProductMoq = (payload: Record<string, unknown> | null | undefined) =
   }
   if (!increment) return base;
   return `${base}, increment ${increment}`;
-};
-
-const formatPricing = (payload: Record<string, unknown> | null | undefined) => {
-  const mrp = nestedRead(payload, "pricing.mrp");
-  const b2b = nestedRead(payload, "pricing.b2b_price");
-  const exportPrice = nestedRead(payload, "pricing.export_price");
-  const gst = nestedRead(payload, "pricing.gst_rate");
-
-  const lines = [
-    mrp !== undefined && mrp !== null && mrp !== "" ? `MRP: ${mrp}` : null,
-    b2b !== undefined && b2b !== null && b2b !== "" ? `B2B: ${b2b}` : null,
-    exportPrice !== undefined && exportPrice !== null && exportPrice !== ""
-      ? `Export: ${exportPrice}`
-      : null,
-    gst !== undefined && gst !== null && gst !== "" ? `GST: ${gst}` : null,
-  ].filter(Boolean);
-
-  if (lines.length) return lines.join(" • ");
-  const legacy = read(payload, "pricing");
-  return legacy !== "—" ? legacy : "—";
 };
 
 const formatBom = (payload: Record<string, unknown> | null | undefined) => {
