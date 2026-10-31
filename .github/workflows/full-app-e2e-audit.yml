@@ -6,7 +6,10 @@ on:
     paths:
       - ".github/workflows/full-app-e2e-audit.yml"
       - "e2e/full-app-readonly-audit.spec.ts"
+      - "e2e/studio-central-uat-readonly-evidence.spec.ts"
+      - "e2e/readonly-audit-helpers.ts"
       - "playwright.full-app-audit.config.ts"
+      - "src/features/uatEvidence/**"
       - "src/**"
   workflow_dispatch:
     inputs:
