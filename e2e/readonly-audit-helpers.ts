@@ -16,7 +16,6 @@ export async function createStudioContext(
   const context = await browser.newContext({
     ...devices[playwrightDevice],
     ignoreHTTPSErrors: true,
-    extraHTTPHeaders: bypassSecret ? { "x-vercel-protection-bypass": bypassSecret } : undefined,
   });
   if (bypassSecret) {
     await context.route(`${studioOrigin}/**`, async (route) => {
@@ -34,12 +33,13 @@ export async function createStudioContext(
 export async function readDeployedCommit(page: Page): Promise<string | null> {
   return page
     .locator('meta[name="oasis-build-commit"]')
-    .getAttribute("content")
+    .getAttribute("content", { timeout: 5_000 })
     .catch(() => null);
 }
 
 export async function waitForExpectedDeployment(page: Page): Promise<string | null> {
   if (!EXPECTED_DEPLOYMENT_SHA) {
+    await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
     return readDeployedCommit(page);
   }
   const deploymentDeadline = Date.now() + 8 * 60_000;
