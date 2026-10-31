@@ -184,7 +184,7 @@ async function exerciseCase(
   const fatal =
     overlay > 0 ||
     body.trim().length === 0 ||
-    /\\bpage not found\\b|something went wrong/i.test(body);
+    /\bpage not found\b|something went wrong/i.test(body);
 
   if (inaccessible)
     notes.push("Authenticated user lacks access or was redirected to authentication.");
@@ -316,7 +316,7 @@ test.describe("Central census UAT read-only evidence", () => {
           finalUrl,
           deploymentSha: null,
           expectedDeploymentSha: process.env.EXPECTED_DEPLOYMENT_SHA || null,
-          shaBindingOk: true,
+          shaBindingOk: !process.env.EXPECTED_DEPLOYMENT_SHA,
           authResult: finalUrl.includes("/auth") ? "redirected_to_auth" : "access_denied",
           verdict: "BLOCKED",
           consoleErrors: [],
