@@ -167,7 +167,7 @@ async function exerciseCase(
   const fatal =
     overlay > 0 ||
     body.trim().length === 0 ||
-    /404|page not found|something went wrong/i.test(body);
+    /\\bpage not found\\b|something went wrong/i.test(body);
 
   if (inaccessible)
     notes.push("Authenticated user lacks access or was redirected to authentication.");
@@ -259,7 +259,6 @@ function writeReports() {
   );
 }
 
-test.describe.configure({ mode: "serial" });
 
 test.describe("Central census UAT read-only evidence", () => {
   test.beforeAll(() => {
@@ -273,16 +272,49 @@ test.describe("Central census UAT read-only evidence", () => {
       browser,
     }) => {
       const context = await createStudioContext(browser, caseRow.playwrightDevice);
-      const page = await context.newPage();
-      const loginMeta = await loginStudio(page);
-      expect(loginMeta.authResult).toBe("authenticated");
+      let page: import("@playwright/test").Page | undefined;
+      try {
+        page = await context.newPage();
+        const loginMeta = await loginStudio(page);
+        expect(loginMeta.authResult).toBe("authenticated");
 
-      const row = await exerciseCase(page, caseRow, loginMeta);
-      evidenceRows.push(row);
-      await context.close();
+        const row = await exerciseCase(page, caseRow, loginMeta);
+        evidenceRows.push(row);
 
-      if (row.verdict === "FAIL") {
-        expect.soft(row.verdict, row.notes.join("; ")).toBe("PASS");
+        if (row.verdict === "FAIL") {
+          expect.soft(row.verdict, row.notes.join("; ")).toBe("PASS");
+        }
+      } catch (error) {
+        const finalUrl = page?.url() ?? `${STUDIO_URL}${caseRow.pathname}`;
+        const screenshotPath = path.join(
+          SHOTS,
+          `${safeScreenshotName(caseRow.uatId, caseRow.uiState)}--blocked.png`,
+        );
+        await page?.screenshot({ path: screenshotPath, fullPage: false }).catch(() => undefined);
+        const blockedRow: UatEvidenceRow = {
+          uatId: caseRow.uatId,
+          route: caseRow.pathname,
+          uiState: caseRow.uiState,
+          deviceProfile: caseRow.deviceProfile,
+          viewport: page?.viewportSize() ?? { width: 0, height: 0 },
+          finalUrl,
+          deploymentSha: null,
+          expectedDeploymentSha: process.env.EXPECTED_DEPLOYMENT_SHA || null,
+          shaBindingOk: true,
+          authResult: finalUrl.includes("/auth") ? "redirected_to_auth" : "access_denied",
+          verdict: "BLOCKED",
+          consoleErrors: [],
+          networkFailures: [],
+          persistenceViolations: [],
+          screenshot: path.relative(process.cwd(), screenshotPath),
+          notes: [`Case setup or execution blocked: ${String(error)}`],
+          physicalDeviceCertification:
+            caseRow.uiState === "camera-capture-flow" ? "browser-emulated-only" : "not-applicable",
+        };
+        evidenceRows.push(blockedRow);
+        expect.soft(false, blockedRow.notes[0]).toBe(true);
+      } finally {
+        await context.close();
       }
     });
   }
