@@ -259,7 +259,6 @@ function writeReports() {
   );
 }
 
-
 test.describe("Central census UAT read-only evidence", () => {
   test.beforeAll(() => {
     fs.mkdirSync(SHOTS, { recursive: true });
