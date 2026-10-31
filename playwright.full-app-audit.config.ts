@@ -5,7 +5,10 @@ const vercelBypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "**/full-app-readonly-audit.spec.ts",
+  testMatch: [
+    "**/full-app-readonly-audit.spec.ts",
+    "**/studio-central-uat-readonly-evidence.spec.ts",
+  ],
   timeout: 300_000,
   expect: { timeout: 30_000 },
   workers: 1,
