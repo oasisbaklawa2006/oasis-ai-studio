@@ -395,4 +395,3 @@ const Fact = ({ label, value }: { label: string; value: string }) => (
 );
 
 export default BuyerBackendReadinessPage;
-
