@@ -71,4 +71,6 @@ it("formats only trusted scalar pricing values", () => {
   expect(formatPricing({ pricing: "legacy price" })).toBe("legacy price");
   expect(formatPricing({ pricing: { nested: { value: "bad fallback" } } })).toBe("—");
   expect(formatPricing({ pricing: null })).toBe("—");
+  expect(formatPricing({ pricing: { mrp: "   " } })).toBe("—");
+  expect(formatPricing({ pricing: "   " })).toBe("—");
 });
