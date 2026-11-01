@@ -42,4 +42,9 @@ describe("Point33 Core-backed pallet metadata", () => {
     expect(validatePalletMetadata({ pallet_uom: " type " }).valid).toBe(false);
     expect(validatePalletMetadata({ pallet_uom: "x".repeat(65) }).valid).toBe(false);
   });
+  it("requires a pallet quantity when a pallet type is supplied alone", () => {
+    const result = validatePalletMetadata({ pallet_uom: "Verified type" });
+    expect(result.valid).toBe(false);
+    expect(result.errors.join(" ")).toContain("At least one pallet quantity");
+  });
 });

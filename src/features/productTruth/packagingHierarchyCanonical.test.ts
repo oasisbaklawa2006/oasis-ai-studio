@@ -184,6 +184,35 @@ describe("packagingHierarchyCanonical", () => {
     expect(persisted.master_cartons_per_pallet).toBe(6);
   });
 
+  it("keeps case and master pallet counts independent (never collapsed into one quantity)", () => {
+    const form = {
+      ...packProductForm,
+      cartons_per_pallet: 40,
+      master_cartons_per_pallet: 8,
+      pallet_uom: "standard",
+    };
+    const h = buildCanonicalPackagingHierarchy(form);
+    expect(h.validation.valid).toBe(true);
+    expect(h.nodes[4].present).toBe(true);
+    expect(h.nodes[4].qtyPerParent).toBeNull();
+    const snap = serializePackagingHierarchyForSnapshot(form);
+    expect(snap.pallet.cartons_per_pallet).toBe(40);
+    expect(snap.pallet.master_cartons_per_pallet).toBe(8);
+  });
+
+  it("fails closed for fractional, type-only and negative pallet input", () => {
+    for (const extra of [
+      { cartons_per_pallet: 2.5, pallet_uom: "standard" },
+      { pallet_uom: "standard" },
+      { cartons_per_pallet: -3, pallet_uom: "standard" },
+      { master_cartons_per_pallet: 0, pallet_uom: "standard" },
+    ]) {
+      expect(
+        buildCanonicalPackagingHierarchy({ ...packProductForm, ...extra }).validation.valid,
+      ).toBe(false);
+    }
+  });
+
   it("fails closed when quantity lacks operator-supplied pallet type", () => {
     const h = buildCanonicalPackagingHierarchy({
       ...packProductForm,

@@ -36,6 +36,9 @@ export function validatePalletMetadata(form: Record<string, unknown>): PalletVal
   if ((cartons != null || masterCartons != null) && !uom) {
     errors.push("Pallet UOM is required when pallet quantity is specified");
   }
+  if (uom && cartons == null && masterCartons == null && errors.length === 0) {
+    errors.push("At least one pallet quantity is required when Pallet UOM is specified");
+  }
   return {
     valid: errors.length === 0,
     errors,
