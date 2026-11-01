@@ -2035,6 +2035,8 @@ export type Database = {
         };
         Returns: boolean;
       };
+      /** Core #407 scoped Product Master authoring authority; requires governed migration. */
+      can_write_product_master: { Args: never; Returns: boolean };
       /** Verified production public.is_admin() signature (read-only RLS authority). */
       is_admin: { Args: never; Returns: boolean };
       is_catalogue_reviewer: { Args: never; Returns: boolean };
