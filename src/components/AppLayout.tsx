@@ -101,7 +101,7 @@ export const AppLayout = () => {
     if (!user?.id) return;
     // The backend is the only authority; a Studio manager does not require
     // global Central admin role. Missing/unreleased RPC is fail-closed.
-    const rpc = supabase.rpc as unknown as (
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
       name: string,
     ) => Promise<{ data: unknown; error: { message: string } | null }>;
     void rpc("can_manage_ai_studio_access_v1")
