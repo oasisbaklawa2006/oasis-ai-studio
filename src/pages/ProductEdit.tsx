@@ -324,6 +324,9 @@ const empty: Record<string, unknown> = {
   carton_uom: "",
   master_carton_qty: "",
   master_carton_uom: "",
+  cartons_per_pallet: "",
+  master_cartons_per_pallet: "",
+  pallet_uom: "",
   dimension_l_cm: "",
   dimension_w_cm: "",
   dimension_h_cm: "",
@@ -375,6 +378,8 @@ const NUMERIC_FIELDS = [
   "increment_value",
   "carton_qty",
   "master_carton_qty",
+  "cartons_per_pallet",
+  "master_cartons_per_pallet",
   "dimension_l_cm",
   "dimension_w_cm",
   "dimension_h_cm",
@@ -2526,6 +2531,34 @@ const ProductEdit = () => {
                           value={form.master_carton_uom}
                           onChange={(v: string) => set("master_carton_uom", v)}
                           options={PACK_UOM_OPTIONS}
+                        />
+                      </Field>
+                      <Field label="Case cartons per pallet" hint="Optional. Leave blank if not measured or approved.">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="10000"
+                          step="1"
+                          value={form.cartons_per_pallet ?? ""}
+                          onChange={(e) => set("cartons_per_pallet", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Master cartons per pallet" hint="Optional. Do not infer from case-carton counts.">
+                        <Input
+                          type="number"
+                          min="1"
+                          max="10000"
+                          step="1"
+                          value={form.master_cartons_per_pallet ?? ""}
+                          onChange={(e) => set("master_cartons_per_pallet", e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Pallet unit/type" hint="Required when a pallet quantity is provided.">
+                        <Input
+                          maxLength={64}
+                          value={form.pallet_uom ?? ""}
+                          onChange={(e) => set("pallet_uom", e.target.value)}
+                          placeholder="e.g. standard pallet"
                         />
                       </Field>
                       <div className="sm:col-span-3">
