@@ -186,13 +186,14 @@ export function parseStudioAuditEntry(raw: unknown): StudioAuditEntry | null {
 
 /** Core-governed (audit.read + AAL2) paginated history. There is no direct table access. */
 export async function readStudioAccessAudit(
-  input: { userId?: string; limit?: number; before?: string } = {},
+  input: { userId?: string; limit?: number; before?: string; beforeId?: string } = {},
 ): Promise<StudioAuditEntry[]> {
   const limit = Math.min(Math.max(Math.trunc(input.limit ?? 50), 1), 200);
   const result = await studioRpc("read_ai_studio_access_audit_v1", {
     p_user_id: input.userId ?? null,
     p_limit: limit,
     p_before: input.before ?? null,
+    p_before_id: input.beforeId ?? null,
   });
   if (result.error) throw new Error(result.error.message);
   if (!Array.isArray(result.data)) throw new Error("Invalid Studio audit response.");
