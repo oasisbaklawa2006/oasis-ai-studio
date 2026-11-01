@@ -1,0 +1,292 @@
+import { Loader2, RefreshCw, ShieldCheck, Users } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { PageHeader } from "@/components/PageHeader";
+import { Button } from "@/components/ui/button";
+import {
+  readStudioAccessDirectory,
+  setStudioAccess,
+  STUDIO_ACCESS_STATUSES,
+  STUDIO_PERMISSIONS,
+  STUDIO_PROFILES,
+  type StudioAccessRow,
+  type StudioAccessStatus,
+} from "@/features/studioAccess/studioAccessContract";
+
+const EMPTY: Record<string, boolean> = {};
+
+/**
+ * Administration is entirely Core RPC-authorized. This page does not inspect a
+ * frontend role matrix for privileged changes and never uses the service key.
+ */
+export default function UsersAccess() {
+  const [directory, setDirectory] = useState<StudioAccessRow[]>([]);
+  const [selected, setSelected] = useState<StudioAccessRow | null>(null);
+  const [status, setStatus] = useState<StudioAccessStatus>("pending_approval");
+  const [profiles, setProfiles] = useState<string[]>([]);
+  const [overrides, setOverrides] = useState<Record<string, boolean>>(EMPTY);
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const select = useCallback((row: StudioAccessRow) => {
+    setSelected(row);
+    setStatus(
+      STUDIO_ACCESS_STATUSES.includes(row.studio_status as StudioAccessStatus)
+        ? (row.studio_status as StudioAccessStatus)
+        : "pending_approval",
+    );
+    setProfiles(row.profile_keys.filter((key) => STUDIO_PROFILES.some((p) => p.key === key)));
+    setOverrides({ ...row.overrides });
+    setReason("");
+  }, []);
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const rows = await readStudioAccessDirectory();
+      setDirectory(rows);
+      setSelected((previous) => {
+        if (!previous) return null;
+        const current = rows.find((row) => row.user_id === previous.user_id);
+        if (current) {
+          // A successful save clears stale form state; reload manual changes only.
+          return current;
+        }
+        return null;
+      });
+    } catch (e: unknown) {
+      setDirectory([]);
+      setSelected(null);
+      setError(e instanceof Error ? e.message : "Studio access authority unavailable.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const save = async () => {
+    if (!selected || saving) return;
+    setSaving(true);
+    try {
+      await setStudioAccess({
+        userId: selected.user_id,
+        status,
+        profiles,
+        overrides,
+        reason,
+        expectedVersion: selected.version,
+      });
+      toast.success("Studio permission change recorded by Core.");
+      setReason("");
+      await reload();
+      const rows = await readStudioAccessDirectory();
+      const updated = rows.find((row) => row.user_id === selected.user_id);
+      if (updated) select(updated);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Access change was not accepted.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const protectedOwner = selected?.profile_keys.includes("owner") ?? false;
+  const cannotActivate =
+    status === "active" &&
+    (!selected?.core_active || !["active", "accepted"].includes(selected.invite_status ?? ""));
+
+  return (
+    <>
+      <PageHeader
+        title="Users & Access"
+        subtitle="Manage approved Studio roles and individual rights using the canonical Oasis Core identity. No permission change is effective without Core approval."
+        actions={
+          <Button variant="outline" disabled={loading || saving} onClick={() => void reload()}>
+            <RefreshCw className="h-4 w-4 mr-2" /> Refresh
+          </Button>
+        }
+      />
+      <div className="card-elevated p-4 mb-6 flex items-start gap-3 text-sm">
+        <ShieldCheck className="h-5 w-5 shrink-0 text-accent" />
+        <p>
+          Staff accounts are invited and provisioned in Oasis Core/Central. This screen grants or
+          revokes <strong>AI Studio-only</strong> access to existing identities. Approval of a
+          pending employee and protected production/financial rights cannot be bypassed here.
+          Privileged changes require an AAL2-verified session and a recorded reason.
+        </p>
+      </div>
+      {error ? (
+        <div role="alert" className="card-elevated p-5 border-destructive/40">
+          <h2 className="font-display text-lg">Access administration unavailable</h2>
+          <p className="text-sm text-muted-foreground mt-2">{error}</p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Core access migration or authorization is required. No fallback user list or write
+            action is available.
+          </p>
+        </div>
+      ) : loading ? (
+        <div className="p-8 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" /> Loading authorized user directory…
+        </div>
+      ) : (
+        <div className="grid lg:grid-cols-[minmax(240px,1fr)_minmax(0,2fr)] gap-5">
+          <section className="card-elevated p-4 space-y-3" aria-label="Staff directory">
+            <h2 className="font-display text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" /> Employees ({directory.length})
+            </h2>
+            <div className="max-h-[72vh] overflow-y-auto space-y-1">
+              {directory.map((row) => (
+                <button
+                  type="button"
+                  key={row.user_id}
+                  onClick={() => select(row)}
+                  className={`w-full text-left rounded-lg border p-3 text-sm hover:bg-muted/50 ${selected?.user_id === row.user_id ? "border-accent bg-muted/40" : "border-border"}`}
+                >
+                  <span className="block font-medium truncate">
+                    {row.display_name || row.email || "Unnamed employee"}
+                  </span>
+                  <span className="block text-xs text-muted-foreground truncate">{row.email}</span>
+                  <span className="block text-xs mt-1">
+                    {row.studio_status.replaceAll("_", " ")} · Core {row.core_active ? "active" : "inactive"}
+                  </span>
+                </button>
+              ))}
+              {directory.length === 0 && (
+                <p className="text-muted-foreground text-sm">No eligible staff identities.</p>
+              )}
+            </div>
+          </section>
+          <section className="card-elevated p-5 space-y-5" aria-label="Studio permission editor">
+            {!selected ? (
+              <p className="text-sm text-muted-foreground">
+                Select an employee to review assigned roles, effective approval status and
+                specific permission overrides.
+              </p>
+            ) : (
+              <>
+                <div>
+                  <h2 className="font-display text-xl">
+                    {selected.display_name || selected.email || "Employee"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">{selected.email}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Core invitation: {selected.invite_status ?? "unknown"} · Version {selected.version}
+                  </p>
+                </div>
+                {protectedOwner && (
+                  <p className="text-sm border rounded-lg p-3">
+                    This is a protected Owner identity. Delegated administration cannot change
+                    its membership or permissions.
+                  </p>
+                )}
+                <fieldset disabled={protectedOwner || saving} className="space-y-5">
+                  <div className="space-y-2">
+                    <label htmlFor="studio-access-status" className="font-medium text-sm">
+                      Studio access status
+                    </label>
+                    <select
+                      id="studio-access-status"
+                      value={status}
+                      onChange={(event) => setStatus(event.target.value as StudioAccessStatus)}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    >
+                      {STUDIO_ACCESS_STATUSES.map((item) => (
+                        <option key={item} value={item}>{item.replaceAll("_", " ")}</option>
+                      ))}
+                    </select>
+                    {cannotActivate && (
+                      <p role="alert" className="text-sm text-destructive">
+                        Core identity is not active and approved; Studio activation will be denied.
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm">Studio role profiles</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Multiple profiles can be combined. Owner cannot be delegated here.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-2">
+                      {STUDIO_PROFILES.map((profile) => (
+                        <label key={profile.key} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={profiles.includes(profile.key)}
+                            onChange={(event) => setProfiles((current) =>
+                              event.target.checked
+                                ? [...current, profile.key]
+                                : current.filter((key) => key !== profile.key),
+                            )}
+                          />
+                          {profile.label}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="font-medium text-sm">Individual permission overrides</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Inherit uses role templates; Deny takes precedence. Core controls all actual writes.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {STUDIO_PERMISSIONS.map((permission) => (
+                        <label key={permission} className="flex flex-col gap-1 text-xs">
+                          <span>{permission.replace("ai_studio.", "")}</span>
+                          <select
+                            value={
+                              overrides[permission] === true
+                                ? "allow"
+                                : overrides[permission] === false
+                                  ? "deny"
+                                  : "inherit"
+                            }
+                            onChange={(event) => setOverrides((old) => {
+                              const next = { ...old };
+                              if (event.target.value === "inherit") delete next[permission];
+                              else next[permission] = event.target.value === "allow";
+                              return next;
+                            })}
+                            className="rounded-md border bg-background px-2 py-1.5 text-sm"
+                          >
+                            <option value="inherit">Inherit from role</option>
+                            <option value="allow">Allow</option>
+                            <option value="deny">Deny</option>
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="studio-access-reason" className="font-medium text-sm">
+                      Reason for change (required)
+                    </label>
+                    <textarea
+                      id="studio-access-reason"
+                      rows={2}
+                      maxLength={1000}
+                      value={reason}
+                      onChange={(event) => setReason(event.target.value)}
+                      className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                      placeholder="Explain why this account should gain, change or lose Studio access"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={saving || cannotActivate || reason.trim().length < 8}
+                    onClick={() => void save()}
+                  >
+                    {saving ? "Saving…" : "Save access in Core"}
+                  </Button>
+                </fieldset>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </>
+  );
+}
