@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { inspectStudioMfa, verifyStudioMfaCode } from "./StudioAal2Gate";
+import { inspectStudioMfa, verifyStudioMfaCode } from "@/features/studioAccess/studioMfaContract";
 
 const mfa = vi.hoisted(() => ({
   getAuthenticatorAssuranceLevel: vi.fn(),
