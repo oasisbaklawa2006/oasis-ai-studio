@@ -4,12 +4,14 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
+  readStudioAccessAudit,
   readStudioAccessDirectory,
   STUDIO_ACCESS_STATUSES,
   STUDIO_PERMISSIONS,
   STUDIO_PROFILES,
   type StudioAccessRow,
   type StudioAccessStatus,
+  type StudioAuditEntry,
   setStudioAccess,
 } from "@/features/studioAccess/studioAccessContract";
 
@@ -29,11 +31,15 @@ export default function UsersAccess() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [audit, setAudit] = useState<StudioAuditEntry[] | null>(null);
+  const [auditError, setAuditError] = useState<string | null>(null);
 
   const selectedIdRef = useRef<string | null>(null);
 
   const select = useCallback((row: StudioAccessRow) => {
     selectedIdRef.current = row.user_id;
+    setAudit(null);
+    setAuditError(null);
     setSelected(row);
     setStatus(
       STUDIO_ACCESS_STATUSES.includes(row.studio_status as StudioAccessStatus)
@@ -97,6 +103,17 @@ export default function UsersAccess() {
     }
   };
 
+  const loadAudit = async () => {
+    if (!selected) return;
+    setAuditError(null);
+    try {
+      setAudit(await readStudioAccessAudit({ userId: selected.user_id, limit: 25 }));
+    } catch (e: unknown) {
+      setAudit(null);
+      setAuditError(e instanceof Error ? e.message : "Audit history unavailable.");
+    }
+  };
+
   const protectedOwner = selected?.profile_keys.includes("owner") ?? false;
   const cannotActivate =
     status === "active" &&
@@ -120,6 +137,15 @@ export default function UsersAccess() {
           revokes <strong>AI Studio-only</strong> access to existing identities. Approval of a
           pending employee and protected production/financial rights cannot be bypassed here.
           Privileged changes require an AAL2-verified session and a recorded reason.
+        </p>
+      </div>
+      <div className="card-elevated p-4 mb-6 text-sm border-amber-500/40" role="note">
+        <p>
+          <strong>These roles do not yet change production data permissions.</strong> Product
+          Master, media and variant writes remain governed by Core database rules (Core #407), and
+          pricing approval, publication and hard delete stay separately governed. Appointing or
+          revoking an AI Studio Manager, or granting user-management rights, requires an Owner; Core
+          enforces this regardless of what this screen allows.
         </p>
       </div>
       {error ? (
@@ -293,6 +319,37 @@ export default function UsersAccess() {
                     {saving ? "Saving…" : "Save access in Core"}
                   </Button>
                 </fieldset>
+                <div className="space-y-2 border-t pt-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-medium text-sm">Audit history</h3>
+                    <Button type="button" variant="outline" onClick={() => void loadAudit()}>
+                      Load history
+                    </Button>
+                  </div>
+                  {auditError && (
+                    <p role="alert" className="text-sm text-destructive">
+                      {auditError}
+                    </p>
+                  )}
+                  {audit && audit.length === 0 && (
+                    <p className="text-sm text-muted-foreground">No recorded changes.</p>
+                  )}
+                  <ul className="space-y-2">
+                    {audit?.map((entry) => (
+                      <li key={entry.id} className="rounded-md border p-3 text-xs space-y-1">
+                        <p>
+                          {new Date(entry.created_at).toLocaleString()} ·{" "}
+                          {entry.actor_email ?? entry.actor_id}
+                        </p>
+                        <p>{entry.reason}</p>
+                        <p className="text-muted-foreground">
+                          {String(entry.before?.status ?? "none")} →{" "}
+                          {String(entry.after?.status ?? "none")}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               </>
             )}
           </section>

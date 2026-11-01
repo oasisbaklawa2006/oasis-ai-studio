@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   parseStudioAccessRow,
+  parseStudioAuditEntry,
+  readStudioAccessAudit,
   readStudioAccessDirectory,
   STUDIO_PERMISSIONS,
   STUDIO_PROFILES,
@@ -131,5 +133,50 @@ describe("governed AI Studio access client (#272)", () => {
       p_reason: "Account reassignment",
       p_expected_version: 2,
     });
+  });
+
+  it("exposes app.access as an explicit, deny-able permission (a deny blocks all Studio rights in Core)", () => {
+    expect(STUDIO_PERMISSIONS).toContain("ai_studio.app.access");
+    const row = parseStudioAccessRow({
+      user_id: "u1",
+      overrides: { "ai_studio.app.access": false },
+    });
+    expect(row?.overrides).toEqual({ "ai_studio.app.access": false });
+  });
+
+  it("reads audit history only through the Core RPC with a clamped limit", async () => {
+    mock.rpc.mockResolvedValueOnce({
+      data: [
+        {
+          id: "a1",
+          created_at: "2026-11-01T00:00:00Z",
+          action: "STUDIO_ACCESS_SET",
+          user_id: "u1",
+          actor_id: "u2",
+          actor_email: "owner@example.invalid",
+          reason: "routine onboarding",
+          before: null,
+          after: { status: "active" },
+        },
+        { id: "bad" },
+      ],
+      error: null,
+    });
+    const rows = await readStudioAccessAudit({ userId: "u1", limit: 100000 });
+    expect(mock.rpc).toHaveBeenCalledWith("read_ai_studio_access_audit_v1", {
+      p_user_id: "u1",
+      p_limit: 200,
+      p_before: null,
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].after).toEqual({ status: "active" });
+    expect(parseStudioAuditEntry({ id: "x" })).toBeNull();
+  });
+
+  it("fails closed when audit history is denied or the backend is missing", async () => {
+    mock.rpc.mockResolvedValueOnce({ data: null, error: { message: "not authorized" } });
+    await expect(readStudioAccessAudit()).rejects.toThrow("not authorized");
+    mock.rpc.mockResolvedValueOnce({ data: { not: "an array" }, error: null });
+    await expect(readStudioAccessAudit()).rejects.toThrow("Invalid Studio audit response");
   });
 });

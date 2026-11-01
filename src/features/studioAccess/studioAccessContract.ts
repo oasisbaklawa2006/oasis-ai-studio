@@ -13,6 +13,7 @@ export const STUDIO_PROFILES = [
 ] as const;
 
 export const STUDIO_PERMISSIONS = [
+  "ai_studio.app.access",
   "ai_studio.products.read",
   "ai_studio.products.create",
   "ai_studio.products.update",
@@ -134,4 +135,66 @@ export async function setStudioAccess(input: {
     p_expected_version: input.expectedVersion,
   });
   if (error) throw new Error(error.message);
+}
+
+export type StudioAuditEntry = {
+  id: string;
+  created_at: string;
+  action: string;
+  user_id: string;
+  user_email: string | null;
+  actor_id: string;
+  actor_email: string | null;
+  reason: string;
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+};
+
+function plainObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+export function parseStudioAuditEntry(raw: unknown): StudioAuditEntry | null {
+  const item = plainObject(raw);
+  if (!item) return null;
+  const { id, created_at, action, user_id, actor_id, reason } = item;
+  if (
+    typeof id !== "string" ||
+    typeof created_at !== "string" ||
+    typeof action !== "string" ||
+    typeof user_id !== "string" ||
+    typeof actor_id !== "string" ||
+    typeof reason !== "string"
+  ) {
+    return null;
+  }
+  return {
+    id,
+    created_at,
+    action,
+    user_id,
+    user_email: typeof item.user_email === "string" ? item.user_email : null,
+    actor_id,
+    actor_email: typeof item.actor_email === "string" ? item.actor_email : null,
+    reason,
+    before: plainObject(item.before),
+    after: plainObject(item.after),
+  };
+}
+
+/** Core-governed (audit.read + AAL2) paginated history. There is no direct table access. */
+export async function readStudioAccessAudit(
+  input: { userId?: string; limit?: number; before?: string } = {},
+): Promise<StudioAuditEntry[]> {
+  const limit = Math.min(Math.max(Math.trunc(input.limit ?? 50), 1), 200);
+  const result = await studioRpc("read_ai_studio_access_audit_v1", {
+    p_user_id: input.userId ?? null,
+    p_limit: limit,
+    p_before: input.before ?? null,
+  });
+  if (result.error) throw new Error(result.error.message);
+  if (!Array.isArray(result.data)) throw new Error("Invalid Studio audit response.");
+  return result.data.map(parseStudioAuditEntry).filter((x): x is StudioAuditEntry => x !== null);
 }
