@@ -58,6 +58,6 @@ describe("Studio's invite-only entry (#272)", () => {
   it("does not create any new identity when a signed-out employee views the entry", async () => {
     await act(async () => root.render(<Auth />));
     expect(mocks.signInWithPassword).not.toHaveBeenCalled();
-    expect(host.querySelector('form')?.getAttribute("method")).toBeNull();
+    expect(host.querySelector("form")?.getAttribute("method")).toBeNull();
   });
 });
