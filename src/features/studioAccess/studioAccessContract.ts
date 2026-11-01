@@ -30,9 +30,18 @@ export const STUDIO_PERMISSIONS = [
   "ai_studio.audit.read",
 ] as const;
 
-export type StudioAccessStatus = "pending_approval" | "active" | "suspended" | "revoked" | "rejected";
+export type StudioAccessStatus =
+  | "pending_approval"
+  | "active"
+  | "suspended"
+  | "revoked"
+  | "rejected";
 export const STUDIO_ACCESS_STATUSES: readonly StudioAccessStatus[] = [
-  "pending_approval", "active", "suspended", "revoked", "rejected",
+  "pending_approval",
+  "active",
+  "suspended",
+  "revoked",
+  "rejected",
 ];
 
 export type StudioAccessRow = {
@@ -86,7 +95,8 @@ const studioRpc = supabase.rpc as unknown as StudioRpc;
 export async function readStudioAccessDirectory(): Promise<StudioAccessRow[]> {
   const authority = await studioRpc("can_manage_ai_studio_access_v1");
   if (authority.error) throw new Error("Studio access backend is not configured or available.");
-  if (authority.data !== true) throw new Error("Access denied: Studio access management permission required.");
+  if (authority.data !== true)
+    throw new Error("Access denied: Studio access management permission required.");
   const result = await studioRpc("list_ai_studio_access_v1");
   if (result.error) throw new Error(result.error.message);
   if (!Array.isArray(result.data)) throw new Error("Invalid Studio access directory response.");
@@ -101,12 +111,15 @@ export async function setStudioAccess(input: {
   reason: string;
   expectedVersion: number;
 }): Promise<void> {
-  if (input.reason.trim().length < 8) throw new Error("An audit reason of at least eight characters is required.");
+  if (input.reason.trim().length < 8)
+    throw new Error("An audit reason of at least eight characters is required.");
   if (!STUDIO_ACCESS_STATUSES.includes(input.status)) throw new Error("Invalid access status.");
   if (input.profiles.some((x) => !STUDIO_PROFILES.some((p) => p.key === x))) {
     throw new Error("Owner and unknown profiles cannot be assigned here.");
   }
-  if (Object.keys(input.overrides).some((x) => !(STUDIO_PERMISSIONS as readonly string[]).includes(x))) {
+  if (
+    Object.keys(input.overrides).some((x) => !(STUDIO_PERMISSIONS as readonly string[]).includes(x))
+  ) {
     throw new Error("Unknown permission override.");
   }
   if (input.status === "active" && input.profiles.length === 0) {
