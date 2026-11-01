@@ -8,9 +8,9 @@ import {
   STUDIO_ACCESS_STATUSES,
   STUDIO_PERMISSIONS,
   STUDIO_PROFILES,
-  setStudioAccess,
   type StudioAccessRow,
   type StudioAccessStatus,
+  setStudioAccess,
 } from "@/features/studioAccess/studioAccessContract";
 
 const EMPTY: Record<string, boolean> = {};
