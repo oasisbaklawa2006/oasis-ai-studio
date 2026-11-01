@@ -39,6 +39,7 @@ const Products = lazy(() => import("./pages/Products"));
 const ProductIntelligenceKnowledge = lazy(() => import("./pages/ProductIntelligenceKnowledge"));
 const ResolverPreview = lazy(() => import("./pages/ResolverPreview"));
 const Settings = lazy(() => import("./pages/Settings"));
+const UsersAccess = lazy(() => import("./pages/UsersAccess"));
 const Testing = lazy(() => import("./pages/Testing"));
 
 const RouteFallback = () => (
@@ -281,6 +282,7 @@ const App = () => (
                       </RoleGate>
                     }
                   />
+                  <Route path="/settings/users" element={<UsersAccess />} />
                   <Route
                     path="/admin/buyer-backend-readiness"
                     element={
