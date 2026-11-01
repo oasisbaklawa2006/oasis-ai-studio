@@ -89,7 +89,7 @@ export async function canWriteProductsDirectly(_rolesFromContext?: string[]): Pr
     const { data, error } = await supabase.rpc("can_write_product_master");
     if (error) {
       if (import.meta.env.DEV) {
-        console.error("[CentralPermissions] products is_admin authority probe failed:", error);
+        console.error("[CentralPermissions] products scoped Core authority probe failed:", error);
       }
       return false;
     }
