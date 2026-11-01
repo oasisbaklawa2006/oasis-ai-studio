@@ -58,6 +58,10 @@ export const CENTRAL_COMPAT_PRODUCT_COLUMNS = [
   "pcs_per_kg",
   "weight_per_pc_grams",
   "lead_time_days",
+  // Core Point33 staged pallet fields: do not release Studio writer before protected Core migration.
+  "cartons_per_pallet",
+  "master_cartons_per_pallet",
+  "pallet_uom",
   "fssai_licence_number",
   "country_of_origin",
   "label_manufacturer_details",
