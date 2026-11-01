@@ -2533,7 +2533,10 @@ const ProductEdit = () => {
                           options={PACK_UOM_OPTIONS}
                         />
                       </Field>
-                      <Field label="Case cartons per pallet" hint="Optional. Leave blank if not measured or approved.">
+                      <Field
+                        label="Case cartons per pallet"
+                        hint="Optional. Leave blank if not measured or approved."
+                      >
                         <Input
                           type="number"
                           min="1"
@@ -2543,7 +2546,10 @@ const ProductEdit = () => {
                           onChange={(e) => set("cartons_per_pallet", e.target.value)}
                         />
                       </Field>
-                      <Field label="Master cartons per pallet" hint="Optional. Do not infer from case-carton counts.">
+                      <Field
+                        label="Master cartons per pallet"
+                        hint="Optional. Do not infer from case-carton counts."
+                      >
                         <Input
                           type="number"
                           min="1"
@@ -2553,7 +2559,10 @@ const ProductEdit = () => {
                           onChange={(e) => set("master_cartons_per_pallet", e.target.value)}
                         />
                       </Field>
-                      <Field label="Pallet unit/type" hint="Required when a pallet quantity is provided.">
+                      <Field
+                        label="Pallet unit/type"
+                        hint="Required when a pallet quantity is provided."
+                      >
                         <Input
                           maxLength={64}
                           value={form.pallet_uom ?? ""}
