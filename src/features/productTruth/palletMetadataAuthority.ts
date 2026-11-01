@@ -22,10 +22,13 @@ function readCount(field: string, value: unknown, errors: string[]): number | nu
 export function validatePalletMetadata(form: Record<string, unknown>): PalletValidation {
   const errors: string[] = [];
   const cartons = readCount("Cartons per pallet", form.cartons_per_pallet, errors);
-  const masterCartons = readCount("Master cartons per pallet", form.master_cartons_per_pallet, errors);
-  const rawUom = form.pallet_uom === null || form.pallet_uom === undefined
-    ? ""
-    : String(form.pallet_uom);
+  const masterCartons = readCount(
+    "Master cartons per pallet",
+    form.master_cartons_per_pallet,
+    errors,
+  );
+  const rawUom =
+    form.pallet_uom === null || form.pallet_uom === undefined ? "" : String(form.pallet_uom);
   const uom = rawUom.trim() || null;
   if (uom && (uom.length > 64 || uom !== rawUom)) {
     errors.push("Pallet UOM must be trimmed and at most 64 characters");

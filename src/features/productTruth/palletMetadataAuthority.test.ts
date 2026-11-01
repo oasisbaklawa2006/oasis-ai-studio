@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  palletMetadataProductsPayload,
-  validatePalletMetadata,
-} from "./palletMetadataAuthority";
+import { palletMetadataProductsPayload, validatePalletMetadata } from "./palletMetadataAuthority";
 
 describe("Point33 Core-backed pallet metadata", () => {
   it("keeps optional pallet data null without fabricating any count or type", () => {
@@ -13,9 +10,13 @@ describe("Point33 Core-backed pallet metadata", () => {
     });
   });
   it("preserves both independently confirmed carton quantities", () => {
-    expect(palletMetadataProductsPayload({
-      cartons_per_pallet: "12", master_cartons_per_pallet: "3", pallet_uom: "Verified type",
-    })).toEqual({
+    expect(
+      palletMetadataProductsPayload({
+        cartons_per_pallet: "12",
+        master_cartons_per_pallet: "3",
+        pallet_uom: "Verified type",
+      }),
+    ).toEqual({
       cartons_per_pallet: 12,
       master_cartons_per_pallet: 3,
       pallet_uom: "Verified type",
@@ -25,9 +26,12 @@ describe("Point33 Core-backed pallet metadata", () => {
     for (const bad of ["0", "-1", "2.5", "10001", "not known"]) {
       const result = validatePalletMetadata({ cartons_per_pallet: bad, pallet_uom: "Verified" });
       expect(result.valid).toBe(false);
-      expect(() => palletMetadataProductsPayload({
-        cartons_per_pallet: bad, pallet_uom: "Verified",
-      })).toThrow("Cartons per pallet");
+      expect(() =>
+        palletMetadataProductsPayload({
+          cartons_per_pallet: bad,
+          pallet_uom: "Verified",
+        }),
+      ).toThrow("Cartons per pallet");
     }
   });
   it("requires an explicitly asserted pallet UOM whenever count exists", () => {
