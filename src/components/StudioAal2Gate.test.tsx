@@ -15,7 +15,8 @@ vi.mock("@/integrations/supabase/client", () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
-    data: { currentLevel: "aal1", nextLevel: "aal2" }, error: null,
+    data: { currentLevel: "aal1", nextLevel: "aal2" },
+    error: null,
   });
   mfa.listFactors.mockResolvedValue({ data: { totp: [] }, error: null });
   mfa.challengeAndVerify.mockResolvedValue({ data: {}, error: null });
@@ -24,7 +25,8 @@ beforeEach(() => {
 describe("Studio AAL2 privileged-console gate", () => {
   it("admits the privileged screen only for an actual AAL2 session", async () => {
     mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
-      data: { currentLevel: "aal2", nextLevel: "aal2" }, error: null,
+      data: { currentLevel: "aal2", nextLevel: "aal2" },
+      error: null,
     });
     expect(await inspectStudioMfa()).toEqual({ kind: "ready" });
     expect(mfa.listFactors).not.toHaveBeenCalled();
@@ -32,7 +34,8 @@ describe("Studio AAL2 privileged-console gate", () => {
 
   it("requires a fresh challenge for an enrolled TOTP but AAL1 session", async () => {
     mfa.listFactors.mockResolvedValue({
-      data: { totp: [{ id: "factor-1", status: "verified" }] }, error: null,
+      data: { totp: [{ id: "factor-1", status: "verified" }] },
+      error: null,
     });
     expect(await inspectStudioMfa()).toEqual({ kind: "challenge", factorId: "factor-1" });
   });
@@ -43,18 +46,21 @@ describe("Studio AAL2 privileged-console gate", () => {
 
   it("does not treat an unavailable MFA service as authorized", async () => {
     mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
-      data: null, error: { message: "unavailable" },
+      data: null,
+      error: { message: "unavailable" },
     });
     await expect(inspectStudioMfa()).rejects.toThrow("MFA assurance unavailable");
   });
 
   it("verifies a real code and then independently checks AAL2", async () => {
     mfa.getAuthenticatorAssuranceLevel.mockResolvedValue({
-      data: { currentLevel: "aal2", nextLevel: "aal2" }, error: null,
+      data: { currentLevel: "aal2", nextLevel: "aal2" },
+      error: null,
     });
     await expect(verifyStudioMfaCode("factor-1", "123456")).resolves.toBeUndefined();
     expect(mfa.challengeAndVerify).toHaveBeenCalledWith({
-      factorId: "factor-1", code: "123456",
+      factorId: "factor-1",
+      code: "123456",
     });
   });
 
@@ -71,7 +77,8 @@ describe("Studio AAL2 privileged-console gate", () => {
 
   it("rejects an invalid authenticator response", async () => {
     mfa.challengeAndVerify.mockResolvedValue({
-      data: null, error: { message: "invalid OTP" },
+      data: null,
+      error: { message: "invalid OTP" },
     });
     await expect(verifyStudioMfaCode("factor-1", "123456")).rejects.toThrow(
       "Authenticator verification failed",

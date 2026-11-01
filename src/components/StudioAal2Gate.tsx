@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -128,44 +128,75 @@ export function StudioAal2Gate({ children }: { children: ReactNode }) {
       )}
       {stage.kind === "enroll" && (
         <>
-          <p>No verified authenticator is enrolled for this account. A TOTP factor is required
-            before changing staff access. This cannot be bypassed by a global admin role.</p>
-          <button type="button" disabled={busy} className="rounded-md border px-4 py-2"
-            onClick={() => void enroll()}>
+          <p>
+            No verified authenticator is enrolled for this account. A TOTP factor is required before
+            changing staff access. This cannot be bypassed by a global admin role.
+          </p>
+          <button
+            type="button"
+            disabled={busy}
+            className="rounded-md border px-4 py-2"
+            onClick={() => void enroll()}
+          >
             {busy ? "Starting…" : "Set up authenticator"}
           </button>
         </>
       )}
       {stage.kind === "enroll_confirm" && (
         <>
-          <p>Scan this QR code using your authenticator app. The setup key is sensitive;
-            do not share it or include it in screenshots.</p>
-          <img src={stage.qr} alt="Private TOTP enrollment QR code"
-            className="h-48 w-48 rounded-md border bg-white p-2" />
-          <p className="text-xs">If scanning is unavailable, enter this private setup key
-            manually in your authenticator app:</p>
+          <p>
+            Scan this QR code using your authenticator app. The setup key is sensitive; do not share
+            it or include it in screenshots.
+          </p>
+          <img
+            src={stage.qr}
+            alt="Private TOTP enrollment QR code"
+            className="h-48 w-48 rounded-md border bg-white p-2"
+          />
+          <p className="text-xs">
+            If scanning is unavailable, enter this private setup key manually in your authenticator
+            app:
+          </p>
           <code className="block break-all rounded bg-muted p-3 text-xs">{stage.secret}</code>
         </>
       )}
       {(stage.kind === "challenge" || stage.kind === "enroll_confirm") && (
-        <form className="space-y-3" onSubmit={(event) => {
-          event.preventDefault();
-          void verify();
-        }}>
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void verify();
+          }}
+        >
           <label htmlFor="studio-mfa-code" className="block text-sm font-medium">
             Authenticator code
           </label>
-          <input id="studio-mfa-code" type="text" inputMode="numeric" pattern="[0-9]{6,8}"
-            autoComplete="one-time-code" maxLength={8} value={code} required
+          <input
+            id="studio-mfa-code"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]{6,8}"
+            autoComplete="one-time-code"
+            maxLength={8}
+            value={code}
+            required
             onChange={(event) => setCode(event.target.value.replace(/[^0-9]/g, ""))}
-            className="w-full rounded-md border bg-background px-3 py-2" />
-          <button type="submit" disabled={busy || !/^[0-9]{6,8}$/.test(code)}
-            className="rounded-md border px-4 py-2">
+            className="w-full rounded-md border bg-background px-3 py-2"
+          />
+          <button
+            type="submit"
+            disabled={busy || !/^[0-9]{6,8}$/.test(code)}
+            className="rounded-md border px-4 py-2"
+          >
             {busy ? "Verifying…" : "Verify and continue"}
           </button>
         </form>
       )}
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
     </section>
   );
 }
