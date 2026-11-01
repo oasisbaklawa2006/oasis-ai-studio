@@ -11,16 +11,16 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { rpc: mock.rpc },
 }));
 
-describe("live product / media direct-write RLS authority", () => {
+describe("Core #407 product / media / variant direct-write authority", () => {
   beforeEach(() => {
     mock.rpc.mockReset();
   });
 
-  it("grants direct product write only on confirmed backend is_admin true", async () => {
+  it("grants direct product write only on confirmed Core product-authoring RPC true", async () => {
     mock.rpc.mockResolvedValueOnce({ data: true, error: null });
     expect(await canWriteProductsDirectly(["owner"])).toBe(true);
     expect(mock.rpc).toHaveBeenCalledTimes(1);
-    expect(mock.rpc).toHaveBeenCalledWith("is_admin");
+    expect(mock.rpc).toHaveBeenCalledWith("can_write_product_master");
   });
 
   it("does not mistake mapped owner/product_manager or unrelated permission for direct write", async () => {
@@ -29,10 +29,12 @@ describe("live product / media direct-write RLS authority", () => {
       expect(await canWriteProductsDirectly(roles)).toBe(false);
     }
     expect(mock.rpc).toHaveBeenCalledTimes(4);
-    expect(mock.rpc).toHaveBeenCalledWith("is_admin");
+    expect(mock.rpc).toHaveBeenCalledWith("can_write_product_master");
   });
 
-  it("fails closed when product-writing RLS cannot be verified", async () => {
+  it("fails closed when Core product-authoring RPC is absent, denied or unreachable", async () => {
+    mock.rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST202", message: "RPC missing" } });
+    expect(await canWriteProductsDirectly(["super_admin"])).toBe(false);
     mock.rpc.mockResolvedValueOnce({ data: null, error: { message: "permission denied" } });
     expect(await canWriteProductsDirectly(["super_admin"])).toBe(false);
     mock.rpc.mockRejectedValueOnce(new Error("network interrupted"));
