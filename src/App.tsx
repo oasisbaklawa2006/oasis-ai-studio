@@ -5,6 +5,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { CapabilityUnavailable } from "@/components/CapabilityUnavailable";
 import { CatalogueReviewerGate } from "@/components/CatalogueReviewerGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { StudioAal2Gate } from "@/components/StudioAal2Gate";
 import { RoleGate } from "@/components/RoleGate";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -282,7 +283,14 @@ const App = () => (
                       </RoleGate>
                     }
                   />
-                  <Route path="/settings/users" element={<UsersAccess />} />
+                  <Route
+                    path="/settings/users"
+                    element={
+                      <StudioAal2Gate>
+                        <UsersAccess />
+                      </StudioAal2Gate>
+                    }
+                  />
                   <Route
                     path="/admin/buyer-backend-readiness"
                     element={
