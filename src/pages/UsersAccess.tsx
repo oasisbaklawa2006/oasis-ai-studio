@@ -5,10 +5,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   readStudioAccessDirectory,
-  setStudioAccess,
   STUDIO_ACCESS_STATUSES,
   STUDIO_PERMISSIONS,
   STUDIO_PROFILES,
+  setStudioAccess,
   type StudioAccessRow,
   type StudioAccessStatus,
 } from "@/features/studioAccess/studioAccessContract";
@@ -152,7 +152,8 @@ export default function UsersAccess() {
                   </span>
                   <span className="block text-xs text-muted-foreground truncate">{row.email}</span>
                   <span className="block text-xs mt-1">
-                    {row.studio_status.replaceAll("_", " ")} · Core {row.core_active ? "active" : "inactive"}
+                    {row.studio_status.replaceAll("_", " ")} · Core{" "}
+                    {row.core_active ? "active" : "inactive"}
                   </span>
                 </button>
               ))}
@@ -164,8 +165,8 @@ export default function UsersAccess() {
           <section className="card-elevated p-5 space-y-5" aria-label="Studio permission editor">
             {!selected ? (
               <p className="text-sm text-muted-foreground">
-                Select an employee to review assigned roles, effective approval status and
-                specific permission overrides.
+                Select an employee to review assigned roles, effective approval status and specific
+                permission overrides.
               </p>
             ) : (
               <>
@@ -175,13 +176,14 @@ export default function UsersAccess() {
                   </h2>
                   <p className="text-sm text-muted-foreground">{selected.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    Core invitation: {selected.invite_status ?? "unknown"} · Version {selected.version}
+                    Core invitation: {selected.invite_status ?? "unknown"} · Version{" "}
+                    {selected.version}
                   </p>
                 </div>
                 {protectedOwner && (
                   <p className="text-sm border rounded-lg p-3">
-                    This is a protected Owner identity. Delegated administration cannot change
-                    its membership or permissions.
+                    This is a protected Owner identity. Delegated administration cannot change its
+                    membership or permissions.
                   </p>
                 )}
                 <fieldset disabled={protectedOwner || saving} className="space-y-5">
@@ -196,7 +198,9 @@ export default function UsersAccess() {
                       className="w-full rounded-md border bg-background px-3 py-2 text-sm"
                     >
                       {STUDIO_ACCESS_STATUSES.map((item) => (
-                        <option key={item} value={item}>{item.replaceAll("_", " ")}</option>
+                        <option key={item} value={item}>
+                          {item.replaceAll("_", " ")}
+                        </option>
                       ))}
                     </select>
                     {cannotActivate && (
@@ -216,11 +220,13 @@ export default function UsersAccess() {
                           <input
                             type="checkbox"
                             checked={profiles.includes(profile.key)}
-                            onChange={(event) => setProfiles((current) =>
-                              event.target.checked
-                                ? [...current, profile.key]
-                                : current.filter((key) => key !== profile.key),
-                            )}
+                            onChange={(event) =>
+                              setProfiles((current) =>
+                                event.target.checked
+                                  ? [...current, profile.key]
+                                  : current.filter((key) => key !== profile.key),
+                              )
+                            }
                           />
                           {profile.label}
                         </label>
@@ -230,7 +236,8 @@ export default function UsersAccess() {
                   <div className="space-y-2">
                     <h3 className="font-medium text-sm">Individual permission overrides</h3>
                     <p className="text-xs text-muted-foreground">
-                      Inherit uses role templates; Deny takes precedence. Core controls all actual writes.
+                      Inherit uses role templates; Deny takes precedence. Core controls all actual
+                      writes.
                     </p>
                     <div className="grid sm:grid-cols-2 gap-3">
                       {STUDIO_PERMISSIONS.map((permission) => (
@@ -244,12 +251,14 @@ export default function UsersAccess() {
                                   ? "deny"
                                   : "inherit"
                             }
-                            onChange={(event) => setOverrides((old) => {
-                              const next = { ...old };
-                              if (event.target.value === "inherit") delete next[permission];
-                              else next[permission] = event.target.value === "allow";
-                              return next;
-                            })}
+                            onChange={(event) =>
+                              setOverrides((old) => {
+                                const next = { ...old };
+                                if (event.target.value === "inherit") delete next[permission];
+                                else next[permission] = event.target.value === "allow";
+                                return next;
+                              })
+                            }
                             className="rounded-md border bg-background px-2 py-1.5 text-sm"
                           >
                             <option value="inherit">Inherit from role</option>
