@@ -1,4 +1,5 @@
 import { packagingHierarchyFromForm } from "./packagingHierarchyFromForm";
+import { palletMetadataProductsPayload, validatePalletMetadata } from "./palletMetadataAuthority";
 import type { PackagingHierarchy } from "./types";
 
 /** Canonical Point 33 hierarchy levels (product SKU scope — no variant table). */
@@ -40,14 +41,6 @@ export type CanonicalPackagingHierarchy = {
   point35DimensionAuthority: true;
 };
 
-const POINT_33_CORE_DEPENDENCIES = {
-  pallet: [
-    "products.cartons_per_pallet",
-    "products.master_cartons_per_pallet",
-    "products.pallet_uom",
-  ],
-  variant: ["product_variants table (per-variant pack hierarchy)"],
-} as const;
 
 function positiveNum(v: unknown): number | null {
   if (v === "" || v == null) return null;
@@ -234,11 +227,16 @@ export function buildCanonicalPackagingHierarchy(
     {
       level: "pallet",
       label: "Pallet (optional)",
+      // Case and master-carton quantities are independent; do not silently
+      // collapse two operator-asserted counts into one fabricated value.
       qtyPerParent: null,
-      uom: null,
-      persistence: "core_blocked",
-      sourceFields: [...POINT_33_CORE_DEPENDENCIES.pallet],
-      present: false,
+      uom: str(form.pallet_uom),
+      persistence: "products_row",
+      sourceFields: ["cartons_per_pallet", "master_cartons_per_pallet", "pallet_uom"],
+      present:
+        positiveNum(form.cartons_per_pallet) != null ||
+        positiveNum(form.master_cartons_per_pallet) != null ||
+        !!str(form.pallet_uom),
     },
   ];
 
@@ -303,7 +301,11 @@ export function buildCanonicalPackagingHierarchy(
     }
   }
 
-  const coreDependencies = [...POINT_33_CORE_DEPENDENCIES.pallet];
+  const palletValidation = validatePalletMetadata(form);
+  errors.push(...palletValidation.errors);
+  // Staged Core Point33 migration supplies canonical products-row persistence.
+  // This Studio branch must not be merged until the protected migration is live.
+  const coreDependencies: string[] = [];
 
   return {
     productId: str(form.id),
@@ -328,9 +330,12 @@ export type SnapshotPackagingHierarchy = {
   case_carton: Record<string, unknown>;
   master_carton: Record<string, unknown>;
   pallet: {
-    persistence: "core_blocked";
+    persistence: "products_row";
     core_dependencies: string[];
     optional: true;
+    cartons_per_pallet: number | null;
+    master_cartons_per_pallet: number | null;
+    pallet_uom: string | null;
   };
   hierarchy_chain: Array<{
     level: PackagingHierarchyLevel;
@@ -383,9 +388,10 @@ export function serializePackagingHierarchyForSnapshot(
       weight_kg: form.master_carton_weight_kg ?? null,
     },
     pallet: {
-      persistence: "core_blocked",
+      persistence: "products_row",
       core_dependencies: [...canonical.coreDependencies],
       optional: true,
+      ...validatePalletMetadata(form).metadata,
     },
     hierarchy_chain: canonical.nodes.map((n) => ({
       level: n.level,
@@ -429,6 +435,8 @@ export function persistedPackFieldsFromHierarchy(
     out.master_carton_qty = positiveNum(form.master_carton_qty) ?? master.qtyPerParent;
   }
   if (form.master_carton_uom) out.master_carton_uom = form.master_carton_uom;
+
+  Object.assign(out, palletMetadataProductsPayload(form));
 
   const pcsPerCarton = positiveNum(form.pcs_per_carton);
   if (pcsPerCarton) out.pcs_per_carton = pcsPerCarton;
