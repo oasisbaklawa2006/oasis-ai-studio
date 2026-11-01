@@ -90,7 +90,7 @@ type StudioRpc = (
 
 // Bridge pending Core database type regeneration. Runtime endpoint and RLS/RPC
 // enforce all authority, including pending/suspended identities and AAL2.
-const studioRpc = supabase.rpc as unknown as StudioRpc;
+const studioRpc = supabase.rpc.bind(supabase) as unknown as StudioRpc;
 
 export async function readStudioAccessDirectory(): Promise<StudioAccessRow[]> {
   const authority = await studioRpc("can_manage_ai_studio_access_v1");
