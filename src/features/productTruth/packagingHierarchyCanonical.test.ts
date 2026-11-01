@@ -39,8 +39,8 @@ describe("packagingHierarchyCanonical", () => {
     expect(h.nodes[1].qtyPerParent).toBe(6);
     expect(h.nodes[2].qtyPerParent).toBe(4);
     expect(h.nodes[3].present).toBe(true);
-    expect(h.nodes[4].persistence).toBe("core_blocked");
-    expect(h.coreDependencies.length).toBeGreaterThan(0);
+    expect(h.nodes[4].persistence).toBe("products_row");
+    expect(h.coreDependencies).toEqual([]);
     expect(h.point35DimensionAuthority).toBe(true);
   });
 
@@ -135,9 +135,9 @@ describe("packagingHierarchyCanonical", () => {
     expect(b.nodes[2].qtyPerParent).toBe(2);
   });
 
-  it("keeps pallet optional and core-blocked without inventing data", () => {
+  it("keeps pallet optional with empty persisted values rather than inventing data", () => {
     const snap = serializePackagingHierarchyForSnapshot(packProductForm);
-    expect(snap.pallet.persistence).toBe("core_blocked");
+    expect(snap.pallet.persistence).toBe("products_row");
     expect(snap.pallet.optional).toBe(true);
     expect(snap.hierarchy_chain.find((n) => n.level === "pallet")?.qty_per_parent).toBeNull();
   });
@@ -156,13 +156,71 @@ describe("packagingHierarchyCanonical", () => {
     expect(snap.dimension_refs.carton_dimensions_cm).toBe("40x30x25");
   });
 
-  it("round-trips persisted pack fields without pallet writes", () => {
+  it("round-trips pack fields and null pallet metadata until specifically provided", () => {
     const persisted = persistedPackFieldsFromHierarchy(packProductForm);
     expect(persisted.pcs_per_pack).toBe(6);
     expect(persisted.carton_qty).toBe(4);
     expect(persisted.master_carton_qty).toBe(8);
     expect(persisted).not.toHaveProperty("pallets_per_carton");
-    expect(persisted).not.toHaveProperty("cartons_per_pallet");
+    expect(persisted.cartons_per_pallet).toBeNull();
+    expect(persisted.master_cartons_per_pallet).toBeNull();
+    expect(persisted.pallet_uom).toBeNull();
+  });
+
+  it("persists explicitly asserted pallet quantities without inferred conversion", () => {
+    const form = {
+      ...packProductForm,
+      cartons_per_pallet: 24,
+      master_cartons_per_pallet: 6,
+      pallet_uom: "Standard pallet",
+    };
+    const snap = serializePackagingHierarchyForSnapshot(form);
+    expect(snap.validation.valid).toBe(true);
+    expect(snap.pallet.cartons_per_pallet).toBe(24);
+    expect(snap.pallet.master_cartons_per_pallet).toBe(6);
+    expect(snap.pallet.pallet_uom).toBe("Standard pallet");
+    const persisted = persistedPackFieldsFromHierarchy(form);
+    expect(persisted.cartons_per_pallet).toBe(24);
+    expect(persisted.master_cartons_per_pallet).toBe(6);
+  });
+
+  it("keeps case and master pallet counts independent (never collapsed into one quantity)", () => {
+    const form = {
+      ...packProductForm,
+      cartons_per_pallet: 40,
+      master_cartons_per_pallet: 8,
+      pallet_uom: "standard",
+    };
+    const h = buildCanonicalPackagingHierarchy(form);
+    expect(h.validation.valid).toBe(true);
+    expect(h.nodes[4].present).toBe(true);
+    expect(h.nodes[4].qtyPerParent).toBeNull();
+    const snap = serializePackagingHierarchyForSnapshot(form);
+    expect(snap.pallet.cartons_per_pallet).toBe(40);
+    expect(snap.pallet.master_cartons_per_pallet).toBe(8);
+  });
+
+  it("fails closed for fractional, type-only and negative pallet input", () => {
+    for (const extra of [
+      { cartons_per_pallet: 2.5, pallet_uom: "standard" },
+      { pallet_uom: "standard" },
+      { cartons_per_pallet: -3, pallet_uom: "standard" },
+      { master_cartons_per_pallet: 0, pallet_uom: "standard" },
+    ]) {
+      expect(
+        buildCanonicalPackagingHierarchy({ ...packProductForm, ...extra }).validation.valid,
+      ).toBe(false);
+    }
+  });
+
+  it("fails closed when quantity lacks operator-supplied pallet type", () => {
+    const h = buildCanonicalPackagingHierarchy({
+      ...packProductForm,
+      cartons_per_pallet: 20,
+      pallet_uom: "",
+    });
+    expect(h.validation.valid).toBe(false);
+    expect(h.validation.errors.join(" ")).toContain("Pallet UOM");
   });
 
   it("enriches UI pack fields from DB row without shadow columns", () => {

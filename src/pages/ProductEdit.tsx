@@ -47,6 +47,7 @@ import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/pac
 import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { ProductTruthTabSkeleton } from "@/features/productTruth/ProductTruthTabSkeleton";
+import { validatePalletMetadata } from "@/features/productTruth/palletMetadataAuthority";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
 import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
@@ -324,6 +325,9 @@ const empty: Record<string, unknown> = {
   carton_uom: "",
   master_carton_qty: "",
   master_carton_uom: "",
+  cartons_per_pallet: "",
+  master_cartons_per_pallet: "",
+  pallet_uom: "",
   dimension_l_cm: "",
   dimension_w_cm: "",
   dimension_h_cm: "",
@@ -375,6 +379,8 @@ const NUMERIC_FIELDS = [
   "increment_value",
   "carton_qty",
   "master_carton_qty",
+  "cartons_per_pallet",
+  "master_cartons_per_pallet",
   "dimension_l_cm",
   "dimension_w_cm",
   "dimension_h_cm",
@@ -1488,6 +1494,16 @@ const ProductEdit = () => {
   const save = async () => {
     setSubmitError(null);
 
+    // Pallet quantities are optional, but never silently coerced or inferred.
+    // The same guard applies to direct product writes and governed draft submissions.
+    const palletValidation = validatePalletMetadata(form);
+    if (!palletValidation.valid) {
+      const message = palletValidation.errors.join("; ");
+      setSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
     if (missing.length > 0) {
       const message =
         missing.length === 1 && missing[0] === "Product name"
@@ -2526,6 +2542,43 @@ const ProductEdit = () => {
                           value={form.master_carton_uom}
                           onChange={(v: string) => set("master_carton_uom", v)}
                           options={PACK_UOM_OPTIONS}
+                        />
+                      </Field>
+                      <div className="sm:col-span-3 border-t border-border/50 pt-3">
+                        <p className="text-sm font-medium">Pallet metadata (optional)</p>
+                        <p className="text-xs text-muted-foreground">
+                          Record only confirmed physical pallet quantities. Case and master carton
+                          quantities are independent; no value is inferred from carton size.
+                        </p>
+                      </div>
+                      <Field label="Case cartons per pallet">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={10000}
+                          step={1}
+                          value={form.cartons_per_pallet ?? ""}
+                          onChange={(e) => set("cartons_per_pallet", e.target.value)}
+                          placeholder="Actual quantity"
+                        />
+                      </Field>
+                      <Field label="Master cartons per pallet">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={10000}
+                          step={1}
+                          value={form.master_cartons_per_pallet ?? ""}
+                          onChange={(e) => set("master_cartons_per_pallet", e.target.value)}
+                          placeholder="Actual quantity"
+                        />
+                      </Field>
+                      <Field label="Pallet UOM / type">
+                        <Input
+                          value={form.pallet_uom ?? ""}
+                          onChange={(e) => set("pallet_uom", e.target.value)}
+                          maxLength={64}
+                          placeholder="Specify actual pallet type"
                         />
                       </Field>
                       <div className="sm:col-span-3">
