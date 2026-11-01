@@ -46,7 +46,10 @@ export const ProtectedRoute = () => {
     };
   }, [userId, token]);
 
-  if (loading || (userId && (checking || access?.userId !== userId || access?.accessToken !== token))) {
+  if (
+    loading ||
+    (userId && (checking || access?.userId !== userId || access?.accessToken !== token))
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
         Checking Studio membership…
@@ -56,12 +59,15 @@ export const ProtectedRoute = () => {
   if (!user) return <Navigate to="/auth" replace />;
   if (!access?.allowed) {
     return (
-      <div role="alert" className="min-h-screen flex flex-col items-center justify-center gap-3 p-8 text-center">
+      <div
+        role="alert"
+        className="min-h-screen flex flex-col items-center justify-center gap-3 p-8 text-center"
+      >
         <h1 className="font-display text-2xl">AI Studio access not approved</h1>
         <p className="max-w-lg text-sm text-muted-foreground">
-          Your Oasis login is valid, but the canonical Core identity has no active
-          AI Studio membership. Contact your authorized administrator. Pending,
-          suspended, rejected and revoked accounts cannot enter the Studio.
+          Your Oasis login is valid, but the canonical Core identity has no active AI Studio
+          membership. Contact your authorized administrator. Pending, suspended, rejected and
+          revoked accounts cannot enter the Studio.
         </p>
       </div>
     );
