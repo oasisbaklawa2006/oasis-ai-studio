@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   parseStudioAccessRow,
   readStudioAccessDirectory,
-  setStudioAccess,
   STUDIO_PERMISSIONS,
   STUDIO_PROFILES,
+  setStudioAccess,
 } from "./studioAccessContract";
 
 const mock = vi.hoisted(() => ({ rpc: vi.fn() }));
@@ -62,12 +62,10 @@ describe("governed AI Studio access client (#272)", () => {
   });
 
   it("queries directory only after Core permission succeeds", async () => {
-    mock.rpc
-      .mockResolvedValueOnce({ data: true, error: null })
-      .mockResolvedValueOnce({
-        data: [{ user_id: "staff-1", studio_status: "active", profile_keys: ["viewer"] }],
-        error: null,
-      });
+    mock.rpc.mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce({
+      data: [{ user_id: "staff-1", studio_status: "active", profile_keys: ["viewer"] }],
+      error: null,
+    });
     const rows = await readStudioAccessDirectory();
     expect(rows).toHaveLength(1);
     expect(rows[0].user_id).toBe("staff-1");
@@ -78,31 +76,52 @@ describe("governed AI Studio access client (#272)", () => {
   });
 
   it("never sends invalid owner or global privilege grants", async () => {
-    await expect(setStudioAccess({
-      userId: "staff-1", status: "active", profiles: ["owner"], overrides: {},
-      reason: "Operator approval", expectedVersion: 0,
-    })).rejects.toThrow("Owner and unknown");
+    await expect(
+      setStudioAccess({
+        userId: "staff-1",
+        status: "active",
+        profiles: ["owner"],
+        overrides: {},
+        reason: "Operator approval",
+        expectedVersion: 0,
+      }),
+    ).rejects.toThrow("Owner and unknown");
     expect(mock.rpc).not.toHaveBeenCalled();
   });
 
   it("refuses activation without a role and rejects short audit reasons", async () => {
-    await expect(setStudioAccess({
-      userId: "staff-1", status: "active", profiles: [], overrides: {},
-      reason: "Access approved", expectedVersion: 0,
-    })).rejects.toThrow("at least one");
-    await expect(setStudioAccess({
-      userId: "staff-1", status: "active", profiles: ["viewer"], overrides: {},
-      reason: "short", expectedVersion: 0,
-    })).rejects.toThrow("audit reason");
+    await expect(
+      setStudioAccess({
+        userId: "staff-1",
+        status: "active",
+        profiles: [],
+        overrides: {},
+        reason: "Access approved",
+        expectedVersion: 0,
+      }),
+    ).rejects.toThrow("at least one");
+    await expect(
+      setStudioAccess({
+        userId: "staff-1",
+        status: "active",
+        profiles: ["viewer"],
+        overrides: {},
+        reason: "short",
+        expectedVersion: 0,
+      }),
+    ).rejects.toThrow("audit reason");
     expect(mock.rpc).not.toHaveBeenCalled();
   });
 
   it("sends scoped, version-bound changes to Core only", async () => {
     mock.rpc.mockResolvedValueOnce({ data: { version: 3 }, error: null });
     await setStudioAccess({
-      userId: "staff-1", status: "suspended", profiles: ["viewer"],
+      userId: "staff-1",
+      status: "suspended",
+      profiles: ["viewer"],
       overrides: { "ai_studio.products.update": false },
-      reason: "Account reassignment", expectedVersion: 2,
+      reason: "Account reassignment",
+      expectedVersion: 2,
     });
     expect(mock.rpc).toHaveBeenCalledWith("set_ai_studio_access_v1", {
       p_user_id: "staff-1",
