@@ -57,7 +57,7 @@ export const POINT_32_CORE_AUTHORITY = {
     "product_variants_basis_variant_key_unique (basis_product_id, variant_key) — deterministic Core uniqueness constraint",
   ],
   writeAuthority:
-    "product_variants INSERT/UPDATE/DELETE is gated by Core RLS policy requiring public.is_admin(); AI Studio never bypasses this client-side.",
+    "product_variants INSERT/UPDATE/DELETE is gated by Core RLS policy requiring public.can_write_product_master() (Core #407); AI Studio never bypasses this client-side.",
   compositionSemantics: [
     "product_bom_items.parent_product_id / child_product_id — BOM composition only",
     "hampers.parent_product_id — hamper shell only",
@@ -200,7 +200,7 @@ export function resolveVariantGraph(edges: ExplicitVariantEdge[]): VariantGraphR
 }
 
 /**
- * Structural validation for variant hierarchy mutations. Core's RLS (`public.is_admin()`) and
+ * Structural validation for variant hierarchy mutations. Core's RLS (`public.can_write_product_master()`) and
  * triggers (`enforce_product_variant_identity_v1`, `enforce_product_point32_identity_immutable_v1`)
  * are the real authority; this only fails closed on shapes Core would reject anyway, so the UI
  * never submits a doomed write.
