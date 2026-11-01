@@ -110,9 +110,9 @@ const Auth = () => {
             </Button>
           </form>
           <p className="mt-6 text-sm text-muted-foreground">
-            Need access? Contact your Oasis administrator to receive an invitation
-            and an approved AI Studio role. Creating a login does not by itself
-            authorize product or catalogue access.
+            Need access? Contact your Oasis administrator to receive an invitation and an approved
+            AI Studio role. Creating a login does not by itself authorize product or catalogue
+            access.
           </p>
         </div>
       </div>
