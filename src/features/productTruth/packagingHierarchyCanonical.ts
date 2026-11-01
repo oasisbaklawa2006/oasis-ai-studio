@@ -245,9 +245,10 @@ export function buildCanonicalPackagingHierarchy(
       label: "Pallet (optional)",
       qtyPerParent: casePalletQty ?? masterPalletQty,
       uom: palletUom,
-      persistence: palletPresent && (!palletUom || (!casePalletQty && !masterPalletQty))
-        ? "form_only"
-        : "products_row",
+      persistence:
+        palletPresent && (!palletUom || (!casePalletQty && !masterPalletQty))
+          ? "form_only"
+          : "products_row",
       sourceFields: [...POINT_33_PALLET_COLUMNS],
       present: palletPresent,
     },
