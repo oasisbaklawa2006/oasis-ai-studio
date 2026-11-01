@@ -33,7 +33,10 @@ describe("Core #407 product / media / variant direct-write authority", () => {
   });
 
   it("fails closed when Core product-authoring RPC is absent, denied or unreachable", async () => {
-    mock.rpc.mockResolvedValueOnce({ data: null, error: { code: "PGRST202", message: "RPC missing" } });
+    mock.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: "PGRST202", message: "RPC missing" },
+    });
     expect(await canWriteProductsDirectly(["super_admin"])).toBe(false);
     mock.rpc.mockResolvedValueOnce({ data: null, error: { message: "permission denied" } });
     expect(await canWriteProductsDirectly(["super_admin"])).toBe(false);
