@@ -9,7 +9,7 @@ This document describes release gates, not an instruction to grant new permissio
 - Exactly two active Owner memberships are seeded; all other memberships require individual approval.
 - Of 60 active, accepted staff identities whose Core roles are Studio-eligible, 58 have no membership.
   This is an eligibility census, not proof that all 58 currently work in AI Studio.
-- purecocoa@live.in has one verified TOTP factor; admin@oasisbaklawa.com has no verified factor.
+- `purecocoa@live.in` has one verified TOTP factor; `admin@oasisbaklawa.com` has no verified factor.
   Enrollment alone is not AAL2: a valid TOTP challenge must be verified in the current session.
 - Backend privileged RPC and audit reads require an AAL2 JWT; Studio roles never expand Core
   Product Master, financial, hard-delete or publication privileges.
