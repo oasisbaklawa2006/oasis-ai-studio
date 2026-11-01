@@ -1,5 +1,5 @@
 import { Loader2, RefreshCw, ShieldCheck, Users } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,10 @@ export default function UsersAccess() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const selectedIdRef = useRef<string | null>(null);
+
   const select = useCallback((row: StudioAccessRow) => {
+    selectedIdRef.current = row.user_id;
     setSelected(row);
     setStatus(
       STUDIO_ACCESS_STATUSES.includes(row.studio_status as StudioAccessStatus)
@@ -48,23 +51,25 @@ export default function UsersAccess() {
     try {
       const rows = await readStudioAccessDirectory();
       setDirectory(rows);
-      setSelected((previous) => {
-        if (!previous) return null;
-        const current = rows.find((row) => row.user_id === previous.user_id);
-        if (current) {
-          // A successful save clears stale form state; reload manual changes only.
-          return current;
-        }
-        return null;
-      });
+      // Re-select through select() so status/profiles/overrides/reason always match the
+      // exact row (and version) that the next save will submit.
+      const current = selectedIdRef.current
+        ? rows.find((row) => row.user_id === selectedIdRef.current)
+        : undefined;
+      if (current) select(current);
+      else {
+        selectedIdRef.current = null;
+        setSelected(null);
+      }
     } catch (e: unknown) {
       setDirectory([]);
+      selectedIdRef.current = null;
       setSelected(null);
       setError(e instanceof Error ? e.message : "Studio access authority unavailable.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [select]);
 
   useEffect(() => {
     void reload();
@@ -85,9 +90,6 @@ export default function UsersAccess() {
       toast.success("Studio permission change recorded by Core.");
       setReason("");
       await reload();
-      const rows = await readStudioAccessDirectory();
-      const updated = rows.find((row) => row.user_id === selected.user_id);
-      if (updated) select(updated);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Access change was not accepted.");
     } finally {
