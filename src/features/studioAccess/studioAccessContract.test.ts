@@ -46,7 +46,7 @@ describe("governed AI Studio access client (#272)", () => {
     expect(STUDIO_PERMISSIONS.every((key) => key.startsWith("ai_studio."))).toBe(true);
     expect(STUDIO_PERMISSIONS).not.toContain("ai_studio.products.delete");
     expect(STUDIO_PERMISSIONS.some((key) => key.includes("financial.approve"))).toBe(false);
-    expect(STUDIO_PROFILES.some((profile) => profile.key === "owner")).toBe(false);
+    expect(STUDIO_PROFILES.map((profile) => profile.key as string)).not.toContain("owner");
   });
 
   it("fails closed when Core authorization RPC is unavailable", async () => {
