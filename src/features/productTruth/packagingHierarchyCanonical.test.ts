@@ -165,15 +165,19 @@ describe("packagingHierarchyCanonical", () => {
 
   it("fails closed for fractional or incomplete pallet information", () => {
     const fractional = buildCanonicalPackagingHierarchy({
-      ...packProductForm, cartons_per_pallet: 2.5, pallet_uom: "standard",
+      ...packProductForm,
+      cartons_per_pallet: 2.5,
+      pallet_uom: "standard",
     });
     expect(fractional.validation.valid).toBe(false);
     const missingUnit = buildCanonicalPackagingHierarchy({
-      ...packProductForm, cartons_per_pallet: 24,
+      ...packProductForm,
+      cartons_per_pallet: 24,
     });
     expect(missingUnit.validation.valid).toBe(false);
     const missingCount = buildCanonicalPackagingHierarchy({
-      ...packProductForm, pallet_uom: "standard",
+      ...packProductForm,
+      pallet_uom: "standard",
     });
     expect(missingCount.validation.valid).toBe(false);
   });
