@@ -27,4 +27,3 @@ export async function verifyStudioMfaCode(factorId: string, code: string): Promi
     throw new Error("The session was not elevated to AAL2. Retry verification.");
   }
 }
-

@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
-  type StudioMfaStage,
   inspectStudioMfa,
+  type StudioMfaStage,
   verifyStudioMfaCode,
 } from "@/features/studioAccess/studioMfaContract";
 import { supabase } from "@/integrations/supabase/client";
