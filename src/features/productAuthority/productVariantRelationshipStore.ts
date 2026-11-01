@@ -1,7 +1,7 @@
 /**
  * Point 32 follow-up (#229) — live `product_variants` CRUD against canonical Core #310 authority.
  *
- * This module performs the actual reads/writes; Core's RLS (`public.is_admin()`) and triggers
+ * This module performs the actual reads/writes; Core's RLS (`public.can_write_product_master()`, Core #407) and triggers
  * (`enforce_product_variant_identity_v1`, `enforce_product_point32_identity_immutable_v1`) remain
  * the sole write authority — nothing here bypasses them, and no shadow schema or service-role
  * path is introduced.

@@ -21,6 +21,8 @@ describe("Core #407 product / media / variant direct-write authority", () => {
     expect(await canWriteProductsDirectly(["owner"])).toBe(true);
     expect(mock.rpc).toHaveBeenCalledTimes(1);
     expect(mock.rpc).toHaveBeenCalledWith("can_write_product_master");
+    // Never fall back to the global is_admin() authority.
+    expect(mock.rpc).not.toHaveBeenCalledWith("is_admin");
   });
 
   it("does not mistake mapped owner/product_manager or unrelated permission for direct write", async () => {
