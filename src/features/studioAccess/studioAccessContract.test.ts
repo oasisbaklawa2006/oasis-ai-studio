@@ -167,10 +167,27 @@ describe("governed AI Studio access client (#272)", () => {
       p_user_id: "u1",
       p_limit: 200,
       p_before: null,
+      p_before_id: null,
     });
     expect(rows).toHaveLength(1);
     expect(rows[0].after).toEqual({ status: "active" });
     expect(parseStudioAuditEntry({ id: "x" })).toBeNull();
+  });
+
+  it("passes a composite audit cursor to Core without losing identical-timestamp rows", async () => {
+    mock.rpc.mockResolvedValueOnce({ data: [], error: null });
+    await readStudioAccessAudit({
+      userId: "u1",
+      limit: 25,
+      before: "2026-11-01T00:00:00Z",
+      beforeId: "f72a7df4-5e70-4c4e-a5d7-79a4a91b5f88",
+    });
+    expect(mock.rpc).toHaveBeenCalledWith("read_ai_studio_access_audit_v1", {
+      p_user_id: "u1",
+      p_limit: 25,
+      p_before: "2026-11-01T00:00:00Z",
+      p_before_id: "f72a7df4-5e70-4c4e-a5d7-79a4a91b5f88",
+    });
   });
 
   it("fails closed when audit history is denied or the backend is missing", async () => {
