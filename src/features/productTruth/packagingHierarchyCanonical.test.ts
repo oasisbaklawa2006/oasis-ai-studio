@@ -39,8 +39,9 @@ describe("packagingHierarchyCanonical", () => {
     expect(h.nodes[1].qtyPerParent).toBe(6);
     expect(h.nodes[2].qtyPerParent).toBe(4);
     expect(h.nodes[3].present).toBe(true);
-    expect(h.nodes[4].persistence).toBe("core_blocked");
-    expect(h.coreDependencies.length).toBeGreaterThan(0);
+    expect(h.nodes[4].persistence).toBe("products_row");
+    expect(h.nodes[4].present).toBe(false);
+    expect(h.coreDependencies).toHaveLength(0);
     expect(h.point35DimensionAuthority).toBe(true);
   });
 
@@ -135,11 +136,46 @@ describe("packagingHierarchyCanonical", () => {
     expect(b.nodes[2].qtyPerParent).toBe(2);
   });
 
-  it("keeps pallet optional and core-blocked without inventing data", () => {
+  it("keeps empty pallet optional and does not invent quantities", () => {
     const snap = serializePackagingHierarchyForSnapshot(packProductForm);
-    expect(snap.pallet.persistence).toBe("core_blocked");
+    expect(snap.pallet.persistence).toBe("products_row");
     expect(snap.pallet.optional).toBe(true);
+    expect(snap.pallet.cartons_per_pallet).toBeNull();
+    expect(snap.pallet.master_cartons_per_pallet).toBeNull();
     expect(snap.hierarchy_chain.find((n) => n.level === "pallet")?.qty_per_parent).toBeNull();
+  });
+
+  it("persists separately declared pallet levels without inferring hierarchy", () => {
+    const data = {
+      ...packProductForm,
+      cartons_per_pallet: 40,
+      master_cartons_per_pallet: 8,
+      pallet_uom: "standard",
+    };
+    const h = buildCanonicalPackagingHierarchy(data);
+    expect(h.validation.valid).toBe(true);
+    expect(h.nodes[4].present).toBe(true);
+    expect(h.nodes[4].qtyPerParent).toBe(40);
+    const snap = serializePackagingHierarchyForSnapshot(data);
+    expect(snap.pallet.cartons_per_pallet).toBe(40);
+    expect(snap.pallet.master_cartons_per_pallet).toBe(8);
+    expect(snap.pallet.uom).toBe("standard");
+    expect(persistedPackFieldsFromHierarchy(data).master_cartons_per_pallet).toBe(8);
+  });
+
+  it("fails closed for fractional or incomplete pallet information", () => {
+    const fractional = buildCanonicalPackagingHierarchy({
+      ...packProductForm, cartons_per_pallet: 2.5, pallet_uom: "standard",
+    });
+    expect(fractional.validation.valid).toBe(false);
+    const missingUnit = buildCanonicalPackagingHierarchy({
+      ...packProductForm, cartons_per_pallet: 24,
+    });
+    expect(missingUnit.validation.valid).toBe(false);
+    const missingCount = buildCanonicalPackagingHierarchy({
+      ...packProductForm, pallet_uom: "standard",
+    });
+    expect(missingCount.validation.valid).toBe(false);
   });
 
   it("delegates dimensions/CBM to Point 35 authority refs only", () => {
@@ -156,7 +192,7 @@ describe("packagingHierarchyCanonical", () => {
     expect(snap.dimension_refs.carton_dimensions_cm).toBe("40x30x25");
   });
 
-  it("round-trips persisted pack fields without pallet writes", () => {
+  it("round-trips persisted pack fields without fabricating unprovided pallet quantities", () => {
     const persisted = persistedPackFieldsFromHierarchy(packProductForm);
     expect(persisted.pcs_per_pack).toBe(6);
     expect(persisted.carton_qty).toBe(4);
