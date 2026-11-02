@@ -6,6 +6,7 @@ import { CapabilityUnavailable } from "@/components/CapabilityUnavailable";
 import { CatalogueReviewerGate } from "@/components/CatalogueReviewerGate";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGate } from "@/components/RoleGate";
+import { StudioAal2Gate } from "@/components/StudioAal2Gate";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -39,6 +40,7 @@ const Products = lazy(() => import("./pages/Products"));
 const ProductIntelligenceKnowledge = lazy(() => import("./pages/ProductIntelligenceKnowledge"));
 const ResolverPreview = lazy(() => import("./pages/ResolverPreview"));
 const Settings = lazy(() => import("./pages/Settings"));
+const UsersAccess = lazy(() => import("./pages/UsersAccess"));
 const Testing = lazy(() => import("./pages/Testing"));
 
 const RouteFallback = () => (
@@ -279,6 +281,14 @@ const App = () => (
                       <RoleGate page="settings">
                         <Settings />
                       </RoleGate>
+                    }
+                  />
+                  <Route
+                    path="/settings/users"
+                    element={
+                      <StudioAal2Gate>
+                        <UsersAccess />
+                      </StudioAal2Gate>
                     }
                   />
                   <Route
