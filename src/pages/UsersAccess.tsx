@@ -1,8 +1,9 @@
 import { Loader2, RefreshCw, ShieldCheck, Users } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
+import { filterStudioDirectory, type StudioDirectoryFilter } from "@/features/studioAccess/directoryFilter";
 import {
   readStudioAccessAudit,
   readStudioAccessDirectory,
@@ -23,6 +24,8 @@ const EMPTY: Record<string, boolean> = {};
  */
 export default function UsersAccess() {
   const [directory, setDirectory] = useState<StudioAccessRow[]>([]);
+  const [search, setSearch] = useState("");
+  const [directoryFilter, setDirectoryFilter] = useState<StudioDirectoryFilter>("all");
   const [selected, setSelected] = useState<StudioAccessRow | null>(null);
   const [status, setStatus] = useState<StudioAccessStatus>("pending_approval");
   const [profiles, setProfiles] = useState<string[]>([]);
@@ -114,6 +117,10 @@ export default function UsersAccess() {
     }
   };
 
+  const visibleDirectory = useMemo(
+    () => filterStudioDirectory(directory, search, directoryFilter),
+    [directory, search, directoryFilter],
+  );
   const protectedOwner = selected?.profile_keys.includes("owner") ?? false;
   const cannotActivate =
     status === "active" &&
@@ -167,8 +174,41 @@ export default function UsersAccess() {
             <h2 className="font-display text-lg flex items-center gap-2">
               <Users className="h-5 w-5" /> Employees ({directory.length})
             </h2>
-            <div className="max-h-[72vh] overflow-y-auto space-y-1">
-              {directory.map((row) => (
+            <div className="space-y-2">
+              <label htmlFor="studio-user-search" className="block text-xs font-medium">
+                Search employees
+              </label>
+              <input
+                id="studio-user-search"
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Name or email"
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              />
+              <label htmlFor="studio-user-filter" className="block text-xs font-medium">
+                Filter by access
+              </label>
+              <select
+                id="studio-user-filter"
+                value={directoryFilter}
+                onChange={(event) =>
+                  setDirectoryFilter(event.target.value as StudioDirectoryFilter)
+                }
+                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+              >
+                <option value="all">All eligible staff</option>
+                <option value="unassigned">Not assigned to Studio</option>
+                <option value="active">Active Studio members</option>
+                <option value="protected">Protected Owners</option>
+                <option value="inactive">Core inactive / unapproved</option>
+              </select>
+              <p className="text-xs text-muted-foreground" role="status">
+                Showing {visibleDirectory.length} of {directory.length} eligible identities.
+              </p>
+            </div>
+            <div className="max-h-[65vh] overflow-y-auto space-y-1">
+              {visibleDirectory.map((row) => (
                 <button
                   type="button"
                   key={row.user_id}
@@ -185,8 +225,12 @@ export default function UsersAccess() {
                   </span>
                 </button>
               ))}
-              {directory.length === 0 && (
-                <p className="text-muted-foreground text-sm">No eligible staff identities.</p>
+              {visibleDirectory.length === 0 && (
+                <p className="text-muted-foreground text-sm">
+                  {directory.length === 0
+                    ? "No eligible staff identities."
+                    : "No employee matches this search and filter."}
+                </p>
               )}
             </div>
           </section>
@@ -209,9 +253,10 @@ export default function UsersAccess() {
                   </p>
                 </div>
                 {protectedOwner && (
-                  <p className="text-sm border rounded-lg p-3">
-                    This is a protected Owner identity. Delegated administration cannot change its
-                    membership or permissions.
+                  <p className="text-sm border rounded-lg p-3" role="status">
+                    <strong>Protected Owner account — read-only.</strong> Its membership and
+                    permissions cannot be changed here, including by another Owner. Select an
+                    eligible non-Owner employee from the directory to assign Studio access.
                   </p>
                 )}
                 <fieldset disabled={protectedOwner || saving} className="space-y-5">
@@ -301,6 +346,10 @@ export default function UsersAccess() {
                     <label htmlFor="studio-access-reason" className="font-medium text-sm">
                       Reason for change (required)
                     </label>
+                    <p className="text-xs text-muted-foreground">
+                      Enter at least 8 characters explaining the business reason. Save stays
+                      disabled until the reason and status are valid. Changes are audited in Core.
+                    </p>
                     <textarea
                       id="studio-access-reason"
                       rows={2}
