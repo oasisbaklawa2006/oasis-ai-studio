@@ -3,7 +3,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
-import { filterStudioDirectory, type StudioDirectoryFilter } from "@/features/studioAccess/directoryFilter";
+import {
+  filterStudioDirectory,
+  type StudioDirectoryFilter,
+} from "@/features/studioAccess/directoryFilter";
 import {
   readStudioAccessAudit,
   readStudioAccessDirectory,

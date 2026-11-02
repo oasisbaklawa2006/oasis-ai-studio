@@ -41,10 +41,7 @@ describe("Studio directory presentation filtering", () => {
   });
 
   it("distinguishes unassigned, active, and protected identities", () => {
-    expect(filterStudioDirectory(rows, "", "unassigned").map((x) => x.user_id)).toEqual([
-      "1",
-      "4",
-    ]);
+    expect(filterStudioDirectory(rows, "", "unassigned").map((x) => x.user_id)).toEqual(["1", "4"]);
     expect(filterStudioDirectory(rows, "", "active").map((x) => x.user_id)).toEqual(["2", "3"]);
     expect(filterStudioDirectory(rows, "", "protected").map((x) => x.user_id)).toEqual(["2"]);
   });
