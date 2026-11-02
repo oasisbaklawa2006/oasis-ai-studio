@@ -78,17 +78,19 @@ export async function isSuperAdmin(): Promise<boolean> {
 }
 
 /**
- * The production `products` and `product_media` write RLS policies use
- * `public.is_admin()`, which checks active `public.users.role` admin/super_admin.
- * A frontend role-map key, or the unrelated `products_write` permission, does
- * not prove that those RLS policies will accept a direct write.
+ * Core #474 product and product_media INSERT/UPDATE RLS uses
+ * public.can_write_product_master(), including explicitly approved uppercase
+ * SUPER_ADMIN Product Master authors. Do not use legacy is_admin() here:
+ * it recognizes lowercase roles only and incorrectly traps approved Owners
+ * in read-only mode. Never infer authority from frontend roles; fail closed.
+ * Hard delete, pricing and publication remain separate Core authorities.
  */
 export async function canWriteProductsDirectly(_rolesFromContext?: string[]): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc("is_admin");
+    const { data, error } = await supabase.rpc("can_write_product_master");
     if (error) {
       if (import.meta.env.DEV) {
-        console.error("[CentralPermissions] products is_admin authority probe failed:", error);
+        console.error("[CentralPermissions] can_write_product_master authority probe failed:", error);
       }
       return false;
     }
