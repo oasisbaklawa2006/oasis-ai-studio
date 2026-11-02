@@ -87,10 +87,18 @@ export async function isSuperAdmin(): Promise<boolean> {
  */
 export async function canWriteProductsDirectly(_rolesFromContext?: string[]): Promise<boolean> {
   try {
-    const { data, error } = await supabase.rpc("can_write_product_master");
+    // The production Core RPC is newer than the Studio-generated client types.
+    // Cast only this verified, no-argument boolean RPC; never cast its result to a role.
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      name: "can_write_product_master",
+    ) => Promise<{ data: boolean | null; error: { message: string } | null }>;
+    const { data, error } = await rpc("can_write_product_master");
     if (error) {
       if (import.meta.env.DEV) {
-        console.error("[CentralPermissions] can_write_product_master authority probe failed:", error);
+        console.error(
+          "[CentralPermissions] can_write_product_master authority probe failed:",
+          error,
+        );
       }
       return false;
     }
