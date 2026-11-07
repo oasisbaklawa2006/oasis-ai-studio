@@ -118,8 +118,8 @@ export function buildHeuristicSuggestions(
   const aliases = governedAliases.ok ? governedAliases.aliases : [];
   const whatsappKeywords = whatsappKeywordsFromAliases(aliases);
   const piecesPerKg = formPatch.pieces_per_kg ? Number(formPatch.pieces_per_kg) : null;
-  const traysPerMasterCarton =
-    formPatch.primary_pack_uom === "tray" ? 8 : formPatch.primary_pack_uom === "box" ? 12 : null;
+  // A primary-pack UOM does not establish how many trays or boxes fit inside
+  // any master carton. Leave this unknown until the operator verifies the pack.
 
   return {
     formPatch,
@@ -134,7 +134,7 @@ export function buildHeuristicSuggestions(
     },
     productTruthStarters: {
       piecesPerKg: Number.isFinite(piecesPerKg) ? piecesPerKg : null,
-      traysPerMasterCarton,
+      traysPerMasterCarton: null,
       primaryPackSummary: formPatch.pack_size ? String(formPatch.pack_size) : null,
     },
     sources: {
