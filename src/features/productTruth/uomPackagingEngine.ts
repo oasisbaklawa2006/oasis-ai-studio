@@ -67,6 +67,10 @@ function finiteResult(value: number): number | null {
   return Number.isFinite(value) ? value : null;
 }
 
+function positiveWholeCount(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+
 function verifiedPiecesPerKg(hierarchy: PackagingHierarchy): number | null {
   const candidate =
     hierarchy.piecesPerKg ?? (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
@@ -102,7 +106,7 @@ export function convertOrderedQtyToBaseQty(
       // These units need an explicitly typed mass/pack conversion in Core #486.
       return null;
     case "master_carton": {
-      const traysPerMc = positiveFinite(hierarchy.traysPerMasterCarton);
+      const traysPerMc = positiveWholeCount(hierarchy.traysPerMasterCarton);
       const kgPerTray = positiveFinite(hierarchy.kgPerTray);
       return traysPerMc == null || kgPerTray == null
         ? null
@@ -134,7 +138,7 @@ export function convertBaseKgToUom(
       return kgPerTray == null ? null : finiteResult(baseKg / kgPerTray);
     }
     case "master_carton": {
-      const traysPerMc = positiveFinite(hierarchy.traysPerMasterCarton);
+      const traysPerMc = positiveWholeCount(hierarchy.traysPerMasterCarton);
       const kgPerTray = positiveFinite(hierarchy.kgPerTray);
       return traysPerMc == null || kgPerTray == null
         ? null
