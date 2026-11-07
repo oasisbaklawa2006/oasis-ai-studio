@@ -21,6 +21,7 @@ describe("live product / media direct-write RLS authority", () => {
     expect(await canWriteProductsDirectly(["owner"])).toBe(true);
     expect(mock.rpc).toHaveBeenCalledTimes(1);
     expect(mock.rpc).toHaveBeenCalledWith("can_write_product_master");
+    expect(mock.rpc).not.toHaveBeenCalledWith("is_admin");
   });
 
   it("does not mistake mapped owner/product_manager or unrelated permission for direct write", async () => {
@@ -32,11 +33,26 @@ describe("live product / media direct-write RLS authority", () => {
     expect(mock.rpc).toHaveBeenCalledWith("can_write_product_master");
   });
 
-  it("fails closed when product-writing RLS cannot be verified", async () => {
+  it("fails closed when Core product authority RPC is absent, denied or unreachable", async () => {
+    mock.rpc.mockResolvedValueOnce({
+      data: null,
+      error: { code: "PGRST202", message: "RPC missing" },
+    });
+    expect(await canWriteProductsDirectly(["super_admin"])).toBe(false);
     mock.rpc.mockResolvedValueOnce({ data: null, error: { message: "permission denied" } });
     expect(await canWriteProductsDirectly(["super_admin"])).toBe(false);
     mock.rpc.mockRejectedValueOnce(new Error("network interrupted"));
     expect(await canWriteProductsDirectly(["owner"])).toBe(false);
+    expect(mock.rpc).not.toHaveBeenCalledWith("is_admin");
+  });
+
+  it("rejects null, non-boolean and unverified authority results", async () => {
+    for (const result of [null, undefined, "true", 1, { allowed: true }]) {
+      mock.rpc.mockResolvedValueOnce({ data: result, error: null });
+      expect(await canWriteProductsDirectly(["owner"])).toBe(false);
+    }
+    expect(mock.rpc).toHaveBeenCalledTimes(5);
+    expect(mock.rpc).not.toHaveBeenCalledWith("is_admin");
   });
 
   it("applies the same production authority to direct media writes", async () => {
