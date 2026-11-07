@@ -83,7 +83,7 @@ describe("uomPackagingEngine", () => {
       expect(convertOrderedQtyToBaseQty(2, "tray", { kgPerTray })).toBeNull();
       expect(convertBaseKgToUom(3, "tray", { kgPerTray })).toBeNull();
     }
-    for (const traysPerMasterCarton of [0, -4, Infinity, NaN]) {
+    for (const traysPerMasterCarton of [0, -4, 2.5, Infinity, NaN]) {
       expect(
         convertOrderedQtyToBaseQty(1, "master_carton", {
           kgPerTray: 1,
@@ -91,6 +91,9 @@ describe("uomPackagingEngine", () => {
         }),
       ).toBeNull();
     }
+    expect(
+      convertBaseKgToUom(3, "master_carton", { kgPerTray: 1, traysPerMasterCarton: 2.5 }),
+    ).toBeNull();
     expect(convertBaseKgToUom(Infinity, "master_carton", standardHierarchy)).toBeNull();
     expect(calculateDispatchPackagingQty(NaN, "master_carton", standardHierarchy)).toBeNull();
     expect(convertOrderedQtyToBaseQty(12, "pcs", { piecesPerKg: Infinity })).toBeNull();
