@@ -52,23 +52,14 @@ describe("channelPricingMoqEngine", () => {
       incrementValue: 1,
       incrementUom: "master_carton",
     };
-    const result = validateOrderQtyAgainstChannelRules(
-      2,
-      "master_carton",
-      "b2b",
-      cartonRule,
-      {},
-    );
+    const result = validateOrderQtyAgainstChannelRules(2, "master_carton", "b2b", cartonRule, {});
     expect(result.valid).toBe(false);
     expect(result.messages.join(" ")).toContain("Cannot compare MOQ");
     expect(
-      validateOrderQtyAgainstChannelRules(
-        2,
-        "master_carton",
-        "b2b",
-        cartonRule,
-        { kgPerTray: 0.5, traysPerMasterCarton: 6 },
-      ).valid,
+      validateOrderQtyAgainstChannelRules(2, "master_carton", "b2b", cartonRule, {
+        kgPerTray: 0.5,
+        traysPerMasterCarton: 6,
+      }).valid,
     ).toBe(true);
   });
 
