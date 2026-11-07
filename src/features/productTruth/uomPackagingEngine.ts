@@ -98,13 +98,21 @@ export function convertOrderedQtyToBaseQty(
       const kgPerTray = positiveFinite(hierarchy.kgPerTray);
       return kgPerTray == null ? null : finiteResult(qty * kgPerTray);
     }
-    case "carton":
+    case "carton": {
+      // A confirmed pieces-per-carton and pieces-per-kg pair gives actual mass.
+      // Packs per carton alone does NOT establish the mass of a sellable pack.
+      const pcsPerCarton = positiveWholeCount(hierarchy.pcsPerCarton);
+      return pcsPerCarton == null || piecesPerKg == null
+        ? null
+        : finiteResult((qty * pcsPerCarton) / piecesPerKg);
+    }
     case "pack":
-    case "box":
-      // packsPerCarton describes carton membership, not kg per retail pack;
-      // kgPerTray cannot be substituted for arbitrary boxes or retail packs.
-      // These units need an explicitly typed mass/pack conversion in Core #486.
-      return null;
+    case "box": {
+      const pcsPerPack = positiveWholeCount(hierarchy.pcsPerPack);
+      return pcsPerPack == null || piecesPerKg == null
+        ? null
+        : finiteResult((qty * pcsPerPack) / piecesPerKg);
+    }
     case "master_carton": {
       const traysPerMc = positiveWholeCount(hierarchy.traysPerMasterCarton);
       const kgPerTray = positiveFinite(hierarchy.kgPerTray);
