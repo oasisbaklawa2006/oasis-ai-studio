@@ -6,10 +6,12 @@ import {
   ALLOWED_MEDIA_MIME_TYPES,
   IMAGE_MIME_TYPES,
   MAX_MEDIA_FILE_SIZE_BYTES,
+  publicMediaUploadBlockReason,
   resolveCatalogueMediaWriteMode,
   sanitizeMediaFileName,
   useCatalogueMediaWriteMode,
   VIDEO_MIME_TYPES,
+  uploadMediaFileToStorage,
   validateMediaFile,
 } from "./mediaDraftBoundary";
 
@@ -26,6 +28,30 @@ vi.mock("@/shared/auth/centralPermissions", () => permissionRpcs);
 // Point 27, Phase 12: mirrors the server-side product-media bucket enforcement
 // (Core migration 20260809210000_enforce_product_media_bucket_limits.sql) so a
 // bad file is rejected client-side before any storage call is made.
+describe("Core #484 public Storage upload protection", () => {
+  it("refuses unapproved, draft, raw, missing and forged publication states", () => {
+    for (const status of ["raw", "draft", "pending", "", "rejected", "Approved", "unknown"]) {
+      expect(publicMediaUploadBlockReason(status)).toContain("Private staging");
+    }
+    expect(publicMediaUploadBlockReason("approved")).toBeNull();
+  });
+
+  it("fails closed before a new raw object can be written into the public bucket", async () => {
+    const raw = new File(["raw contents"], "source.jpg", { type: "image/jpeg" });
+    const result = await uploadMediaFileToStorage(
+      "products/TEST/submissions/unapproved.jpg",
+      raw,
+    );
+    expect(result.data).toBeNull();
+    expect(result.error?.message).toContain("Unapproved product photography");
+    // Omitting the status must also be denied: legacy callers cannot bypass
+    // the new guard through a missing parameter.
+    const omitted = await uploadMediaFileToStorage("products/TEST/raw/old.jpg", raw);
+    expect(omitted.data).toBeNull();
+    expect(omitted.error?.message).toContain("Private staging");
+  });
+});
+
 describe("validateMediaFile", () => {
   it("accepts a file within the size limit and an allowed MIME type", () => {
     const file = new File(["x"], "photo.jpg", { type: "image/jpeg" });
