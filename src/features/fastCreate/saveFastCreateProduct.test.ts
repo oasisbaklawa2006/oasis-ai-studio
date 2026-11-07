@@ -207,6 +207,25 @@ describe("saveFastCreateProduct — governed draft only", () => {
     expect(fromMock).not.toHaveBeenCalled();
   });
 
+  it("propagates Core already_pending without overwriting the prior product draft", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [{ draft_id: "prior-draft", already_pending: true }],
+      error: null,
+    });
+
+    const result = await saveFastCreateProduct({
+      suggestions: minimalSuggestions,
+      heroUrl: null,
+      roles: ["owner"],
+      categoryKey: "other",
+      resolvedSku: "OAS-AS-BKL-ASS-LOOSE-0001",
+    });
+
+    expect(result).toEqual({ draft: true, draftId: "prior-draft", alreadyPending: true });
+    expect(resolveFastCreateSubmitReceipt(result).clearDraft).toBe(false);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
   it("excludes pending AI aliases from the governed draft search payload", async () => {
     await saveFastCreateProduct({
       suggestions: {
