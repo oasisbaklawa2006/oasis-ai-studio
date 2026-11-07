@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
-import { publicMediaUploadBlockReason } from "@/features/catalogueDrafts/mediaDraftBoundary";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { publicMediaUploadBlockReason } from "@/features/catalogueDrafts/mediaDraftBoundary";
 import { supabase } from "@/integrations/supabase/client";
 import { safeAttachmentUrl } from "@/lib/safeAttachmentUrl";
 
