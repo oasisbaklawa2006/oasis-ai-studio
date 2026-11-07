@@ -35,7 +35,7 @@ describe("fastCreateReadinessCategories — adaptive required fields", () => {
   });
 
   it("requires a positive whole piece count, never a fractional or mass value", () => {
-    for (const invalid of ["", "0", "-1", "0.5", "6.25", "Infinity", "9007199254740992"]) {
+    for (const invalid of ["", "0", "-1", "0.5", "6.25", "Infinity", "9007199254740992", "1e3", "0x10", "0b11", "6.0"]) {
       expect(validFastCreatePieceCount(invalid)).toBe(false);
       const categories = fastCreateReadinessCategories({
         ...misr15Draft(),
@@ -119,7 +119,7 @@ describe("fastCreateFormPatchFromDraft — Full Editor handoff", () => {
       ...switched,
       suggestions: {
         formPatch: { pcs_per_pack: 500 },
-      } as FastCreateDraftSnapshot["suggestions"],
+      } as unknown as FastCreateDraftSnapshot["suggestions"],
     });
     expect(suggestedValue).not.toHaveProperty("pcs_per_pack");
   });
