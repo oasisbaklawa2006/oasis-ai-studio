@@ -43,6 +43,35 @@ describe("channelPricingMoqEngine", () => {
     expect(r.valid).toBe(true);
   });
 
+  it("blocks B2B master-carton MOQ when tray weight or tray count is not verified", () => {
+    const cartonRule: ChannelMoqRule = {
+      channel: "b2b",
+      moqApplicable: true,
+      moqValue: 1,
+      moqUom: "master_carton",
+      incrementValue: 1,
+      incrementUom: "master_carton",
+    };
+    const result = validateOrderQtyAgainstChannelRules(
+      2,
+      "master_carton",
+      "b2b",
+      cartonRule,
+      {},
+    );
+    expect(result.valid).toBe(false);
+    expect(result.messages.join(" ")).toContain("Cannot compare MOQ");
+    expect(
+      validateOrderQtyAgainstChannelRules(
+        2,
+        "master_carton",
+        "b2b",
+        cartonRule,
+        { kgPerTray: 0.5, traysPerMasterCarton: 6 },
+      ).valid,
+    ).toBe(true);
+  });
+
   it("pending price blocks publish", () => {
     const price: ChannelPriceRecord = {
       channel: "b2b",
