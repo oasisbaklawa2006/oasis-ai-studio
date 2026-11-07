@@ -311,8 +311,8 @@ const Media = () => {
                   <div className="space-y-3">
                     {writeMode === "draft" && (
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        Media changes are submitted for approval and are not published in the
-                        live media library until authorised review.
+                        Media changes are submitted for approval and are not published in the live
+                        media library until authorised review.
                       </p>
                     )}
                     <div className="grid grid-cols-2 gap-3">
