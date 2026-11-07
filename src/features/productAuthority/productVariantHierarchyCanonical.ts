@@ -57,7 +57,7 @@ export const POINT_32_CORE_AUTHORITY = {
     "product_variants_basis_variant_key_unique (basis_product_id, variant_key) — deterministic Core uniqueness constraint",
   ],
   writeAuthority:
-    "product_variants INSERT/UPDATE/DELETE is gated by Core RLS policy requiring public.is_admin(); AI Studio never bypasses this client-side.",
+    "product_variants INSERT/UPDATE/DELETE is gated by Core RLS policy requiring public.can_write_product_master(); AI Studio never bypasses this client-side.",
   compositionSemantics: [
     "product_bom_items.parent_product_id / child_product_id — BOM composition only",
     "hampers.parent_product_id — hamper shell only",
