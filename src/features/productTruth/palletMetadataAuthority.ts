@@ -11,7 +11,14 @@ export type PalletValidation = { valid: boolean; errors: string[]; metadata: Pal
 
 function readCount(field: string, value: unknown, errors: string[]): number | null {
   if (value === null || value === undefined || value === "") return null;
-  const n = Number(value);
+
+  // HTML number inputs return strings, and hydrated Core values may be numbers.
+  // Reject Number() coercions such as "0x10", "1e3", true or whitespace, which
+  // were never explicit decimal whole-carton counts asserted by the operator.
+  const isDecimalCount =
+    (typeof value === "string" && /^[0-9]+$/.test(value)) ||
+    (typeof value === "number" && Number.isSafeInteger(value));
+  const n = isDecimalCount ? Number(value) : Number.NaN;
   if (!Number.isSafeInteger(n) || n < 1 || n > 10000) {
     errors.push(`${field} must be a positive whole number (1–10000)`);
     return null;
@@ -27,10 +34,13 @@ export function validatePalletMetadata(form: Record<string, unknown>): PalletVal
     form.master_cartons_per_pallet,
     errors,
   );
-  const rawUom =
-    form.pallet_uom === null || form.pallet_uom === undefined ? "" : String(form.pallet_uom);
+  const uomValue = form.pallet_uom;
+  if (uomValue != null && typeof uomValue !== "string") {
+    errors.push("Pallet UOM must be text");
+  }
+  const rawUom = typeof uomValue === "string" ? uomValue : "";
   const uom = rawUom.trim() || null;
-  if (uom && (uom.length > 64 || uom !== rawUom)) {
+  if (rawUom && (rawUom.length > 64 || uom !== rawUom)) {
     errors.push("Pallet UOM must be trimmed and at most 64 characters");
   }
   if ((cartons != null || masterCartons != null) && !uom) {
