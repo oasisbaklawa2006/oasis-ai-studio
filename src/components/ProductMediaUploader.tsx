@@ -762,17 +762,8 @@ export function ProductMediaUploader({
       setUploading(true);
       try {
         const wantsHero = !currentHero || isPdfPage(currentHero);
-        const insertRes = await insertProductMediaRow({
-          product_id: productId,
-          file_url: url,
-          type,
-          status: "raw",
-          alt_text: "url_import",
-        });
-        if (!insertRes.ok) {
-          toast.error(insertRes.message);
-          return;
-        }
+        // Contributors may only request approval. Do not create an
+        // authoritative raw media row before the governed review.
         const res = await submitDraft("url_import", {
           fileUrl: url,
           type,
@@ -783,7 +774,6 @@ export function ProductMediaUploader({
         });
         if (!res.ok) {
           toast.error(res.message);
-          await refreshLocalMediaView();
           return;
         }
         setUrlInput("");
@@ -791,7 +781,7 @@ export function ProductMediaUploader({
           ...prev,
           {
             id: crypto.randomUUID(),
-            text: "URL import — submitted for approval (visible below until review)",
+            text: "URL import — submitted for approval (not live until review)",
           },
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
