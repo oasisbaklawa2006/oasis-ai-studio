@@ -9,7 +9,10 @@ export async function processErpInboundRow(
   if (!mapped.ok) {
     return { ok: false, error: mapped.error };
   }
-  if ("skipped" in mapped && mapped.skipped) {
+  // Narrow on the actual mapped payload: the other successful variant is a
+  // deliberately skipped inbound row with no .value. The previous "skipped"
+  // check did not narrow that union for the repo-wide TypeScript build.
+  if (!("value" in mapped)) {
     return { ok: true, skipped: true, reason: mapped.reason };
   }
 
