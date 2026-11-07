@@ -69,8 +69,7 @@ function finiteResult(value: number): number | null {
 
 function verifiedPiecesPerKg(hierarchy: PackagingHierarchy): number | null {
   const candidate =
-    hierarchy.piecesPerKg ??
-    (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
+    hierarchy.piecesPerKg ?? (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
   return positiveFinite(candidate);
 }
 
@@ -90,8 +89,7 @@ export function convertOrderedQtyToBaseQty(
     case "grams":
       return qty / 1000;
     case "pcs":
-      if (!piecesPerKg) return null;
-      return qty / piecesPerKg;
+      return piecesPerKg == null ? null : finiteResult(qty / piecesPerKg);
     case "tray": {
       const kgPerTray = positiveFinite(hierarchy.kgPerTray);
       return kgPerTray == null ? null : finiteResult(qty * kgPerTray);
@@ -132,7 +130,7 @@ export function convertBaseKgToUom(
     case "kg":
       return baseKg;
     case "grams":
-      return baseKg * 1000;
+      return finiteResult(baseKg * 1000);
     case "pcs":
       return piecesPerKg == null ? null : finiteResult(baseKg * piecesPerKg);
     case "tray": {
