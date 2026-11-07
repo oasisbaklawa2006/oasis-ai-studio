@@ -58,6 +58,22 @@ export function validateConversionRule(rule: ConversionRule): { valid: boolean; 
 }
 
 /** Convert ordered quantity to base kg using hierarchy (kg-centric base). */
+/** Packaging conversion factors are operator-provided facts, never defaults. */
+function positiveFinite(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function finiteResult(value: number): number | null {
+  return Number.isFinite(value) ? value : null;
+}
+
+function verifiedPiecesPerKg(hierarchy: PackagingHierarchy): number | null {
+  const candidate =
+    hierarchy.piecesPerKg ??
+    (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
+  return positiveFinite(candidate);
+}
+
 export function convertOrderedQtyToBaseQty(
   qty: number,
   uom: string,
@@ -66,8 +82,7 @@ export function convertOrderedQtyToBaseQty(
   const normalized = normalizeUom(uom);
   if (!normalized || !Number.isFinite(qty)) return null;
 
-  const piecesPerKg =
-    hierarchy.piecesPerKg ?? (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
+  const piecesPerKg = verifiedPiecesPerKg(hierarchy);
 
   switch (normalized) {
     case "kg":
@@ -78,20 +93,26 @@ export function convertOrderedQtyToBaseQty(
       if (!piecesPerKg) return null;
       return qty / piecesPerKg;
     case "tray": {
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
-      return qty * kgPerTray;
+      const kgPerTray = positiveFinite(hierarchy.kgPerTray);
+      return kgPerTray == null ? null : finiteResult(qty * kgPerTray);
     }
     case "carton":
     case "pack":
     case "box": {
-      const traysPerCarton = hierarchy.packsPerCarton ?? hierarchy.traysPerMasterCarton ?? 1;
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
-      return qty * traysPerCarton * kgPerTray;
+      const traysPerCarton = positiveFinite(
+        hierarchy.packsPerCarton ?? hierarchy.traysPerMasterCarton,
+      );
+      const kgPerTray = positiveFinite(hierarchy.kgPerTray);
+      return traysPerCarton == null || kgPerTray == null
+        ? null
+        : finiteResult(qty * traysPerCarton * kgPerTray);
     }
     case "master_carton": {
-      const traysPerMc = hierarchy.traysPerMasterCarton ?? 8;
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
-      return qty * traysPerMc * kgPerTray;
+      const traysPerMc = positiveFinite(hierarchy.traysPerMasterCarton);
+      const kgPerTray = positiveFinite(hierarchy.kgPerTray);
+      return traysPerMc == null || kgPerTray == null
+        ? null
+        : finiteResult(qty * traysPerMc * kgPerTray);
     }
     default:
       return null;
@@ -104,9 +125,8 @@ export function convertBaseKgToUom(
   hierarchy: PackagingHierarchy,
 ): number | null {
   const normalized = normalizeUom(targetUom);
-  if (!normalized) return null;
-  const piecesPerKg =
-    hierarchy.piecesPerKg ?? (hierarchy.gramsPerPiece ? 1000 / hierarchy.gramsPerPiece : null);
+  if (!normalized || !Number.isFinite(baseKg)) return null;
+  const piecesPerKg = verifiedPiecesPerKg(hierarchy);
 
   switch (normalized) {
     case "kg":
@@ -114,15 +134,17 @@ export function convertBaseKgToUom(
     case "grams":
       return baseKg * 1000;
     case "pcs":
-      return piecesPerKg ? baseKg * piecesPerKg : null;
+      return piecesPerKg == null ? null : finiteResult(baseKg * piecesPerKg);
     case "tray": {
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
-      return baseKg / kgPerTray;
+      const kgPerTray = positiveFinite(hierarchy.kgPerTray);
+      return kgPerTray == null ? null : finiteResult(baseKg / kgPerTray);
     }
     case "master_carton": {
-      const traysPerMc = hierarchy.traysPerMasterCarton ?? 8;
-      const kgPerTray = hierarchy.kgPerTray ?? 1;
-      return baseKg / (traysPerMc * kgPerTray);
+      const traysPerMc = positiveFinite(hierarchy.traysPerMasterCarton);
+      const kgPerTray = positiveFinite(hierarchy.kgPerTray);
+      return traysPerMc == null || kgPerTray == null
+        ? null
+        : finiteResult(baseKg / (traysPerMc * kgPerTray));
     }
     default:
       return null;
