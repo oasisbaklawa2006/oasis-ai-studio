@@ -58,6 +58,8 @@ export type PackagingHierarchy = {
   packsPerCarton?: number | null;
   /** Pieces inside one retail pack (pack-based products). */
   pcsPerPack?: number | null;
+  /** Verified pieces inside one case/carton; required for piece-based carton mass conversion. */
+  pcsPerCarton?: number | null;
   allowPartialPack?: boolean;
   allowPartialCarton?: boolean;
   roundingRule?: RoundingRule;
