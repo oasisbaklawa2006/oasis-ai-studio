@@ -9,9 +9,9 @@ import {
   publicMediaUploadBlockReason,
   resolveCatalogueMediaWriteMode,
   sanitizeMediaFileName,
+  uploadMediaFileToStorage,
   useCatalogueMediaWriteMode,
   VIDEO_MIME_TYPES,
-  uploadMediaFileToStorage,
   validateMediaFile,
 } from "./mediaDraftBoundary";
 
@@ -38,10 +38,7 @@ describe("Core #484 public Storage upload protection", () => {
 
   it("fails closed before a new raw object can be written into the public bucket", async () => {
     const raw = new File(["raw contents"], "source.jpg", { type: "image/jpeg" });
-    const result = await uploadMediaFileToStorage(
-      "products/TEST/submissions/unapproved.jpg",
-      raw,
-    );
+    const result = await uploadMediaFileToStorage("products/TEST/submissions/unapproved.jpg", raw);
     expect(result.data).toBeNull();
     expect(result.error?.message).toContain("Unapproved product photography");
     // Omitting the status must also be denied: legacy callers cannot bypass
