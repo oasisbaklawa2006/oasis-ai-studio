@@ -30,7 +30,8 @@ describe("uomPackagingEngine", () => {
   it("120 pcs = 3 kg = 3 trays", () => {
     const kg = convertOrderedQtyToBaseQty(120, "pcs", standardHierarchy);
     expect(kg).toBe(3);
-    expect(convertBaseKgToUom(kg!, "tray", standardHierarchy)).toBe(3);
+    if (kg === null) throw new Error("Expected a verified piece-to-kg conversion");
+    expect(convertBaseKgToUom(kg, "tray", standardHierarchy)).toBe(3);
   });
 
   it("master carton rounding blocks partial when disabled", () => {
