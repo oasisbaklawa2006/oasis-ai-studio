@@ -35,6 +35,7 @@ vi.mock("@/shared/auth/centralPermissions", () => ({
 const {
   buildFastCreateGroupedDraftPayload,
   requireFastCreateSku,
+  resolveFastCreateSubmitReceipt,
   saveFastCreateProduct,
   FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX,
 } = await import("./saveFastCreateProduct");
@@ -57,6 +58,49 @@ const minimalSuggestions: FastCreateSuggestions = {
   productTruthStarters: { piecesPerKg: null, traysPerMasterCarton: null, primaryPackSummary: null },
   sources: { defaults: true, heuristicAliases: false, aiCompliance: false, aiAliases: false },
 };
+
+describe("Fast Create Core submission receipts", () => {
+  it("retains the operator draft on idempotent already-pending results", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      draft: true,
+      draftId: "existing-draft",
+      alreadyPending: true,
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: false,
+      navigateTo: null,
+      tone: "warning",
+    });
+    expect(receipt.message).toContain("NOT submitted");
+    expect(receipt.message).toContain("Inputs remain here");
+  });
+
+  it("clears the draft and opens approvals only when a new draft was submitted", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      draft: true,
+      draftId: "new-draft",
+      alreadyPending: false,
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: true,
+      navigateTo: "/approvals",
+      tone: "success",
+      message: "Product draft submitted for approval.",
+    });
+  });
+
+  it("preserves the legacy direct-create compatibility receipt", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      id: "product-123",
+      sku: "OAS-AS-BKL-ASS-PAPERBOX-0001",
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: true,
+      navigateTo: "/products/product-123",
+      tone: "success",
+    });
+  });
+});
 
 describe("requireFastCreateSku — packaging authority", () => {
   beforeEach(() => {
