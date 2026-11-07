@@ -106,11 +106,31 @@ export const validateMediaFile = (
   return null;
 };
 
-export const uploadMediaFileToStorage = async (path: string, file: File) =>
-  supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).upload(path, file, {
+/** A raw/pending file must NEVER be put in a public Storage bucket. */
+export const publicMediaUploadBlockReason = (status: string): string | null =>
+  status === "approved"
+    ? null
+    : "Unapproved product photography cannot be uploaded into public Storage. Private staging and signed review must first be certified (Core #484).";
+
+/**
+ * Compatibility upload for genuinely approved, direct-authorised media only.
+ * Fail closed by default: every old caller that omits approval is blocked
+ * BEFORE creating a public object. This UI guard is not a replacement for Core
+ * Storage RLS, approved-media promotion or a reviewer workflow.
+ */
+export const uploadMediaFileToStorage = async (
+  path: string,
+  file: File,
+  publicationStatus = "raw",
+) => {
+  const blocked = publicMediaUploadBlockReason(publicationStatus);
+  if (blocked) return { data: null, error: new Error(blocked) };
+
+  return supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).upload(path, file, {
     cacheControl: "3600",
     upsert: false,
   });
+};
 
 export const getMediaPublicUrl = (path: string) =>
   supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;
