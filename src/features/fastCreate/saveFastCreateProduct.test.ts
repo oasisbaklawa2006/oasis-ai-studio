@@ -226,6 +226,24 @@ describe("saveFastCreateProduct — governed draft only", () => {
     expect(fromMock).not.toHaveBeenCalled();
   });
 
+  it("does not claim success when Core omits the idempotency receipt field", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [{ draft_id: "unverified-draft", already_pending: undefined as unknown as boolean }],
+      error: null,
+    });
+
+    await expect(
+      saveFastCreateProduct({
+        suggestions: minimalSuggestions,
+        heroUrl: null,
+        roles: ["owner"],
+        categoryKey: "other",
+        resolvedSku: "OAS-AS-BKL-ASS-LOOSE-0001",
+      }),
+    ).rejects.toThrow(/Core draft receipt is incomplete/i);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
   it("excludes pending AI aliases from the governed draft search payload", async () => {
     await saveFastCreateProduct({
       suggestions: {
