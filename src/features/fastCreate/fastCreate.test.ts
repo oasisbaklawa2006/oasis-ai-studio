@@ -19,6 +19,13 @@ describe("fastCreateSuggestions", () => {
     expect(result.sources.defaults).toBe(true);
   });
 
+  it("never guesses tray or box quantities per master carton from category presets", () => {
+    const baklawa = buildHeuristicSuggestions("Assorted Baklawa Tray", "baklawa");
+    const chocolates = buildHeuristicSuggestions("Premium Dates Gift Box", "dates_chocolate");
+    expect(baklawa.productTruthStarters.traysPerMasterCarton).toBeNull();
+    expect(chocolates.productTruthStarters.traysPerMasterCarton).toBeNull();
+  });
+
   it("builds description from product name without ungoverned marketing filler", () => {
     const result = buildHeuristicSuggestions("Premium Dates Box", "dates_chocolate");
     expect(String(result.formPatch.description)).toContain("Premium Dates Box");
