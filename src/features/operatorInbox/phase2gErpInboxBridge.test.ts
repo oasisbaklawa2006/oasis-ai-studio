@@ -66,6 +66,33 @@ describe("Phase 2G — ERP row mapping", () => {
 });
 
 describe("Phase 2G — ERP bridge ingest", () => {
+  it("skips outbound, unsupported and empty ERP rows without resolver or ingest writes", async () => {
+    const resolveMock = vi.fn(async (_text: string) => ({
+      resolver_status: "resolved" as const,
+      resolver_result_json: null,
+    }));
+    const rpcMock = vi.fn(async (_fn: string, _args: Record<string, unknown>) => ({
+      data: null,
+      error: null,
+    }));
+    const rows = [
+      SAMPLE_ERP_WHATSAPP_ROWS[2],
+      SAMPLE_ERP_WHATSAPP_ROWS[3],
+      { ...SAMPLE_ERP_WHATSAPP_ROWS[0], content: "   " },
+    ];
+
+    for (const row of rows) {
+      const result = await processErpInboundRow(row, {
+        resolve: resolveMock,
+        rpc: rpcMock,
+      });
+      expect(result).toMatchObject({ ok: true, skipped: true });
+    }
+    expect(resolveMock).not.toHaveBeenCalled();
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+
   it("processErpInboundRow valid row resolves catalog utterance", async () => {
     const store = createInMemoryIngestStore();
     const result = await processErpInboundRow(SAMPLE_ERP_WHATSAPP_ROWS[0], {
