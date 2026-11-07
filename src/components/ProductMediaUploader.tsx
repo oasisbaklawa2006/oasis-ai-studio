@@ -324,20 +324,15 @@ export function ProductMediaUploader({
     isVideo = false,
   ): Promise<string | null> => {
     const path = buildDirectMediaPath(storageFolder, file.name);
-    const { error: upErr } = await uploadMediaFileToStorage(path, file);
+    const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
+    const publicationStatus = isRequiredSlot(mediaType) || asHero ? "approved" : "raw";
+    const { error: upErr } = await uploadMediaFileToStorage(path, file, publicationStatus);
     if (upErr) {
       toast.error(formatMediaStorageError(upErr));
       return null;
     }
     const url = getMediaPublicUrl(path);
-    const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
-    const saved = await persistMediaRow(
-      file,
-      url,
-      mediaType,
-      isRequiredSlot(mediaType) || asHero ? "approved" : "raw",
-      asHero,
-    );
+    const saved = await persistMediaRow(file, url, mediaType, publicationStatus, asHero);
     if (!saved) return null;
     return url;
   };
