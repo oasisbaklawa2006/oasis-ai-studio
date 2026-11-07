@@ -64,6 +64,29 @@ describe("uomPackagingEngine", () => {
     expect(convertOrderedQtyToBaseQty(2, "master_carton", mixedUnits)).toBe(8);
   });
 
+  it("converts retail boxes and cartons only from matching confirmed pieces and kg ratio", () => {
+    const physicallyVerified: PackagingHierarchy = {
+      piecesPerKg: 40,
+      pcsPerPack: 6,
+      pcsPerCarton: 24,
+      packsPerCarton: 4,
+    };
+    expect(convertOrderedQtyToBaseQty(1, "box", physicallyVerified)).toBe(0.15);
+    expect(convertOrderedQtyToBaseQty(2, "pack", physicallyVerified)).toBe(0.3);
+    expect(convertOrderedQtyToBaseQty(1, "carton", physicallyVerified)).toBe(0.6);
+    expect(
+      convertOrderedQtyToBaseQty(1, "carton", {
+        packsPerCarton: 4,
+        kgPerTray: 1,
+      }),
+    ).toBeNull();
+    expect(
+      convertOrderedQtyToBaseQty(1, "box", {
+        pcsPerPack: 6,
+      }),
+    ).toBeNull();
+  });
+
   it("requires both verified kg/tray and trays/master carton before a conversion", () => {
     const onlyTray = { kgPerTray: 0.5 };
     const onlyMaster = { traysPerMasterCarton: 6 };
