@@ -96,15 +96,11 @@ export function convertOrderedQtyToBaseQty(
     }
     case "carton":
     case "pack":
-    case "box": {
-      const traysPerCarton = positiveFinite(
-        hierarchy.packsPerCarton ?? hierarchy.traysPerMasterCarton,
-      );
-      const kgPerTray = positiveFinite(hierarchy.kgPerTray);
-      return traysPerCarton == null || kgPerTray == null
-        ? null
-        : finiteResult(qty * traysPerCarton * kgPerTray);
-    }
+    case "box":
+      // packsPerCarton describes carton membership, not kg per retail pack;
+      // kgPerTray cannot be substituted for arbitrary boxes or retail packs.
+      // These units need an explicitly typed mass/pack conversion in Core #486.
+      return null;
     case "master_carton": {
       const traysPerMc = positiveFinite(hierarchy.traysPerMasterCarton);
       const kgPerTray = positiveFinite(hierarchy.kgPerTray);
