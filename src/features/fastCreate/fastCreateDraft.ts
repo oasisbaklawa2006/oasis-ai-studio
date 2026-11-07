@@ -97,7 +97,9 @@ export function clearFastCreateDraft() {
 }
 
 /** A visible piece-count field can only represent positive whole pieces, never grams. */
-export function validFastCreatePieceCount(value: string): boolean {
+export function validFastCreatePieceCount(value: unknown): boolean {
+  // Session snapshots may contain stale or malformed values; deny rather than crash.
+  if (typeof value !== "string") return false;
   const trimmed = value.trim();
   if (!trimmed) return false;
   const parsed = Number(trimmed);
