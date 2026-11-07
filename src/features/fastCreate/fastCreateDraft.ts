@@ -101,7 +101,9 @@ export function validFastCreatePieceCount(value: unknown): boolean {
   // Session snapshots may contain stale or malformed values; deny rather than crash.
   if (typeof value !== "string") return false;
   const trimmed = value.trim();
-  if (!trimmed) return false;
+  // Reject exponential, hexadecimal, binary and decimal-point forms even when
+  // JavaScript would coerce them to an integer. This is a count of whole pieces.
+  if (!/^[0-9]+$/.test(trimmed)) return false;
   const parsed = Number(trimmed);
   return Number.isSafeInteger(parsed) && parsed > 0;
 }
