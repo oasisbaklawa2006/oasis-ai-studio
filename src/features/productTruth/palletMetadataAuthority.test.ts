@@ -60,9 +60,7 @@ describe("Point33 Core-backed pallet metadata", () => {
     for (const pallet_uom of [1, true, { label: "Standard" }, ["Standard"], "  "]) {
       const checked = validatePalletMetadata({ cartons_per_pallet: 12, pallet_uom });
       expect(checked.valid).toBe(false);
-      expect(() =>
-        palletMetadataProductsPayload({ cartons_per_pallet: 12, pallet_uom }),
-      ).toThrow();
+      expect(() => palletMetadataProductsPayload({ cartons_per_pallet: 12, pallet_uom })).toThrow();
     }
     expect(validatePalletMetadata({ pallet_uom: "" }).valid).toBe(true);
   });
