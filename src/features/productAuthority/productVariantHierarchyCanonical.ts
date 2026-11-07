@@ -200,7 +200,7 @@ export function resolveVariantGraph(edges: ExplicitVariantEdge[]): VariantGraphR
 }
 
 /**
- * Structural validation for variant hierarchy mutations. Core's RLS (`public.is_admin()`) and
+ * Structural validation for variant hierarchy mutations. Core's RLS (`public.can_write_product_master()`) and
  * triggers (`enforce_product_variant_identity_v1`, `enforce_product_point32_identity_immutable_v1`)
  * are the real authority; this only fails closed on shapes Core would reject anyway, so the UI
  * never submits a doomed write.
@@ -343,7 +343,7 @@ export function buildCanonicalProductVariantHierarchy(
   };
 }
 
-/** Editor binding contract for Point 31 identity tab. Parentage is settable via Core RLS (admin). */
+/** Editor binding contract for Point 31 identity tab. Parentage requires scoped Core author RLS. */
 export function resolveEditorVariantBinding(form: Record<string, unknown>): {
   tab: "identity";
   owner: "Point32";
