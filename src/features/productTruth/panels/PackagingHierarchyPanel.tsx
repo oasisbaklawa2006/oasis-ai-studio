@@ -63,8 +63,17 @@ export function PackagingHierarchyPanel({ form, truthInput }: Props) {
 
       {canonical.coreDependencies.length > 0 && (
         <p className="text-xs text-muted-foreground">
-          Core gap (pallet): {canonical.coreDependencies.join(", ")} — UI cannot persist pallet
-          quantities until Core Point 20 #201 clears schema authority.
+          Core dependencies: {canonical.coreDependencies.join(", ")}. An authoritative migration is
+          required before attempting to save these quantities.
+        </p>
+      )}
+
+      {canonical.nodes[4].present && (
+        <p className="text-xs text-muted-foreground">
+          Pallet: {String(form.cartons_per_pallet ?? "—")} case cartons;{" "}
+          {String(form.master_cartons_per_pallet ?? "—")} master cartons; type{" "}
+          {String(form.pallet_uom ?? "not supplied")}. Quantities are separately confirmed, not
+          derived from carton size.
         </p>
       )}
 
