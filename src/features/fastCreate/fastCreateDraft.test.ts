@@ -43,6 +43,14 @@ describe("fastCreateReadinessCategories — adaptive required fields", () => {
       });
       expect(categories.find((c) => c.key === "qty_per_pack")?.state).toBe("missing");
     }
+    expect(validFastCreatePieceCount(null)).toBe(false);
+    expect(validFastCreatePieceCount(500)).toBe(false);
+    expect(validFastCreatePieceCount({ value: 6 })).toBe(false);
+    const malformed = fastCreateReadinessCategories({
+      ...misr15Draft(),
+      qtyPerPack: null as unknown as string,
+    });
+    expect(malformed.find((c) => c.key === "qty_per_pack")?.state).toBe("missing");
     expect(validFastCreatePieceCount("6")).toBe(true);
     expect(validFastCreatePieceCount("12")).toBe(true);
   });
