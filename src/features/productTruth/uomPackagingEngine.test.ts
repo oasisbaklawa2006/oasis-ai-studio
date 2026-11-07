@@ -30,12 +30,96 @@ describe("uomPackagingEngine", () => {
   it("120 pcs = 3 kg = 3 trays", () => {
     const kg = convertOrderedQtyToBaseQty(120, "pcs", standardHierarchy);
     expect(kg).toBe(3);
-    expect(convertBaseKgToUom(kg!, "tray", standardHierarchy)).toBe(3);
+    if (kg === null) throw new Error("Expected a verified piece-to-kg conversion");
+    expect(convertBaseKgToUom(kg, "tray", standardHierarchy)).toBe(3);
   });
 
   it("master carton rounding blocks partial when disabled", () => {
     const trays = calculateDispatchPackagingQty(7.2, "master_carton", standardHierarchy);
     expect(trays).toBe(1);
+  });
+
+  it("does not invent kg/tray or trays/master carton from missing product facts", () => {
+    const unverified: PackagingHierarchy = {};
+    expect(convertOrderedQtyToBaseQty(2, "tray", unverified)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "box", unverified)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "carton", unverified)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "pack", unverified)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "master_carton", unverified)).toBeNull();
+    expect(convertBaseKgToUom(3, "tray", unverified)).toBeNull();
+    expect(convertBaseKgToUom(3, "master_carton", unverified)).toBeNull();
+    expect(calculateDispatchPackagingQty(3, "master_carton", unverified)).toBeNull();
+  });
+
+  it("does not treat pack-per-carton counts as a pack mass conversion", () => {
+    const mixedUnits: PackagingHierarchy = {
+      kgPerTray: 0.5,
+      packsPerCarton: 4,
+      traysPerMasterCarton: 8,
+    };
+    expect(convertOrderedQtyToBaseQty(2, "carton", mixedUnits)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "pack", mixedUnits)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "box", mixedUnits)).toBeNull();
+    // Master carton remains convertible because both factors explicitly use trays.
+    expect(convertOrderedQtyToBaseQty(2, "master_carton", mixedUnits)).toBe(8);
+  });
+
+  it("converts retail boxes and cartons only from matching confirmed pieces and kg ratio", () => {
+    const physicallyVerified: PackagingHierarchy = {
+      piecesPerKg: 40,
+      pcsPerPack: 6,
+      pcsPerCarton: 24,
+      packsPerCarton: 4,
+    };
+    expect(convertOrderedQtyToBaseQty(1, "box", physicallyVerified)).toBe(0.15);
+    expect(convertOrderedQtyToBaseQty(2, "pack", physicallyVerified)).toBe(0.3);
+    expect(convertOrderedQtyToBaseQty(1, "carton", physicallyVerified)).toBe(0.6);
+    expect(
+      convertOrderedQtyToBaseQty(1, "carton", {
+        packsPerCarton: 4,
+        kgPerTray: 1,
+      }),
+    ).toBeNull();
+    expect(
+      convertOrderedQtyToBaseQty(1, "box", {
+        pcsPerPack: 6,
+      }),
+    ).toBeNull();
+  });
+
+  it("requires both verified kg/tray and trays/master carton before a conversion", () => {
+    const onlyTray = { kgPerTray: 0.5 };
+    const onlyMaster = { traysPerMasterCarton: 6 };
+    expect(convertBaseKgToUom(3, "master_carton", onlyTray)).toBeNull();
+    expect(convertBaseKgToUom(3, "master_carton", onlyMaster)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "master_carton", onlyTray)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "master_carton", onlyMaster)).toBeNull();
+
+    const confirmed: PackagingHierarchy = { kgPerTray: 0.5, traysPerMasterCarton: 6 };
+    expect(convertOrderedQtyToBaseQty(2, "master_carton", confirmed)).toBe(6);
+    expect(convertBaseKgToUom(3, "master_carton", confirmed)).toBe(1);
+    expect(calculateDispatchPackagingQty(3, "master_carton", confirmed)).toBe(1);
+  });
+
+  it("rejects invalid or non-finite conversion factors instead of emitting 0 or infinity", () => {
+    for (const kgPerTray of [0, -1, Infinity, NaN]) {
+      expect(convertOrderedQtyToBaseQty(2, "tray", { kgPerTray })).toBeNull();
+      expect(convertBaseKgToUom(3, "tray", { kgPerTray })).toBeNull();
+    }
+    for (const traysPerMasterCarton of [0, -4, 2.5, Infinity, NaN]) {
+      expect(
+        convertOrderedQtyToBaseQty(1, "master_carton", {
+          kgPerTray: 1,
+          traysPerMasterCarton,
+        }),
+      ).toBeNull();
+    }
+    expect(
+      convertBaseKgToUom(3, "master_carton", { kgPerTray: 1, traysPerMasterCarton: 2.5 }),
+    ).toBeNull();
+    expect(convertBaseKgToUom(Infinity, "master_carton", standardHierarchy)).toBeNull();
+    expect(calculateDispatchPackagingQty(NaN, "master_carton", standardHierarchy)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(12, "pcs", { piecesPerKg: Infinity })).toBeNull();
   });
 
   it("validates conversion rule factor", () => {
