@@ -62,7 +62,12 @@ export async function submitFastCreateProductDraft(
   if (!row?.draft_id) {
     throw new Error("Product draft submit failed — Core authority returned no draft id.");
   }
-  return { draftId: row.draft_id, alreadyPending: row.already_pending ?? false };
+  // Never assume an old/replayed receipt means a new draft was persisted.
+  // Core's actual RPC returns an explicit boolean; missing it is contract drift.
+  if (typeof row.already_pending !== "boolean") {
+    throw new Error("Core draft receipt is incomplete — pending status cannot be verified.");
+  }
+  return { draftId: row.draft_id, alreadyPending: row.already_pending };
 }
 
 export function withReviewedIntakeBarcode<T extends Record<string, unknown>>(
