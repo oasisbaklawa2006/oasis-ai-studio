@@ -51,6 +51,19 @@ describe("uomPackagingEngine", () => {
     expect(calculateDispatchPackagingQty(3, "master_carton", unverified)).toBeNull();
   });
 
+  it("does not treat pack-per-carton counts as a pack mass conversion", () => {
+    const mixedUnits: PackagingHierarchy = {
+      kgPerTray: 0.5,
+      packsPerCarton: 4,
+      traysPerMasterCarton: 8,
+    };
+    expect(convertOrderedQtyToBaseQty(2, "carton", mixedUnits)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "pack", mixedUnits)).toBeNull();
+    expect(convertOrderedQtyToBaseQty(2, "box", mixedUnits)).toBeNull();
+    // Master carton remains convertible because both factors explicitly use trays.
+    expect(convertOrderedQtyToBaseQty(2, "master_carton", mixedUnits)).toBe(8);
+  });
+
   it("requires both verified kg/tray and trays/master carton before a conversion", () => {
     const onlyTray = { kgPerTray: 0.5 };
     const onlyMaster = { traysPerMasterCarton: 6 };
