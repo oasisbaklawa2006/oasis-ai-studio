@@ -356,8 +356,8 @@ export function ProductMediaUploader({
     }
     const url = getMediaPublicUrl(path);
     const mediaType = opts.isVideo ? "video" : opts.asHeroType ? "hero_image" : type;
-    const saved = await persistMediaRow(file, url, mediaType as MediaType, "raw", opts.asHeroType);
-    if (!saved) return false;
+    // Draft submission must not create a product_media row. Core approval
+    // creates governed approved media, never the contributor's draft upload.
     const res = await submitDraft(
       intent,
       {
@@ -385,7 +385,7 @@ export function ProductMediaUploader({
       ...prev,
       {
         id: crypto.randomUUID(),
-        text: `${file.name} — submitted for approval (visible below until review)`,
+        text: `${file.name} — pending approval (not live until reviewed)`,
       },
     ]);
     const rows = await refreshLocalMediaView();
