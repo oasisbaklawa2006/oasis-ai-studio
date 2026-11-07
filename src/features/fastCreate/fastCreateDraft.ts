@@ -96,6 +96,14 @@ export function clearFastCreateDraft() {
   }
 }
 
+/** A visible piece-count field can only represent positive whole pieces, never grams. */
+export function validFastCreatePieceCount(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  const parsed = Number(trimmed);
+  return Number.isSafeInteger(parsed) && parsed > 0;
+}
+
 /**
  * The hero thumbnail preview to show immediately after restoring a draft. The Fast
  * Create thumbnail renders only from `heroPreview` state, not `draft.heroUrl` directly —
@@ -139,12 +147,12 @@ export function fastCreateReadinessCategories(
   }
 
   if (req.requiresQtyPerPack) {
-    const qty = Number(draft.qtyPerPack);
+    const valid = validFastCreatePieceCount(draft.qtyPerPack);
     categories.push({
       key: "qty_per_pack",
       label: "Qty per pack",
-      state: Number.isFinite(qty) && qty > 0 ? "pass" : "missing",
-      nextAction: Number.isFinite(qty) && qty > 0 ? null : "Enter pieces per pack.",
+      state: valid ? "pass" : "missing",
+      nextAction: valid ? null : "Enter a positive whole number of pieces per pack.",
     });
   }
 
@@ -209,11 +217,17 @@ export function fastCreateFormPatchFromDraft(
   };
 
   const productClass = productClassForSaleType(draft.saleType);
+  const requirements = getSaleTypeRequirements(draft.saleType, { b2bEnabled: draft.b2bEnabled });
+  const hasVisiblePieceCount =
+    requirements.requiresQtyPerPack && validFastCreatePieceCount(draft.qtyPerPack);
   if (productClass) patch.product_class = productClass;
   if (draft.heroUrl) patch.hero_image_url = draft.heroUrl;
   if (draft.resolvedSku) patch.sku = draft.resolvedSku;
   if (draft.packagingCode) patch.packaging_code = draft.packagingCode;
-  if (draft.qtyPerPack && Number(draft.qtyPerPack) > 0) patch.pcs_per_pack = draft.qtyPerPack;
+  // Changing sale type can hide this field without clearing session state.
+  // Never pass hidden or fractional values into the canonical pieces-per-pack column.
+  if (hasVisiblePieceCount) patch.pcs_per_pack = String(Number(draft.qtyPerPack));
+  else delete patch.pcs_per_pack;
   if (draft.mrp && Number(draft.mrp) > 0) patch.mrp = draft.mrp;
   if (draft.b2bPrice && Number(draft.b2bPrice) > 0) patch.b2b_price = draft.b2bPrice;
   if (draft.editedDescription?.trim()) {
@@ -221,7 +235,7 @@ export function fastCreateFormPatchFromDraft(
   }
 
   const labelStarter = labelStarterFromPack(
-    draft.qtyPerPack ? Number(draft.qtyPerPack) : null,
+    hasVisiblePieceCount ? Number(draft.qtyPerPack) : null,
     String(patch.primary_uom ?? "box"),
     draft.packagingLabel,
   );
