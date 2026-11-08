@@ -24,8 +24,9 @@ jobs:
       - run: npm ci
       - name: Typecheck Studio application source
         run: npm run typecheck
+      # G5 certification cannot treat a failing project-reference build as green.
+      # Core owns the ERP bridge TS2339 fix (#493); require it before release.
       - name: Audit real TypeScript project references
-        continue-on-error: true
         run: npm run typecheck:build
       - run: npm run lint
       - run: npm run lint:biome:changed
