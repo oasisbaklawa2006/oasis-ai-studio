@@ -21,13 +21,14 @@ import {
   Wand2,
   Wrench,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCatalogueReviewer } from "@/hooks/useCatalogueReviewer";
 import { useFeatureFlags } from "@/hooks/useFeatureFlags";
+import { supabase } from "@/integrations/supabase/client";
 import { modulePurpose } from "@/lib/modulePurpose";
 import { canAccessPage, type PageKey } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
@@ -82,6 +83,7 @@ const nav: NavItem[] = [
   },
   { to: "/testing", label: "Testing Checklist", icon: ClipboardCheck, page: "testing" },
   { to: "/settings", label: "Activation Center", icon: Settings, page: "settings" },
+  { to: "/settings/users", label: "Users & Access", icon: ShieldCheck, page: "settings" },
   { to: "/audit-log", label: "Audit Log", icon: History, page: "audit_log" },
   { to: "/approvals", label: "Approval Inbox", icon: ShieldCheck, page: "audit_log" },
 ];
@@ -92,6 +94,28 @@ export const AppLayout = () => {
   const { user, roles, signOut, loading, rolesLoading } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [studioAccessAllowed, setStudioAccessAllowed] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setStudioAccessAllowed(false);
+    if (!user?.id) return;
+    // The backend is the only authority; a Studio manager does not require
+    // global Central admin role. Missing/unreleased RPC is fail-closed.
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      name: string,
+    ) => Promise<{ data: unknown; error: { message: string } | null }>;
+    void rpc("can_manage_ai_studio_access_v1")
+      .then(({ data, error }) => {
+        if (!cancelled) setStudioAccessAllowed(!error && data === true);
+      })
+      .catch(() => {
+        if (!cancelled) setStudioAccessAllowed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   const { flags, loading: flagsLoading } = useFeatureFlags();
   const isAdmin = roles.includes("owner") || roles.includes("admin");
   const { isReviewer, loading: reviewerLoading } = useCatalogueReviewer();
@@ -102,6 +126,7 @@ export const AppLayout = () => {
         // is_catalogue_reviewer()) — never fall back to isAdmin, or owner/admin see
         // an entry they're then blocked from opening. See #228.
         if (REVIEWER_GATED_ROUTES.has(n.to)) return !reviewerLoading && isReviewer;
+        if (n.to === "/settings/users") return studioAccessAllowed;
         if (!canAccessPage(roles, n.page)) return false;
         if (!n.featureKey) return true; // core pages always visible
         if (flagsLoading) return isAdmin; // don't hide gated items for admin while loading

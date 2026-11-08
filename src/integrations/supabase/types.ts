@@ -2035,7 +2035,9 @@ export type Database = {
         };
         Returns: boolean;
       };
-      /** Verified production public.is_admin() signature (read-only RLS authority). */
+      /** Core #474 scoped Product Master authoring authority — confirmed production RPC. */
+      can_write_product_master: { Args: never; Returns: boolean };
+      /** Legacy global administration probe — not Product Master write authority. */
       is_admin: { Args: never; Returns: boolean };
       is_catalogue_reviewer: { Args: never; Returns: boolean };
       is_team_member: { Args: { _user_id: string }; Returns: boolean };
