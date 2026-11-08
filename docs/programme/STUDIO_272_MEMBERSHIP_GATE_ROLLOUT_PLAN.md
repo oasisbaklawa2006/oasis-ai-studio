@@ -39,7 +39,22 @@ used on the current production Studio build because it is introduced by PR #274.
    Product Master writes or unrelated Core permissions.
 6. Obtain independent owner review on exact PR head. Only after verified onboarding,
    negative UAT and production-configuration checks may PR #274 merge and deploy.
-   Rollback is reverting the Studio frontend; leave canonical membership ledger intact.
+   The rollback candidate MUST itself enforce the canonical Core Studio membership
+   gate. Reverting to the pre-#274 frontend is **not an approved rollback**, because
+   an authenticated user with an otherwise valid Core role could regain access
+   after Studio membership was revoked. Before a production release, identify
+   and preserve a separately reviewed, deployment-ready rollback artifact with
+   equivalent membership and app.access-deny enforcement. If no such artifact
+   exists, restrict Studio entry at the hosting edge until a safe version is
+   available; do not weaken or erase Core membership records to restore access.
+7. Before enabling production traffic or using the rollback artifact, run an
+   authenticated negative access test with a **revoked Studio membership and
+   otherwise valid Core role**, plus a suspended identity and explicit
+   app.access deny. All three must fail to reach protected routes. Verify the
+   result on the *actual rollback target* rather than inferring safety from
+   current-head unit tests or a Vercel READY status. Record the rollback
+   deployment ID, test evidence, approver and restore/stop decision. Keep
+   canonical membership and append-only audit records intact.
 
 ## Scope preserved
 - Global Core is_admin() and Core staff provisioning remain unchanged.
