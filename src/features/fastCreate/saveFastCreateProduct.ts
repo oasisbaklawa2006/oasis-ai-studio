@@ -109,6 +109,42 @@ export function verifiedFastCreatePieceQuantity(
   return { value: Number(operatorValue), unit: "pcs" };
 }
 
+/**
+ * Map Core's submission receipt to truthful UI behavior. A duplicate pending
+ * SKU is an idempotent no-op, NOT a new submission or an update to the earlier
+ * payload. Retain all unsaved operator inputs on that path.
+ */
+export function resolveFastCreateSubmitReceipt(result: FastCreateSaveResult): {
+  clearDraft: boolean;
+  navigateTo: string | null;
+  tone: "success" | "warning";
+  message: string;
+} {
+  if ("draft" in result) {
+    if (result.alreadyPending) {
+      return {
+        clearDraft: false,
+        navigateTo: null,
+        tone: "warning",
+        message:
+          "This SKU already has a pending draft. Your new changes were NOT submitted or saved to that draft. Inputs remain here; review the existing draft in Approval Inbox.",
+      };
+    }
+    return {
+      clearDraft: true,
+      navigateTo: "/approvals",
+      tone: "success",
+      message: "Product draft submitted for approval.",
+    };
+  }
+  return {
+    clearDraft: true,
+    navigateTo: `/products/${result.id}`,
+    tone: "success",
+    message: `Product draft created (${result.sku}) — opening full editor.`,
+  };
+}
+
 /** Build the grouped catalogue_product_drafts payload for Fast Create. */
 export function buildFastCreateGroupedDraftPayload(
   form: Record<string, unknown>,
