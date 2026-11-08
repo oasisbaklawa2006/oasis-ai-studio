@@ -276,7 +276,6 @@ describe("saveFastCreateProduct — governed draft only", () => {
   });
 });
 
-
 describe("Fast Create typed content quantity — Core #486 draft evidence", () => {
   const skuResult = {
     sku: "OAS-AS-BKL-ASS-PAPERBOX-0001",
@@ -352,9 +351,9 @@ describe("Fast Create typed content quantity — Core #486 draft evidence", () =
       saleType: "b2b_horeca",
       extraFormPatch: { pcs_per_pack: "6" },
     });
-    const args = rpcMock.mock.calls.find(([fn]) => fn === "submit_catalogue_product_draft_v1")?.[1] as
-      | { p_payload?: Record<string, unknown> }
-      | undefined;
+    const args = rpcMock.mock.calls.find(
+      ([fn]) => fn === "submit_catalogue_product_draft_v1",
+    )?.[1] as { p_payload?: Record<string, unknown> } | undefined;
     expect(args?.p_payload).not.toHaveProperty("packing");
   });
 });
