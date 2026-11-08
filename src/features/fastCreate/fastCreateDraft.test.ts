@@ -136,6 +136,34 @@ describe("fastCreateFormPatchFromDraft — Full Editor handoff", () => {
     expect(suggestedValue).not.toHaveProperty("pcs_per_pack");
   });
 
+  it("removes an unrelated suggested piece label after a sale-type switch", () => {
+    const patch = fastCreateFormPatchFromDraft({
+      ...misr15Draft(),
+      saleType: "b2b_horeca",
+      qtyPerPack: "500",
+      packagingLabel: null,
+      suggestions: {
+        formPatch: { pack_size: "6 pcs box", pcs_per_pack: 6 },
+      } as unknown as FastCreateDraftSnapshot["suggestions"],
+    });
+    expect(patch).not.toHaveProperty("pcs_per_pack");
+    expect(patch).not.toHaveProperty("pack_size");
+  });
+
+  it("does not discard unrelated weight labels without a verified piece count", () => {
+    const patch = fastCreateFormPatchFromDraft({
+      ...misr15Draft(),
+      saleType: "b2b_horeca",
+      qtyPerPack: "",
+      packagingLabel: null,
+      suggestions: {
+        formPatch: { pack_size: "500 g pouch" },
+      } as unknown as FastCreateDraftSnapshot["suggestions"],
+    });
+    expect(patch).not.toHaveProperty("pcs_per_pack");
+    expect(patch.pack_size).toBe("500 g pouch");
+  });
+
   it("never hands off a fractional piece quantity or fractional label", () => {
     const patch = fastCreateFormPatchFromDraft({ ...misr15Draft(), qtyPerPack: "0.5" });
     expect(patch).not.toHaveProperty("pcs_per_pack");
