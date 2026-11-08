@@ -6,7 +6,11 @@ import {
 } from "@/features/fastCreate/fastCreateIntakeBarcode";
 import { getPersistableFastCreateAliases } from "@/features/governedAiExtraction/fastCreateEnrichment";
 import { assertMobileProductCreateSaveAllowed } from "@/features/mobileProductCreate";
-import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
+import {
+  getSaleTypeRequirements,
+  productClassForSaleType,
+  type SaleType,
+} from "@/features/productAuthority/saleType";
 import {
   assertStructuredSkuForSave,
   skuPackagingSegment,
@@ -16,6 +20,7 @@ import { assertNoBlockingProductCollisions } from "@/features/productGovernance/
 import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
+import { validFastCreatePieceCount } from "./fastCreateDraft";
 import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 import { type FastCreateSuggestions, generateFastCreateSku } from "./fastCreateSuggestions";
 
@@ -85,12 +90,32 @@ export type FastCreateSaveResult =
       sku: string;
     };
 
+/**
+ * A reviewed pack-content quantity is an explicit piece count, never a weight,
+ * tray, carton, MOQ or conversion factor. This is draft-only evidence; Core
+ * #486 must separately authorize final Product Master persistence.
+ */
+export type FastCreateContentQuantity = Readonly<{ value: number; unit: "pcs" }>;
+
+export function verifiedFastCreatePieceQuantity(
+  saleType: SaleType | undefined,
+  operatorValue: unknown,
+): FastCreateContentQuantity | null {
+  // Any quantity hidden by the current sale type must be discarded.
+  if (!saleType || !getSaleTypeRequirements(saleType).requiresQtyPerPack) return null;
+  if (!validFastCreatePieceCount(operatorValue)) {
+    throw new Error("Enter a positive whole number of pieces per pack before submitting.");
+  }
+  return { value: Number(operatorValue), unit: "pcs" };
+}
+
 /** Build the grouped catalogue_product_drafts payload for Fast Create. */
 export function buildFastCreateGroupedDraftPayload(
   form: Record<string, unknown>,
   heroUrl: string | null,
   suggestions: FastCreateSuggestions,
   skuResult: { sku: string; codes: FastCreateSkuCodeSet },
+  contentQuantity: FastCreateContentQuantity | null = null,
 ): Record<string, unknown> {
   const persistableAliases = getPersistableFastCreateAliases(suggestions);
   return {
@@ -117,6 +142,7 @@ export function buildFastCreateGroupedDraftPayload(
     media: {
       hero_image_url: heroUrl,
     },
+    ...(contentQuantity ? { packing: { content_quantity: contentQuantity } } : {}),
     search: {
       suggested_aliases: persistableAliases.aliases.map((a) => a.alias),
       whatsapp_keywords: persistableAliases.whatsappKeywords,
@@ -145,6 +171,10 @@ export function buildFastCreateGroupedDraftPayload(
 export async function saveFastCreateProduct(
   input: FastCreateSaveInput,
 ): Promise<FastCreateSaveResult> {
+  const contentQuantity = verifiedFastCreatePieceQuantity(
+    input.saleType,
+    input.extraFormPatch?.pcs_per_pack,
+  );
   const form: Record<string, unknown> = {
     ...input.suggestions.formPatch,
     ...(input.extraFormPatch ?? {}),
@@ -200,7 +230,13 @@ export async function saveFastCreateProduct(
   });
 
   const groupedPayload = withReviewedIntakeBarcode(
-    buildFastCreateGroupedDraftPayload(safeForm, input.heroUrl, input.suggestions, skuResult),
+    buildFastCreateGroupedDraftPayload(
+      safeForm,
+      input.heroUrl,
+      input.suggestions,
+      skuResult,
+      contentQuantity,
+    ),
     intakeBarcode,
   );
 
