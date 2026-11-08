@@ -111,10 +111,14 @@ export default function UsersAccess() {
 
   const loadAudit = async () => {
     if (!selected) return;
+    const requestedId = selected.user_id;
     setAuditError(null);
     try {
-      setAudit(await readStudioAccessAudit({ userId: selected.user_id, limit: 25 }));
+      const entries = await readStudioAccessAudit({ userId: requestedId, limit: 25 });
+      if (selectedIdRef.current !== requestedId) return;
+      setAudit(entries);
     } catch (e: unknown) {
+      if (selectedIdRef.current !== requestedId) return;
       setAudit(null);
       setAuditError(e instanceof Error ? e.message : "Audit history unavailable.");
     }
@@ -215,6 +219,7 @@ export default function UsersAccess() {
                 <button
                   type="button"
                   key={row.user_id}
+                  disabled={saving}
                   onClick={() => select(row)}
                   className={`w-full text-left rounded-lg border p-3 text-sm hover:bg-muted/50 ${selected?.user_id === row.user_id ? "border-accent bg-muted/40" : "border-border"}`}
                 >
