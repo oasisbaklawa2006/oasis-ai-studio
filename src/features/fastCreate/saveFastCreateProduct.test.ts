@@ -35,6 +35,7 @@ vi.mock("@/shared/auth/centralPermissions", () => ({
 const {
   buildFastCreateGroupedDraftPayload,
   requireFastCreateSku,
+  resolveFastCreateSubmitReceipt,
   saveFastCreateProduct,
   FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX,
   verifiedFastCreatePieceQuantity,
@@ -58,6 +59,49 @@ const minimalSuggestions: FastCreateSuggestions = {
   productTruthStarters: { piecesPerKg: null, traysPerMasterCarton: null, primaryPackSummary: null },
   sources: { defaults: true, heuristicAliases: false, aiCompliance: false, aiAliases: false },
 };
+
+describe("Fast Create Core submission receipts", () => {
+  it("retains the operator draft on idempotent already-pending results", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      draft: true,
+      draftId: "existing-draft",
+      alreadyPending: true,
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: false,
+      navigateTo: null,
+      tone: "warning",
+    });
+    expect(receipt.message).toContain("NOT submitted");
+    expect(receipt.message).toContain("Inputs remain here");
+  });
+
+  it("clears the draft and opens approvals only when a new draft was submitted", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      draft: true,
+      draftId: "new-draft",
+      alreadyPending: false,
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: true,
+      navigateTo: "/approvals",
+      tone: "success",
+      message: "Product draft submitted for approval.",
+    });
+  });
+
+  it("preserves the legacy direct-create compatibility receipt", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      id: "product-123",
+      sku: "OAS-AS-BKL-ASS-PAPERBOX-0001",
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: true,
+      navigateTo: "/products/product-123",
+      tone: "success",
+    });
+  });
+});
 
 describe("requireFastCreateSku — packaging authority", () => {
   beforeEach(() => {
@@ -161,6 +205,43 @@ describe("saveFastCreateProduct — governed draft only", () => {
       "submit_catalogue_product_draft_v1",
       expect.objectContaining({ p_operation: "create" }),
     );
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("propagates Core already_pending without overwriting the prior product draft", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [{ draft_id: "prior-draft", already_pending: true }],
+      error: null,
+    });
+
+    const result = await saveFastCreateProduct({
+      suggestions: minimalSuggestions,
+      heroUrl: null,
+      roles: ["owner"],
+      categoryKey: "other",
+      resolvedSku: "OAS-AS-BKL-ASS-LOOSE-0001",
+    });
+
+    expect(result).toEqual({ draft: true, draftId: "prior-draft", alreadyPending: true });
+    expect(resolveFastCreateSubmitReceipt(result).clearDraft).toBe(false);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("does not claim success when Core omits the idempotency receipt field", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [{ draft_id: "unverified-draft", already_pending: undefined as unknown as boolean }],
+      error: null,
+    });
+
+    await expect(
+      saveFastCreateProduct({
+        suggestions: minimalSuggestions,
+        heroUrl: null,
+        roles: ["owner"],
+        categoryKey: "other",
+        resolvedSku: "OAS-AS-BKL-ASS-LOOSE-0001",
+      }),
+    ).rejects.toThrow(/Core draft receipt is incomplete/i);
     expect(fromMock).not.toHaveBeenCalled();
   });
 
