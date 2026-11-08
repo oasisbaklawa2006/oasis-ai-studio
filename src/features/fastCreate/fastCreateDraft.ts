@@ -244,6 +244,15 @@ export function fastCreateFormPatchFromDraft(
     draft.packagingLabel,
   );
   if (labelStarter) patch.pack_size = labelStarter;
+  else if (
+    !hasVisiblePieceCount &&
+    typeof patch.pack_size === "string" &&
+    /\b\d+\s*(?:pcs|pieces)\b/i.test(patch.pack_size)
+  ) {
+    // The category suggestion may carry an unrelated default (e.g. 6 pcs box).
+    // Never forward that unverified piece label after a hidden/invalid input.
+    delete patch.pack_size;
+  }
   if (draft.intakeBarcode) patch.intake_barcode = draft.intakeBarcode;
 
   return patch;
