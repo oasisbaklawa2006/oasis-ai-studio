@@ -153,11 +153,15 @@ export function ProductMediaUploader({
   );
 
   // This component may be reused for another product while an async request
-  // is in flight. Reset only product-local form state on identity changes.
+  // is in flight. Reset only product-local form state on an actual ID change.
+  const formProductIdRef = useRef(productId);
   useEffect(() => {
-    setUrlInput("");
-    setPendingNotices([]);
-    setUploading(false);
+    if (formProductIdRef.current !== productId) {
+      formProductIdRef.current = productId;
+      setUrlInput("");
+      setPendingNotices([]);
+      setUploading(false);
+    }
   }, [productId]);
 
   // Passive initial display fetch — a READ, so (per the lifecycle rules this module documents) it
