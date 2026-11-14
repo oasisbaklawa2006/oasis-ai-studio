@@ -6,7 +6,8 @@ on:
       - main
       - recovery/ai-studio-post-catalogue-baseline-2026-07-12
   push:
-    branches: [main]
+    # Stacked G5 preflight: remove this temporary branch after #290 merges.
+    branches: [main, fix/g5-strict-project-reference-typecheck-20261108]
 
 jobs:
   quality:
