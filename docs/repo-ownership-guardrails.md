@@ -3,8 +3,8 @@
 ## Why this exists
 
 Catalogue Product AI Studio was built in this repo (`oasis-ai-studio`) after an
-earlier attempt landed it in the wrong repo (Oasis-Baklawa-Central, PR
-#223/#224/#225 — since decommissioned there). This document records the
+earlier attempt landed it in the wrong repo (Oasis-Baklawa-Central,
+PRs #223, #224 and #225 — since decommissioned there). This document records the
 resulting three-repo ownership split so oasis-ai-studio does not, in turn,
 absorb Central's operations workflows or oasis-supabase-core's backend/schema
 authority, and `scripts/check-repo-boundaries.sh` enforces it in CI.
@@ -78,19 +78,34 @@ deliberate effort, not something this check performs or blocks on.
 
 ## G5 archival Core snapshot admission — one-time only
 
-Production Edge Functions, database migrations, RLS and runtime deployments remain owned **exclusively** by `oasis-supabase-core`. Studio must not create or maintain backend logic. A historical `supabase/functions/**` copy exists in this frontend repository and is pulled into frontend **test-only** TypeScript compilation through legacy bridges.
+Production Edge Functions, database migrations, RLS and runtime deployments remain owned **exclusively** by
+`oasis-supabase-core`. Studio must not create or maintain backend logic. A historical `supabase/functions/**`
+copy exists in this frontend repository and is pulled into frontend **test-only** TypeScript compilation through
+legacy bridges.
 
-Core PR [#493](https://github.com/oasisbaklawa2006/oasis-supabase-core/pull/493) was independently reviewed and merged (`fb47a9508dad3d676776ae8fe0172b67c8284d71`) to correct a genuine TypeScript union-narrowing problem in the canonical ERP inbox source. An **explicitly separately approved** one-time source provenance synchronization may update the pre-existing historical Studio copy to precisely that already-approved Core Git blob. This is a one-off archival refresh, **not** permission to author, deploy, or modify Edge backend functionality in Studio.
+Core PR [#493](https://github.com/oasisbaklawa2006/oasis-supabase-core/pull/493) was independently reviewed and
+merged (`fb47a9508dad3d676776ae8fe0172b67c8284d71`) to correct a genuine TypeScript union-narrowing problem in
+the canonical ERP inbox source. An **explicitly separately approved** one-time source provenance synchronization
+may update the pre-existing historical Studio copy to precisely that already-approved Core Git blob. This is a
+one-off archival refresh, **not** permission to author, deploy, or modify Edge backend functionality in Studio.
 
-The narrow rule in `.cursor/BUGBOT.md` identifies the only permitted existing path, historical Studio blob, approved Core blob and immutable merge provenance. The proposed downstream Studio PR [#290](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/290) must independently prove those hashes and a negative-test matrix through its Core Backend Authority CI guard. If any other backend path is changed, or either blob does not match, the guard **must fail**. A future source refresh requires another independent policy decision, not a generic bypass.
+The narrow rule in `.cursor/BUGBOT.md` identifies the only permitted existing path, historical Studio blob,
+approved Core blob and immutable merge provenance. The proposed downstream Studio PR
+[#290](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/290) must independently prove those hashes and a
+negative-test matrix through its Core Backend Authority CI guard. If any other backend path is changed, or
+either blob does not match, the guard **must fail**. A future source refresh requires another independent policy
+decision, not a generic bypass.
 
-**Release order:** this policy proposal must first pass independent CODEOWNER/security review and protected merge; only then may the separate source-synchronization PR be re-reviewed against this approved rule. Both require their own exact-head checks and human approvals. Nothing here authorizes Studio production deployment or weakens the default rejection of new migration/Edge Function work.
+**Release order:** this policy proposal must first pass independent CODEOWNER/security review and protected
+merge; only then may the separate source-synchronization PR be re-reviewed against this approved rule. Both
+require their own exact-head checks and human approvals. Nothing here authorizes Studio production deployment or
+weakens the default rejection of new migration/Edge Function work.
 
 ## Mandatory pre-PR ownership gate
 
 Before opening a PR against this repo, run:
 
-```
+```bash
 npm run check:boundaries
 ```
 
