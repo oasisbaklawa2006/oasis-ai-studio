@@ -37,7 +37,7 @@ is_reviewed_one_time_core493_refresh() {
 }
 
 violations=()
-while IFS=
+while IFS=$'\t' read -r status path1 path2; do
   [[ -n "$status" ]] || continue
   case "$status" in
     R*|C*)
@@ -52,37 +52,6 @@ while IFS=
         else
           violations+=("$status $path1")
         fi
-      fi
-      ;;
-  esac
-done < <(git diff --name-status -M -C "$base_ref" HEAD)
-
-while IFS= read -r path; do
-  [[ -n "$path" ]] || continue
-  if is_core_owned_path "$path"; then
-    violations+=("untracked $path")
-  fi
-done < <(git ls-files --others --exclude-standard)
-
-if ((${#violations[@]})); then
-  printf '%s\n' "CORE BACKEND AUTHORITY VIOLATION: oasis-ai-studio may consume Core contracts but may not add, edit, delete, rename or copy Supabase migrations or Edge Functions." >&2
-  printf '  %s\n' "${violations[@]}" >&2
-  printf '%s\n' "Move backend/schema changes to oasisbaklawa2006/oasis-supabase-core." >&2
-  exit 1
-fi
-
-echo "Core backend authority guard passed: historical AI Studio backend artifacts are frozen and no Core-owned backend surface changed."
-\t' read -r status path1 path2; do
-  [[ -n "$status" ]] || continue
-  case "$status" in
-    R*|C*)
-      if is_core_owned_path "$path1" || is_core_owned_path "$path2"; then
-        violations+=("$status $path1 -> $path2")
-      fi
-      ;;
-    *)
-      if is_core_owned_path "$path1"; then
-        violations+=("$status $path1")
       fi
       ;;
   esac
