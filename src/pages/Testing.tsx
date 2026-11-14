@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { publicMediaUploadBlockReason } from "@/features/catalogueDrafts/mediaDraftBoundary";
 import { supabase } from "@/integrations/supabase/client";
 import { safeAttachmentUrl } from "@/lib/safeAttachmentUrl";
 
@@ -231,6 +232,10 @@ const Testing = () => {
     if (!files?.[0]) return;
     const f = files[0];
     if (!f.type.includes("pdf")) return toast.error("Only PDF files are accepted");
+    // Testing evidence contains unapproved internal data: never publish it to
+    // the public product-media bucket before a private document flow exists.
+    const privateStagingRequired = publicMediaUploadBlockReason("raw");
+    if (privateStagingRequired) return toast.error(privateStagingRequired);
     setUploading(true);
     try {
       const path = `testing-results/${Date.now()}-${f.name.replace(/[^a-zA-Z0-9._-]/g, "_")}`;

@@ -39,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Role } from "@/lib/permissions";
 
 const MEDIA_DRAFT_SUCCESS =
-  "Media change submitted for approval. Uploaded media remains visible as raw while approval is pending.";
+  "Media change submitted for approval. It will not appear in the live library until authorised review.";
 
 type MediaLibraryProduct = { id: string; product_name: string | null; sku: string | null };
 
@@ -121,18 +121,8 @@ const Media = () => {
             continue;
           }
           const url = getMediaPublicUrl(path);
-          const insertRes = await insertProductMediaRow({
-            product_id: form.product_id,
-            file_url: url,
-            type: form.type,
-            angle: form.angle,
-            alt_text: form.alt_text || file.name,
-            status: form.status,
-          });
-          if (!insertRes.ok) {
-            toast.error(insertRes.message);
-            continue;
-          }
+          // A contributor must never mutate authoritative product_media before
+          // approval. Only the governed catalogue draft is submitted here.
           const res = await submitMediaCatalogueDraft(
             "create",
             {
@@ -152,7 +142,7 @@ const Media = () => {
             submitted += 1;
             setPendingNotices((prev) => [
               ...prev,
-              `${file.name} — submitted for approval (visible in library)`,
+              `${file.name} — pending approval (not in live media library)`,
             ]);
           } else {
             toast.error(res.message);
@@ -234,18 +224,7 @@ const Media = () => {
       }
       setUploading(true);
       try {
-        const insertRes = await insertProductMediaRow({
-          product_id: form.product_id,
-          file_url: form.file_url,
-          type: form.type,
-          angle: form.angle,
-          alt_text: form.alt_text || "url_import",
-          status: form.status,
-        });
-        if (!insertRes.ok) {
-          toast.error(insertRes.message);
-          return;
-        }
+        // URL proposals are approval-only: no direct product_media insertion.
         const res = await submitMediaCatalogueDraft(
           "url_import",
           {
@@ -262,12 +241,11 @@ const Media = () => {
         );
         if (!res.ok) {
           toast.error(res.message);
-          load();
           return;
         }
         setPendingNotices((prev) => [
           ...prev,
-          `URL import — submitted for approval (visible in library)`,
+          `URL import — submitted for approval (not live until review)`,
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
         setOpen(false);
@@ -333,8 +311,8 @@ const Media = () => {
                   <div className="space-y-3">
                     {writeMode === "draft" && (
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        Media changes are submitted for approval. Uploaded media remains visible as
-                        raw while approval is pending.
+                        Media changes are submitted for approval and are not published in the live
+                        media library until authorised review.
                       </p>
                     )}
                     <div className="grid grid-cols-2 gap-3">

@@ -152,6 +152,18 @@ export function ProductMediaUploader({
     [],
   );
 
+  // This component may be reused for another product while an async request
+  // is in flight. Reset only product-local form state on an actual ID change.
+  const formProductIdRef = useRef(productId);
+  useEffect(() => {
+    if (formProductIdRef.current !== productId) {
+      formProductIdRef.current = productId;
+      setUrlInput("");
+      setPendingNotices([]);
+      setUploading(false);
+    }
+  }, [productId]);
+
   // Passive initial display fetch — a READ, so (per the lifecycle rules this module documents) it
   // may be safely ignored once superseded by a product switch. Prefers any already-reconciled
   // authority for this product over its own raw read, so a fetch that happens to resolve after a
@@ -324,20 +336,15 @@ export function ProductMediaUploader({
     isVideo = false,
   ): Promise<string | null> => {
     const path = buildDirectMediaPath(storageFolder, file.name);
-    const { error: upErr } = await uploadMediaFileToStorage(path, file);
+    const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
+    const publicationStatus = isRequiredSlot(mediaType) || asHero ? "approved" : "raw";
+    const { error: upErr } = await uploadMediaFileToStorage(path, file, publicationStatus);
     if (upErr) {
       toast.error(formatMediaStorageError(upErr));
       return null;
     }
     const url = getMediaPublicUrl(path);
-    const mediaType: MediaType = isVideo ? "video" : asHero ? "hero_image" : type;
-    const saved = await persistMediaRow(
-      file,
-      url,
-      mediaType,
-      isRequiredSlot(mediaType) || asHero ? "approved" : "raw",
-      asHero,
-    );
+    const saved = await persistMediaRow(file, url, mediaType, publicationStatus, asHero);
     if (!saved) return null;
     return url;
   };
@@ -361,8 +368,8 @@ export function ProductMediaUploader({
     }
     const url = getMediaPublicUrl(path);
     const mediaType = opts.isVideo ? "video" : opts.asHeroType ? "hero_image" : type;
-    const saved = await persistMediaRow(file, url, mediaType as MediaType, "raw", opts.asHeroType);
-    if (!saved) return false;
+    // Draft submission must not create a product_media row. Core approval
+    // creates governed approved media, never the contributor's draft upload.
     const res = await submitDraft(
       intent,
       {
@@ -390,7 +397,7 @@ export function ProductMediaUploader({
       ...prev,
       {
         id: crypto.randomUUID(),
-        text: `${file.name} — submitted for approval (visible below until review)`,
+        text: `${file.name} — pending approval (not live until reviewed)`,
       },
     ]);
     const rows = await refreshLocalMediaView();
@@ -419,19 +426,32 @@ export function ProductMediaUploader({
       }
       const requestProductId = productId;
       const operationId = beginProductMediaOperation(requestProductId);
-      if (asHero && currentHero && isPdfPage(currentHero)) {
-        await supabase
-          .from("product_media")
-          .update({ type: "source_pdf_page", status: "reference_only" })
-          .eq("product_id", productId)
-          .eq("file_url", currentHero);
-      }
       const url = await uploadFileDirect(files[0], asHero, false);
       if (url && asHero) {
         try {
           // applyDirectHeroAuthority now does its own best-effort local refresh + no-write
           // subscriber publish before rethrowing on failure — this catch only surfaces the error.
           await applyDirectHeroAuthority(url);
+          // Only demote the former PDF hero AFTER the new upload and hero
+          // designation succeed. A rejected upload must leave the old row
+          // untouched; never rewrite a previous product after a tab switch.
+          if (
+            !isSupersededByProductSwitch(requestProductId) &&
+            currentHero &&
+            isPdfPage(currentHero)
+          ) {
+            const { error: demoteError } = await supabase
+              .from("product_media")
+              .update({ type: "source_pdf_page", status: "reference_only" })
+              .eq("product_id", requestProductId)
+              .eq("file_url", currentHero);
+            if (demoteError) throw demoteError;
+            // Reflect the second successful mutation without another direct write.
+            await fallbackAfterReconcileFailure(
+              requestProductId,
+              beginProductMediaOperation(requestProductId),
+            );
+          }
           // Bugbot-caught: applyDirectHeroAuthority already silently no-ops once the operator has
           // switched products mid-request, but this toast still fired unconditionally — misleadingly
           // implying the hero designation applied to whatever product is on screen now, when it may
@@ -500,11 +520,23 @@ export function ProductMediaUploader({
       }
 
       const requestProductId = productId;
-      const operationId = beginProductMediaOperation(requestProductId);
+      // Reserve an operation only after a real successful upload. Failed
+      // uploads must not supersede an earlier committed mutation.
+      let operationId: number | null = null;
+      let uploadedCount = 0;
       for (const file of Array.from(files)) {
         const url = await uploadFileDirect(file, false, isVideo);
-        if (url) lastUrl = url;
+        if (url) {
+          if (operationId === null) {
+            operationId = beginProductMediaOperation(requestProductId);
+          }
+          lastUrl = url;
+          uploadedCount += 1;
+        }
       }
+      // No successful upload means no authority reservation or write. Let
+      // earlier committed mutations finish their own reconciliation.
+      if (uploadedCount === 0 || operationId === null) return;
       // Bugbot-caught: same gap as uploadToSlot above — the file(s) already committed via
       // uploadFileDirect. Split into two branches (rather than one shared try/catch) so the
       // fallback for a plain reconcile failure uses this call's own operationId, instead of
@@ -516,12 +548,12 @@ export function ProductMediaUploader({
           // subscriber publish before rethrowing on failure — this catch only surfaces the error.
           await applyDirectHeroAuthority(lastUrl);
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.success(`${files.length} file(s) uploaded`);
+            toast.success(`${uploadedCount} file(s) uploaded`);
           }
         } catch {
           if (!isSupersededByProductSwitch(requestProductId)) {
             toast.error(
-              `${files.length} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
+              `${uploadedCount} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
             );
           }
         }
@@ -529,13 +561,13 @@ export function ProductMediaUploader({
         try {
           await reconcileProductMediaAuthority(requestProductId, operationId);
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.success(`${files.length} file(s) uploaded`);
+            toast.success(`${uploadedCount} file(s) uploaded`);
           }
         } catch {
           await fallbackAfterReconcileFailure(requestProductId, operationId);
           if (!isSupersededByProductSwitch(requestProductId)) {
             toast.error(
-              `${files.length} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
+              `${uploadedCount} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
             );
           }
         }
@@ -764,20 +796,12 @@ export function ProductMediaUploader({
     }
 
     if (writeMode === "draft") {
+      const requestProductId = productId;
       setUploading(true);
       try {
         const wantsHero = !currentHero || isPdfPage(currentHero);
-        const insertRes = await insertProductMediaRow({
-          product_id: productId,
-          file_url: url,
-          type,
-          status: "raw",
-          alt_text: "url_import",
-        });
-        if (!insertRes.ok) {
-          toast.error(insertRes.message);
-          return;
-        }
+        // Contributors may only request approval. Do not create an
+        // authoritative raw media row before the governed review.
         const res = await submitDraft("url_import", {
           fileUrl: url,
           type,
@@ -787,22 +811,24 @@ export function ProductMediaUploader({
           requestedHero: wantsHero,
         });
         if (!res.ok) {
-          toast.error(res.message);
-          await refreshLocalMediaView();
+          if (!isSupersededByProductSwitch(requestProductId)) toast.error(res.message);
           return;
         }
+        // A's submission can finish while the UI displays B. Never clear
+        // B's URL or append A's pending notice to B's form.
+        if (isSupersededByProductSwitch(requestProductId)) return;
         setUrlInput("");
         setPendingNotices((prev) => [
           ...prev,
           {
             id: crypto.randomUUID(),
-            text: "URL import — submitted for approval (visible below until review)",
+            text: "URL import — submitted for approval (not live until review)",
           },
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
         await refreshLocalMediaView();
       } finally {
-        setUploading(false);
+        if (!isSupersededByProductSwitch(requestProductId)) setUploading(false);
       }
       return;
     }
@@ -821,7 +847,7 @@ export function ProductMediaUploader({
       if (import.meta.env.DEV) console.error("[media-url-add]", insertRes.error, url);
       return toast.error(insertRes.message);
     }
-    setUrlInput("");
+    if (!isSupersededByProductSwitch(requestProductId)) setUrlInput("");
     // Bugbot-caught: this direct (non-draft) URL import inserted the row above, then called
     // applyDirectHeroAuthority/reconcileProductMediaAuthority with no try/catch at all — if
     // reconciliation threw after the insert committed, subscribers never learned about it and the
