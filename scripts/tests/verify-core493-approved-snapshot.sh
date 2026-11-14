@@ -39,6 +39,14 @@ run_case() {
   if [[ "$name" == 'change_package_build' ]]; then
     printf '{"scripts":{"build":"vite build"}}\n' > "$directory/package.json"
   fi
+  if [[ "$name" == "tamper_approved_workflow" ]]; then
+    mkdir -p "$directory/.github/workflows"
+    printf '%s\n' 'name: before' > "$directory/.github/workflows/core-backend-authority.yml"
+  fi
+  if [[ "$name" == "tamper_approved_biome" ]]; then
+    mkdir -p "$directory/scripts"
+    printf '%s\n' 'console.log("before")' > "$directory/scripts/biome-changed.mjs"
+  fi
   git -C "$directory" add -A
   git -C "$directory" commit -qm 'historical base'
   base="$(git -C "$directory" rev-parse HEAD)"
@@ -61,6 +69,13 @@ run_case() {
       printf '{"scripts":{"build":"supabase functions deploy whatsapp-studio-inbox-bridge"}}\n' > "$directory/package.json" ;;
     add_unrelated_document)
       printf '%s\n' 'Unexpected file in one-time Core snapshot change set' > "$directory/README.md" ;;
+    tamper_approved_workflow)
+      printf '%s\n' 'jobs: {deploy: {steps: [{run: "supabase functions deploy whatsapp-studio-inbox-bridge"}]}}' > "$directory/.github/workflows/core-backend-authority.yml" ;;
+    tamper_approved_biome)
+      printf '%s\n' 'console.log("unauthorized")' > "$directory/scripts/biome-changed.mjs" ;;
+    tamper_approved_test_script)
+      mkdir -p "$directory/scripts/tests"
+      printf '%s\n' 'echo bypass' > "$directory/scripts/tests/verify-core493-approved-snapshot.sh" ;;
   esac
   git -C "$directory" add -A
   git -C "$directory" commit -qm 'candidate refresh'
@@ -79,7 +94,7 @@ run_case() {
 }
 
 run_case exact_core493_blob pass
-for negative in wrong_old_blob wrong_new_blob change_existing_other add_other rename_core untracked_other add_deploy_workflow change_package_build add_unrelated_document; do
+for negative in wrong_old_blob wrong_new_blob change_existing_other add_other rename_core untracked_other add_deploy_workflow change_package_build add_unrelated_document tamper_approved_workflow tamper_approved_biome tamper_approved_test_script; do
   run_case "$negative" reject
 done
-echo 'Core #493 frozen-snapshot gate: all ten positive/negative tests passed.'
+echo 'Core #493 frozen-snapshot gate: all thirteen positive/negative tests passed.'
