@@ -36,6 +36,9 @@ run_case() {
     mkdir -p "$directory/supabase/functions/legacy-example"
     printf 'export const version = 1;\n' > "$directory/supabase/functions/legacy-example/index.ts"
   fi
+  if [[ "$name" == 'change_package_build' ]]; then
+    printf '{"scripts":{"build":"vite build"}}\n' > "$directory/package.json"
+  fi
   git -C "$directory" add -A
   git -C "$directory" commit -qm 'historical base'
   base="$(git -C "$directory" rev-parse HEAD)"
@@ -51,6 +54,13 @@ run_case() {
       printf 'export {};\n' > "$directory/supabase/functions/unapproved-worker/index.ts" ;;
     rename_core)
       mv "$directory/$source_path" "$directory/$(dirname "$source_path")/renamed.ts" ;;
+    add_deploy_workflow)
+      mkdir -p "$directory/.github/workflows"
+      printf '%s\n' 'jobs: {deploy: {steps: [{run: "supabase functions deploy whatsapp-studio-inbox-bridge"}]}}' > "$directory/.github/workflows/deploy.yml" ;;
+    change_package_build)
+      printf '{"scripts":{"build":"supabase functions deploy whatsapp-studio-inbox-bridge"}}\n' > "$directory/package.json" ;;
+    add_unrelated_document)
+      printf '%s\n' 'Unexpected file in one-time Core snapshot change set' > "$directory/README.md" ;;
   esac
   git -C "$directory" add -A
   git -C "$directory" commit -qm 'candidate refresh'
@@ -69,7 +79,7 @@ run_case() {
 }
 
 run_case exact_core493_blob pass
-for negative in wrong_old_blob wrong_new_blob change_existing_other add_other rename_core untracked_other; do
+for negative in wrong_old_blob wrong_new_blob change_existing_other add_other rename_core untracked_other add_deploy_workflow change_package_build add_unrelated_document; do
   run_case "$negative" reject
 done
-echo 'Core #493 frozen-snapshot gate: all seven positive/negative tests passed.'
+echo 'Core #493 frozen-snapshot gate: all ten positive/negative tests passed.'
