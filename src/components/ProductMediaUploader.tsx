@@ -423,7 +423,11 @@ export function ProductMediaUploader({
           // Only demote the former PDF hero AFTER the new upload and hero
           // designation succeed. A rejected upload must leave the old row
           // untouched; never rewrite a previous product after a tab switch.
-          if (!isSupersededByProductSwitch(requestProductId) && currentHero && isPdfPage(currentHero)) {
+          if (
+            !isSupersededByProductSwitch(requestProductId) &&
+            currentHero &&
+            isPdfPage(currentHero)
+          ) {
             const { error: demoteError } = await supabase
               .from("product_media")
               .update({ type: "source_pdf_page", status: "reference_only" })

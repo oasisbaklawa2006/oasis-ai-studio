@@ -40,11 +40,15 @@ function draftBranchViolations(source: ts.SourceFile): string[] {
 }
 
 describe("Core #484 — protected media replacement and blocked upload reports", () => {
-  const uploader = () => readFileSync(resolve(ROOT, "src/components/ProductMediaUploader.tsx"), "utf8");
+  const uploader = () =>
+    readFileSync(resolve(ROOT, "src/components/ProductMediaUploader.tsx"), "utf8");
 
   it("does not demote an existing PDF hero before new hero upload and designation succeed", () => {
     const src = uploader();
-    const flow = src.slice(src.indexOf("const uploadToSlot = async"), src.indexOf("const upload = async"));
+    const flow = src.slice(
+      src.indexOf("const uploadToSlot = async"),
+      src.indexOf("const upload = async"),
+    );
     const uploaded = flow.indexOf("await uploadFileDirect(files[0], asHero, false)");
     const designated = flow.indexOf("await applyDirectHeroAuthority(url)");
     const demoted = flow.indexOf('.update({ type: "source_pdf_page", status: "reference_only" })');
@@ -55,13 +59,18 @@ describe("Core #484 — protected media replacement and blocked upload reports",
 
   it("does not reconcile or toast success if all selected direct uploads fail", () => {
     const src = uploader();
-    const flow = src.slice(src.indexOf("const upload = async"), src.indexOf("const setAsHeroDirect = async"));
+    const flow = src.slice(
+      src.indexOf("const upload = async"),
+      src.indexOf("const setAsHeroDirect = async"),
+    );
     const noSuccess = flow.indexOf("if (uploadedCount === 0) return;");
-    const reconciliation = flow.indexOf("await reconcileProductMediaAuthority(requestProductId, operationId)");
+    const reconciliation = flow.indexOf(
+      "await reconcileProductMediaAuthority(requestProductId, operationId)",
+    );
     expect(noSuccess).toBeGreaterThan(-1);
     expect(reconciliation).toBeGreaterThan(noSuccess);
-    expect(flow).toContain("${uploadedCount} file(s) uploaded");
-    expect(flow).not.toContain("${files.length} file(s) uploaded");
+    expect(flow).toContain("uploadedCount} file(s) uploaded");
+    expect(flow).not.toContain("files.length} file(s) uploaded");
   });
 });
 
