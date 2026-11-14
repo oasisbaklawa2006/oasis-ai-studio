@@ -30,16 +30,27 @@ core493_approved_core_blob='216a3aec29b8b66caccd2c45a83c40a1747a9345'
 # The one-time exception may change only these audited G5 source/guard/test files.
 # Unrelated workflows, deployment hooks, scripts or package changes are rejected.
 is_only_approved_core493_sync_scope() {
-  local changed_path
+  local changed_path actual_blob
   while read -r changed_path; do
     case "$changed_path" in
-      "$core493_path"|".github/workflows/core-backend-authority.yml"|"scripts/biome-changed.mjs"|"scripts/check-core-backend-authority.sh"|"scripts/tests/verify-core493-approved-snapshot.sh")
+      "$core493_path"|"scripts/check-core-backend-authority.sh")
+        ;;
+      ".github/workflows/core-backend-authority.yml")
+        actual_blob="$(git rev-parse "HEAD:$changed_path" 2>/dev/null)" || return 1
+        [[ "$actual_blob" == "742a393ef826bc386c4c2feba8a5589e3ae4204c" ]] || return 1
+        ;;
+      "scripts/biome-changed.mjs")
+        actual_blob="$(git rev-parse "HEAD:$changed_path" 2>/dev/null)" || return 1
+        [[ "$actual_blob" == "b39261b082003e65f7f0117a9fa1b1c6d1b46e42" ]] || return 1
+        ;;
+      "scripts/tests/verify-core493-approved-snapshot.sh")
+        actual_blob="$(git rev-parse "HEAD:$changed_path" 2>/dev/null)" || return 1
+        [[ "$actual_blob" == "85ee87355bfb58907ad6e55f3dee3e0efb023e3d" ]] || return 1
         ;;
       *) return 1 ;;
     esac
   done < <(git diff --name-only -M -C "$base_ref" HEAD)
 }
-
 is_reviewed_one_time_core493_refresh() {
   local status="${1:-}" path="${2:-}" before_blob after_blob
   [[ "$status" == "M" && "$path" == "$core493_path" ]] || return 1
