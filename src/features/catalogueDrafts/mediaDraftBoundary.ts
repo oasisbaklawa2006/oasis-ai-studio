@@ -106,31 +106,29 @@ export const validateMediaFile = (
   return null;
 };
 
-/** A raw/pending file must NEVER be put in a public Storage bucket. */
-export const publicMediaUploadBlockReason = (status: string): string | null =>
-  status === "approved"
-    ? null
-    : "Unapproved product photography cannot be uploaded into public Storage. Private staging and signed review must first be certified (Core #484).";
+/**
+ * New binary uploads have no server-verifiable publication authority yet.
+ * Client-supplied "approved" (including required and hero slots) is NOT proof
+ * of reviewer approval. Block every new direct public Storage upload until
+ * governed private staging and signed publication are certified (Core #484).
+ */
+export const publicMediaUploadBlockReason = (_status: string): string =>
+  "Unapproved product photography cannot be uploaded into public Storage. Private staging and signed review must first be certified (Core #484).";
 
 /**
- * Compatibility upload for genuinely approved, direct-authorised media only.
- * Fail closed by default: every old caller that omits approval is blocked
- * BEFORE creating a public object. This UI guard is not a replacement for Core
- * Storage RLS, approved-media promotion or a reviewer workflow.
+ * Deliberate temporary fail-closed boundary: NO new public Storage upload,
+ * even if a caller supplies an untrusted "approved" status. Publication may
+ * resume only through independently reviewed Core private staging/promotion.
+ * Existing approved-media reads and URLs remain unchanged.
  */
 export const uploadMediaFileToStorage = async (
-  path: string,
-  file: File,
+  _path: string,
+  _file: File,
   publicationStatus = "raw",
-) => {
-  const blocked = publicMediaUploadBlockReason(publicationStatus);
-  if (blocked) return { data: null, error: new Error(blocked) };
-
-  return supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).upload(path, file, {
-    cacheControl: "3600",
-    upsert: false,
-  });
-};
+) => ({
+  data: null,
+  error: new Error(publicMediaUploadBlockReason(publicationStatus)),
+});
 
 export const getMediaPublicUrl = (path: string) =>
   supabase.storage.from(AI_STUDIO_MEDIA_BUCKET).getPublicUrl(path).data.publicUrl;

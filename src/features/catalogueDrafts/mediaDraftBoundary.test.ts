@@ -33,7 +33,8 @@ describe("Core #484 public Storage upload protection", () => {
     for (const status of ["raw", "draft", "pending", "", "rejected", "Approved", "unknown"]) {
       expect(publicMediaUploadBlockReason(status)).toContain("Private staging");
     }
-    expect(publicMediaUploadBlockReason("approved")).toBeNull();
+    // A UI-supplied approved string is not independent reviewer authority.
+    expect(publicMediaUploadBlockReason("approved")).toContain("Private staging");
   });
 
   it("fails closed before a new raw object can be written into the public bucket", async () => {
@@ -46,6 +47,16 @@ describe("Core #484 public Storage upload protection", () => {
     const omitted = await uploadMediaFileToStorage("products/TEST/raw/old.jpg", raw);
     expect(omitted.data).toBeNull();
     expect(omitted.error?.message).toContain("Private staging");
+
+    // Previously, required-slot/hero uploads asserted "approved" in the UI
+    // and bypassed the public Storage guard. This must fail before a request.
+    const claimedApproved = await uploadMediaFileToStorage(
+      "products/TEST/raw/forged-hero.jpg",
+      raw,
+      "approved",
+    );
+    expect(claimedApproved.data).toBeNull();
+    expect(claimedApproved.error?.message).toContain("Private staging");
   });
 });
 
