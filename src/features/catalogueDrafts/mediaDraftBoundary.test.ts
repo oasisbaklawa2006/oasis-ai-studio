@@ -25,6 +25,18 @@ const permissionRpcs = vi.hoisted(() => ({
 
 vi.mock("@/shared/auth/centralPermissions", () => permissionRpcs);
 
+// A rejected public upload must not even open the Storage client: a future
+// write-then-error regression must fail this test.
+const publicStorage = vi.hoisted(() => {
+  const upload = vi.fn();
+  const getPublicUrl = vi.fn();
+  const from = vi.fn(() => ({ upload, getPublicUrl }));
+  return { from, upload, getPublicUrl };
+});
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: { storage: { from: publicStorage.from } },
+}));
+
 // Point 27, Phase 12: mirrors the server-side product-media bucket enforcement
 // (Core migration 20260809210000_enforce_product_media_bucket_limits.sql) so a
 // bad file is rejected client-side before any storage call is made.
@@ -38,6 +50,9 @@ describe("Core #484 public Storage upload protection", () => {
   });
 
   it("fails closed before a new raw object can be written into the public bucket", async () => {
+    publicStorage.from.mockClear();
+    publicStorage.upload.mockClear();
+    publicStorage.getPublicUrl.mockClear();
     const raw = new File(["raw contents"], "source.jpg", { type: "image/jpeg" });
     const result = await uploadMediaFileToStorage("products/TEST/submissions/unapproved.jpg", raw);
     expect(result.data).toBeNull();
@@ -57,6 +72,9 @@ describe("Core #484 public Storage upload protection", () => {
     );
     expect(claimedApproved.data).toBeNull();
     expect(claimedApproved.error?.message).toContain("Private staging");
+    expect(publicStorage.from).not.toHaveBeenCalled();
+    expect(publicStorage.upload).not.toHaveBeenCalled();
+    expect(publicStorage.getPublicUrl).not.toHaveBeenCalled();
   });
 });
 

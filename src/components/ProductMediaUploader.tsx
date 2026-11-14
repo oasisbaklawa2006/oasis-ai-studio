@@ -414,19 +414,28 @@ export function ProductMediaUploader({
       }
       const requestProductId = productId;
       const operationId = beginProductMediaOperation(requestProductId);
-      if (asHero && currentHero && isPdfPage(currentHero)) {
-        await supabase
-          .from("product_media")
-          .update({ type: "source_pdf_page", status: "reference_only" })
-          .eq("product_id", productId)
-          .eq("file_url", currentHero);
-      }
       const url = await uploadFileDirect(files[0], asHero, false);
       if (url && asHero) {
         try {
           // applyDirectHeroAuthority now does its own best-effort local refresh + no-write
           // subscriber publish before rethrowing on failure — this catch only surfaces the error.
           await applyDirectHeroAuthority(url);
+          // Only demote the former PDF hero AFTER the new upload and hero
+          // designation succeed. A rejected upload must leave the old row
+          // untouched; never rewrite a previous product after a tab switch.
+          if (!isSupersededByProductSwitch(requestProductId) && currentHero && isPdfPage(currentHero)) {
+            const { error: demoteError } = await supabase
+              .from("product_media")
+              .update({ type: "source_pdf_page", status: "reference_only" })
+              .eq("product_id", requestProductId)
+              .eq("file_url", currentHero);
+            if (demoteError) throw demoteError;
+            // Reflect the second successful mutation without another direct write.
+            await fallbackAfterReconcileFailure(
+              requestProductId,
+              beginProductMediaOperation(requestProductId),
+            );
+          }
           // Bugbot-caught: applyDirectHeroAuthority already silently no-ops once the operator has
           // switched products mid-request, but this toast still fired unconditionally — misleadingly
           // implying the hero designation applied to whatever product is on screen now, when it may
@@ -496,10 +505,17 @@ export function ProductMediaUploader({
 
       const requestProductId = productId;
       const operationId = beginProductMediaOperation(requestProductId);
+      let uploadedCount = 0;
       for (const file of Array.from(files)) {
         const url = await uploadFileDirect(file, false, isVideo);
-        if (url) lastUrl = url;
+        if (url) {
+          lastUrl = url;
+          uploadedCount += 1;
+        }
       }
+      // All uploads may be blocked by the private-staging gate. Never
+      // reconcile unchanged authority or claim upload success in that case.
+      if (uploadedCount === 0) return;
       // Bugbot-caught: same gap as uploadToSlot above — the file(s) already committed via
       // uploadFileDirect. Split into two branches (rather than one shared try/catch) so the
       // fallback for a plain reconcile failure uses this call's own operationId, instead of
@@ -511,12 +527,12 @@ export function ProductMediaUploader({
           // subscriber publish before rethrowing on failure — this catch only surfaces the error.
           await applyDirectHeroAuthority(lastUrl);
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.success(`${files.length} file(s) uploaded`);
+            toast.success(`${uploadedCount} file(s) uploaded`);
           }
         } catch {
           if (!isSupersededByProductSwitch(requestProductId)) {
             toast.error(
-              `${files.length} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
+              `${uploadedCount} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
             );
           }
         }
@@ -524,13 +540,13 @@ export function ProductMediaUploader({
         try {
           await reconcileProductMediaAuthority(requestProductId, operationId);
           if (!isSupersededByProductSwitch(requestProductId)) {
-            toast.success(`${files.length} file(s) uploaded`);
+            toast.success(`${uploadedCount} file(s) uploaded`);
           }
         } catch {
           await fallbackAfterReconcileFailure(requestProductId, operationId);
           if (!isSupersededByProductSwitch(requestProductId)) {
             toast.error(
-              `${files.length} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
+              `${uploadedCount} file(s) saved, but syncing the gallery failed — refreshed with a best-effort read instead.`,
             );
           }
         }
