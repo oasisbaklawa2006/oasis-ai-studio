@@ -63,14 +63,48 @@ describe("Core #484 — protected media replacement and blocked upload reports",
       src.indexOf("const upload = async"),
       src.indexOf("const setAsHeroDirect = async"),
     );
-    const noSuccess = flow.indexOf("if (uploadedCount === 0) return;");
+    const successfulWrite = flow.indexOf("if (url) {");
+    const delayedReservation = flow.indexOf(
+      "operationId = beginProductMediaOperation(requestProductId)",
+    );
+    const noSuccess = flow.indexOf("if (uploadedCount === 0 || operationId === null) return;");
     const reconciliation = flow.indexOf(
       "await reconcileProductMediaAuthority(requestProductId, operationId)",
     );
-    expect(noSuccess).toBeGreaterThan(-1);
+    expect(successfulWrite).toBeGreaterThan(-1);
+    expect(delayedReservation).toBeGreaterThan(successfulWrite);
+    expect(noSuccess).toBeGreaterThan(delayedReservation);
     expect(reconciliation).toBeGreaterThan(noSuccess);
+    expect(flow).not.toContain("const operationId = beginProductMediaOperation(requestProductId)");
     expect(flow).toContain("uploadedCount} file(s) uploaded");
     expect(flow).not.toContain("files.length} file(s) uploaded");
+  });
+});
+
+describe("Core #484 — stale draft URL completion stays scoped to its product", () => {
+  const source = () =>
+    readFileSync(resolve(ROOT, "src/components/ProductMediaUploader.tsx"), "utf8");
+
+  it("guards product-specific form and pending notice after draft submission awaits", () => {
+    const flow = source().split("const addFromUrl = async")[1] ?? "";
+    const submitted = flow.indexOf('const res = await submitDraft("url_import"');
+    const guard = flow.indexOf("if (isSupersededByProductSwitch(requestProductId)) return;");
+    const reset = flow.indexOf('setUrlInput("");', submitted);
+    const notice = flow.indexOf("setPendingNotices((prev) => [", submitted);
+    expect(submitted).toBeGreaterThan(-1);
+    expect(guard).toBeGreaterThan(submitted);
+    expect(reset).toBeGreaterThan(guard);
+    expect(notice).toBeGreaterThan(guard);
+    expect(flow).toContain(
+      "if (!isSupersededByProductSwitch(requestProductId)) setUploading(false)",
+    );
+  });
+
+  it("resets previous-product form state when the product identity changes", () => {
+    const src = source();
+    expect(src).toContain('setUrlInput("");');
+    expect(src).toContain("setPendingNotices([]);");
+    expect(src).toContain("}, [productId]);");
   });
 });
 

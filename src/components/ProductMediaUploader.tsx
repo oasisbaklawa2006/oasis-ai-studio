@@ -152,6 +152,14 @@ export function ProductMediaUploader({
     [],
   );
 
+  // This component may be reused for another product while an async request
+  // is in flight. Reset only product-local form state on identity changes.
+  useEffect(() => {
+    setUrlInput("");
+    setPendingNotices([]);
+    setUploading(false);
+  }, [productId]);
+
   // Passive initial display fetch — a READ, so (per the lifecycle rules this module documents) it
   // may be safely ignored once superseded by a product switch. Prefers any already-reconciled
   // authority for this product over its own raw read, so a fetch that happens to resolve after a
@@ -508,18 +516,23 @@ export function ProductMediaUploader({
       }
 
       const requestProductId = productId;
-      const operationId = beginProductMediaOperation(requestProductId);
+      // Reserve an operation only after a real successful upload. Failed
+      // uploads must not supersede an earlier committed mutation.
+      let operationId: number | null = null;
       let uploadedCount = 0;
       for (const file of Array.from(files)) {
         const url = await uploadFileDirect(file, false, isVideo);
         if (url) {
+          if (operationId === null) {
+            operationId = beginProductMediaOperation(requestProductId);
+          }
           lastUrl = url;
           uploadedCount += 1;
         }
       }
-      // All uploads may be blocked by the private-staging gate. Never
-      // reconcile unchanged authority or claim upload success in that case.
-      if (uploadedCount === 0) return;
+      // No successful upload means no authority reservation or write. Let
+      // earlier committed mutations finish their own reconciliation.
+      if (uploadedCount === 0 || operationId === null) return;
       // Bugbot-caught: same gap as uploadToSlot above — the file(s) already committed via
       // uploadFileDirect. Split into two branches (rather than one shared try/catch) so the
       // fallback for a plain reconcile failure uses this call's own operationId, instead of
@@ -779,6 +792,7 @@ export function ProductMediaUploader({
     }
 
     if (writeMode === "draft") {
+      const requestProductId = productId;
       setUploading(true);
       try {
         const wantsHero = !currentHero || isPdfPage(currentHero);
@@ -793,9 +807,12 @@ export function ProductMediaUploader({
           requestedHero: wantsHero,
         });
         if (!res.ok) {
-          toast.error(res.message);
+          if (!isSupersededByProductSwitch(requestProductId)) toast.error(res.message);
           return;
         }
+        // A's submission can finish while the UI displays B. Never clear
+        // B's URL or append A's pending notice to B's form.
+        if (isSupersededByProductSwitch(requestProductId)) return;
         setUrlInput("");
         setPendingNotices((prev) => [
           ...prev,
@@ -807,7 +824,7 @@ export function ProductMediaUploader({
         toast.success(MEDIA_DRAFT_SUCCESS);
         await refreshLocalMediaView();
       } finally {
-        setUploading(false);
+        if (!isSupersededByProductSwitch(requestProductId)) setUploading(false);
       }
       return;
     }
@@ -826,7 +843,7 @@ export function ProductMediaUploader({
       if (import.meta.env.DEV) console.error("[media-url-add]", insertRes.error, url);
       return toast.error(insertRes.message);
     }
-    setUrlInput("");
+    if (!isSupersededByProductSwitch(requestProductId)) setUrlInput("");
     // Bugbot-caught: this direct (non-draft) URL import inserted the row above, then called
     // applyDirectHeroAuthority/reconcileProductMediaAuthority with no try/catch at all — if
     // reconciliation threw after the insert committed, subscribers never learned about it and the
