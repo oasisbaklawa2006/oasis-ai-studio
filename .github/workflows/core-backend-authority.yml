@@ -35,3 +35,6 @@ jobs:
             base="$PUSH_BEFORE"
           fi
           bash scripts/check-core-backend-authority.sh "$base"
+
+      - name: Prove one-time approved Core #493 snapshot exception rejects other backend changes
+        run: python3 scripts/tests/test-core493-approved-snapshot.py
