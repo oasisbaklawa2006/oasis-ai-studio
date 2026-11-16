@@ -1,7 +1,8 @@
+import { approvedStudioOrigin } from "../scripts/verify-studio-audit-target.mjs";
 import { assertStudioPageOrigin, installStudioAuditRouting } from "./studio-audit-security";
 import { type Browser, devices, type Page } from "@playwright/test";
 
-export const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
+export const STUDIO_URL = approvedStudioOrigin(process.env);
 export const EMAIL = process.env.TEST_STUDIO_EMAIL || "";
 export const PASSWORD = process.env.TEST_STUDIO_PASSWORD || "";
 export const EXPECTED_DEPLOYMENT_SHA = process.env.EXPECTED_DEPLOYMENT_SHA || "";
