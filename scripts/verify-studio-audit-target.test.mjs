@@ -81,6 +81,7 @@ test("untrusted branch, event, SHA and missing SHA are blocked", () => {
     { EXPECTED_DEPLOYMENT_SHA: "" },
     { EXPECTED_DEPLOYMENT_SHA: "0".repeat(40) },
     { GITHUB_SHA: "0".repeat(40) },
+    { PRODUCT_AUTHORING_SAVE: "1" },
   ]) {
     assert.throws(() => verifyProtectedStudioAudit({ ...trusted, ...change }));
   }
