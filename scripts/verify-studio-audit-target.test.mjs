@@ -44,6 +44,7 @@ test("unapproved target, suffix and userinfo tricks fail closed", () => {
     "https://oasis-ai-studio.vercel.app.evil.vercel.app",
     "http://oasis-ai-studio.vercel.app",
     "https://oasis-ai-studio.vercel.app:444",
+    "https://oasis-ai-studio.vercel.app:443",
     "https://oasis-ai-studio.vercel.app/login",
     "https://oasis-ai-studio.vercel.app/?next=evil",
     "https://oasis-ai-studio.vercel.app/#evil",
