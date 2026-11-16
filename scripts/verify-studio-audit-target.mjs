@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -28,7 +29,12 @@ export function canonicalAuditOrigin(input) {
   ) {
     throw new Error("Audit URL must be an HTTPS origin without credentials, port, path or query");
   }
-  if (url.hostname.endsWith(".") || url.hostname === "localhost") {
+  if (
+    url.hostname.endsWith(".") ||
+    url.hostname === "localhost" ||
+    url.hostname.endsWith(".local") ||
+    isIP(url.hostname) !== 0
+  ) {
     throw new Error("Unapproved audit hostname");
   }
   return url.origin;
