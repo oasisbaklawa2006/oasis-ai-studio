@@ -86,7 +86,10 @@ export async function installStudioAuditRouting(
           await route.fulfill({
             status: 200,
             contentType: "text/html; charset=utf-8",
-            headers: { "cache-control": "no-store", "content-security-policy": "default-src 'none'" },
+            headers: {
+              "cache-control": "no-store",
+              "content-security-policy": "default-src 'none'",
+            },
             body: `<!doctype html><html><head><meta http-equiv="refresh" content="0;url=${safeLocation}"></head><body></body></html>`,
           });
           return;
