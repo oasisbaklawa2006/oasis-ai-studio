@@ -83,9 +83,9 @@ describe("protected Studio browser routing", () => {
     approvedEnvironment();
     vi.stubEnv("GITHUB_REF", "refs/pull/294/merge");
     const context = { route: vi.fn() };
-    await expect(
-      installStudioAuditRouting(context as unknown as BrowserContext),
-    ).rejects.toThrow("reviewed main");
+    await expect(installStudioAuditRouting(context as unknown as BrowserContext)).rejects.toThrow(
+      "reviewed main",
+    );
     expect(context.route).not.toHaveBeenCalled();
   });
 
@@ -93,9 +93,9 @@ describe("protected Studio browser routing", () => {
     approvedEnvironment();
     vi.stubEnv("AI_STUDIO_URL", "https://attacker.example");
     const context = { route: vi.fn() };
-    await expect(
-      installStudioAuditRouting(context as unknown as BrowserContext),
-    ).rejects.toThrow("not explicitly approved");
+    await expect(installStudioAuditRouting(context as unknown as BrowserContext)).rejects.toThrow(
+      "not explicitly approved",
+    );
     expect(context.route).not.toHaveBeenCalled();
   });
 });
