@@ -1,3 +1,4 @@
+import { assertExpectedStudioDeployment, assertStudioPageOrigin, installStudioAuditRouting } from "./studio-audit-security";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
@@ -159,6 +160,8 @@ async function countFormControls(page: Page) {
 
 async function loginStudio(page: Page, email: string, password: string) {
   await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
+  assertStudioPageOrigin(page);
+  await assertExpectedStudioDeployment(page);
   await page.waitForURL(/\/auth(?:$|[?#])/, { timeout: 30_000 });
   const emailInput = page
     .locator('input[type="email"], input[name="email"], input[autocomplete="username"]')
@@ -166,10 +169,12 @@ async function loginStudio(page: Page, email: string, password: string) {
   const passwordInput = page.locator('input[type="password"]').first();
   await emailInput.waitFor({ state: "visible", timeout: 30_000 });
   await passwordInput.waitFor({ state: "visible", timeout: 30_000 });
+  assertStudioPageOrigin(page);
   await emailInput.fill(email);
   await passwordInput.fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL((url) => !url.pathname.includes("/auth"), { timeout: 45_000 });
+  assertStudioPageOrigin(page);
 }
 
 async function loginCentral(page: Page, email: string, password: string) {
@@ -189,6 +194,10 @@ async function loginCentral(page: Page, email: string, password: string) {
 
 test.describe("Product authoring UX audit", () => {
   const flows: FlowMetrics[] = [];
+
+  test.beforeEach(async ({ page }) => {
+    await installStudioAuditRouting(page.context(), [new URL(CENTRAL_URL).origin]);
+  });
 
   test.afterAll(() => {
     writeReport({
