@@ -49,7 +49,7 @@ export async function installStudioAuditRouting(
           await route.fulfill({ response });
           return;
         }
-        const location = response.headers()["location"];
+        const location = response.headers().location;
         if (!location) {
           await route.abort("blockedbyclient");
           return;
@@ -92,9 +92,12 @@ export async function assertExpectedStudioDeployment(page: Page): Promise<void> 
   const deadline = Date.now() + 90_000;
   while (true) {
     assertStudioPageOrigin(page);
-    const observed = await page.locator('meta[name="oasis-build-commit"]').getAttribute("content", {
-      timeout: 3_000,
-    }).catch(() => null);
+    const observed = await page
+      .locator('meta[name="oasis-build-commit"]')
+      .getAttribute("content", {
+        timeout: 3_000,
+      })
+      .catch(() => null);
     if (observed === expected) return;
     if (Date.now() >= deadline) {
       throw new Error("BLOCKED: Studio deployment SHA does not match the approved main ref");
