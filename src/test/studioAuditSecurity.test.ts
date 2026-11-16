@@ -15,14 +15,14 @@ function approvedEnvironment() {
   vi.stubEnv("TEST_STUDIO_PASSWORD", "synthetic-test-only-password");
 }
 
-async function mockRouteContext() {
+async function mockRouteContext(additionalNavigationOrigins: string[] = []) {
   let handler: ((route: Route) => Promise<void>) | undefined;
   const context = {
     route: vi.fn(async (_pattern: string, callback: (route: Route) => Promise<void>) => {
       handler = callback;
     }),
   };
-  await installStudioAuditRouting(context as unknown as BrowserContext);
+  await installStudioAuditRouting(context as unknown as BrowserContext, additionalNavigationOrigins);
   if (!handler) throw new Error("Route handler not installed");
   return handler;
 }
@@ -101,6 +101,39 @@ describe("protected Studio browser routing", () => {
       maxRedirects: 0,
     });
     expect(route.fulfill).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks a Central navigation redirect to a foreign origin without leaking bypass", async () => {
+    approvedEnvironment();
+    const central = "https://cursor-central-vercel.vercel.app";
+    const handler = await mockRouteContext([central]);
+    const route = requestRoute(`${central}/login`, true);
+    route.fetch.mockResolvedValueOnce({
+      status: () => 302,
+      headers: () => ({ location: "https://attacker.example/credential-form" }),
+    } as never);
+    await handler(route as unknown as Route);
+    expect(route.abort).toHaveBeenCalledWith("blockedbyclient");
+    expect(route.fulfill).not.toHaveBeenCalled();
+    expect(route.fetch).toHaveBeenCalledWith({
+      url: `${central}/login`,
+      headers: { accept: "*/*" },
+      maxRedirects: 0,
+    });
+  });
+
+  it("checks Studio navigation redirects even without a bypass secret", async () => {
+    approvedEnvironment();
+    vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "");
+    const handler = await mockRouteContext();
+    const route = requestRoute(`${STUDIO}/auth`, true);
+    route.fetch.mockResolvedValueOnce({
+      status: () => 302,
+      headers: () => ({ location: "https://attacker.example/credential-form" }),
+    } as never);
+    await handler(route as unknown as Route);
+    expect(route.abort).toHaveBeenCalledWith("blockedbyclient");
+    expect(route.fulfill).not.toHaveBeenCalled();
   });
 
   it("allows foreign API requests without forwarding the bypass header", async () => {
