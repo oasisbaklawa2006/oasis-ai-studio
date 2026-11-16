@@ -43,6 +43,7 @@ export async function installStudioAuditRouting(
         headers["x-vercel-protection-bypass"] = bypassSecret;
       }
       let target = request.url();
+      const navigation = request.isNavigationRequest();
       // Resolve same-origin redirects in Node. Never expose a redirect to
       // Chromium: Playwright may not intercept its follow-up request.
       for (let hop = 0; hop < 6; hop += 1) {
@@ -70,6 +71,24 @@ export async function installStudioAuditRouting(
           next.protocol !== "https:"
         ) {
           await route.abort("blockedbyclient");
+          return;
+        }
+        if (navigation) {
+          // Serve a synthetic navigation document, not the redirected response.
+          // A meta refresh starts a NEW browser navigation at the validated URL,
+          // so Chromium reports the correct destination and routing runs again.
+          // Escape the URL to prevent HTML injection in the refresh attribute.
+          const safeLocation = next.href
+            .replaceAll("&", "&amp;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+          await route.fulfill({
+            status: 200,
+            contentType: "text/html; charset=utf-8",
+            headers: { "cache-control": "no-store", "content-security-policy": "default-src 'none'" },
+            body: `<!doctype html><html><head><meta http-equiv="refresh" content="0;url=${safeLocation}"></head><body></body></html>`,
+          });
           return;
         }
         target = next.href;
