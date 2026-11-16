@@ -88,7 +88,7 @@ describe("protected Studio browser routing", () => {
     expect(route.fetch).toHaveBeenCalledTimes(1);
   });
 
-  it("resolves approved same-origin redirects without handing a 302 to Chromium", async () => {
+  it("preserves approved redirect destination as a new browser navigation", async () => {
     approvedEnvironment();
     const handler = await mockRouteContext();
     const route = requestRoute(`${STUDIO}/auth`, true);
@@ -97,13 +97,14 @@ describe("protected Studio browser routing", () => {
       headers: () => ({ location: "/login" }),
     } as never);
     await handler(route as unknown as Route);
-    expect(route.fetch).toHaveBeenCalledTimes(2);
-    expect(route.fetch).toHaveBeenLastCalledWith({
-      url: `${STUDIO}/login`,
-      headers: { accept: "*/*", "x-vercel-protection-bypass": "synthetic-test-only-bypass" },
-      maxRedirects: 0,
-    });
-    expect(route.fulfill).toHaveBeenCalledTimes(1);
+    expect(route.fetch).toHaveBeenCalledTimes(1);
+    expect(route.fulfill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status: 200,
+        contentType: "text/html; charset=utf-8",
+        body: expect.stringContaining(`content="0;url=${STUDIO}/login"`),
+      }),
+    );
   });
 
   it("blocks a Central navigation redirect to a foreign origin without leaking bypass", async () => {
