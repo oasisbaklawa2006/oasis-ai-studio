@@ -73,6 +73,9 @@ run_case() {
       printf '%s\n' 'jobs: {deploy: {steps: [{run: "supabase functions deploy whatsapp-studio-inbox-bridge"}]}}' > "$directory/.github/workflows/core-backend-authority.yml" ;;
     tamper_approved_biome)
       printf '%s\n' 'console.log("unauthorized")' > "$directory/scripts/biome-changed.mjs" ;;
+    add_trailing_space_guard)
+      # A lookalike path with trailing whitespace MUST not be allowlisted.
+      printf '%s\n' '# unauthorized extra guard path' > "$directory/${guard_path} " ;;
     tamper_approved_test_script)
       mkdir -p "$directory/scripts/tests"
       printf '%s\n' 'echo bypass' > "$directory/scripts/tests/verify-core493-approved-snapshot.sh" ;;
@@ -94,7 +97,7 @@ run_case() {
 }
 
 run_case exact_core493_blob pass
-for negative in wrong_old_blob wrong_new_blob change_existing_other add_other rename_core untracked_other add_deploy_workflow change_package_build add_unrelated_document tamper_approved_workflow tamper_approved_biome tamper_approved_test_script; do
+for negative in wrong_old_blob wrong_new_blob change_existing_other add_other rename_core untracked_other add_deploy_workflow change_package_build add_unrelated_document tamper_approved_workflow tamper_approved_biome add_trailing_space_guard tamper_approved_test_script; do
   run_case "$negative" reject
 done
-echo 'Core #493 frozen-snapshot gate: all thirteen positive/negative tests passed.'
+echo 'Core #493 frozen-snapshot gate: all fourteen positive/negative tests passed.'

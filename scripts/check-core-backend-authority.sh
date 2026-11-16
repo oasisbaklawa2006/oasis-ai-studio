@@ -31,7 +31,7 @@ core493_approved_core_blob='216a3aec29b8b66caccd2c45a83c40a1747a9345'
 # Unrelated workflows, deployment hooks, scripts or package changes are rejected.
 is_only_approved_core493_sync_scope() {
   local changed_path actual_blob
-  while read -r changed_path; do
+  while IFS= read -r changed_path; do
     case "$changed_path" in
       "$core493_path"|"scripts/check-core-backend-authority.sh")
         ;;
@@ -45,7 +45,7 @@ is_only_approved_core493_sync_scope() {
         ;;
       "scripts/tests/verify-core493-approved-snapshot.sh")
         actual_blob="$(git rev-parse "HEAD:$changed_path" 2>/dev/null)" || return 1
-        [[ "$actual_blob" == "85ee87355bfb58907ad6e55f3dee3e0efb023e3d" ]] || return 1
+        [[ "$actual_blob" == "f61ac00b2ff053f63af6831c3bbe554f308e911e" ]] || return 1
         ;;
       *) return 1 ;;
     esac
