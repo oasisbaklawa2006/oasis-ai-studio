@@ -35,6 +35,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Launch Chromium headless without credentials
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from '@playwright/test';
+          const browser = await chromium.launch({ headless: true });
+          try {
+            const page = await browser.newPage();
+            await page.goto('about:blank');
+            if (page.url() !== 'about:blank') throw new Error('Unexpected browser navigation');
+            console.log('Chromium headless launch and blank-page navigation passed');
+          } finally {
+            await browser.close();
+          }
+          NODE
   product-authoring-audit:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
