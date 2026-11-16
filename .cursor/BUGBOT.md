@@ -15,6 +15,26 @@ If the PR adds **new** or **modifies existing** files under `supabase/functions/
 - Add a **blocking** bug titled "Supabase Functions ownership violation"
 - Body: Supabase Edge Functions belong in their own designated backend repository, not this frontend repo. Move these changes to the appropriate backend repository. See `docs/repo-ownership-guardrails.md`.
 
+### One-time Core-origin historical snapshot admission — G5 only (requires prior human governance approval)
+
+This exception is **inactive until this policy change is independently reviewed and merged**. It is not an exception for new Studio backend code. A follow-up PR may be classified as a non-authoritative historical source *synchronization*, rather than backend ownership, **only if all** conditions below are independently verified:
+
+- The **only** `supabase/functions/**` diff is an existing file modified in place at `supabase/functions/_shared/erpInboxBridge/processErpInboundRow.ts`, with no file add, copy, rename or delete.
+- The source is byte-identical to **merged, independently approved** Core PR #493 (merge `fb47a9508dad3d676776ae8fe0172b67c8284d71`); destination Git blob is precisely `216a3aec29b8b66caccd2c45a83c40a1747a9345`.
+- The previous Studio snapshot Git blob is exactly `911461b637413f3525f04ebcb3b565ea2d670e8f`. This makes the permission expire after the single synchronization: later base blobs do not match.
+- The existing independent `Core Backend Authority` guard continues to reject every other added, changed, renamed, deleted, copied or untracked backend path, with seven positive/negative tests run in CI. No schema, migration, RLS, secrets or backend deployment is introduced.
+- **Runtime consumer acknowledged:** `supabase/functions/whatsapp-studio-inbox-bridge/index.ts` imports the historical `processErpInboundRow.ts` file and calls its processor. This source copy is **not test-only**. Changing the snapshot could change live behavior if a Studio-based Edge Function were redeployed.
+- **Absolute deployment prohibition:** Do not deploy or redeploy any Supabase Edge Function or
+  migration from Studio (including `whatsapp-studio-inbox-bridge`), whether manually,
+  through CI/CLI, Vercel or a provider integration. Keep production auto-deploy disabled.
+  Core is the only authoritative Edge deployment source, subject to its own separately
+  approved protected release, positive/negative runtime tests and rollback evidence.
+- Review the Studio workflow/release paths for any backend-deployment trigger. If that safety property or the canonical Core deployment authority cannot be confirmed, leave the one-time admission **BLOCKED** even if the source blobs and Studio TypeScript build are correct. Historical Studio deploy examples do not authorize any deployment.
+- The real `npm run typecheck:build`, security scanning and all required release checks PASS at the exact head; the nonblocking legacy TypeScript audit alone is not acceptance.
+- A **separate independent human CODEOWNER/security review** explicitly approves the follow-up source-sync PR after this governance change is approved; no self-approval or admin bypass.
+
+If **any** condition is missing, outdated, unverifiable or violated, report a **blocking Supabase Functions ownership violation** under the unchanged default rule. Do not automatically extend this one-time exception to other Core files, hashes or future migrations. The canonical Supabase backend and all actual deployments continue to belong exclusively to `oasis-supabase-core`.
+
 ## Async request races (blocking)
 
 For changes in `src/pages/**`, `src/components/ProductMediaUploader.tsx`, or `src/features/productAuthority/**`:
