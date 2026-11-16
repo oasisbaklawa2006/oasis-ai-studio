@@ -184,12 +184,18 @@ async function loginStudio(page: Page, email: string, password: string) {
 
 async function loginCentral(page: Page, email: string, password: string) {
   await page.goto(`${CENTRAL_URL}/login`, { waitUntil: "domcontentloaded" });
+  if (new URL(page.url()).origin !== new URL(CENTRAL_URL).origin) {
+    throw new Error("BLOCKED: Central login page left the approved origin");
+  }
   const emailTab = page.getByRole("button", { name: /email/i });
   if (await emailTab.isVisible().catch(() => false)) await emailTab.click();
   const emailInput = page
     .locator('input[type="email"], input[name="email"], input[autocomplete="username"]')
     .first();
   const passwordInput = page.locator('input[type="password"]').first();
+  if (new URL(page.url()).origin !== new URL(CENTRAL_URL).origin) {
+    throw new Error("BLOCKED: Central credentials cannot be entered on a foreign origin");
+  }
   await emailInput.fill(email);
   await passwordInput.fill(password);
   const submit = page.getByRole("button", { name: /sign in|log in|continue/i }).first();
