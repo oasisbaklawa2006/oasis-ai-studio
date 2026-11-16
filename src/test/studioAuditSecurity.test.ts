@@ -60,7 +60,7 @@ describe("protected Studio browser routing", () => {
   it("injects the bypass header only into a zero-redirect Node fetch to Studio", async () => {
     approvedEnvironment();
     const handler = await mockRouteContext();
-    const route = requestRoute(STUDIO + "/auth", true);
+    const route = requestRoute(`${STUDIO}/auth`, true);
     await handler(route as unknown as Route);
     expect(route.fetch).toHaveBeenCalledWith({
       headers: { accept: "*/*", "x-vercel-protection-bypass": "synthetic-test-only-bypass" },
