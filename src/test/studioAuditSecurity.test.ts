@@ -1,0 +1,101 @@
+import type { BrowserContext } from "@playwright/test";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { installStudioAuditRouting } from "../../e2e/studio-audit-security";
+
+const STUDIO = "https://oasis-ai-studio.vercel.app";
+const SHA = "5bc36db0a192b1be2dc02693336c2f6a2dc4e26c";
+
+function approvedEnvironment() {
+  vi.stubEnv("AI_STUDIO_URL", STUDIO);
+  vi.stubEnv("GITHUB_REF", "refs/heads/main");
+  vi.stubEnv("GITHUB_EVENT_NAME", "workflow_dispatch");
+  vi.stubEnv("GITHUB_SHA", SHA);
+  vi.stubEnv("EXPECTED_DEPLOYMENT_SHA", SHA);
+  vi.stubEnv("VERCEL_AUTOMATION_BYPASS_SECRET", "synthetic-test-only-bypass");
+  vi.stubEnv("TEST_STUDIO_PASSWORD", "synthetic-test-only-password");
+}
+
+async function mockRouteContext() {
+  let handler: ((route: any) => Promise<void>) | undefined;
+  const context = {
+    route: vi.fn(async (_pattern: string, callback: (route: any) => Promise<void>) => {
+      handler = callback;
+    }),
+  };
+  await installStudioAuditRouting(context as unknown as BrowserContext);
+  if (!handler) throw new Error("Route handler not installed");
+  return handler;
+}
+
+function requestRoute(url: string, navigation: boolean) {
+  const route = {
+    request: () => ({
+      url: () => url,
+      isNavigationRequest: () => navigation,
+      headers: () => ({ accept: "*/*" }),
+    }),
+    abort: vi.fn(async () => {}),
+    fetch: vi.fn(async () => ({ status: () => 200 })),
+    fulfill: vi.fn(async () => {}),
+    continue: vi.fn(async () => {}),
+  };
+  return route;
+}
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+describe("protected Studio browser routing", () => {
+  it("blocks foreign navigation before sending any protected request", async () => {
+    approvedEnvironment();
+    const handler = await mockRouteContext();
+    const route = requestRoute("https://attacker.example/steal", true);
+    await handler(route);
+    expect(route.abort).toHaveBeenCalledWith("blockedbyclient");
+    expect(route.fetch).not.toHaveBeenCalled();
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+
+  it("injects the bypass header only into a zero-redirect Node fetch to Studio", async () => {
+    approvedEnvironment();
+    const handler = await mockRouteContext();
+    const route = requestRoute(STUDIO + "/auth", true);
+    await handler(route);
+    expect(route.fetch).toHaveBeenCalledWith({
+      headers: { accept: "*/*", "x-vercel-protection-bypass": "synthetic-test-only-bypass" },
+      maxRedirects: 0,
+    });
+    expect(route.fulfill).toHaveBeenCalledTimes(1);
+    expect(route.continue).not.toHaveBeenCalled();
+  });
+
+  it("allows foreign API requests without forwarding the bypass header", async () => {
+    approvedEnvironment();
+    const handler = await mockRouteContext();
+    const route = requestRoute("https://example.supabase.co/rest/v1/products", false);
+    await handler(route);
+    expect(route.continue).toHaveBeenCalledWith();
+    expect(route.fetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a PR ref before registering any protected network route", async () => {
+    approvedEnvironment();
+    vi.stubEnv("GITHUB_REF", "refs/pull/294/merge");
+    const context = { route: vi.fn() };
+    await expect(
+      installStudioAuditRouting(context as unknown as BrowserContext),
+    ).rejects.toThrow("reviewed main");
+    expect(context.route).not.toHaveBeenCalled();
+  });
+
+  it("rejects unapproved Studio target before protected routing", async () => {
+    approvedEnvironment();
+    vi.stubEnv("AI_STUDIO_URL", "https://attacker.example");
+    const context = { route: vi.fn() };
+    await expect(
+      installStudioAuditRouting(context as unknown as BrowserContext),
+    ).rejects.toThrow("not explicitly approved");
+    expect(context.route).not.toHaveBeenCalled();
+  });
+});
