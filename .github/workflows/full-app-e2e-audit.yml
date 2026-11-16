@@ -37,6 +37,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Verify approved audit origin, trusted main ref and SHA (no secrets)
+        env:
+          AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
+          AI_STUDIO_AUDIT_ALLOWED_ORIGINS: ${{ vars.AI_STUDIO_AUDIT_ALLOWED_ORIGINS }}
+          EXPECTED_DEPLOYMENT_SHA: ${{ github.sha }}
+          PRODUCT_AUTHORING_SAVE: "0"
+        run: node scripts/verify-studio-audit-target.mjs
       - name: Verify protected audit configuration
         env:
           AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
@@ -53,6 +60,7 @@ jobs:
         run: npm run test:full-app-audit
         env:
           AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
+          AI_STUDIO_AUDIT_ALLOWED_ORIGINS: ${{ vars.AI_STUDIO_AUDIT_ALLOWED_ORIGINS }}
           TEST_STUDIO_EMAIL: ${{ secrets.TEST_STUDIO_EMAIL }}
           TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}

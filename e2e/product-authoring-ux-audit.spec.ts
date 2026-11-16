@@ -1,8 +1,14 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
+import { approvedStudioOrigin } from "../scripts/verify-studio-audit-target.mjs";
+import {
+  assertExpectedStudioDeployment,
+  assertStudioPageOrigin,
+  installStudioAuditRouting,
+} from "./studio-audit-security";
 
-const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
+const STUDIO_URL = approvedStudioOrigin(process.env);
 const CENTRAL_URL = process.env.CENTRAL_URL || "https://cursor-central-vercel.vercel.app";
 
 const ART = path.join(process.cwd(), "audit-artifacts", "product-authoring");
@@ -159,6 +165,8 @@ async function countFormControls(page: Page) {
 
 async function loginStudio(page: Page, email: string, password: string) {
   await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
+  assertStudioPageOrigin(page);
+  await assertExpectedStudioDeployment(page);
   await page.waitForURL(/\/auth(?:$|[?#])/, { timeout: 30_000 });
   const emailInput = page
     .locator('input[type="email"], input[name="email"], input[autocomplete="username"]')
@@ -166,20 +174,28 @@ async function loginStudio(page: Page, email: string, password: string) {
   const passwordInput = page.locator('input[type="password"]').first();
   await emailInput.waitFor({ state: "visible", timeout: 30_000 });
   await passwordInput.waitFor({ state: "visible", timeout: 30_000 });
+  assertStudioPageOrigin(page);
   await emailInput.fill(email);
   await passwordInput.fill(password);
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL((url) => !url.pathname.includes("/auth"), { timeout: 45_000 });
+  assertStudioPageOrigin(page);
 }
 
 async function loginCentral(page: Page, email: string, password: string) {
   await page.goto(`${CENTRAL_URL}/login`, { waitUntil: "domcontentloaded" });
+  if (new URL(page.url()).origin !== new URL(CENTRAL_URL).origin) {
+    throw new Error("BLOCKED: Central login page left the approved origin");
+  }
   const emailTab = page.getByRole("button", { name: /email/i });
   if (await emailTab.isVisible().catch(() => false)) await emailTab.click();
   const emailInput = page
     .locator('input[type="email"], input[name="email"], input[autocomplete="username"]')
     .first();
   const passwordInput = page.locator('input[type="password"]').first();
+  if (new URL(page.url()).origin !== new URL(CENTRAL_URL).origin) {
+    throw new Error("BLOCKED: Central credentials cannot be entered on a foreign origin");
+  }
   await emailInput.fill(email);
   await passwordInput.fill(password);
   const submit = page.getByRole("button", { name: /sign in|log in|continue/i }).first();
@@ -189,6 +205,10 @@ async function loginCentral(page: Page, email: string, password: string) {
 
 test.describe("Product authoring UX audit", () => {
   const flows: FlowMetrics[] = [];
+
+  test.beforeEach(async ({ page }) => {
+    await installStudioAuditRouting(page.context(), [new URL(CENTRAL_URL).origin]);
+  });
 
   test.afterAll(() => {
     writeReport({
