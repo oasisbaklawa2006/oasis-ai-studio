@@ -61,6 +61,8 @@ test("no wildcard, path or userinfo in administrator allowlist", () => {
     "http://preview.vercel.app",
     "https://user@preview.vercel.app",
     "https://preview.vercel.app/auth",
+    "https://127.0.0.1",
+    "https://internal.local",
   ]) {
     assert.throws(
       () =>
