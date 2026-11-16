@@ -1,6 +1,11 @@
 name: Playwright read-only smoke
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/playwright-readonly.yml'
+      - '.github/workflows/full-app-e2e-audit.yml'
   push:
     branches: [main]
   workflow_dispatch:
@@ -18,7 +23,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  chromium-install-smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
   product-authoring-audit:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
