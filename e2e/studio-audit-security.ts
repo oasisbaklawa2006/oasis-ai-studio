@@ -31,6 +31,7 @@ export async function installStudioAuditRouting(
     }
 
     if (request.isNavigationRequest() && !allowedNavigation.has(origin)) {
+      console.warn(`[studio-audit] blocked navigation: unapproved origin ${origin}`);
       await route.abort("blockedbyclient");
       return;
     }
@@ -55,6 +56,7 @@ export async function installStudioAuditRouting(
         }
         const location = response.headers().location;
         if (!location) {
+          console.warn(`[studio-audit] blocked redirect: missing Location (HTTP ${status}, origin ${origin})`);
           await route.abort("blockedbyclient");
           return;
         }
@@ -62,6 +64,7 @@ export async function installStudioAuditRouting(
         try {
           next = new URL(location, target);
         } catch {
+          console.warn(`[studio-audit] blocked redirect: invalid Location (HTTP ${status}, origin ${origin})`);
           await route.abort("blockedbyclient");
           return;
         }
@@ -70,6 +73,7 @@ export async function installStudioAuditRouting(
           next.origin !== origin ||
           next.protocol !== "https:"
         ) {
+          console.warn(`[studio-audit] blocked redirect: ${origin} -> ${next.origin} (HTTP ${status}); destination origin not approved or not same-origin HTTPS`);
           await route.abort("blockedbyclient");
           return;
         }
