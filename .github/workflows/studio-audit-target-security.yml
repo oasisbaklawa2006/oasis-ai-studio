@@ -1,0 +1,40 @@
+name: Studio protected audit target security
+
+on:
+  pull_request:
+    paths:
+      - "scripts/verify-studio-audit-target.mjs"
+      - "scripts/verify-studio-audit-target.test.mjs"
+      - "e2e/studio-audit-security.ts"
+      - "e2e/readonly-audit-helpers.ts"
+      - "e2e/product-authoring-ux-audit.spec.ts"
+      - "e2e/full-app-readonly-audit.spec.ts"
+      - "playwright.product-authoring.config.ts"
+      - "playwright.full-app-audit.config.ts"
+      - ".github/workflows/playwright-readonly.yml"
+      - ".github/workflows/full-app-e2e-audit.yml"
+      - ".github/workflows/studio-audit-target-security.yml"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/verify-studio-audit-target.mjs"
+      - "scripts/verify-studio-audit-target.test.mjs"
+      - "e2e/studio-audit-security.ts"
+      - ".github/workflows/studio-audit-target-security.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  approved-origin-negative-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "24"
+      - name: Run credential-free audit-origin security tests
+        run: node --test scripts/verify-studio-audit-target.test.mjs
