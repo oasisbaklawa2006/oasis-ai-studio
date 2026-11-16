@@ -24,7 +24,7 @@ export function canonicalAuditOrigin(input) {
     url.pathname !== "/" ||
     url.search ||
     url.hash ||
-    !/^https:\/\/[^/?#]+\/?$/i.test(value)
+    !/^https:\/\/[a-z0-9.-]+\/?$/i.test(value)
   ) {
     throw new Error("Audit URL must be an HTTPS origin without credentials, port, path or query");
   }
