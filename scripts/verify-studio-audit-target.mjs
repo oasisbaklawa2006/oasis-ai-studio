@@ -51,6 +51,9 @@ export function approvedStudioOrigin(env = process.env) {
 
 export function verifyProtectedStudioAudit(env = process.env) {
   const target = approvedStudioOrigin(env);
+  if (env.PRODUCT_AUTHORING_SAVE && env.PRODUCT_AUTHORING_SAVE !== "0") {
+    throw new Error("Protected audit must be read-only");
+  }
   if (env.GITHUB_REF !== "refs/heads/main") {
     throw new Error("Protected audit must run from the reviewed main branch");
   }
