@@ -35,10 +35,13 @@ export async function installStudioAuditRouting(
       return;
     }
 
-    if (bypassSecret && origin === studioOrigin) {
+    if (request.isNavigationRequest() || (bypassSecret && origin === studioOrigin)) {
       // Unlike route.continue({headers}), fetch(maxRedirects:0) never forwards
       // the injected header along an HTTP redirect to a different origin.
-      const headers = { ...request.headers(), "x-vercel-protection-bypass": bypassSecret };
+      const headers = { ...request.headers() };
+      if (bypassSecret && origin === studioOrigin) {
+        headers["x-vercel-protection-bypass"] = bypassSecret;
+      }
       let target = request.url();
       // Resolve same-origin redirects in Node. Never expose a redirect to
       // Chromium: Playwright may not intercept its follow-up request.
@@ -61,7 +64,7 @@ export async function installStudioAuditRouting(
           await route.abort("blockedbyclient");
           return;
         }
-        if (next.origin !== studioOrigin || !["https:"].includes(next.protocol)) {
+        if (!allowedNavigation.has(next.origin) || next.origin !== origin || next.protocol !== "https:") {
           await route.abort("blockedbyclient");
           return;
         }
