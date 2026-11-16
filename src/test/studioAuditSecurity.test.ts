@@ -22,7 +22,10 @@ async function mockRouteContext(additionalNavigationOrigins: string[] = []) {
       handler = callback;
     }),
   };
-  await installStudioAuditRouting(context as unknown as BrowserContext, additionalNavigationOrigins);
+  await installStudioAuditRouting(
+    context as unknown as BrowserContext,
+    additionalNavigationOrigins,
+  );
   if (!handler) throw new Error("Route handler not installed");
   return handler;
 }
