@@ -9,7 +9,7 @@ import {
 } from "./studio-audit-security";
 
 const STUDIO_URL = approvedStudioOrigin(process.env);
-const CENTRAL_URL = process.env.CENTRAL_URL || "https://cursor-central-vercel.vercel.app";
+const CENTRAL_URL = process.env.CENTRAL_URL || "https://oasis-baklawa-central.vercel.app";
 
 const ART = path.join(process.cwd(), "audit-artifacts", "product-authoring");
 const SHOTS = path.join(ART, "screenshots");
