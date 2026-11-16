@@ -1,4 +1,4 @@
-import type { BrowserContext } from "@playwright/test";
+import type { BrowserContext, Route } from "@playwright/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { installStudioAuditRouting } from "../../e2e/studio-audit-security";
 
@@ -16,9 +16,9 @@ function approvedEnvironment() {
 }
 
 async function mockRouteContext() {
-  let handler: ((route: any) => Promise<void>) | undefined;
+  let handler: ((route: Route) => Promise<void>) | undefined;
   const context = {
-    route: vi.fn(async (_pattern: string, callback: (route: any) => Promise<void>) => {
+    route: vi.fn(async (_pattern: string, callback: (route: Route) => Promise<void>) => {
       handler = callback;
     }),
   };
@@ -51,7 +51,7 @@ describe("protected Studio browser routing", () => {
     approvedEnvironment();
     const handler = await mockRouteContext();
     const route = requestRoute("https://attacker.example/steal", true);
-    await handler(route);
+    await handler(route as unknown as Route);
     expect(route.abort).toHaveBeenCalledWith("blockedbyclient");
     expect(route.fetch).not.toHaveBeenCalled();
     expect(route.continue).not.toHaveBeenCalled();
@@ -61,7 +61,7 @@ describe("protected Studio browser routing", () => {
     approvedEnvironment();
     const handler = await mockRouteContext();
     const route = requestRoute(STUDIO + "/auth", true);
-    await handler(route);
+    await handler(route as unknown as Route);
     expect(route.fetch).toHaveBeenCalledWith({
       headers: { accept: "*/*", "x-vercel-protection-bypass": "synthetic-test-only-bypass" },
       maxRedirects: 0,
@@ -74,7 +74,7 @@ describe("protected Studio browser routing", () => {
     approvedEnvironment();
     const handler = await mockRouteContext();
     const route = requestRoute("https://example.supabase.co/rest/v1/products", false);
-    await handler(route);
+    await handler(route as unknown as Route);
     expect(route.continue).toHaveBeenCalledWith();
     expect(route.fetch).not.toHaveBeenCalled();
   });
