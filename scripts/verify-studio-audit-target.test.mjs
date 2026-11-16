@@ -91,6 +91,6 @@ test("untrusted branch, event, SHA and missing SHA are blocked", () => {
 });
 
 test("canonical origin normalization never broadens approval", () => {
-  assert.equal(canonicalAuditOrigin(PRODUCTION_STUDIO_ORIGIN + "/"), PRODUCTION_STUDIO_ORIGIN);
+  assert.equal(canonicalAuditOrigin(`${PRODUCTION_STUDIO_ORIGIN}/`), PRODUCTION_STUDIO_ORIGIN);
   assert.equal(canonicalAuditOrigin(PRODUCTION_STUDIO_ORIGIN), PRODUCTION_STUDIO_ORIGIN);
 });
