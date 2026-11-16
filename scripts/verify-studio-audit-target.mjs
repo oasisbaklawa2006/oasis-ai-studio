@@ -20,6 +20,7 @@ export function canonicalAuditOrigin(input) {
     url.username ||
     url.password ||
     url.port ||
+    !/^[a-z0-9.-]+$/i.test(url.hostname) ||
     url.pathname !== "/" ||
     url.search ||
     url.hash ||
