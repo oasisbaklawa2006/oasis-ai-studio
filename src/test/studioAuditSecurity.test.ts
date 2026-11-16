@@ -35,7 +35,7 @@ function requestRoute(url: string, navigation: boolean) {
       headers: () => ({ accept: "*/*" }),
     }),
     abort: vi.fn(async () => {}),
-    fetch: vi.fn(async () => ({ status: () => 200 })),
+    fetch: vi.fn(async () => ({ status: () => 200, headers: () => ({}) })),
     fulfill: vi.fn(async () => {}),
     continue: vi.fn(async () => {}),
   };
@@ -63,11 +63,44 @@ describe("protected Studio browser routing", () => {
     const route = requestRoute(`${STUDIO}/auth`, true);
     await handler(route as unknown as Route);
     expect(route.fetch).toHaveBeenCalledWith({
+      url: `${STUDIO}/auth`,
       headers: { accept: "*/*", "x-vercel-protection-bypass": "synthetic-test-only-bypass" },
       maxRedirects: 0,
     });
     expect(route.fulfill).toHaveBeenCalledTimes(1);
     expect(route.continue).not.toHaveBeenCalled();
+  });
+
+  it("blocks a Studio redirect to a foreign origin before fulfilling Chromium", async () => {
+    approvedEnvironment();
+    const handler = await mockRouteContext();
+    const route = requestRoute(`${STUDIO}/auth`, true);
+    route.fetch.mockResolvedValueOnce({
+      status: () => 302,
+      headers: () => ({ location: "https://attacker.example/steal" }),
+    } as never);
+    await handler(route as unknown as Route);
+    expect(route.abort).toHaveBeenCalledWith("blockedbyclient");
+    expect(route.fulfill).not.toHaveBeenCalled();
+    expect(route.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("resolves approved same-origin redirects without handing a 302 to Chromium", async () => {
+    approvedEnvironment();
+    const handler = await mockRouteContext();
+    const route = requestRoute(`${STUDIO}/auth`, true);
+    route.fetch.mockResolvedValueOnce({
+      status: () => 302,
+      headers: () => ({ location: "/login" }),
+    } as never);
+    await handler(route as unknown as Route);
+    expect(route.fetch).toHaveBeenCalledTimes(2);
+    expect(route.fetch).toHaveBeenLastCalledWith({
+      url: `${STUDIO}/login`,
+      headers: { accept: "*/*", "x-vercel-protection-bypass": "synthetic-test-only-bypass" },
+      maxRedirects: 0,
+    });
+    expect(route.fulfill).toHaveBeenCalledTimes(1);
   });
 
   it("allows foreign API requests without forwarding the bypass header", async () => {
