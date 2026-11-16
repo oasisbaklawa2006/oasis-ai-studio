@@ -64,7 +64,11 @@ export async function installStudioAuditRouting(
           await route.abort("blockedbyclient");
           return;
         }
-        if (!allowedNavigation.has(next.origin) || next.origin !== origin || next.protocol !== "https:") {
+        if (
+          !allowedNavigation.has(next.origin) ||
+          next.origin !== origin ||
+          next.protocol !== "https:"
+        ) {
           await route.abort("blockedbyclient");
           return;
         }
