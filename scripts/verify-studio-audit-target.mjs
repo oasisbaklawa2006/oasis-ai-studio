@@ -47,10 +47,7 @@ export function approvedStudioOrigin(env = process.env) {
     .map((value) => value.trim())
     .filter(Boolean);
   if (configured.length > 20) throw new Error("Too many approved audit origins");
-  const approved = new Set([
-    PRODUCTION_STUDIO_ORIGIN,
-    ...configured.map(canonicalAuditOrigin),
-  ]);
+  const approved = new Set([PRODUCTION_STUDIO_ORIGIN, ...configured.map(canonicalAuditOrigin)]);
   if (!approved.has(target)) throw new Error("Studio audit target is not explicitly approved");
   return target;
 }
