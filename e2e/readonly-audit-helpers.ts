@@ -1,6 +1,6 @@
+import { type Browser, devices, type Page } from "@playwright/test";
 import { approvedStudioOrigin } from "../scripts/verify-studio-audit-target.mjs";
 import { assertStudioPageOrigin, installStudioAuditRouting } from "./studio-audit-security";
-import { type Browser, devices, type Page } from "@playwright/test";
 
 export const STUDIO_URL = approvedStudioOrigin(process.env);
 export const EMAIL = process.env.TEST_STUDIO_EMAIL || "";
