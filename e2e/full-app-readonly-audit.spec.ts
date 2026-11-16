@@ -1,8 +1,8 @@
-import { approvedStudioOrigin } from "../scripts/verify-studio-audit-target.mjs";
-import { assertStudioPageOrigin, installStudioAuditRouting } from "./studio-audit-security";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
+import { approvedStudioOrigin } from "../scripts/verify-studio-audit-target.mjs";
+import { assertStudioPageOrigin, installStudioAuditRouting } from "./studio-audit-security";
 
 const STUDIO_URL = approvedStudioOrigin(process.env);
 const EMAIL = process.env.TEST_STUDIO_EMAIL || "";
