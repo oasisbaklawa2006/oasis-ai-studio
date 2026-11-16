@@ -21,6 +21,7 @@ export default defineConfig({
     trace: vercelBypassSecret ? "off" : "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",
-    ignoreHTTPSErrors: true,
+    ignoreHTTPSErrors: false,
+    serviceWorkers: "block",
   },
 });
