@@ -57,6 +57,27 @@ describe("readOnlyUatAuditContract", () => {
     ).toBe(false);
   });
 
+
+  it("allows only the verified Core membership resolver RPC while rejecting writes", () => {
+    const base = "https://xyz.supabase.co/rest/v1/rpc/";
+    expect(isForbiddenReadOnlyUatPersistenceRequest("POST", base + "has_ai_studio_permission_v1")).toBe(false);
+    expect(isForbiddenReadOnlyUatPersistenceRequest("post", base + "has_ai_studio_permission_v1?p_key=ai_studio.app.access")).toBe(false);
+    for (const name of [
+      "set_ai_studio_access_v1",
+      "has_ai_studio_permission_v2",
+      "has_ai_studio_permission_v1_write",
+      "write_product",
+    ]) {
+      expect(isForbiddenReadOnlyUatPersistenceRequest("POST", base + name)).toBe(true);
+    }
+    expect(isForbiddenReadOnlyUatPersistenceRequest("PATCH", "https://xyz.supabase.co/rest/v1/ai_studio_user_access")).toBe(true);
+    expect(isForbiddenReadOnlyUatPersistenceRequest("DELETE", "https://xyz.supabase.co/storage/v1/object/media/a.png")).toBe(true);
+    expect(collectReadOnlyUatContractViolations([
+      { method: "POST", url: base + "has_ai_studio_permission_v1" },
+      { method: "POST", url: base + "set_ai_studio_access_v1" },
+    ])).toEqual(["POST " + base + "set_ai_studio_access_v1"]);
+  });
+
   it("collects unique persistence violations from request log", () => {
     const violations = collectReadOnlyUatContractViolations([
       { method: "GET", url: "https://xyz.supabase.co/rest/v1/products" },
