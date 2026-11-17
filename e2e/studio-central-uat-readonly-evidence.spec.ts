@@ -42,7 +42,20 @@ type UatEvidenceRow = {
   physicalDeviceCertification: "browser-emulated-only" | "not-applicable";
 };
 
-const evidenceRows: UatEvidenceRow[] = [];
+// Playwright restarts workers after failures. Persist each case independently.
+const ROWS_DIR = path.join(ROOT, "uat-rows");
+
+function recordEvidence(row: UatEvidenceRow) {
+  fs.mkdirSync(ROWS_DIR, { recursive: true });
+  fs.writeFileSync(path.join(ROWS_DIR, `${row.uatId}.json`), JSON.stringify(row, null, 2));
+}
+
+function loadEvidence(): UatEvidenceRow[] {
+  return STUDIO_CENTRAL_UAT_EVIDENCE_CASES.flatMap(({ uatId }) => {
+    const file = path.join(ROWS_DIR, `${uatId}.json`);
+    return fs.existsSync(file) ? [JSON.parse(fs.readFileSync(file, "utf8")) as UatEvidenceRow] : [];
+  });
+}
 
 function deriveVerdict(input: {
   shaBindingOk: boolean;
@@ -129,6 +142,11 @@ async function exerciseCase(
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
+    // Do not mistake the transient membership spinner for a loaded page.
+    await page
+      .getByText("Checking Studio membership…")
+      .waitFor({ state: "hidden", timeout: 15_000 })
+      .catch(() => notes.push("Studio membership verification did not complete within 15 seconds."));
     await page.waitForTimeout(1_500);
   } catch (error) {
     notes.push(`Navigation error: ${String(error)}`);
@@ -180,7 +198,7 @@ async function exerciseCase(
     .locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")
     .count();
   const inaccessible =
-    /\/auth(?:\?|$)/.test(finalUrl) || /access denied|permission required/i.test(body);
+    /\/auth(?:\?|$)/.test(finalUrl) || /access denied|permission required|checking studio membership|unable to verify ai studio access|ai studio access not approved/i.test(body);
   const fatal =
     overlay > 0 ||
     body.trim().length === 0 ||
@@ -237,6 +255,10 @@ async function exerciseCase(
 
 function writeReports() {
   fs.mkdirSync(ROOT, { recursive: true });
+  const evidenceRows = loadEvidence();
+  const missingIds = STUDIO_CENTRAL_UAT_EVIDENCE_CASES
+    .map((caseRow) => caseRow.uatId)
+    .filter((id) => !evidenceRows.some((row) => row.uatId === id));
   const report = {
     generatedAt: new Date().toISOString(),
     target: STUDIO_URL,
@@ -245,12 +267,12 @@ function writeReports() {
     expectedDeploymentSha: process.env.EXPECTED_DEPLOYMENT_SHA || null,
     cases: STUDIO_CENTRAL_UAT_EVIDENCE_CASES,
     evidence: evidenceRows,
+    missingIds,
     summary: {
       pass: evidenceRows.filter((row) => row.verdict === "PASS").length,
       fail: evidenceRows.filter((row) => row.verdict === "FAIL").length,
       blocked: evidenceRows.filter((row) => row.verdict === "BLOCKED").length,
-      notTested: evidenceRows.filter((row) => row.verdict === ("NOT-TESTED" as UatEvidenceVerdict))
-        .length,
+      notTested: missingIds.length + evidenceRows.filter((row) => row.verdict === "NOT-TESTED").length,
     },
   };
   fs.writeFileSync(REPORT_JSON, JSON.stringify(report, null, 2));
@@ -270,6 +292,8 @@ function writeReports() {
       "| UAT ID | Route | UI state | Device | Verdict | Deployment SHA | Auth | Console errs | Network errs | Persistence violations |",
       "|---|---|---|---|---|---|---|---:|---:|---:|",
       ...table,
+      "",
+      `Missing / NOT-TESTED UAT IDs: ${missingIds.join(", ") || "none"}`,
       "",
       "Physical camera/device certification is **not** claimed by browser-emulated phone evidence (UAT-0127).",
     ].join("\n"),
@@ -295,7 +319,7 @@ test.describe("Central census UAT read-only evidence", () => {
         expect(loginMeta.authResult).toBe("authenticated");
 
         const row = await exerciseCase(page, caseRow, loginMeta);
-        evidenceRows.push(row);
+        recordEvidence(row);
 
         if (row.verdict === "FAIL") {
           expect.soft(row.verdict, row.notes.join("; ")).toBe("PASS");
@@ -327,7 +351,7 @@ test.describe("Central census UAT read-only evidence", () => {
           physicalDeviceCertification:
             caseRow.uiState === "camera-capture-flow" ? "browser-emulated-only" : "not-applicable",
         };
-        evidenceRows.push(blockedRow);
+        recordEvidence(blockedRow);
         expect.soft(false, blockedRow.notes[0]).toBe(true);
       } finally {
         await context.close();
