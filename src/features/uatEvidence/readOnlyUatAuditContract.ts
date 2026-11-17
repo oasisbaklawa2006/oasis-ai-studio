@@ -18,8 +18,8 @@ export const READ_ONLY_UAT_FORBIDDEN_CONTROL_LABELS: readonly string[] = [
 ];
 
 const MUTATING_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-// All allowlisted Core RPC definitions and transitive calls were verified against
-// live pg_proc on 2026-11-17: STABLE SQL SELECT-only role/permission lookups.
+// Live Core role and permission lookups use STABLE SQL. The SKU preview is a
+// SELECT-only PL/pgSQL calculation that neither reserves nor persists a SKU.
 // PostgREST transports these read-only functions as POST. Exact names only.
 const READ_ONLY_RPC_FUNCTIONS = new Set([
   "get_current_user_roles",
@@ -39,8 +39,6 @@ export function isForbiddenReadOnlyUatPersistenceRequest(method: string, url: st
   const upper = method.toUpperCase();
   if (!MUTATING_HTTP_METHODS.has(upper)) return false;
 
-  if (/supabase\.co\/auth\/v1\//i.test(url)) return false;
-
   if (/supabase\.co/i.test(url)) {
     // Supabase Storage uses POST for object listing (a read). This one exact
     // bucket/list route is allowed; uploads, deletes, moves and copies are not.
@@ -50,16 +48,21 @@ export function isForbiddenReadOnlyUatPersistenceRequest(method: string, url: st
     } catch {
       return true;
     }
-    if (/storage\/v1\/object/i.test(url)) {
+    const isSupabaseHost = parsed.hostname.endsWith(".supabase.co");
+    if (isSupabaseHost && parsed.pathname.startsWith("/auth/v1/")) return false;
+
+    if (/^\/storage\/v1\/object(?:\/|$)/i.test(parsed.pathname)) {
       return !(
         upper === "POST" &&
-        parsed.hostname.endsWith(".supabase.co") &&
+        isSupabaseHost &&
         parsed.pathname === "/storage/v1/object/list/product-media"
       );
     }
-    const rpcName = url.match(/supabase\.co\/rest\/v1\/rpc\/([^/?#]+)/i)?.[1].toLowerCase();
-    if (rpcName) return upper !== "POST" || !READ_ONLY_RPC_FUNCTIONS.has(rpcName);
-    if (/rest\/v1\//i.test(url)) return true;
+    const rpcName = parsed.pathname.match(/^\/rest\/v1\/rpc\/([^/]+)$/)?.[1];
+    if (rpcName && isSupabaseHost) {
+      return upper !== "POST" || !READ_ONLY_RPC_FUNCTIONS.has(rpcName);
+    }
+    if (/^\/rest\/v1(?:\/|$)/i.test(parsed.pathname)) return true;
   }
 
   return false;

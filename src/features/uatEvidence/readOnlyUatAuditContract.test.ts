@@ -94,41 +94,37 @@ describe("readOnlyUatAuditContract", () => {
       "is_admin",
       "get_my_role_keys",
     ]) {
-      expect(isForbiddenReadOnlyUatPersistenceRequest("POST", base + rpc)).toBe(false);
-      expect(isForbiddenReadOnlyUatPersistenceRequest("PATCH", base + rpc)).toBe(true);
-      expect(isForbiddenReadOnlyUatPersistenceRequest("DELETE", base + rpc)).toBe(true);
+      expect(isForbiddenReadOnlyUatPersistenceRequest("POST", `${base}${rpc}`)).toBe(false);
+      expect(isForbiddenReadOnlyUatPersistenceRequest("PATCH", `${base}${rpc}`)).toBe(true);
+      expect(isForbiddenReadOnlyUatPersistenceRequest("DELETE", `${base}${rpc}`)).toBe(true);
     }
     for (const rpc of [
       "set_ai_studio_access_v1",
       "approve_catalogue_draft_internal",
       "is_admin_write",
       "get_my_role_keys_update",
+      "get_my_role_keys/extra",
     ]) {
-      expect(isForbiddenReadOnlyUatPersistenceRequest("POST", base + rpc)).toBe(true);
+      expect(isForbiddenReadOnlyUatPersistenceRequest("POST", `${base}${rpc}`)).toBe(true);
     }
   });
 
   it("allows only product-media Storage listing, not upload, move, copy or delete", () => {
     const root = "https://tcxvcatsqqertcnycuop.supabase.co/storage/v1/object/";
-    expect(
-      isForbiddenReadOnlyUatPersistenceRequest("POST", root + "list/product-media"),
-    ).toBe(false);
+    const listUrl = `${root}list/product-media`;
+    expect(isForbiddenReadOnlyUatPersistenceRequest("POST", listUrl)).toBe(false);
     for (const path of [
       "list/product-media-raw",
-      "list/private-product-media-staging",
+      "list/product-media-staging",
       "product-media/products/image.jpg",
       "move",
       "copy",
       "sign/product-media/products/image.jpg",
     ]) {
-      expect(isForbiddenReadOnlyUatPersistenceRequest("POST", root + path)).toBe(true);
+      expect(isForbiddenReadOnlyUatPersistenceRequest("POST", `${root}${path}`)).toBe(true);
     }
-    expect(
-      isForbiddenReadOnlyUatPersistenceRequest("DELETE", root + "list/product-media"),
-    ).toBe(true);
-    expect(
-      isForbiddenReadOnlyUatPersistenceRequest("PUT", root + "list/product-media"),
-    ).toBe(true);
+    expect(isForbiddenReadOnlyUatPersistenceRequest("DELETE", listUrl)).toBe(true);
+    expect(isForbiddenReadOnlyUatPersistenceRequest("PUT", listUrl)).toBe(true);
   });
 
   it("collects unique persistence violations from request log", () => {
