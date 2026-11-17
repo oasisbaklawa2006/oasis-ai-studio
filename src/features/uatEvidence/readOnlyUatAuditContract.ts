@@ -18,14 +18,17 @@ export const READ_ONLY_UAT_FORBIDDEN_CONTROL_LABELS: readonly string[] = [
 ];
 
 const MUTATING_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-// Core public.has_ai_studio_permission_v1(text) is a STABLE, SELECT-only permission
-// resolver (verified against the live Core pg_proc definition and grants on
-// 2026-11-17). PostgREST transports RPC calls as POST even for read-only SQL.
-// Keep this a closed list: an unverified RPC is treated as a mutation.
+// All allowlisted Core RPC definitions and transitive calls were verified against
+// live pg_proc on 2026-11-17: STABLE SQL SELECT-only role/permission lookups.
+// PostgREST transports these read-only functions as POST. Exact names only.
 const READ_ONLY_RPC_FUNCTIONS = new Set([
   "get_current_user_roles",
   "generate_oasis_sku",
   "has_ai_studio_permission_v1",
+  "can_manage_ai_studio_access_v1",
+  "is_catalogue_reviewer",
+  "is_admin",
+  "get_my_role_keys",
 ]);
 
 /**
@@ -39,9 +42,23 @@ export function isForbiddenReadOnlyUatPersistenceRequest(method: string, url: st
   if (/supabase\.co\/auth\/v1\//i.test(url)) return false;
 
   if (/supabase\.co/i.test(url)) {
-    if (/storage\/v1\/object/i.test(url)) return true;
+    // Supabase Storage uses POST for object listing (a read). This one exact
+    // bucket/list route is allowed; uploads, deletes, moves and copies are not.
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return true;
+    }
+    if (/storage\/v1\/object/i.test(url)) {
+      return !(
+        upper === "POST" &&
+        parsed.hostname.endsWith(".supabase.co") &&
+        parsed.pathname === "/storage/v1/object/list/product-media"
+      );
+    }
     const rpcName = url.match(/supabase\.co\/rest\/v1\/rpc\/([^/?#]+)/i)?.[1].toLowerCase();
-    if (rpcName) return !READ_ONLY_RPC_FUNCTIONS.has(rpcName);
+    if (rpcName) return upper !== "POST" || !READ_ONLY_RPC_FUNCTIONS.has(rpcName);
     if (/rest\/v1\//i.test(url)) return true;
   }
 
