@@ -90,6 +90,7 @@ describe("readOnlyUatAuditContract", () => {
     for (const rpc of [
       "has_ai_studio_permission_v1",
       "can_manage_ai_studio_access_v1",
+      "has_catalogue_permission",
       "is_catalogue_reviewer",
       "is_admin",
       "get_my_role_keys",
