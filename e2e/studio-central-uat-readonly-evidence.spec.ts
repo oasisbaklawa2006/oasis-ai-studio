@@ -23,7 +23,11 @@ const REPORT_JSON = path.join(ROOT, "studio-central-uat-evidence.json");
 const REPORT_MD = path.join(ROOT, "STUDIO_CENTRAL_UAT_EVIDENCE.md");
 // Playwright restarts workers after failed tests, so module-level arrays lose
 // earlier cases. Persist each case independently before generating summaries.
-const CASE_EVIDENCE_DIR = path.join(ROOT, "uat-case-evidence", process.env.GITHUB_RUN_ID || "local");
+const CASE_EVIDENCE_DIR = path.join(
+  ROOT,
+  "uat-case-evidence",
+  process.env.GITHUB_RUN_ID || "local",
+);
 
 type UatEvidenceRow = {
   uatId: string;
@@ -146,14 +150,16 @@ async function exerciseCase(
     });
     // Do not classify a transient membership-loading screen as the destination.
     // The read-only Core permission RPC must complete before inspecting controls.
-    await page.waitForFunction(
-      () => {
-        const text = document.body?.innerText ?? "";
-        return text.trim().length > 0 && !text.includes("Checking Studio membership");
-      },
-      null,
-      { timeout: 15_000 },
-    ).catch(() => notes.push("Studio membership verification did not finish within 15 seconds."));
+    await page
+      .waitForFunction(
+        () => {
+          const text = document.body?.innerText ?? "";
+          return text.trim().length > 0 && !text.includes("Checking Studio membership");
+        },
+        null,
+        { timeout: 15_000 },
+      )
+      .catch(() => notes.push("Studio membership verification did not finish within 15 seconds."));
   } catch (error) {
     notes.push(`Navigation error: ${String(error)}`);
   }
@@ -205,7 +211,9 @@ async function exerciseCase(
     .count();
   const inaccessible =
     /\/auth(?:\?|$)/.test(finalUrl) ||
-    /access denied|permission required|AI Studio access not approved|Unable to verify AI Studio access/i.test(body);
+    /access denied|permission required|AI Studio access not approved|Unable to verify AI Studio access/i.test(
+      body,
+    );
   const fatal =
     overlay > 0 ||
     body.trim().length === 0 ||
