@@ -43,6 +43,34 @@ describe("readOnlyUatAuditContract", () => {
         "https://xyz.supabase.co/rest/v1/rpc/generate_oasis_sku",
       ),
     ).toBe(false);
+    // Live Core verifies this is a STABLE SELECT-only resolver. Its POST
+    // transport must not prevent the protected Studio shell from loading.
+    expect(
+      isForbiddenReadOnlyUatPersistenceRequest(
+        "POST",
+        "https://xyz.supabase.co/rest/v1/rpc/has_ai_studio_permission_v1",
+      ),
+    ).toBe(false);
+    // Exact RPC name matching: no prefix/suffix, query-string, or wildcard bypass.
+    for (const rpc of [
+      "has_ai_studio_permission_v1_write",
+      "set_ai_studio_access_v1",
+      "approve_catalogue_media_submission",
+      "write_product",
+    ]) {
+      expect(
+        isForbiddenReadOnlyUatPersistenceRequest(
+          "POST",
+          `https://xyz.supabase.co/rest/v1/rpc/${rpc}`,
+        ),
+      ).toBe(true);
+    }
+    expect(
+      isForbiddenReadOnlyUatPersistenceRequest(
+        "POST",
+        "https://xyz.supabase.co/rest/v1/rpc/write_product?hint=has_ai_studio_permission_v1",
+      ),
+    ).toBe(true);
     expect(
       isForbiddenReadOnlyUatPersistenceRequest(
         "POST",

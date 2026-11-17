@@ -1,8 +1,10 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
+import { approvedStudioOrigin } from "../scripts/verify-studio-audit-target.mjs";
+import { assertStudioPageOrigin, installStudioAuditRouting } from "./studio-audit-security";
 
-const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
+const STUDIO_URL = approvedStudioOrigin(process.env);
 const EMAIL = process.env.TEST_STUDIO_EMAIL || "";
 const PASSWORD = process.env.TEST_STUDIO_PASSWORD || "";
 const EXPECTED_DEPLOYMENT_SHA = process.env.EXPECTED_DEPLOYMENT_SHA || "";
@@ -91,21 +93,11 @@ function classify(
 }
 
 async function login(page: Page) {
-  const studioOrigin = new URL(STUDIO_URL).origin;
-  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  if (bypassSecret) {
-    await page.context().route(`${studioOrigin}/**`, async (route) => {
-      await route.continue({
-        headers: {
-          ...route.request().headers(),
-          "x-vercel-protection-bypass": bypassSecret,
-        },
-      });
-    });
-  }
+  await installStudioAuditRouting(page.context());
   const deploymentDeadline = Date.now() + 8 * 60_000;
   for (;;) {
     await page.goto(`${STUDIO_URL}/auth`, { waitUntil: "domcontentloaded" });
+    assertStudioPageOrigin(page);
     if (!EXPECTED_DEPLOYMENT_SHA) break;
     const deployedCommit = await page
       .locator('meta[name="oasis-build-commit"]')
@@ -119,10 +111,12 @@ async function login(page: Page) {
     }
     await page.waitForTimeout(10_000);
   }
+  assertStudioPageOrigin(page);
   await page.getByLabel("Email").fill(EMAIL);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL((url) => !url.pathname.includes("/auth"), { timeout: 60_000 });
+  assertStudioPageOrigin(page);
 }
 
 async function auditRoute(page: Page, name: string, route: string) {

@@ -18,7 +18,15 @@ export const READ_ONLY_UAT_FORBIDDEN_CONTROL_LABELS: readonly string[] = [
 ];
 
 const MUTATING_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const READ_ONLY_RPC_FUNCTIONS = new Set(["get_current_user_roles", "generate_oasis_sku"]);
+// Core public.has_ai_studio_permission_v1(text) is a STABLE, SELECT-only permission
+// resolver (verified against the live Core pg_proc definition and grants on
+// 2026-11-17). PostgREST transports RPC calls as POST even for read-only SQL.
+// Keep this a closed list: an unverified RPC is treated as a mutation.
+const READ_ONLY_RPC_FUNCTIONS = new Set([
+  "get_current_user_roles",
+  "generate_oasis_sku",
+  "has_ai_studio_permission_v1",
+]);
 
 /**
  * Returns true when a network request would violate the read-only audit contract.
