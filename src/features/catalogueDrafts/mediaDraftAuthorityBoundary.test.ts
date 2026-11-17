@@ -79,6 +79,24 @@ describe("Core #484 — protected media replacement and blocked upload reports",
     expect(flow).toContain("uploadedCount} file(s) uploaded");
     expect(flow).not.toContain("files.length} file(s) uploaded");
   });
+
+  it("leaves prior media operations current when a draft or slot upload is blocked", () => {
+    const src = uploader();
+    const draft = src.slice(
+      src.indexOf("const uploadFileDraft = async"),
+      src.indexOf("const uploadToSlot = async"),
+    );
+    const slot = src.slice(
+      src.indexOf("const uploadToSlot = async"),
+      src.indexOf("const upload = async"),
+    );
+    const reservation = "const operationId = beginProductMediaOperation(requestProductId)";
+
+    expect(draft).toMatch(/if \(upErr\) \{[^}]*return false;\s*\}/);
+    expect(draft.indexOf(reservation)).toBeGreaterThan(draft.indexOf("return false;"));
+    expect(slot).toContain(`} else if (url) {\n        ${reservation}`);
+    expect(slot.indexOf(reservation)).toBeGreaterThan(slot.indexOf("} else if (url) {"));
+  });
 });
 
 describe("Core #484 — stale draft URL completion stays scoped to its product", () => {

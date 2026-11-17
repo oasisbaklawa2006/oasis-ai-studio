@@ -359,13 +359,13 @@ export function ProductMediaUploader({
     } = {},
   ) => {
     const requestProductId = productId;
-    const operationId = beginProductMediaOperation(requestProductId);
     const path = buildStagingMediaPath(storageFolder, file.name);
     const { error: upErr } = await uploadMediaFileToStorage(path, file);
     if (upErr) {
       toast.error(formatMediaStorageError(upErr));
       return false;
     }
+    const operationId = beginProductMediaOperation(requestProductId);
     const url = getMediaPublicUrl(path);
     const mediaType = opts.isVideo ? "video" : opts.asHeroType ? "hero_image" : type;
     // Draft submission must not create a product_media row. Core approval
@@ -425,7 +425,6 @@ export function ProductMediaUploader({
         return;
       }
       const requestProductId = productId;
-      const operationId = beginProductMediaOperation(requestProductId);
       const url = await uploadFileDirect(files[0], asHero, false);
       if (url && asHero) {
         try {
@@ -466,6 +465,7 @@ export function ProductMediaUploader({
           }
         }
       } else if (url) {
+        const operationId = beginProductMediaOperation(requestProductId);
         try {
           await reconcileProductMediaAuthority(requestProductId, operationId);
           if (!isSupersededByProductSwitch(requestProductId)) {
