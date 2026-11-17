@@ -18,7 +18,16 @@ export const READ_ONLY_UAT_FORBIDDEN_CONTROL_LABELS: readonly string[] = [
 ];
 
 const MUTATING_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const READ_ONLY_RPC_FUNCTIONS = new Set(["get_current_user_roles", "generate_oasis_sku"]);
+// Core migration 20261101030000_ai_studio_scoped_access_v1.sql defines
+// has_ai_studio_permission_v1(text) as SQL STABLE SECURITY DEFINER with a
+// SELECT EXISTS body, no side effects, and authenticated-only EXECUTE grants.
+// Supabase invokes this read-only authorization check via HTTP POST.
+// Keep the exception exact: unknown and mutating RPCs remain blocked.
+const READ_ONLY_RPC_FUNCTIONS = new Set([
+  "get_current_user_roles",
+  "generate_oasis_sku",
+  "has_ai_studio_permission_v1",
+]);
 
 /**
  * Returns true when a network request would violate the read-only audit contract.
