@@ -18,7 +18,19 @@ export const READ_ONLY_UAT_FORBIDDEN_CONTROL_LABELS: readonly string[] = [
 ];
 
 const MUTATING_HTTP_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
-const READ_ONLY_RPC_FUNCTIONS = new Set(["get_current_user_roles", "generate_oasis_sku"]);
+// Live Core role and permission lookups use STABLE SQL. The SKU preview is a
+// SELECT-only PL/pgSQL calculation that neither reserves nor persists a SKU.
+// PostgREST transports these read-only functions as POST. Exact names only.
+const READ_ONLY_RPC_FUNCTIONS = new Set([
+  "get_current_user_roles",
+  "generate_oasis_sku",
+  "has_ai_studio_permission_v1",
+  "can_manage_ai_studio_access_v1",
+  "is_catalogue_reviewer",
+  "is_admin",
+  "get_my_role_keys",
+  "can_write_product_master",
+]);
 
 /**
  * Returns true when a network request would violate the read-only audit contract.
@@ -28,13 +40,30 @@ export function isForbiddenReadOnlyUatPersistenceRequest(method: string, url: st
   const upper = method.toUpperCase();
   if (!MUTATING_HTTP_METHODS.has(upper)) return false;
 
-  if (/supabase\.co\/auth\/v1\//i.test(url)) return false;
-
   if (/supabase\.co/i.test(url)) {
-    if (/storage\/v1\/object/i.test(url)) return true;
-    const rpcName = url.match(/supabase\.co\/rest\/v1\/rpc\/([^/?#]+)/i)?.[1].toLowerCase();
-    if (rpcName) return !READ_ONLY_RPC_FUNCTIONS.has(rpcName);
-    if (/rest\/v1\//i.test(url)) return true;
+    // Supabase Storage uses POST for object listing (a read). This one exact
+    // bucket/list route is allowed; uploads, deletes, moves and copies are not.
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return true;
+    }
+    const isSupabaseHost = parsed.hostname.endsWith(".supabase.co");
+    if (isSupabaseHost && parsed.pathname.startsWith("/auth/v1/")) return false;
+
+    if (/^\/storage\/v1\/object(?:\/|$)/i.test(parsed.pathname)) {
+      return !(
+        upper === "POST" &&
+        isSupabaseHost &&
+        parsed.pathname === "/storage/v1/object/list/product-media"
+      );
+    }
+    const rpcName = parsed.pathname.match(/^\/rest\/v1\/rpc\/([^/]+)$/)?.[1];
+    if (rpcName && isSupabaseHost) {
+      return upper !== "POST" || !READ_ONLY_RPC_FUNCTIONS.has(rpcName);
+    }
+    if (/^\/rest\/v1(?:\/|$)/i.test(parsed.pathname)) return true;
   }
 
   return false;
