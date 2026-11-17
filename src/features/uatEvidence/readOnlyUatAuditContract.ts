@@ -30,6 +30,7 @@ const READ_ONLY_RPC_FUNCTIONS = new Set([
   "is_catalogue_reviewer",
   "is_admin",
   "get_my_role_keys",
+  "can_write_product_master",
 ]);
 
 /**

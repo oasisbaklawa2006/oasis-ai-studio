@@ -94,6 +94,7 @@ describe("readOnlyUatAuditContract", () => {
       "is_catalogue_reviewer",
       "is_admin",
       "get_my_role_keys",
+      "can_write_product_master",
     ]) {
       expect(isForbiddenReadOnlyUatPersistenceRequest("POST", `${base}${rpc}`)).toBe(false);
       expect(isForbiddenReadOnlyUatPersistenceRequest("PATCH", `${base}${rpc}`)).toBe(true);
