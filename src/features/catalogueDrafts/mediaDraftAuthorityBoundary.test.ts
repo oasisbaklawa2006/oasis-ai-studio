@@ -62,7 +62,7 @@ describe("Media Library camera capture", () => {
     };
     visitCamera(file);
 
-    expect(cameraInput).toContain('ref={cameraRef}');
+    expect(cameraInput).toContain("ref={cameraRef}");
     expect(cameraInput).toContain("previewCameraFile(e.currentTarget.files?.[0])");
     expect(cameraInput).not.toContain("handleFiles");
 

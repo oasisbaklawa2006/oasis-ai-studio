@@ -111,7 +111,9 @@ const Media = () => {
       .order("created_at", { ascending: false });
     if (!mounted.current || mediaLoadRequest.current !== request) return;
     if (error) {
-      toast.error("Media library refresh failed. Existing items are preserved; verify before retrying.");
+      toast.error(
+        "Media library refresh failed. Existing items are preserved; verify before retrying.",
+      );
       return;
     }
     setMedia(data ?? []);
