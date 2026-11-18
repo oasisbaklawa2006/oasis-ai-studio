@@ -3,8 +3,8 @@
 ## Why this exists
 
 Catalogue Product AI Studio was built in this repo (`oasis-ai-studio`) after an
-earlier attempt landed it in the wrong repo (Oasis-Baklawa-Central, PR
-#223/#224/#225 — since decommissioned there). This document records the
+earlier attempt landed it in the wrong repo (Oasis-Baklawa-Central,
+PRs #223, #224 and #225 — since decommissioned there). This document records the
 resulting three-repo ownership split so oasis-ai-studio does not, in turn,
 absorb Central's operations workflows or oasis-supabase-core's backend/schema
 authority, and `scripts/check-repo-boundaries.sh` enforces it in CI.
@@ -76,11 +76,66 @@ i.e. schema ownership actually being reintroduced going forward:
 Migrating the legacy `supabase/` content out of this repo is a separate,
 deliberate effort, not something this check performs or blocks on.
 
+## G5 archival Core snapshot admission — one-time only
+
+Production Edge Functions, database migrations, RLS and runtime deployments remain owned **exclusively** by
+`oasis-supabase-core`. Studio must not create or maintain backend logic. A historical `supabase/functions/**`
+copy exists in this frontend repository. It is consumed by BOTH the frontend test-only TypeScript
+re-export bridges and the legacy Studio Edge Function
+`supabase/functions/whatsapp-studio-inbox-bridge/index.ts`. The Edge Function imports
+`processErpInboundRow` directly and calls it when processing ERP inbound rows.
+Consequently, this copy is not inert: redeploying the legacy Studio function
+would bundle whatever source is present in the Studio checkout.
+
+Core PR [#493](https://github.com/oasisbaklawa2006/oasis-supabase-core/pull/493) was independently reviewed and
+merged (`fb47a9508dad3d676776ae8fe0172b67c8284d71`) to correct a genuine TypeScript union-narrowing problem in
+the canonical ERP inbox source. An **explicitly separately approved** one-time source provenance synchronization
+may update the pre-existing historical Studio copy to precisely that already-approved Core Git blob. This is a
+one-off archival refresh, **not** permission to author, deploy, or modify Edge backend functionality in Studio.
+
+### Edge Runtime redeployment hazard and release containment
+
+- **Never deploy or redeploy** `whatsapp-studio-inbox-bridge` or any other
+  Supabase Function from an AI Studio checkout, whether manually using the CLI,
+  through CI, from a cached preview artifact, or through a generic deploy action.
+  This restriction applies **before and after** the one-time snapshot refresh.
+- A frontend/Vercel deployment must never trigger a Supabase Functions or
+  migration deployment. Supabase production auto-deployment remains disabled.
+  Keep `BRIDGE_ENABLED=false` and its scheduler disabled unless separately
+  certified and explicitly authorized through the existing Core release process.
+- The only authorized production Edge source is the reviewed canonical
+  `oasis-supabase-core` repository. If a bridge redeployment is ever needed,
+  it requires a **separate** Core-owned protected release, exact deployment
+  provenance, positive/negative runtime validation and rollback evidence.
+  This policy-only PR and downstream Studio #290 grant **no runtime release**.
+- The source-level union-narrowing fix is expected to preserve valid/skipped
+  mapping behavior, but matching a Git blob or passing a TypeScript build
+  does **not** demonstrate deployed runtime equivalence. Any deployment must
+  prove its own runtime and security gates rather than relying on the
+  frontend CI results.
+- Before admitting Studio #290, reviewers must confirm that no Studio
+  build/release path deploys `supabase/functions/**` and no automation can
+  publish the legacy bridge from Studio. If this cannot be verified, treat
+  the proposed exception as **BLOCKED** until corrected. Historical deployment
+  instructions in older Studio documentation are superseded by this policy.
+
+The narrow rule in `.cursor/BUGBOT.md` identifies the only permitted existing path, historical Studio blob,
+approved Core blob and immutable merge provenance. The proposed downstream Studio PR
+[#290](https://github.com/oasisbaklawa2006/oasis-ai-studio/pull/290) must independently prove those hashes and a
+negative-test matrix through its Core Backend Authority CI guard. If any other backend path is changed, or
+either blob does not match, the guard **must fail**. A future source refresh requires another independent policy
+decision, not a generic bypass.
+
+**Release order:** this policy proposal must first pass independent CODEOWNER/security review and protected
+merge; only then may the separate source-synchronization PR be re-reviewed against this approved rule. Both
+require their own exact-head checks and human approvals. Nothing here authorizes Studio production deployment or
+weakens the default rejection of new migration/Edge Function work.
+
 ## Mandatory pre-PR ownership gate
 
 Before opening a PR against this repo, run:
 
-```
+```bash
 npm run check:boundaries
 ```
 

@@ -34,10 +34,8 @@ export default defineConfig({
     video: "off",
     actionTimeout: 25_000,
     navigationTimeout: 60_000,
-    ignoreHTTPSErrors: true,
-    extraHTTPHeaders: vercelBypassSecret
-      ? { "x-vercel-protection-bypass": vercelBypassSecret }
-      : undefined,
+    ignoreHTTPSErrors: false,
+    serviceWorkers: "block",
   },
   projects: [
     {
