@@ -45,11 +45,8 @@ function draftBranchViolations(source: ts.SourceFile): string[] {
 describe("Media Library camera capture", () => {
   it("previews the camera file and waits for the explicit upload action", () => {
     const { text: source } = parseFile("src/pages/Media.tsx");
-    const start = source.indexOf("ref={cameraRef}");
-    const end = source.indexOf("Advanced: paste URL instead");
-    expect(start).toBeGreaterThanOrEqual(0);
-    expect(end).toBeGreaterThan(start);
-    const picker = source.slice(start, end);
+    const picker = source.split("ref={cameraRef}")[1]?.split("Advanced: paste URL instead")[0] ?? "";
+    expect(picker).not.toBe("");
     const [input] = picker.split("/>");
 
     expect(input).toContain("previewCameraFile(e.currentTarget.files?.[0])");
