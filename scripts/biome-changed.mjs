@@ -17,6 +17,8 @@ const changed = execFileSync(
   .map((file) => file.trim())
   .filter(Boolean)
   .filter((file) => file !== "package-lock.json")
+  // Canonical Core owns historical Edge source; Biome's Studio config excludes it.
+  .filter((file) => !file.startsWith("supabase/functions/"))
   .filter((file) => /\.(?:cjs|js|json|jsx|mjs|ts|tsx)$/.test(file))
   .filter((file) => existsSync(file));
 

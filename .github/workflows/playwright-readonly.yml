@@ -1,6 +1,11 @@
 name: Playwright read-only smoke
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/playwright-readonly.yml'
+      - '.github/workflows/full-app-e2e-audit.yml'
   push:
     branches: [main]
   workflow_dispatch:
@@ -18,8 +23,37 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  chromium-install-smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Launch Chromium headless without credentials
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from '@playwright/test';
+          const browser = await chromium.launch({ headless: true });
+          try {
+            const page = await browser.newPage();
+            await page.goto('about:blank');
+            if (page.url() !== 'about:blank') throw new Error('Unexpected browser navigation');
+            console.log('Chromium headless launch and blank-page navigation passed');
+          } finally {
+            await browser.close();
+          }
+          NODE
   product-authoring-audit:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
@@ -29,6 +63,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Verify approved audit origin, trusted main ref and SHA (no secrets)
+        env:
+          AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
+          AI_STUDIO_AUDIT_ALLOWED_ORIGINS: ${{ vars.AI_STUDIO_AUDIT_ALLOWED_ORIGINS }}
+          EXPECTED_DEPLOYMENT_SHA: ${{ github.sha }}
+          PRODUCT_AUTHORING_SAVE: "0"
+        run: node scripts/verify-studio-audit-target.mjs
       - name: Verify protected test configuration
         env:
           AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
@@ -40,10 +81,12 @@ jobs:
         run: npm run test:product-authoring-audit
         env:
           AI_STUDIO_URL: ${{ inputs.studio_url || 'https://oasis-ai-studio.vercel.app' }}
+          AI_STUDIO_AUDIT_ALLOWED_ORIGINS: ${{ vars.AI_STUDIO_AUDIT_ALLOWED_ORIGINS }}
           TEST_STUDIO_EMAIL: ${{ secrets.TEST_STUDIO_EMAIL }}
           TEST_STUDIO_PASSWORD: ${{ secrets.TEST_STUDIO_PASSWORD }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
           PRODUCT_AUTHORING_SAVE: "0"
+          EXPECTED_DEPLOYMENT_SHA: ${{ github.sha }}
       - name: Upload read-only audit evidence
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
