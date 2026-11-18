@@ -63,11 +63,7 @@ it("locks media inputs during URL save and retains the newest library response",
     const input = document.querySelector<HTMLInputElement>('input[placeholder="https://…"]');
     if (!input) throw new Error("Missing URL input");
     await act(async () => {
-      const inputPrototype = Object.getPrototypeOf(input) as HTMLInputElement;
-      Reflect.getOwnPropertyDescriptor(inputPrototype, "value")?.set?.call(
-        input,
-        "https://example.invalid/media.jpg",
-      );
+      input.setRangeText("https://example.invalid/media.jpg", 0, input.value.length, "end");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await act(async () => {
