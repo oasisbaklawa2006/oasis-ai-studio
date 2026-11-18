@@ -69,12 +69,14 @@ const Media = () => {
   const cameraRef = useRef<HTMLInputElement>(null);
   const dialogSession = useRef(0);
   const mounted = useRef(false);
+  const mediaLoadRequest = useRef(0);
 
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       dialogSession.current += 1;
+      mediaLoadRequest.current += 1;
     };
   }, []);
 
@@ -102,11 +104,12 @@ const Media = () => {
   };
 
   const load = async () => {
+    const request = ++mediaLoadRequest.current;
     const { data } = await supabase
       .from("product_media")
       .select("*, products(product_name, sku)")
       .order("created_at", { ascending: false });
-    if (mounted.current) setMedia(data ?? []);
+    if (mounted.current && mediaLoadRequest.current === request) setMedia(data ?? []);
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only load of media library and product picker
@@ -299,28 +302,33 @@ const Media = () => {
     }
 
     const session = dialogSession.current;
-    const insertRes = await insertProductMediaRow({
-      product_id: form.product_id || null,
-      file_url: form.file_url,
-      type: form.type,
-      angle: form.angle,
-      alt_text: form.alt_text || "url_import",
-      status: form.status,
-    });
-    if (!mounted.current) return;
-    if (!insertRes.ok) return toast.error(insertRes.message);
-    toast.success("Media added");
-    load();
-    if (dialogSession.current !== session) return;
-    changeDialogOpen(false);
-    setForm({
-      file_url: "",
-      type: "raw_photo",
-      angle: "front",
-      alt_text: "",
-      product_id: "",
-      status: "raw",
-    });
+    setUploading(true);
+    try {
+      const insertRes = await insertProductMediaRow({
+        product_id: form.product_id || null,
+        file_url: form.file_url,
+        type: form.type,
+        angle: form.angle,
+        alt_text: form.alt_text || "url_import",
+        status: form.status,
+      });
+      if (!mounted.current) return;
+      if (!insertRes.ok) return toast.error(insertRes.message);
+      toast.success("Media added");
+      load();
+      if (dialogSession.current !== session) return;
+      changeDialogOpen(false);
+      setForm({
+        file_url: "",
+        type: "raw_photo",
+        angle: "front",
+        alt_text: "",
+        product_id: "",
+        status: "raw",
+      });
+    } finally {
+      if (mounted.current) setUploading(false);
+    }
   };
 
   return (
