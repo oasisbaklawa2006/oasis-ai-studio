@@ -292,13 +292,14 @@ const Media = () => {
           toast.error(res.message);
           return;
         }
+        if (!mounted.current) return;
         load();
-        if (!mounted.current || dialogSession.current !== session) return;
         setPendingNotices((prev) => [
           ...prev,
           `URL import — submitted for approval (not live until review)`,
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
+        if (dialogSession.current !== session) return;
         changeDialogOpen(false);
         setForm({
           file_url: "",
