@@ -39,6 +39,7 @@ import {
 import {
   FAST_CREATE_SKU_BLOCK_MESSAGE,
   requireFastCreateSku,
+  resolveFastCreateSubmitReceipt,
   saveFastCreateProduct,
 } from "@/features/fastCreate/saveFastCreateProduct";
 import { deriveShortSku } from "@/features/fastCreate/shortSku";
@@ -287,16 +288,14 @@ const FastCreateProduct = () => {
         saleType: draft.saleType,
       });
 
-      clearFastCreateDraft();
-
-      if ("draft" in result) {
-        toast.success("Product draft submitted for approval.");
-        nav("/approvals");
-        return;
+      const receipt = resolveFastCreateSubmitReceipt(result);
+      if (receipt.clearDraft) clearFastCreateDraft();
+      if (receipt.tone === "warning") {
+        toast.warning(receipt.message, { duration: 12000 });
+      } else {
+        toast.success(receipt.message);
       }
-
-      toast.success(`Product draft created (${result.sku}) — opening full editor.`);
-      nav(`/products/${result.id}`);
+      if (receipt.navigateTo) nav(receipt.navigateTo);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Create failed");
     } finally {
