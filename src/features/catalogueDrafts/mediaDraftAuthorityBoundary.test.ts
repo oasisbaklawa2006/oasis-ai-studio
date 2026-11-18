@@ -39,6 +39,21 @@ function draftBranchViolations(source: ts.SourceFile): string[] {
   return problems;
 }
 
+describe("Media Library camera capture", () => {
+  it("previews the camera file and waits for the explicit upload action", () => {
+    const { text: source } = parseFile("src/pages/Media.tsx");
+    const picker = source.slice(source.indexOf("ref={cameraRef}"), source.indexOf("<details"));
+    const [input] = picker.split("/>");
+
+    expect(input).toContain("previewCameraFile(e.currentTarget.files?.[0])");
+    expect(input).not.toContain("handleFiles");
+    expect(picker).toContain("src={capturedPhoto.url}");
+    expect(picker).toMatch(
+      /onClick=\{\(\) => handleFiles\(\[capturedPhoto.file\]\)\}[\s\S]*?Upload photo/,
+    );
+  });
+});
+
 describe("Core #484 — protected media replacement and blocked upload reports", () => {
   const uploader = () =>
     readFileSync(resolve(ROOT, "src/components/ProductMediaUploader.tsx"), "utf8");

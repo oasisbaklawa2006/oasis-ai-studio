@@ -55,6 +55,7 @@ const Media = () => {
   const [products, setProducts] = useState<MediaLibraryProduct[]>([]);
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<{ file: File; url: string } | null>(null);
   const [pendingNotices, setPendingNotices] = useState<string[]>([]);
   const [form, setForm] = useState({
     file_url: "",
@@ -66,6 +67,28 @@ const Media = () => {
   });
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const url = capturedPhoto?.url;
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [capturedPhoto]);
+
+  const changeDialogOpen = (nextOpen: boolean) => {
+    if (!nextOpen) setCapturedPhoto(null);
+    setOpen(nextOpen);
+  };
+
+  const previewCameraFile = (file: File | undefined) => {
+    if (!file || !canMutate || uploading) return;
+    const error = validateMediaFile(file, IMAGE_MIME_TYPES);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setCapturedPhoto({ file, url: URL.createObjectURL(file) });
+  };
 
   const load = async () => {
     const { data } = await supabase
@@ -91,7 +114,7 @@ const Media = () => {
 
   const allowedMimeTypes = form.type === "video" ? VIDEO_MIME_TYPES : IMAGE_MIME_TYPES;
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = async (files: FileList | readonly File[] | null) => {
     if (!files || files.length === 0 || !canMutate) return;
     setUploading(true);
     try {
@@ -153,7 +176,7 @@ const Media = () => {
             `${submitted} media submission${submitted === 1 ? "" : "s"} uploaded and submitted for approval.`,
           );
           load();
-          setOpen(false);
+          changeDialogOpen(false);
           setForm({
             file_url: "",
             type: "raw_photo",
@@ -194,7 +217,7 @@ const Media = () => {
         return;
       }
       toast.success(`${uploaded} file(s) uploaded`);
-      setOpen(false);
+      changeDialogOpen(false);
       setForm({
         file_url: "",
         type: "raw_photo",
@@ -248,7 +271,7 @@ const Media = () => {
           `URL import — submitted for approval (not live until review)`,
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
-        setOpen(false);
+        changeDialogOpen(false);
         setForm({
           file_url: "",
           type: "raw_photo",
@@ -274,7 +297,7 @@ const Media = () => {
     });
     if (!insertRes.ok) return toast.error(insertRes.message);
     toast.success("Media added");
-    setOpen(false);
+    changeDialogOpen(false);
     setForm({
       file_url: "",
       type: "raw_photo",
@@ -297,7 +320,7 @@ const Media = () => {
               <Link to="/media/review">Media Review</Link>
             </Button>
             {canMutate ? (
-              <Dialog open={open} onOpenChange={setOpen}>
+              <Dialog open={open} onOpenChange={changeDialogOpen}>
                 <DialogTrigger asChild>
                   <Button disabled={uploading}>
                     <Plus className="h-4 w-4 mr-1" />
@@ -432,8 +455,38 @@ const Media = () => {
                       accept="image/*"
                       capture="environment"
                       hidden
-                      onChange={(e) => handleFiles(e.target.files)}
+                      onChange={(e) => {
+                        previewCameraFile(e.currentTarget.files?.[0]);
+                        e.currentTarget.value = "";
+                      }}
                     />
+
+                    {capturedPhoto && (
+                      <div className="space-y-2">
+                        <img
+                          src={capturedPhoto.url}
+                          alt="Camera capture preview"
+                          className="max-h-48 w-full rounded-md object-contain"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={uploading}
+                            onClick={() => setCapturedPhoto(null)}
+                          >
+                            Discard photo
+                          </Button>
+                          <Button
+                            type="button"
+                            disabled={uploading}
+                            onClick={() => handleFiles([capturedPhoto.file])}
+                          >
+                            Upload photo
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground">

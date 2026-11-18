@@ -169,16 +169,22 @@ async function exerciseCase(
       "Browser-emulated phone evidence only — physical camera/device certification is a separate gate.",
     );
     const addMedia = page.getByRole("button", { name: /add media/i });
-    if (!(await addMedia.isVisible().catch(() => false))) {
+    const addMediaVisible = await addMedia
+      .waitFor({ state: "visible", timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!addMediaVisible) {
       cameraFlowOk = false;
       notes.push(
-        "Add Media control not visible — cannot evidence camera-capture UI without mutation rights.",
+        "Add Media did not appear after waiting for media permission. Verify the audit account's existing Core media-write authority.",
       );
     } else {
       await addMedia.click();
-      await page.waitForTimeout(500);
       const takePhoto = page.getByRole("button", { name: /take photo/i });
-      const takePhotoVisible = await takePhoto.isVisible().catch(() => false);
+      const takePhotoVisible = await takePhoto
+        .waitFor({ state: "visible", timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false);
       const captureInput = page.locator('input[type="file"][capture="environment"]');
       const capturePresent = (await captureInput.count()) > 0;
       cameraFlowOk = takePhotoVisible && capturePresent;
