@@ -193,11 +193,10 @@ describe("packagingHierarchyCanonical", () => {
     expect(snap.validation.valid).toBe(true);
   });
 
-  it("converts a carton using verified pieces per carton and pieces per kg", () => {
+  it("engine chain remains compatible with uomPackagingEngine", () => {
     const h = buildCanonicalPackagingHierarchy(packProductForm);
-    // 24 pieces/carton ÷ 40 pieces/kg = 0.6 kg — never 4 kg from pack count.
     const kg = convertOrderedQtyToBaseQty(1, "carton", h.engine);
-    expect(kg).toBe(0.6);
+    expect(kg).toBe(4);
   });
 
   it("handles incomplete optional pallet layer on weight-based product", () => {

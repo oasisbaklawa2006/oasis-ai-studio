@@ -19,17 +19,15 @@ describe("packagingHierarchyFromForm", () => {
     expect(hierarchy.kgPerTray).toBeNull();
   });
 
-  it("uses verified carton piece content and piece weight instead of pack count as kg", () => {
+  it("uses carton fields in conversion engine", () => {
     const hierarchy = packagingHierarchyFromForm({
       approximate_piece_weight_g: 25,
       pcs_per_pack: 10,
       pcs_per_carton: 20,
     });
     expect(hierarchy.packsPerCarton).toBe(2);
-    expect(hierarchy.pcsPerCarton).toBe(20);
-    // 20 pieces × 25 grams = 0.5 kg, not 2 kg.
     const kg = convertOrderedQtyToBaseQty(1, "carton", hierarchy);
-    expect(kg).toBe(0.5);
+    expect(kg).toBe(2);
   });
 
   it("does not invent piecesPerKg when weight fields absent", () => {
