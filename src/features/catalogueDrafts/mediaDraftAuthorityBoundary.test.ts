@@ -1,14 +1,17 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import * as ts from "typescript";
 import { describe, expect, it } from "vitest";
+import uploaderSource from "../../components/ProductMediaUploader.tsx?raw";
+import mediaPageSource from "../../pages/Media.tsx?raw";
+import draftServiceSource from "./draftService.ts?raw";
 
-const ROOT = resolve(import.meta.dirname, "../../..");
 const forbiddenDraftWrites = new Set(["insertProductMediaRow", "persistMediaRow"]);
+const sources = {
+  "src/pages/Media.tsx": mediaPageSource,
+  "src/components/ProductMediaUploader.tsx": uploaderSource,
+} as const;
 
-function parseFile(path: string): ts.SourceFile {
-  const source = readFileSync(resolve(ROOT, path), "utf8");
-  return ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+function parseFile(path: keyof typeof sources): ts.SourceFile {
+  return ts.createSourceFile(path, sources[path], ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 }
 
 function forbiddenCallsIn(node: ts.Node, source: ts.SourceFile): string[] {
@@ -42,7 +45,11 @@ function draftBranchViolations(source: ts.SourceFile): string[] {
 describe("Media Library camera capture", () => {
   it("previews the camera file and waits for the explicit upload action", () => {
     const { text: source } = parseFile("src/pages/Media.tsx");
-    const picker = source.slice(source.indexOf("ref={cameraRef}"), source.indexOf("<details"));
+    const start = source.indexOf("ref={cameraRef}");
+    const end = source.search(/<details\b/);
+    expect(start).toBeGreaterThanOrEqual(0);
+    expect(end).toBeGreaterThan(start);
+    const picker = source.slice(start, end);
     const [input] = picker.split("/>");
 
     expect(input).toContain("previewCameraFile(e.currentTarget.files?.[0])");
@@ -55,8 +62,7 @@ describe("Media Library camera capture", () => {
 });
 
 describe("Core #484 — protected media replacement and blocked upload reports", () => {
-  const uploader = () =>
-    readFileSync(resolve(ROOT, "src/components/ProductMediaUploader.tsx"), "utf8");
+  const uploader = () => uploaderSource;
 
   it("does not demote an existing PDF hero before new hero upload and designation succeed", () => {
     const src = uploader();
@@ -115,8 +121,7 @@ describe("Core #484 — protected media replacement and blocked upload reports",
 });
 
 describe("Core #484 — stale draft URL completion stays scoped to its product", () => {
-  const source = () =>
-    readFileSync(resolve(ROOT, "src/components/ProductMediaUploader.tsx"), "utf8");
+  const source = () => uploaderSource;
 
   it("guards product-specific form and pending notice after draft submission awaits", () => {
     const flow = source().split("const addFromUrl = async")[1] ?? "";
@@ -161,10 +166,7 @@ describe("Core #484 — contributor media drafts never bypass review", () => {
     };
     visit(source);
     expect(found).toEqual([]);
-    const draftService = readFileSync(
-      resolve(ROOT, "src/features/catalogueDrafts/draftService.ts"),
-      "utf8",
-    );
+    const draftService = draftServiceSource;
     expect(draftService).toContain(".from(map.table).insert(insertRow)");
   });
 });
