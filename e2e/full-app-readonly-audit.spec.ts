@@ -89,7 +89,10 @@ function classify(
   if (inaccessible) return "not-accessible";
   if (fatal) return "wrongly-built";
   if (networkErrors.some((error) => /supabase\.co\/rest\/v1\//i.test(error))) return "partial";
-  if (/roadmap|future feature|setup required|not enabled/i.test(body)) return "on-hold";
+  if (
+    /roadmap|future feature|setup required|not enabled|capability awaiting activation/i.test(body)
+  )
+    return "on-hold";
   if (/coming soon|not implemented|placeholder|mapping not finalized|unavailable/i.test(body))
     return "partial";
   return "full-built";
