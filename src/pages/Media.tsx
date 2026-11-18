@@ -67,6 +67,16 @@ const Media = () => {
   });
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const dialogSession = useRef(0);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      dialogSession.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     const url = capturedPhoto?.url;
@@ -76,6 +86,7 @@ const Media = () => {
   }, [capturedPhoto]);
 
   const changeDialogOpen = (nextOpen: boolean) => {
+    dialogSession.current += 1;
     if (!nextOpen) setCapturedPhoto(null);
     setOpen(nextOpen);
   };
@@ -95,7 +106,7 @@ const Media = () => {
       .from("product_media")
       .select("*, products(product_name, sku)")
       .order("created_at", { ascending: false });
-    setMedia(data ?? []);
+    if (mounted.current) setMedia(data ?? []);
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only load of media library and product picker
@@ -287,6 +298,7 @@ const Media = () => {
       return;
     }
 
+    const session = dialogSession.current;
     const insertRes = await insertProductMediaRow({
       product_id: form.product_id || null,
       file_url: form.file_url,
@@ -295,8 +307,11 @@ const Media = () => {
       alt_text: form.alt_text || "url_import",
       status: form.status,
     });
+    if (!mounted.current) return;
     if (!insertRes.ok) return toast.error(insertRes.message);
     toast.success("Media added");
+    load();
+    if (dialogSession.current !== session) return;
     changeDialogOpen(false);
     setForm({
       file_url: "",
@@ -306,7 +321,6 @@ const Media = () => {
       product_id: "",
       status: "raw",
     });
-    load();
   };
 
   return (
