@@ -1,6 +1,8 @@
 import { type Browser, devices, type Page } from "@playwright/test";
+import { approvedStudioOrigin } from "../scripts/verify-studio-audit-target.mjs";
+import { assertStudioPageOrigin, installStudioAuditRouting } from "./studio-audit-security";
 
-export const STUDIO_URL = process.env.AI_STUDIO_URL || "https://oasis-ai-studio.vercel.app";
+export const STUDIO_URL = approvedStudioOrigin(process.env);
 export const EMAIL = process.env.TEST_STUDIO_EMAIL || "";
 export const PASSWORD = process.env.TEST_STUDIO_PASSWORD || "";
 export const EXPECTED_DEPLOYMENT_SHA = process.env.EXPECTED_DEPLOYMENT_SHA || "";
@@ -11,22 +13,12 @@ export async function createStudioContext(
   browser: Browser,
   playwrightDevice: PlaywrightNamedDevice,
 ) {
-  const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-  const studioOrigin = new URL(STUDIO_URL).origin;
   const context = await browser.newContext({
     ...devices[playwrightDevice],
-    ignoreHTTPSErrors: true,
+    ignoreHTTPSErrors: false,
+    serviceWorkers: "block",
   });
-  if (bypassSecret) {
-    await context.route(`${studioOrigin}/**`, async (route) => {
-      await route.continue({
-        headers: {
-          ...route.request().headers(),
-          "x-vercel-protection-bypass": bypassSecret,
-        },
-      });
-    });
-  }
+  await installStudioAuditRouting(context);
   return context;
 }
 
@@ -67,11 +59,13 @@ export async function loginStudio(page: Page): Promise<{
     throw new Error("TEST_STUDIO_EMAIL and TEST_STUDIO_PASSWORD are required");
   }
   const deploymentSha = await waitForExpectedDeployment(page);
+  assertStudioPageOrigin(page);
   const shaBindingOk = !EXPECTED_DEPLOYMENT_SHA || deploymentSha === EXPECTED_DEPLOYMENT_SHA;
   await page.getByLabel("Email").fill(EMAIL);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign In" }).click();
   await page.waitForURL((url) => !url.pathname.includes("/auth"), { timeout: 60_000 });
+  assertStudioPageOrigin(page);
   const redirectedToAuth = page.url().includes("/auth");
   return {
     authResult: redirectedToAuth ? "redirected_to_auth" : "authenticated",
