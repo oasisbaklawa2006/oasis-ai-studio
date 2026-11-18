@@ -33,8 +33,11 @@ const routes = [
   ["pilot-readiness", "/testing/pilot-readiness"],
   ["pilot-aliases", "/testing/pilot-aliases"],
   ["resolver-preview", "/admin/resolver-preview"],
+  ["product-intelligence", "/admin/product-intelligence"],
   ["operator-inbox", "/admin/operator-inbox"],
+  ["buyer-backend-readiness", "/admin/buyer-backend-readiness"],
   ["settings", "/settings"],
+  ["users-access", "/settings/users"],
   ["audit-log", "/audit-log"],
   ["approvals", "/approvals"],
 ] as const;
@@ -72,7 +75,7 @@ function isKnownRoute(href: string) {
   const pathname = new URL(href, STUDIO_URL).pathname;
   if (/\.[a-z0-9]+$/i.test(pathname)) return true;
   if (pathname.startsWith("/c/")) return true;
-  if (/^\/products\/[0-9a-f-]{36}$/i.test(pathname)) return true;
+  if (/^\/products\/[0-9a-f-]{36}(?:\/(?:media|aliases))?$/i.test(pathname)) return true;
   if (/^\/catalogues\/[^/]+(?:\/proposal)?$/i.test(pathname)) return true;
   return routes.some(([, route]) => route === pathname);
 }
@@ -86,7 +89,10 @@ function classify(
   if (inaccessible) return "not-accessible";
   if (fatal) return "wrongly-built";
   if (networkErrors.some((error) => /supabase\.co\/rest\/v1\//i.test(error))) return "partial";
-  if (/roadmap|future feature|setup required|not enabled/i.test(body)) return "on-hold";
+  if (
+    /roadmap|future feature|setup required|not enabled|capability awaiting activation/i.test(body)
+  )
+    return "on-hold";
   if (/coming soon|not implemented|placeholder|mapping not finalized|unavailable/i.test(body))
     return "partial";
   return "full-built";
@@ -152,13 +158,19 @@ async function auditRoute(page: Page, name: string, route: string) {
   const overlay = await page
     .locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")
     .count();
+  const stepUpRequired =
+    route === "/settings/users" && heading === "Verify privileged Studio access";
   const inaccessible =
-    /\/auth(?:\?|$)/.test(finalUrl) || /access denied|permission required/i.test(body);
+    /\/auth(?:\?|$)/.test(finalUrl) ||
+    /access denied|permission required/i.test(body) ||
+    stepUpRequired;
   const fatal =
     overlay > 0 ||
     body.trim().length === 0 ||
     /404|page not found|something went wrong/i.test(body);
-  if (inaccessible)
+  if (stepUpRequired)
+    notes.push("Users & Access requires an AAL2 session; no MFA actions executed.");
+  else if (inaccessible)
     notes.push("Authenticated user lacks access or was redirected to authentication.");
   if (fatal) notes.push("Blank, error-overlay, not-found, or fatal-error state detected.");
 
