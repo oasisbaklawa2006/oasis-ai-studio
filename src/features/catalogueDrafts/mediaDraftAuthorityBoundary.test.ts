@@ -46,7 +46,7 @@ describe("Media Library camera capture", () => {
   it("previews the camera file and waits for the explicit upload action", () => {
     const { text: source } = parseFile("src/pages/Media.tsx");
     const start = source.indexOf("ref={cameraRef}");
-    const end = source.search(/<details\b/);
+    const end = source.indexOf("Advanced: paste URL instead");
     expect(start).toBeGreaterThanOrEqual(0);
     expect(end).toBeGreaterThan(start);
     const picker = source.slice(start, end);
