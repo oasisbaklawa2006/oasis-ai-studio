@@ -299,16 +299,19 @@ const Media = () => {
           `URL import — submitted for approval (not live until review)`,
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
-        if (dialogSession.current !== session) return;
-        changeDialogOpen(false);
-        setForm({
-          file_url: "",
-          type: "raw_photo",
-          angle: "front",
-          alt_text: "",
-          product_id: "",
-          status: "raw",
-        });
+        if (dialogSession.current === session) changeDialogOpen(false);
+        setForm((current) =>
+          current === form
+            ? {
+                file_url: "",
+                type: "raw_photo",
+                angle: "front",
+                alt_text: "",
+                product_id: "",
+                status: "raw",
+              }
+            : current,
+        );
       } finally {
         if (mounted.current) setUploading(false);
       }
