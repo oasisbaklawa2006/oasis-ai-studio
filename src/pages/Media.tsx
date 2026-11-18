@@ -94,7 +94,7 @@ const Media = () => {
   };
 
   const previewCameraFile = (file: File | undefined) => {
-    if (!file || !canMutate || uploading) return;
+    if (!file || !canMutate || uploading || form.type === "video") return;
     const error = validateMediaFile(file, IMAGE_MIME_TYPES);
     if (error) {
       toast.error(error);
@@ -115,10 +115,16 @@ const Media = () => {
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only load of media library and product picker
   useEffect(() => {
     load();
+    let current = true;
     supabase
       .from("products")
       .select("id,product_name,sku")
-      .then(({ data }) => setProducts(data ?? []));
+      .then(({ data }) => {
+        if (current) setProducts(data ?? []);
+      });
+    return () => {
+      current = false;
+    };
   }, []);
 
   const resolveFolder = (productId: string) => {
@@ -129,7 +135,9 @@ const Media = () => {
   const allowedMimeTypes = form.type === "video" ? VIDEO_MIME_TYPES : IMAGE_MIME_TYPES;
 
   const handleFiles = async (files: FileList | readonly File[] | null) => {
-    if (!files || files.length === 0 || !canMutate) return;
+    if (!files || files.length === 0 || !canMutate || uploading) return;
+    const session = dialogSession.current;
+    const isCurrent = () => mounted.current && dialogSession.current === session;
     setUploading(true);
     try {
       const folder = resolveFolder(form.product_id);
@@ -177,6 +185,7 @@ const Media = () => {
           );
           if (res.ok) {
             submitted += 1;
+            if (!isCurrent()) continue;
             setPendingNotices((prev) => [
               ...prev,
               `${file.name} — pending approval (not in live media library)`,
@@ -190,6 +199,7 @@ const Media = () => {
             `${submitted} media submission${submitted === 1 ? "" : "s"} uploaded and submitted for approval.`,
           );
           load();
+          if (!isCurrent()) return;
           changeDialogOpen(false);
           setForm({
             file_url: "",
@@ -230,6 +240,8 @@ const Media = () => {
         load();
         return;
       }
+      load();
+      if (!isCurrent()) return;
       toast.success(`${uploaded} file(s) uploaded`);
       changeDialogOpen(false);
       setForm({
@@ -240,11 +252,10 @@ const Media = () => {
         product_id: "",
         status: "raw",
       });
-      load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
-      setUploading(false);
+      if (mounted.current) setUploading(false);
       if (galleryRef.current) galleryRef.current.value = "";
       if (cameraRef.current) cameraRef.current.value = "";
     }
@@ -254,6 +265,7 @@ const Media = () => {
     if (!canMutate || uploading) return;
     if (!form.file_url) return toast.error("URL required (or use upload buttons above)");
 
+    const session = dialogSession.current;
     if (writeMode === "draft") {
       if (!form.product_id) {
         toast.error("Select a product before submitting a URL for approval.");
@@ -280,6 +292,8 @@ const Media = () => {
           toast.error(res.message);
           return;
         }
+        load();
+        if (!mounted.current || dialogSession.current !== session) return;
         setPendingNotices((prev) => [
           ...prev,
           `URL import — submitted for approval (not live until review)`,
@@ -294,14 +308,12 @@ const Media = () => {
           product_id: "",
           status: "raw",
         });
-        load();
       } finally {
-        setUploading(false);
+        if (mounted.current) setUploading(false);
       }
       return;
     }
 
-    const session = dialogSession.current;
     setUploading(true);
     try {
       const insertRes = await insertProductMediaRow({
@@ -367,7 +379,10 @@ const Media = () => {
                           className="w-full h-10 px-3 rounded-md border bg-background text-sm disabled:opacity-50"
                           value={form.type}
                           disabled={uploading}
-                          onChange={(e) => setForm({ ...form, type: e.target.value })}
+                          onChange={(e) => {
+                            if (e.target.value === "video") setCapturedPhoto(null);
+                            setForm({ ...form, type: e.target.value });
+                          }}
                         >
                           {[
                             "raw_photo",
@@ -456,7 +471,7 @@ const Media = () => {
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={uploading}
+                        disabled={uploading || form.type === "video"}
                         onClick={() => cameraRef.current?.click()}
                       >
                         <Camera className="h-4 w-4 mr-2" />
@@ -483,7 +498,7 @@ const Media = () => {
                       }}
                     />
 
-                    {capturedPhoto && (
+                    {capturedPhoto && form.type !== "video" && (
                       <div className="space-y-2">
                         <img
                           src={capturedPhoto.url}

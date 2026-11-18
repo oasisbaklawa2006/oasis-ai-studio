@@ -129,7 +129,7 @@ describe("Core #484 — stale draft URL completion stays scoped to its product",
     expect(reset).toBeGreaterThan(guard);
     expect(notice).toBeGreaterThan(guard);
     expect(flow).toContain(
-      "if (!isSupersededByProductSwitch(requestProductId)) setUploading(false)",
+      "uploadGeneration.current === uploadRequest && productIdRef.current === productId",
     );
   });
 

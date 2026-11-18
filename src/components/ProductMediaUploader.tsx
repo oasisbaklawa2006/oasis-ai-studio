@@ -145,6 +145,7 @@ export function ProductMediaUploader({
   // different product. Neither of these gates reconciliation itself — see
   // productMediaMutationAuthority.ts's module doc for why a committed write must never be
   // suppressed merely because this component unmounted or moved on.
+  const uploadGeneration = useRef(0);
   const productIdRef = useRef(productId);
   productIdRef.current = productId;
   const isSupersededByProductSwitch = useCallback(
@@ -160,6 +161,7 @@ export function ProductMediaUploader({
       formProductIdRef.current = productId;
       setUrlInput("");
       setPendingNotices([]);
+      uploadGeneration.current += 1;
       setUploading(false);
     }
   }, [productId]);
@@ -413,6 +415,7 @@ export function ProductMediaUploader({
       if (slotInputRef.current) slotInputRef.current.value = "";
       return;
     }
+    const uploadRequest = ++uploadGeneration.current;
     setUploading(true);
     setType(slot);
     try {
@@ -485,9 +488,11 @@ export function ProductMediaUploader({
         }
       }
     } finally {
-      setUploading(false);
-      if (slotInputRef.current) slotInputRef.current.value = "";
-      setSlotUploadTarget(null);
+      if (uploadGeneration.current === uploadRequest && productIdRef.current === productId) {
+        setUploading(false);
+        if (slotInputRef.current) slotInputRef.current.value = "";
+        setSlotUploadTarget(null);
+      }
     }
   };
 
@@ -501,6 +506,7 @@ export function ProductMediaUploader({
         return;
       }
     }
+    const uploadRequest = ++uploadGeneration.current;
     setUploading(true);
     let lastUrl = "";
     try {
@@ -573,10 +579,12 @@ export function ProductMediaUploader({
         }
       }
     } finally {
-      setUploading(false);
-      if (galleryRef.current) galleryRef.current.value = "";
-      if (cameraRef.current) cameraRef.current.value = "";
-      if (videoRef.current) videoRef.current.value = "";
+      if (uploadGeneration.current === uploadRequest && productIdRef.current === productId) {
+        setUploading(false);
+        if (galleryRef.current) galleryRef.current.value = "";
+        if (cameraRef.current) cameraRef.current.value = "";
+        if (videoRef.current) videoRef.current.value = "";
+      }
     }
   };
 
@@ -588,6 +596,7 @@ export function ProductMediaUploader({
     if (!canMutate || uploading) return;
 
     if (writeMode === "draft") {
+      const uploadRequest = ++uploadGeneration.current;
       setUploading(true);
       try {
         const res = await submitDraft(
@@ -609,7 +618,8 @@ export function ProductMediaUploader({
         }
         toast.success(MEDIA_DRAFT_SUCCESS);
       } finally {
-        setUploading(false);
+        if (uploadGeneration.current === uploadRequest && productIdRef.current === productId)
+          setUploading(false);
       }
       return;
     }
@@ -644,6 +654,7 @@ export function ProductMediaUploader({
     if (!confirm("Remove this image as the hero photo? The image stays in the gallery.")) return;
 
     if (writeMode === "draft") {
+      const uploadRequest = ++uploadGeneration.current;
       setUploading(true);
       try {
         const heroRow = media.find((m) => m.file_url === currentHero);
@@ -662,7 +673,8 @@ export function ProductMediaUploader({
         }
         toast.success(MEDIA_DRAFT_SUCCESS);
       } finally {
-        setUploading(false);
+        if (uploadGeneration.current === uploadRequest && productIdRef.current === productId)
+          setUploading(false);
       }
       return;
     }
@@ -702,6 +714,7 @@ export function ProductMediaUploader({
     if (!confirm("Delete this photo permanently?")) return;
 
     if (writeMode === "draft") {
+      const uploadRequest = ++uploadGeneration.current;
       setUploading(true);
       try {
         const res = await submitDraft(
@@ -725,7 +738,8 @@ export function ProductMediaUploader({
           "Delete request submitted for approval. This media stays visible until review.",
         );
       } finally {
-        setUploading(false);
+        if (uploadGeneration.current === uploadRequest && productIdRef.current === productId)
+          setUploading(false);
       }
       return;
     }
@@ -797,6 +811,7 @@ export function ProductMediaUploader({
 
     if (writeMode === "draft") {
       const requestProductId = productId;
+      const uploadRequest = ++uploadGeneration.current;
       setUploading(true);
       try {
         const wantsHero = !currentHero || isPdfPage(currentHero);
@@ -828,7 +843,8 @@ export function ProductMediaUploader({
         toast.success(MEDIA_DRAFT_SUCCESS);
         await refreshLocalMediaView();
       } finally {
-        if (!isSupersededByProductSwitch(requestProductId)) setUploading(false);
+        if (uploadGeneration.current === uploadRequest && productIdRef.current === productId)
+          setUploading(false);
       }
       return;
     }
