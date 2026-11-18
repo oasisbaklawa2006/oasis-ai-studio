@@ -100,3 +100,57 @@ it("locks media inputs during URL save and retains the newest library response",
     host.remove();
   }
 });
+
+it("keeps visible media rows when a later library refresh fails", async () => {
+  mocks.load
+    .mockReset()
+    .mockResolvedValueOnce({
+      data: [
+        {
+          id: "existing",
+          type: "raw_photo",
+          file_url: "https://example.invalid/existing.jpg",
+          alt_text: "Existing photo",
+        },
+      ],
+      error: null,
+    })
+    .mockResolvedValueOnce({ data: null, error: { message: "Temporary read failure" } });
+  mocks.insert.mockReset().mockResolvedValue({ ok: true });
+
+  const host = document.createElement("div");
+  document.body.appendChild(host);
+  const root = createRoot(host);
+  try {
+    await act(async () => {
+      root.render(
+        <MemoryRouter>
+          <Media />
+        </MemoryRouter>,
+      );
+    });
+    expect(host.querySelector('img[alt="Existing photo"]')).not.toBeNull();
+
+    await act(async () => {
+      button("Add Media").click();
+    });
+    const input = document.querySelector<HTMLInputElement>('input[placeholder="https://…"]');
+    if (!input) throw new Error("Missing URL input");
+    await act(async () => {
+      input.setRangeText("https://example.invalid/new.jpg", 0, input.value.length, "end");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      button("Save URL").click();
+    });
+
+    expect(mocks.insert).toHaveBeenCalledOnce();
+    expect(mocks.load).toHaveBeenCalledTimes(2);
+    expect(host.querySelector('img[alt="Existing photo"]')).not.toBeNull();
+  } finally {
+    await act(async () => {
+      root.unmount();
+    });
+    host.remove();
+  }
+});

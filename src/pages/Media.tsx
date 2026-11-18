@@ -105,11 +105,16 @@ const Media = () => {
 
   const load = async () => {
     const request = ++mediaLoadRequest.current;
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("product_media")
       .select("*, products(product_name, sku)")
       .order("created_at", { ascending: false });
-    if (mounted.current && mediaLoadRequest.current === request) setMedia(data ?? []);
+    if (!mounted.current || mediaLoadRequest.current !== request) return;
+    if (error) {
+      toast.error("Media library refresh failed. Existing items are preserved; verify before retrying.");
+      return;
+    }
+    setMedia(data ?? []);
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only load of media library and product picker

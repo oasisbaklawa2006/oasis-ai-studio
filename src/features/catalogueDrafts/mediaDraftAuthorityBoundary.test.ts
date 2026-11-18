@@ -5,13 +5,11 @@ import mediaPageSource from "../../pages/Media.tsx?raw";
 import draftServiceSource from "./draftService.ts?raw";
 
 const forbiddenDraftWrites = new Set(["insertProductMediaRow", "persistMediaRow"]);
-const sources = {
-  "src/pages/Media.tsx": mediaPageSource,
-  "src/components/ProductMediaUploader.tsx": uploaderSource,
-} as const;
+type MediaSourcePath = "src/pages/Media.tsx" | "src/components/ProductMediaUploader.tsx";
 
-function parseFile(path: keyof typeof sources): ts.SourceFile {
-  return ts.createSourceFile(path, sources[path], ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+function parseFile(path: MediaSourcePath): ts.SourceFile {
+  const source = path === "src/pages/Media.tsx" ? mediaPageSource : uploaderSource;
+  return ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 }
 
 function forbiddenCallsIn(node: ts.Node, source: ts.SourceFile): string[] {
@@ -44,14 +42,33 @@ function draftBranchViolations(source: ts.SourceFile): string[] {
 
 describe("Media Library camera capture", () => {
   it("previews the camera file and waits for the explicit upload action", () => {
-    const { text: source } = parseFile("src/pages/Media.tsx");
+    const file = parseFile("src/pages/Media.tsx");
+    const source = file.text;
+    let cameraInput = "";
+    const visitCamera = (node: ts.Node) => {
+      if (
+        ts.isJsxSelfClosingElement(node) &&
+        node.tagName.getText(file) === "input" &&
+        node.attributes.properties.some(
+          (attribute) =>
+            ts.isJsxAttribute(attribute) &&
+            attribute.name.getText(file) === "ref" &&
+            attribute.initializer?.getText(file) === "{cameraRef}",
+        )
+      ) {
+        cameraInput = node.getText(file);
+      }
+      ts.forEachChild(node, visitCamera);
+    };
+    visitCamera(file);
+
+    expect(cameraInput).toContain('ref={cameraRef}');
+    expect(cameraInput).toContain("previewCameraFile(e.currentTarget.files?.[0])");
+    expect(cameraInput).not.toContain("handleFiles");
+
     const picker =
       source.split("ref={cameraRef}")[1]?.split("Advanced: paste URL instead")[0] ?? "";
     expect(picker).not.toBe("");
-    const [input] = picker.split("/>");
-
-    expect(input).toContain("previewCameraFile(e.currentTarget.files?.[0])");
-    expect(input).not.toContain("handleFiles");
     expect(picker).toContain("src={capturedPhoto.url}");
     expect(picker).toMatch(
       /onClick=\{\(\) => handleFiles\(\[capturedPhoto.file\]\)\}[\s\S]*?Upload photo/,
