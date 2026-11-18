@@ -319,16 +319,26 @@ const Media = () => {
     }
 
     setUploading(true);
+    const controller = new AbortController();
+    const signal = controller.signal;
+    const timeout = setTimeout(() => controller.abort(), 30_000);
     try {
-      const insertRes = await insertProductMediaRow({
-        product_id: form.product_id || null,
-        file_url: form.file_url,
-        type: form.type,
-        angle: form.angle,
-        alt_text: form.alt_text || "url_import",
-        status: form.status,
-      });
+      const insertRes = await insertProductMediaRow(
+        {
+          product_id: form.product_id || null,
+          file_url: form.file_url,
+          type: form.type,
+          angle: form.angle,
+          alt_text: form.alt_text || "url_import",
+          status: form.status,
+        },
+        signal,
+      );
       if (!mounted.current) return;
+      if (signal.aborted) {
+        load();
+        return toast.error("Save timed out. Check the media library before retrying.");
+      }
       if (!insertRes.ok) return toast.error(insertRes.message);
       toast.success("Media added");
       load();
@@ -342,7 +352,16 @@ const Media = () => {
         product_id: "",
         status: "raw",
       });
+    } catch (error) {
+      if (!mounted.current) return;
+      if (signal.aborted) {
+        load();
+        toast.error("Save timed out. Check the media library before retrying.");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Could not save media URL");
+      }
     } finally {
+      clearTimeout(timeout);
       if (mounted.current) setUploading(false);
     }
   };
