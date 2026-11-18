@@ -61,8 +61,8 @@ export type ProductMediaInsertInput = {
   status?: string;
 };
 
-export async function insertProductMediaRow(input: ProductMediaInsertInput) {
-  const { data, error } = await supabase
+export async function insertProductMediaRow(input: ProductMediaInsertInput, signal?: AbortSignal) {
+  const query = supabase
     .from("product_media")
     .insert({
       product_id: input.product_id || null,
@@ -72,8 +72,9 @@ export async function insertProductMediaRow(input: ProductMediaInsertInput) {
       alt_text: input.alt_text ?? null,
       status: input.status ?? "raw",
     })
-    .select("*")
-    .single();
+    .select("*");
+  if (signal) query.abortSignal(signal);
+  const { data, error } = await query.single();
 
   if (error) {
     return { ok: false as const, error, message: formatMediaInsertError(error) };
