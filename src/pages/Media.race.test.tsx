@@ -50,29 +50,37 @@ it("locks media inputs during URL save and retains the newest library response",
   document.body.appendChild(host);
   const root = createRoot(host);
   try {
-    await act(async () =>
+    await act(async () => {
       root.render(
         <MemoryRouter>
           <Media />
         </MemoryRouter>,
-      ),
-    );
-    await act(async () => button("Add Media").click());
+      );
+    });
+    await act(async () => {
+      button("Add Media").click();
+    });
     const input = document.querySelector<HTMLInputElement>('input[placeholder="https://…"]');
     if (!input) throw new Error("Missing URL input");
-    const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
     await act(async () => {
-      setValue?.call(input, "https://example.invalid/media.jpg");
+      Reflect.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+        input,
+        "https://example.invalid/media.jpg",
+      );
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await act(async () => button("Save URL").click());
+    await act(async () => {
+      button("Save URL").click();
+    });
     expect(mocks.insert).toHaveBeenCalledOnce();
     expect(input.disabled).toBe(true);
     expect(button("Take photo").disabled).toBe(true);
     expect(button("Save URL").disabled).toBe(true);
-    await act(async () => save.resolve({ ok: true }));
+    await act(async () => {
+      save.resolve({ ok: true });
+    });
     expect(mocks.load).toHaveBeenCalledTimes(2);
-    await act(async () =>
+    await act(async () => {
       refresh.resolve({
         data: [
           {
@@ -82,12 +90,16 @@ it("locks media inputs during URL save and retains the newest library response",
             alt_text: "Refreshed photo",
           },
         ],
-      }),
-    );
-    await act(async () => initial.resolve({ data: [] }));
+      });
+    });
+    await act(async () => {
+      initial.resolve({ data: [] });
+    });
     expect(host.querySelector('img[alt="Refreshed photo"]')).not.toBeNull();
   } finally {
-    await act(async () => root.unmount());
+    await act(async () => {
+      root.unmount();
+    });
     host.remove();
   }
 });
