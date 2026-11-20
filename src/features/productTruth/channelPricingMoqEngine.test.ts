@@ -31,6 +31,54 @@ describe("channelPricingMoqEngine", () => {
     expect(r.valid).toBe(true);
   });
 
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "rejects nonpositive or non-finite order quantity %s before retail/MOQ exemptions",
+    (qty) => {
+      expect(validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid).toBe(
+        false,
+      );
+      expect(
+        validateOrderQtyAgainstChannelRules(
+          qty,
+          "kg",
+          "b2b",
+          { ...b2bRule, moqApplicable: false },
+          hierarchy,
+        ).valid,
+      ).toBe(false);
+    },
+  );
+
+  it.each([0.5, 1.5, 9007199254740992])(
+    "rejects non-whole or unsafe piece order quantity %s regardless of MOQ",
+    (qty) => {
+      expect(validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid).toBe(
+        false,
+      );
+      expect(
+        validateOrderQtyAgainstChannelRules(
+          qty,
+          "pcs",
+          "b2b",
+          { ...b2bRule, moqApplicable: false },
+          hierarchy,
+        ).valid,
+      ).toBe(false);
+    },
+  );
+
+  it("still permits a verified positive fractional kg quantity when no MOQ applies", () => {
+    expect(
+      validateOrderQtyAgainstChannelRules(
+        0.5,
+        "kg",
+        "b2b",
+        { ...b2bRule, moqApplicable: false },
+        hierarchy,
+      ).valid,
+    ).toBe(true);
+  });
+
   it("B2B 10 kg invalid when increment is 8 kg", () => {
     const msg = getInvalidQtyMessage(10, "kg", "b2b", b2bRule, hierarchy);
     expect(msg).toBeTruthy();
