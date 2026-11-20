@@ -774,11 +774,17 @@ const ProductEdit = () => {
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const beginSaveRequest = useSaveRequestOwner(location.key);
-  // Every channel-authority caller shares one latest-request-wins scope per navigation session.
-  // The request owner also guards stale callbacks captured before a route change.
-  const beginChannelAuthorityRequest = useLatestAsyncRequest(
-    JSON.stringify([location.key, id ?? null]),
-  );
+  // Invalidate outstanding media/channel requests on each navigation, including A -> B -> A.
+  const authoritySessionKey = JSON.stringify([location.key, id ?? null]);
+  const beginChannelAuthorityRequest = useLatestAsyncRequest(authoritySessionKey);
+  const beginMediaAuthorityRequest = useLatestAsyncRequest(authoritySessionKey);
+  const mediaHydratedRef = useRef(false);
+  const channelHydratedRef = useRef(false);
+  useLayoutEffect(() => {
+    mediaHydratedRef.current = false;
+    channelHydratedRef.current = false;
+    setAuthorityLoaded(isNew);
+  }, [authoritySessionKey, isNew]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset save UI for each navigation session, including return navigation.
   useLayoutEffect(() => {
     setLoading(false);
@@ -1141,15 +1147,19 @@ const ProductEdit = () => {
   const applyMediaAuthority = async (
     productId: string,
     rows: ProductMediaRow[],
-    opts?: { fallbackHeroUrl?: string | null },
+    opts?: { fallbackHeroUrl?: string | null; isCurrent?: () => boolean },
   ) => {
+    if (opts?.isCurrent && !opts.isCurrent()) return;
     let authoritative = rows;
     if (await canWriteProductsDirectly(roles)) {
+      if (opts?.isCurrent && !opts.isCurrent()) return;
       authoritative = await repairDirectMasterMediaRows(productId, rows);
+      if (opts?.isCurrent && !opts.isCurrent()) return;
       try {
         const synced = await syncProductMediaAuthority(productId, authoritative, {
           fallbackHeroUrl: opts?.fallbackHeroUrl ?? resolveProductHeroUrl(form),
         });
+        if (opts?.isCurrent && !opts.isCurrent()) return;
         setForm((f: Record<string, unknown>) => ({
           ...f,
           media_status: synced.media_status,
@@ -1162,6 +1172,7 @@ const ProductEdit = () => {
         }
       }
     }
+    if (opts?.isCurrent && !opts.isCurrent()) return;
     setProductMediaRows(authoritative);
   };
 
@@ -1169,18 +1180,26 @@ const ProductEdit = () => {
     productId: string,
     opts?: { fallbackHeroUrl?: string | null },
   ) => {
+    const ownsMediaRequest = beginMediaAuthorityRequest();
+    if (!ownsMediaRequest()) return;
+    mediaHydratedRef.current = false;
+    setAuthorityLoaded(false);
     const { data, error } = await supabase
       .from("product_media")
       .select("*")
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
+    if (!ownsMediaRequest()) return;
     if (error) {
       if (import.meta.env.DEV) {
         console.error("[ProductEdit] product_media load failed:", error.message);
       }
-      return;
+      return; // Do not report complete hydration after a failed media fetch.
     }
-    await applyMediaAuthority(productId, data ?? [], opts);
+    await applyMediaAuthority(productId, data ?? [], { ...opts, isCurrent: ownsMediaRequest });
+    if (!ownsMediaRequest()) return;
+    mediaHydratedRef.current = true;
+    if (channelHydratedRef.current) setAuthorityLoaded(true);
   };
 
   // Explicit ordering isn't load-bearing for correctness anymore — resolvePricing() /
@@ -1198,9 +1217,10 @@ const ProductEdit = () => {
 
   const loadChannelAuthority = async (productId: string, isCurrent = () => true) => {
     const ownsLatestRequest = beginChannelAuthorityRequest();
-    // Guard *all* callers, including background authority reloads and rules-change
-    // callbacks that do not pass the save's own isCurrent predicate.
+    // Guard *all* callers, including background reloads and newer same-product fetches.
     if (!ownsLatestRequest() || !isCurrent()) return;
+    channelHydratedRef.current = false;
+    setAuthorityLoaded(false);
     const [pricingRes, moqRes] = await Promise.all([
       orderedPricingRulesQuery(productId),
       supabase.from("product_moq_rules").select("*").eq("product_id", productId),
@@ -1212,20 +1232,19 @@ const ProductEdit = () => {
     if (moqRes.error && import.meta.env.DEV) {
       console.error("[ProductEdit] moq rules load failed:", moqRes.error.message);
     }
+    // Failed authority must remain pending, never replace it with empty fallback rows.
+    if (pricingRes.error || moqRes.error) return;
     setChannelPrices(mapPricingRules((pricingRes.data ?? []) as PricingRuleRow[]));
     setPricingRuleRows((pricingRes.data ?? []) as PricingRuleRow[]);
     setChannelMoqRules(mapMoqRules((moqRes.data ?? []) as MoqRuleRow[]));
     setMoqRuleRows((moqRes.data ?? []) as MoqRuleRow[]);
+    channelHydratedRef.current = true;
+    if (mediaHydratedRef.current) setAuthorityLoaded(true);
   };
 
   const reloadProductAuthority = async (productId: string) => {
     await Promise.all([loadProductMedia(productId), loadChannelAuthority(productId)]);
   };
-
-  // Tracks which product's authority load is the current, non-superseded one — a slower
-  // reload for a product the user has since navigated away from must not mark
-  // authorityLoaded true against the newer product's form (Bugbot-flagged regression).
-  const authorityRequestIdRef = useRef<string | null>(null);
 
   // Tracks which product id's initial row fetch is the current, non-superseded one — a
   // slower fetch for a product the user has since navigated away from must not populate
@@ -1233,18 +1252,19 @@ const ProductEdit = () => {
   // loading state (Defect 2).
   const productFetchRequestIdRef = useRef<string | null>(null);
 
-  // reloadProductAuthority is a plain closure recreated every render (it depends on
-  // loadProductMedia/loadChannelAuthority, which close over `form`/`roles`); adding it to this
-  // effect's deps would re-run the fetch on every render instead of only when the product
-  // identity (id/isNew/loadedId) actually changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above — reloadProductAuthority is an unstable closure, only id/isNew/loadedId should retrigger this fetch.
+  // A navigation to the SAME product must rehydrate media and channel authority:
+  // id===loadedId prevents a redundant product-row fetch but must not skip hydration.
+  // reloadProductAuthority is an unstable render closure; rerun only for a changed
+  // product identity, loaded row or browser-navigation session.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above.
   useEffect(() => {
-    if (!id || !shouldFetchById(isNew, id, loadedId)) {
-      // No fetch will start on this effect run. Force-clear pending rather than leaving it
-      // as whatever a previous, now-abandoned effect instance (for a different id) last set
-      // it to — that abandoned fetch's own .then() will never run (it's superseded) or
-      // isn't guaranteed to resolve, so nothing else is guaranteed to clear the flag here.
+    if (!id || isNew) {
       setProductFetchPending(false);
+      return;
+    }
+    if (!shouldFetchById(isNew, id, loadedId)) {
+      setProductFetchPending(false);
+      void reloadProductAuthority(id);
       return;
     }
 
@@ -1272,11 +1292,8 @@ const ProductEdit = () => {
           setComplianceMetaMap(buildComplianceMetaFromSavedProduct(loaded));
           setLoadedId(id);
           setForm(loaded);
-          setAuthorityLoaded(false);
-          authorityRequestIdRef.current = id;
-          void reloadProductAuthority(id).then(() => {
-            if (authorityRequestIdRef.current === id) setAuthorityLoaded(true);
-          });
+          // loadedId triggers the authority-hydration effect above; an older
+          // product fetch must not mark hydrated before the latest requests finish.
         }
         setProductFetchPending(false);
       });
@@ -1285,7 +1302,7 @@ const ProductEdit = () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isNew, loadedId]);
+  }, [id, isNew, loadedId, location.key]);
 
   const set = (k: string, v: unknown) => {
     setDirty(true);
