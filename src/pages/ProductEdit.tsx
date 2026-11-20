@@ -42,6 +42,7 @@ import {
   type PackagingTaxonomyAuthority,
   packagingAuthorityFromRulesResult,
 } from "@/features/productAuthority/catalogueReadyGate";
+import { fullEditorContentQuantity } from "@/features/productAuthority/fullEditorContentQuantity";
 import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
 import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
@@ -1681,6 +1682,12 @@ const ProductEdit = () => {
     }
 
     if (savePath.kind === "contributor_draft") {
+      const contentQuantity = fullEditorContentQuantity(form);
+      if (!contentQuantity.ok) {
+        setSubmitError(contentQuantity.message);
+        toast.error(contentQuantity.message);
+        return;
+      }
       const packPreview = getPrimaryPackPreview(payload);
 
       const optionalReviewFlags = {
@@ -1737,6 +1744,7 @@ const ProductEdit = () => {
           pack_uom: payload.primary_pack_uom || payload.carton_uom,
           qty_per_pack: payload.qty_per_pack || payload.pcs_per_pack,
           qty_content_uom: payload.qty_content_uom,
+          ...(contentQuantity.quantity ? { content_quantity: contentQuantity.quantity } : {}),
           pack_preview: packPreview,
           pack_size: payload.pack_size,
           net_weight_g: payload.net_weight_g,
