@@ -16,11 +16,19 @@ import {
   STUDIO_URL,
   safeScreenshotName,
 } from "./readonly-audit-helpers";
+import { closeStudioAuditContext } from "./studio-audit-security";
 
 const ROOT = path.join(process.cwd(), "audit-artifacts", "full-app");
 const SHOTS = path.join(ROOT, "screenshots", "uat-central");
 const REPORT_JSON = path.join(ROOT, "studio-central-uat-evidence.json");
 const REPORT_MD = path.join(ROOT, "STUDIO_CENTRAL_UAT_EVIDENCE.md");
+// Playwright restarts workers after failed tests, so module-level arrays lose
+// earlier cases. Persist each case independently before generating summaries.
+const CASE_EVIDENCE_DIR = path.join(
+  ROOT,
+  "uat-case-evidence",
+  process.env.GITHUB_RUN_ID || "local",
+);
 
 type UatEvidenceRow = {
   uatId: string;
@@ -42,7 +50,19 @@ type UatEvidenceRow = {
   physicalDeviceCertification: "browser-emulated-only" | "not-applicable";
 };
 
-const evidenceRows: UatEvidenceRow[] = [];
+function saveEvidenceRow(row: UatEvidenceRow) {
+  fs.mkdirSync(CASE_EVIDENCE_DIR, { recursive: true });
+  fs.writeFileSync(path.join(CASE_EVIDENCE_DIR, `${row.uatId}.json`), JSON.stringify(row, null, 2));
+}
+
+function loadEvidenceRows(): UatEvidenceRow[] {
+  return STUDIO_CENTRAL_UAT_EVIDENCE_CASES.flatMap(({ uatId }) => {
+    const file = path.join(CASE_EVIDENCE_DIR, `${uatId}.json`);
+    if (!fs.existsSync(file)) return [];
+    const row = JSON.parse(fs.readFileSync(file, "utf8")) as UatEvidenceRow;
+    return row.uatId === uatId ? [row] : [];
+  });
+}
 
 function deriveVerdict(input: {
   shaBindingOk: boolean;
@@ -129,7 +149,18 @@ async function exerciseCase(
       waitUntil: "domcontentloaded",
       timeout: 90_000,
     });
-    await page.waitForTimeout(1_500);
+    // Do not classify a transient membership-loading screen as the destination.
+    // The read-only Core permission RPC must complete before inspecting controls.
+    await page
+      .waitForFunction(
+        () => {
+          const text = document.body?.innerText ?? "";
+          return text.trim().length > 0 && !text.includes("Checking Studio membership");
+        },
+        null,
+        { timeout: 15_000 },
+      )
+      .catch(() => notes.push("Studio membership verification did not finish within 15 seconds."));
   } catch (error) {
     notes.push(`Navigation error: ${String(error)}`);
   }
@@ -139,16 +170,22 @@ async function exerciseCase(
       "Browser-emulated phone evidence only — physical camera/device certification is a separate gate.",
     );
     const addMedia = page.getByRole("button", { name: /add media/i });
-    if (!(await addMedia.isVisible().catch(() => false))) {
+    const addMediaVisible = await addMedia
+      .waitFor({ state: "visible", timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!addMediaVisible) {
       cameraFlowOk = false;
       notes.push(
-        "Add Media control not visible — cannot evidence camera-capture UI without mutation rights.",
+        "Add Media did not appear after waiting for media permission. Verify the audit account's existing Core media-write authority.",
       );
     } else {
       await addMedia.click();
-      await page.waitForTimeout(500);
       const takePhoto = page.getByRole("button", { name: /take photo/i });
-      const takePhotoVisible = await takePhoto.isVisible().catch(() => false);
+      const takePhotoVisible = await takePhoto
+        .waitFor({ state: "visible", timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false);
       const captureInput = page.locator('input[type="file"][capture="environment"]');
       const capturePresent = (await captureInput.count()) > 0;
       cameraFlowOk = takePhotoVisible && capturePresent;
@@ -180,11 +217,14 @@ async function exerciseCase(
     .locator("[data-nextjs-dialog], .vite-error-overlay, #webpack-dev-server-client-overlay")
     .count();
   const inaccessible =
-    /\/auth(?:\?|$)/.test(finalUrl) || /access denied|permission required/i.test(body);
+    /\/auth(?:\?|$)/.test(finalUrl) ||
+    /access denied|permission required|AI Studio access not approved|Unable to verify AI Studio access/i.test(
+      body,
+    );
   const fatal =
     overlay > 0 ||
     body.trim().length === 0 ||
-    /\bpage not found\b|something went wrong/i.test(body);
+    /\bpage not found\b|something went wrong|Checking Studio membership/i.test(body);
 
   if (inaccessible)
     notes.push("Authenticated user lacks access or was redirected to authentication.");
@@ -237,6 +277,7 @@ async function exerciseCase(
 
 function writeReports() {
   fs.mkdirSync(ROOT, { recursive: true });
+  const evidenceRows = loadEvidenceRows();
   const report = {
     generatedAt: new Date().toISOString(),
     target: STUDIO_URL,
@@ -249,8 +290,7 @@ function writeReports() {
       pass: evidenceRows.filter((row) => row.verdict === "PASS").length,
       fail: evidenceRows.filter((row) => row.verdict === "FAIL").length,
       blocked: evidenceRows.filter((row) => row.verdict === "BLOCKED").length,
-      notTested: evidenceRows.filter((row) => row.verdict === ("NOT-TESTED" as UatEvidenceVerdict))
-        .length,
+      notTested: STUDIO_CENTRAL_UAT_EVIDENCE_CASES.length - evidenceRows.length,
     },
   };
   fs.writeFileSync(REPORT_JSON, JSON.stringify(report, null, 2));
@@ -295,9 +335,9 @@ test.describe("Central census UAT read-only evidence", () => {
         expect(loginMeta.authResult).toBe("authenticated");
 
         const row = await exerciseCase(page, caseRow, loginMeta);
-        evidenceRows.push(row);
+        saveEvidenceRow(row);
 
-        if (row.verdict === "FAIL") {
+        if (row.verdict !== "PASS") {
           expect.soft(row.verdict, row.notes.join("; ")).toBe("PASS");
         }
       } catch (error) {
@@ -327,10 +367,10 @@ test.describe("Central census UAT read-only evidence", () => {
           physicalDeviceCertification:
             caseRow.uiState === "camera-capture-flow" ? "browser-emulated-only" : "not-applicable",
         };
-        evidenceRows.push(blockedRow);
+        saveEvidenceRow(blockedRow);
         expect.soft(false, blockedRow.notes[0]).toBe(true);
       } finally {
-        await context.close();
+        await closeStudioAuditContext(context);
       }
     });
   }
