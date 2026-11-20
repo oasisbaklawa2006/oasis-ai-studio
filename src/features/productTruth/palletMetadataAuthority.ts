@@ -73,9 +73,10 @@ export function palletMetadataDraftBlockReason(
 ): string | null {
   const next = palletMetadataProductsPayload(form);
   const previous = palletMetadataProductsPayload(saved);
-  const changed = (Object.keys(next) as (keyof PalletMetadata)[]).some(
-    (key) => next[key] !== previous[key],
-  );
+  const changed =
+    next.cartons_per_pallet !== previous.cartons_per_pallet ||
+    next.master_cartons_per_pallet !== previous.master_cartons_per_pallet ||
+    next.pallet_uom !== previous.pallet_uom;
   return changed
     ? "Pallet changes require an authorized Product Master editor; review drafts cannot save these fields yet. Your form has been retained."
     : null;
