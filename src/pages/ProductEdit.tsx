@@ -47,7 +47,10 @@ import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/pac
 import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
 import { saleTypeFromForm } from "@/features/productAuthority/saleType";
 import { ProductTruthTabSkeleton } from "@/features/productTruth/ProductTruthTabSkeleton";
-import { validatePalletMetadata } from "@/features/productTruth/palletMetadataAuthority";
+import {
+  palletMetadataDraftBlockReason,
+  validatePalletMetadata,
+} from "@/features/productTruth/palletMetadataAuthority";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchActiveSkuCodeRules } from "@/lib/skuCodeRules";
 import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
@@ -777,6 +780,7 @@ const ProductEdit = () => {
   const restored = useRef(false);
   const saveInFlightRef = useRef(false);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
+  const palletBaselineRef = useRef<{ id: string; form: Record<string, unknown> } | null>(null);
   const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
   const draftKey = fullEditorFormDraftKey(editorIdentity);
 
@@ -1255,6 +1259,7 @@ const ProductEdit = () => {
 
         if (data) {
           const loaded = dbProductToForm(data);
+          palletBaselineRef.current = { id, form: loaded };
           complianceBaselineRef.current = pickComplianceBaseline(loaded);
           setComplianceMetaMap(buildComplianceMetaFromSavedProduct(loaded));
           setLoadedId(id);
@@ -1542,6 +1547,17 @@ const ProductEdit = () => {
       setSubmitError(savePath.reason);
       toast.error(savePath.reason);
       return;
+    }
+
+    if (savePath.kind === "contributor_draft") {
+      const baseline = palletBaselineRef.current;
+      const saved = baseline && baseline.id === id ? baseline.form : {};
+      const reason = palletMetadataDraftBlockReason(form, saved);
+      if (reason) {
+        setSubmitError(reason);
+        toast.error(reason);
+        return;
+      }
     }
 
     const factualValidation = factualCompositionSaveValidation(form);

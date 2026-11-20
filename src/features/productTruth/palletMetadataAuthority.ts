@@ -65,3 +65,18 @@ export function palletMetadataProductsPayload(form: Record<string, unknown>): Pa
   if (!checked.valid) throw new Error(checked.errors.join("; "));
   return checked.metadata;
 }
+
+/** Core approval drafts do not yet map pallet fields; never claim they were saved. */
+export function palletMetadataDraftBlockReason(
+  form: Record<string, unknown>,
+  saved: Record<string, unknown> = {},
+): string | null {
+  const next = palletMetadataProductsPayload(form);
+  const previous = palletMetadataProductsPayload(saved);
+  const changed = (Object.keys(next) as (keyof PalletMetadata)[]).some(
+    (key) => next[key] !== previous[key],
+  );
+  return changed
+    ? "Pallet changes require an authorized Product Master editor; review drafts cannot save these fields yet. Your form has been retained."
+    : null;
+}

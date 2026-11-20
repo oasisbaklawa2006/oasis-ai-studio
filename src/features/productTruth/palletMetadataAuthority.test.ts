@@ -1,7 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { palletMetadataProductsPayload, validatePalletMetadata } from "./palletMetadataAuthority";
+import {
+  palletMetadataDraftBlockReason,
+  palletMetadataProductsPayload,
+  validatePalletMetadata,
+} from "./palletMetadataAuthority";
 
 describe("Point33 Core-backed pallet metadata", () => {
+  it("blocks draft additions, edits and clearing without losing unrelated edit access", () => {
+    const saved = { cartons_per_pallet: 12, pallet_uom: "Verified" };
+    expect(palletMetadataDraftBlockReason(saved)).toContain("cannot save");
+    expect(palletMetadataDraftBlockReason({ ...saved, cartons_per_pallet: 24 }, saved)).toContain(
+      "cannot save",
+    );
+    expect(palletMetadataDraftBlockReason({}, saved)).toContain("cannot save");
+    expect(
+      palletMetadataDraftBlockReason(
+        { ...saved, cartons_per_pallet: "12", product_name: "Edited" },
+        saved,
+      ),
+    ).toBeNull();
+    expect(palletMetadataDraftBlockReason({ product_name: "New product" })).toBeNull();
+  });
   it("keeps optional pallet data null without fabricating any count or type", () => {
     expect(palletMetadataProductsPayload({})).toEqual({
       cartons_per_pallet: null,
