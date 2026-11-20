@@ -1,28 +1,33 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 /**
  * Latest-request-wins for asynchronous authority loads.
- * Both the product/navigation session and the request generation must match.
- * Callers captured by an older render cannot start work in a newer session.
+ * Both the product/navigation session and request generation must match.
+ * A stale callback captured on A cannot revive after A -> B -> A.
  */
 export function useLatestAsyncRequest(sessionKey: string) {
-  const currentSession = useRef<{ key: string; token: symbol } | null>(null);
+  // A fresh identity is created after every session-key transition, even when
+  // navigation later returns to the same product and key string.
+  const sessionIdentity = useMemo(() => Symbol(sessionKey), [sessionKey]);
+  const currentSession = useRef<symbol | null>(null);
   const latestRequest = useRef<symbol | null>(null);
 
   useLayoutEffect(() => {
-    currentSession.current = { key: sessionKey, token: Symbol("authority-session") };
+    currentSession.current = sessionIdentity;
     latestRequest.current = null;
     return () => {
-      currentSession.current = null;
-      latestRequest.current = null;
+      if (currentSession.current === sessionIdentity) {
+        currentSession.current = null;
+        latestRequest.current = null;
+      }
     };
-  }, [sessionKey]);
+  }, [sessionIdentity]);
 
   return () => {
-    const session = currentSession.current;
-    if (!session || session.key !== sessionKey) return () => false;
+    if (currentSession.current !== sessionIdentity) return () => false;
     const token = Symbol("authority-request");
     latestRequest.current = token;
-    return () => currentSession.current === session && latestRequest.current === token;
+    return () =>
+      currentSession.current === sessionIdentity && latestRequest.current === token;
   };
 }
