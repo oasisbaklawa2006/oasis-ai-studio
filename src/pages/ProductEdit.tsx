@@ -102,7 +102,7 @@ import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthor
 import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
-import { useLatestAsyncRequest } from "@/features/productAuthority/useLatestAsyncRequest";
+import { useProductAuthorityHydration } from "@/features/productAuthority/useProductAuthorityHydration";
 import { useSaveRequestOwner } from "@/features/productAuthority/useSaveRequestOwner";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
@@ -760,11 +760,6 @@ const ProductEdit = () => {
   const [moqRuleRows, setMoqRuleRows] = useState<MoqRuleRow[]>([]);
   const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
   const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
-  // A new product has no channel pricing/media rows to hydrate, so authority is
-  // trivially "loaded" already; an existing product isn't until reloadProductAuthority
-  // resolves — the catalogue-ready gate must not judge a product on the empty
-  // placeholder channelPrices/productMediaRows it starts render with.
-  const [authorityLoaded, setAuthorityLoaded] = useState(isNew);
   // `null` = the active packaging taxonomy (sku_code_rules where code_type = 'packaging')
   // hasn't loaded yet — the catalogue-ready gate must never treat that as "packaging
   // present" just because a form field is non-empty (Defect 1).
@@ -774,17 +769,16 @@ const ProductEdit = () => {
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const beginSaveRequest = useSaveRequestOwner(location.key);
-  // Invalidate outstanding media/channel requests on each navigation, including A -> B -> A.
+  // Authority is ready only when this navigation's latest successful media AND
+  // channel requests have completed. The hook protects same-product reload races.
   const authoritySessionKey = JSON.stringify([location.key, id ?? null]);
-  const beginChannelAuthorityRequest = useLatestAsyncRequest(authoritySessionKey);
-  const beginMediaAuthorityRequest = useLatestAsyncRequest(authoritySessionKey);
-  const mediaHydratedRef = useRef(false);
-  const channelHydratedRef = useRef(false);
-  useLayoutEffect(() => {
-    mediaHydratedRef.current = false;
-    channelHydratedRef.current = false;
-    setAuthorityLoaded(isNew);
-  }, [authoritySessionKey, isNew]);
+  const {
+    authorityLoaded,
+    beginMediaRequest,
+    completeMediaRequest,
+    beginChannelRequest,
+    completeChannelRequest,
+  } = useProductAuthorityHydration(authoritySessionKey, isNew);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset save UI for each navigation session, including return navigation.
   useLayoutEffect(() => {
     setLoading(false);
@@ -1180,10 +1174,8 @@ const ProductEdit = () => {
     productId: string,
     opts?: { fallbackHeroUrl?: string | null },
   ) => {
-    const ownsMediaRequest = beginMediaAuthorityRequest();
+    const ownsMediaRequest = beginMediaRequest();
     if (!ownsMediaRequest()) return;
-    mediaHydratedRef.current = false;
-    setAuthorityLoaded(false);
     const { data, error } = await supabase
       .from("product_media")
       .select("*")
@@ -1197,9 +1189,7 @@ const ProductEdit = () => {
       return; // Do not report complete hydration after a failed media fetch.
     }
     await applyMediaAuthority(productId, data ?? [], { ...opts, isCurrent: ownsMediaRequest });
-    if (!ownsMediaRequest()) return;
-    mediaHydratedRef.current = true;
-    if (channelHydratedRef.current) setAuthorityLoaded(true);
+    completeMediaRequest(ownsMediaRequest);
   };
 
   // Explicit ordering isn't load-bearing for correctness anymore — resolvePricing() /
@@ -1216,11 +1206,9 @@ const ProductEdit = () => {
       .order("id", { ascending: true });
 
   const loadChannelAuthority = async (productId: string, isCurrent = () => true) => {
-    const ownsLatestRequest = beginChannelAuthorityRequest();
+    const ownsLatestRequest = beginChannelRequest();
     // Guard *all* callers, including background reloads and newer same-product fetches.
     if (!ownsLatestRequest() || !isCurrent()) return;
-    channelHydratedRef.current = false;
-    setAuthorityLoaded(false);
     const [pricingRes, moqRes] = await Promise.all([
       orderedPricingRulesQuery(productId),
       supabase.from("product_moq_rules").select("*").eq("product_id", productId),
@@ -1238,8 +1226,7 @@ const ProductEdit = () => {
     setPricingRuleRows((pricingRes.data ?? []) as PricingRuleRow[]);
     setChannelMoqRules(mapMoqRules((moqRes.data ?? []) as MoqRuleRow[]));
     setMoqRuleRows((moqRes.data ?? []) as MoqRuleRow[]);
-    channelHydratedRef.current = true;
-    if (mediaHydratedRef.current) setAuthorityLoaded(true);
+    completeChannelRequest(() => ownsLatestRequest() && isCurrent());
   };
 
   const reloadProductAuthority = async (productId: string) => {
