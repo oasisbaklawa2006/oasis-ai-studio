@@ -26,10 +26,16 @@ export default defineConfig({
         "src/test/**",
         "src/integrations/supabase/types.ts",
       ],
+      // Vitest 4's V8 remapper changed denominator semantics on unchanged source.
+      // 180 files / 1,597 tests pass on both main b54da43 (Vitest 3) and PR #296
+      // (Vitest 4); branch coverage is 77.53% -> 42.85%, and function coverage
+      // is 76.97% -> 43.65%. These 40% floors preserve a *tighter* fraction
+      // of the migrated baseline (93% branches, 92% functions) than the old
+      // 70%/60% floors (90%/78%). Keep include/exclude scope unchanged.
       thresholds: {
         statements: 30,
-        branches: 70,
-        functions: 60,
+        branches: 40,
+        functions: 40,
         lines: 30,
       },
     },
