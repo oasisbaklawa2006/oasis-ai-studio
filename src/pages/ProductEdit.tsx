@@ -42,7 +42,11 @@ import {
   type PackagingTaxonomyAuthority,
   packagingAuthorityFromRulesResult,
 } from "@/features/productAuthority/catalogueReadyGate";
-import { fullEditorContentQuantity } from "@/features/productAuthority/fullEditorContentQuantity";
+import {
+  fullEditorContentQuantity,
+  fullEditorQuantityPatch,
+  fullEditorWeightPatch,
+} from "@/features/productAuthority/fullEditorContentQuantity";
 import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
 import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
@@ -2341,10 +2345,7 @@ const ProductEdit = () => {
                     <Input
                       type="number"
                       value={form.qty_per_pack ?? ""}
-                      onChange={(e) => {
-                        set("qty_per_pack", e.target.value);
-                        set("pcs_per_pack", e.target.value);
-                      }}
+                      onChange={(e) => patch(fullEditorQuantityPatch(form, e.target.value))}
                       placeholder="6"
                     />
                   </Field>
@@ -2352,7 +2353,17 @@ const ProductEdit = () => {
                   <Field label="Qty Content UOM">
                     <Select
                       value={form.qty_content_uom}
-                      onChange={(v: string) => set("qty_content_uom", v)}
+                      onChange={(v: string) =>
+                        patch({
+                          qty_content_uom: v,
+                          ...(String(form.qty_per_pack ?? "").trim()
+                            ? fullEditorQuantityPatch(
+                                { ...form, qty_content_uom: v },
+                                String(form.qty_per_pack),
+                              )
+                            : {}),
+                        })
+                      }
                       options={CONTENT_UOM_OPTIONS}
                     />
                   </Field>
@@ -2893,7 +2904,7 @@ const ProductEdit = () => {
                     <Input
                       type="number"
                       value={form.net_weight_g ?? ""}
-                      onChange={(e) => set("net_weight_g", e.target.value)}
+                      onChange={(e) => patch(fullEditorWeightPatch(form, e.target.value))}
                     />
                   </Field>
                   <Field label="Gross weight (g)">

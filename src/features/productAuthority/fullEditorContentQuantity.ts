@@ -8,15 +8,18 @@ type QuantityResult =
 export function fullEditorContentQuantity(form: Record<string, unknown>): QuantityResult {
   const hasValue = (value: unknown) => value != null && String(value).trim() !== "";
   const explicitQuantity = hasValue(form.qty_per_pack);
-  const raw = explicitQuantity ? form.qty_per_pack : form.pcs_per_pack;
+  const raw = explicitQuantity
+    ? form.qty_per_pack
+    : form.qty_content_uom && form.qty_content_uom !== "pcs"
+      ? null
+      : form.pcs_per_pack;
   if (!hasValue(raw)) return { ok: true, quantity: null };
   const unit = explicitQuantity ? form.qty_content_uom : "pcs";
   const normalizedUnit = unit === "grams" ? "g" : unit;
   if (normalizedUnit !== "pcs" && normalizedUnit !== "g" && normalizedUnit !== "kg") {
     return {
       ok: false,
-      message:
-        "Draft not submitted: pack content needs an explicit supported unit (pcs, grams or kg).",
+      message: "Cannot save pack content: select an explicit supported unit (pcs, grams or kg).",
     };
   }
   const text = typeof raw === "string" ? raw.trim() : null;
@@ -32,8 +35,41 @@ export function fullEditorContentQuantity(form: Record<string, unknown>): Quanti
     return {
       ok: false,
       message:
-        "Draft not submitted: enter positive pack content; pieces must be a safe whole number.",
+        "Cannot save pack content: enter a positive quantity; pieces must be a safe whole number.",
     };
   }
   return { ok: true, quantity: { value, unit: normalizedUnit } };
+}
+
+/** Keep quantity controls unit-aware without interpreting a mass as a piece count. */
+export function fullEditorQuantityPatch(
+  form: Record<string, unknown>,
+  value: string,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = { qty_per_pack: value };
+  if (form.qty_content_uom === "pcs") patch.pcs_per_pack = value;
+  else if (["g", "grams", "kg"].includes(String(form.qty_content_uom))) {
+    const number = Number(value);
+    patch.net_weight_g =
+      value.trim() && Number.isFinite(number)
+        ? number * (form.qty_content_uom === "kg" ? 1000 : 1)
+        : "";
+  }
+  return patch;
+}
+
+/** Editing net grams also updates an active weight-content input in its explicit unit. */
+export function fullEditorWeightPatch(
+  form: Record<string, unknown>,
+  value: string,
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = { net_weight_g: value };
+  if (["g", "grams", "kg"].includes(String(form.qty_content_uom))) {
+    const number = Number(value);
+    patch.qty_per_pack =
+      value.trim() && Number.isFinite(number)
+        ? number / (form.qty_content_uom === "kg" ? 1000 : 1)
+        : "";
+  }
+  return patch;
 }

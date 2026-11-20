@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { fullEditorContentQuantity } from "./fullEditorContentQuantity";
+import {
+  fullEditorContentQuantity,
+  fullEditorQuantityPatch,
+  fullEditorWeightPatch,
+} from "./fullEditorContentQuantity";
 
 describe("Full Editor contributor content contract", () => {
   it.each([
@@ -48,5 +52,38 @@ describe("Full Editor contributor content contract", () => {
     expect(
       fullEditorContentQuantity({ qty_per_pack: Number.MAX_VALUE, qty_content_uom: "kg" }).ok,
     ).toBe(false);
+  });
+});
+
+it("does not turn a cleared weight into a legacy piece assertion", () => {
+  expect(
+    fullEditorContentQuantity({ qty_per_pack: "", qty_content_uom: "kg", pcs_per_pack: 6 }),
+  ).toEqual({ ok: true, quantity: null });
+});
+it("weight quantity edits never mirror grams into pieces", () => {
+  expect(fullEditorQuantityPatch({ qty_content_uom: "grams", pcs_per_pack: 6 }, "500")).toEqual({
+    qty_per_pack: "500",
+    net_weight_g: 500,
+  });
+});
+it("piece edits synchronize their explicit count", () => {
+  expect(fullEditorQuantityPatch({ qty_content_uom: "pcs" }, "8")).toEqual({
+    qty_per_pack: "8",
+    pcs_per_pack: "8",
+  });
+});
+it("kg quantity and gram controls stay synchronized with SI conversion only", () => {
+  expect(fullEditorQuantityPatch({ qty_content_uom: "kg" }, "0.5")).toEqual({
+    qty_per_pack: "0.5",
+    net_weight_g: 500,
+  });
+  expect(fullEditorWeightPatch({ qty_content_uom: "kg" }, "750")).toEqual({
+    net_weight_g: "750",
+    qty_per_pack: 0.75,
+  });
+});
+it("editing grams preserves independent piece controls", () => {
+  expect(fullEditorWeightPatch({ qty_content_uom: "pcs", qty_per_pack: 6 }, "750")).toEqual({
+    net_weight_g: "750",
   });
 });
