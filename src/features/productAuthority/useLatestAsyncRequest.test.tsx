@@ -16,7 +16,9 @@ it("rejects older same-product requests, navigation, return navigation and unmou
   const root = createRoot(host);
   let mounted = true;
   try {
-    await act(async () => root.render(<Harness session="route-a:product-a" />));
+    await act(async () => {
+      root.render(<Harness session="route-a:product-a" />);
+    });
     const staleBegin = begin;
     const first = begin();
     const newer = begin();
@@ -31,7 +33,9 @@ it("rejects older same-product requests, navigation, return navigation and unmou
       if (newer()) applied = true;
     });
 
-    await act(async () => root.render(<Harness session="route-b:product-b" />));
+    await act(async () => {
+      root.render(<Harness session="route-b:product-b" />);
+    });
     const b = begin();
     expect(newer()).toBe(false);
     expect(staleBegin()()).toBe(false);
@@ -41,22 +45,32 @@ it("rejects older same-product requests, navigation, return navigation and unmou
     expect(applied).toBe(false);
     expect(b()).toBe(true);
 
-    await act(async () => root.render(<Harness session="route-a:product-a" />));
+    await act(async () => {
+      root.render(<Harness session="route-a:product-a" />);
+    });
     expect(newer()).toBe(false);
     expect(b()).toBe(false);
     expect(staleBegin()()).toBe(false);
     const returnedA = begin();
     expect(returnedA()).toBe(true);
-    await act(async () => root.render(<Harness session="route-a:product-a" />));
+    await act(async () => {
+      root.render(<Harness session="route-a:product-a" />);
+    });
     expect(returnedA()).toBe(true); // Unrelated re-render does not supersede.
     const newerA = begin();
     expect(returnedA()).toBe(false);
     expect(newerA()).toBe(true);
-    await act(async () => root.unmount());
+    await act(async () => {
+      root.unmount();
+    });
     mounted = false;
     expect(newerA()).toBe(false);
   } finally {
-    if (mounted) await act(async () => root.unmount());
+    if (mounted) {
+      await act(async () => {
+        root.unmount();
+      });
+    }
     host.remove();
   }
 });

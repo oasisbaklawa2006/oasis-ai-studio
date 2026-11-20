@@ -15,7 +15,9 @@ it("rejects late save effects after navigation, return navigation and unmount", 
   const host = document.createElement("div");
   const root = createRoot(host);
   try {
-    await act(async () => root.render(<Harness session="product-a" />));
+    await act(async () => {
+      root.render(<Harness session="product-a" />);
+    });
     const a = begin();
     expect(a).not.toBeNull();
     expect(begin()).toBeNull(); // Duplicate click/keyboard shortcut cannot start another save.
@@ -28,7 +30,9 @@ it("rejects late save effects after navigation, return navigation and unmount", 
       a?.release();
     });
 
-    await act(async () => root.render(<Harness session="product-b" />));
+    await act(async () => {
+      root.render(<Harness session="product-b" />);
+    });
     const b = begin();
     expect(b?.isCurrent()).toBe(true);
     complete();
@@ -37,20 +41,28 @@ it("rejects late save effects after navigation, return navigation and unmount", 
     expect(b?.isCurrent()).toBe(true); // A's finalizer cannot unlock B.
     expect(begin()).toBeNull();
 
-    await act(async () => root.render(<Harness session="product-a" />));
+    await act(async () => {
+      root.render(<Harness session="product-a" />);
+    });
     expect(a?.isCurrent()).toBe(false); // A -> B -> A is a new session, not the old request.
     expect(b?.isCurrent()).toBe(false);
     const newA = begin();
-    await act(async () => root.render(<Harness session="product-a" />));
+    await act(async () => {
+      root.render(<Harness session="product-a" />);
+    });
     expect(newA?.isCurrent()).toBe(true); // Ordinary form renders do not cancel a save.
     newA?.release();
     expect(newA?.isCurrent()).toBe(false);
     const next = begin();
     expect(next?.isCurrent()).toBe(true);
-    await act(async () => root.unmount());
+    await act(async () => {
+      root.unmount();
+    });
     expect(next?.isCurrent()).toBe(false);
   } finally {
-    await act(async () => root.unmount());
+    await act(async () => {
+      root.unmount();
+    });
     host.remove();
   }
 });
