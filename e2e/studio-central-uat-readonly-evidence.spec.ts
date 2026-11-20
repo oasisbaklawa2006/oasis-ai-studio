@@ -16,6 +16,7 @@ import {
   STUDIO_URL,
   safeScreenshotName,
 } from "./readonly-audit-helpers";
+import { closeStudioAuditContext } from "./studio-audit-security";
 
 const ROOT = path.join(process.cwd(), "audit-artifacts", "full-app");
 const SHOTS = path.join(ROOT, "screenshots", "uat-central");
@@ -369,7 +370,7 @@ test.describe("Central census UAT read-only evidence", () => {
         saveEvidenceRow(blockedRow);
         expect.soft(false, blockedRow.notes[0]).toBe(true);
       } finally {
-        await context.close();
+        await closeStudioAuditContext(context);
       }
     });
   }

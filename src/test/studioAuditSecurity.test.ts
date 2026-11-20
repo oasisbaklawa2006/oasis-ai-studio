@@ -1,6 +1,9 @@
 import type { BrowserContext, Route } from "@playwright/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { installStudioAuditRouting } from "../../e2e/studio-audit-security";
+import {
+  closeStudioAuditContext,
+  installStudioAuditRouting,
+} from "../../e2e/studio-audit-security";
 
 const STUDIO = "https://oasis-ai-studio.vercel.app";
 const SHA = "5bc36db0a192b1be2dc02693336c2f6a2dc4e26c";
@@ -18,6 +21,7 @@ function approvedEnvironment() {
 async function mockRouteContext(additionalNavigationOrigins: string[] = []) {
   let handler: ((route: Route) => Promise<void>) | undefined;
   const context = {
+    close: vi.fn(async () => {}),
     route: vi.fn(async (_pattern: string, callback: (route: Route) => Promise<void>) => {
       handler = callback;
     }),
@@ -27,7 +31,7 @@ async function mockRouteContext(additionalNavigationOrigins: string[] = []) {
     additionalNavigationOrigins,
   );
   if (!handler) throw new Error("Route handler not installed");
-  return handler;
+  return Object.assign(handler, { context: context as unknown as BrowserContext });
 }
 
 function requestRoute(url: string, navigation: boolean) {
@@ -50,6 +54,73 @@ afterEach(() => {
 });
 
 describe("protected Studio browser routing", () => {
+  it.each([
+    {
+      scenario: "suppresses target-closed during its context shutdown",
+      closing: "same",
+      message: "route.fetch: Target page, context or browser has been closed",
+      suppressed: true,
+    },
+    {
+      scenario: "propagates target-closed before shutdown",
+      closing: "none",
+      message: "route.fetch: Target page, context or browser has been closed",
+      suppressed: false,
+    },
+    {
+      scenario: "propagates unrelated failures during shutdown",
+      closing: "same",
+      message: "route.fetch: connection reset",
+      suppressed: false,
+    },
+    {
+      scenario: "propagates target-closed when only another context is closing",
+      closing: "other",
+      message: "route.fetch: Target page, context or browser has been closed",
+      suppressed: false,
+    },
+  ])("$scenario", async ({ closing, message, suppressed }) => {
+    approvedEnvironment();
+    const handler = await mockRouteContext();
+    const otherHandler = await mockRouteContext();
+    const route = requestRoute(`${STUDIO}/auth`, true);
+    let rejectFetch!: (error: Error) => void;
+    route.fetch.mockImplementationOnce(
+      () =>
+        new Promise<never>((_resolve, reject) => {
+          rejectFetch = reject;
+        }),
+    );
+    const pendingRoute = handler(route as unknown as Route);
+    const error = new Error(message);
+    const assertion = suppressed
+      ? expect(pendingRoute).resolves.toBeUndefined()
+      : expect(pendingRoute).rejects.toBe(error);
+    expect(route.fetch).toHaveBeenCalledTimes(1);
+
+    // Keep close pending so the rejection occurs during shutdown, not afterward.
+    let finishClose!: () => void;
+    const context = closing === "other" ? otherHandler.context : handler.context;
+    vi.mocked(context.close).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishClose = resolve;
+        }),
+    );
+    const pendingClose = closing === "none" ? undefined : closeStudioAuditContext(context);
+    rejectFetch(error);
+    try {
+      await assertion;
+      expect(route.fulfill).not.toHaveBeenCalled();
+      expect(route.continue).not.toHaveBeenCalled();
+    } finally {
+      if (pendingClose) {
+        finishClose();
+        await pendingClose;
+      }
+    }
+  });
+
   it("blocks foreign navigation before sending any protected request", async () => {
     approvedEnvironment();
     const handler = await mockRouteContext();
