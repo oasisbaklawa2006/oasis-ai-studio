@@ -12,6 +12,7 @@ export function useProductAuthorityHydration(sessionKey: string, isNew: boolean)
   const beginMedia = useLatestAsyncRequest(sessionKey);
   const beginChannel = useLatestAsyncRequest(sessionKey);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a navigation-session change intentionally invalidates both hydration lanes, even though sessionKey is not read inside the effect.
   useLayoutEffect(() => {
     mediaDone.current = false;
     channelDone.current = false;
