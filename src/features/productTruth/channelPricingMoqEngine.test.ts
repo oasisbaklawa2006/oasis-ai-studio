@@ -34,9 +34,9 @@ describe("channelPricingMoqEngine", () => {
   it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
     "rejects nonpositive or non-finite order quantity %s before retail/MOQ exemptions",
     (qty) => {
-      expect(validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid).toBe(
-        false,
-      );
+      expect(
+        validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid,
+      ).toBe(false);
       expect(
         validateOrderQtyAgainstChannelRules(
           qty,
@@ -52,9 +52,9 @@ describe("channelPricingMoqEngine", () => {
   it.each([0.5, 1.5, 9007199254740992])(
     "rejects non-whole or unsafe piece order quantity %s regardless of MOQ",
     (qty) => {
-      expect(validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid).toBe(
-        false,
-      );
+      expect(
+        validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid,
+      ).toBe(false);
       expect(
         validateOrderQtyAgainstChannelRules(
           qty,
