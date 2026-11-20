@@ -1,10 +1,10 @@
 import { getChannelPrice } from "@/features/productTruth/channelPricingMoqEngine";
+import type { SnapshotValidationResult } from "./snapshotValidation";
 import type {
   ApprovedCatalogueProductSnapshot,
   CatalogueSnapshotJson,
   CentralSyncPreviewBundle,
 } from "./types";
-import type { SnapshotValidationResult } from "./snapshotValidation";
 
 export const LIVE_CENTRAL_WRITE_ENABLED = false;
 
@@ -56,17 +56,19 @@ export function buildApprovedCatalogueProductSnapshot(
 
   const packParts: string[] = [];
   const pp = snapshot.packaging_hierarchy.primary_pack;
-  if (pp?.qty_per_pack && pp?.uom) {
-    packParts.push(`${pp.qty_per_pack} ${pp.uom}`);
+  const quantity = Number(pp?.qty_per_pack);
+  const contentUnit = typeof pp?.qty_content_uom === "string" ? pp.qty_content_uom.trim() : "";
+  if (Number.isFinite(quantity) && quantity > 0 && contentUnit) {
+    packParts.push(`${quantity} ${contentUnit}`);
   }
   if (pp?.type) packParts.push(String(pp.type));
 
+  // A single-piece mass is not the net mass of the sellable pack.
+  // Only the canonical packaging snapshot can assert a pack weight here.
   const weightG =
-    snapshot.uom_conversion_rules.gramsPerPiece != null
-      ? Number(snapshot.uom_conversion_rules.gramsPerPiece)
-      : snapshot.fulfillment_transform.approximate_piece_weight_g != null
-        ? Number(snapshot.fulfillment_transform.approximate_piece_weight_g)
-        : null;
+    typeof pp?.weight_g === "number" && Number.isFinite(pp.weight_g) && pp.weight_g > 0
+      ? pp.weight_g
+      : null;
 
   const compliance = snapshot.compliance;
 
@@ -85,9 +87,7 @@ export function buildApprovedCatalogueProductSnapshot(
     gst_classification_status: compliance.gst_classification_status,
     gst_hsn: compliance.gst_hsn,
     gst_rate: compliance.gst_rate,
-    uom:
-      (snapshot.uom_conversion_rules as { primary_uom?: string | null }).primary_uom ??
-      null,
+    uom: (snapshot.uom_conversion_rules as { primary_uom?: string | null }).primary_uom ?? null,
     barcode_sku: snapshot.identity.sku,
     is_active: true,
     version: versionCode,
