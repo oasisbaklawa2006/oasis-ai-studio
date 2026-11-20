@@ -1,8 +1,15 @@
-import type { BrowserContext, Page } from "@playwright/test";
+import type { BrowserContext, Page, Route } from "@playwright/test";
 import {
   approvedStudioOrigin,
   verifyProtectedStudioAudit,
 } from "../scripts/verify-studio-audit-target.mjs";
+
+const closingContexts = new WeakSet<BrowserContext>();
+
+export async function closeStudioAuditContext(context: BrowserContext): Promise<void> {
+  closingContexts.add(context);
+  await context.close();
+}
 
 /**
  * Fail-closed audit transport. Browser requests never receive the Vercel bypass
@@ -20,7 +27,7 @@ export async function installStudioAuditRouting(
   }
   const allowedNavigation = new Set([studioOrigin, ...additionalNavigationOrigins]);
 
-  await context.route("**/*", async (route) => {
+  const handleRoute = async (route: Route) => {
     const request = route.request();
     let origin: string;
     try {
@@ -110,6 +117,20 @@ export async function installStudioAuditRouting(
       return;
     }
     await route.continue();
+  };
+
+  await context.route("**/*", async (route) => {
+    try {
+      await handleRoute(route);
+    } catch (error) {
+      if (
+        closingContexts.has(context) &&
+        error instanceof Error &&
+        error.message.includes("Target page, context or browser has been closed")
+      )
+        return;
+      throw error;
+    }
   });
 }
 

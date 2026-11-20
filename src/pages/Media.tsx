@@ -39,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Role } from "@/lib/permissions";
 
 const MEDIA_DRAFT_SUCCESS =
-  "Media change submitted for approval. Uploaded media remains visible as raw while approval is pending.";
+  "Media change submitted for approval. It will not appear in the live library until authorised review.";
 
 type MediaLibraryProduct = { id: string; product_name: string | null; sku: string | null };
 
@@ -55,6 +55,7 @@ const Media = () => {
   const [products, setProducts] = useState<MediaLibraryProduct[]>([]);
   const [open, setOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [capturedPhoto, setCapturedPhoto] = useState<{ file: File; url: string } | null>(null);
   const [pendingNotices, setPendingNotices] = useState<string[]>([]);
   const [form, setForm] = useState({
     file_url: "",
@@ -66,22 +67,71 @@ const Media = () => {
   });
   const galleryRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
+  const dialogSession = useRef(0);
+  const mounted = useRef(false);
+  const mediaLoadRequest = useRef(0);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      dialogSession.current += 1;
+      mediaLoadRequest.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    const url = capturedPhoto?.url;
+    return () => {
+      if (url) URL.revokeObjectURL(url);
+    };
+  }, [capturedPhoto]);
+
+  const changeDialogOpen = (nextOpen: boolean) => {
+    dialogSession.current += 1;
+    if (!nextOpen) setCapturedPhoto(null);
+    setOpen(nextOpen);
+  };
+
+  const previewCameraFile = (file: File | undefined) => {
+    if (!file || !canMutate || uploading || form.type === "video") return;
+    const error = validateMediaFile(file, IMAGE_MIME_TYPES);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setCapturedPhoto({ file, url: URL.createObjectURL(file) });
+  };
 
   const load = async () => {
-    const { data } = await supabase
+    const request = ++mediaLoadRequest.current;
+    const { data, error } = await supabase
       .from("product_media")
       .select("*, products(product_name, sku)")
       .order("created_at", { ascending: false });
+    if (!mounted.current || mediaLoadRequest.current !== request) return;
+    if (error) {
+      toast.error(
+        "Media library refresh failed. Existing items are preserved; verify before retrying.",
+      );
+      return;
+    }
     setMedia(data ?? []);
   };
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only load of media library and product picker
   useEffect(() => {
     load();
+    let current = true;
     supabase
       .from("products")
       .select("id,product_name,sku")
-      .then(({ data }) => setProducts(data ?? []));
+      .then(({ data }) => {
+        if (current) setProducts(data ?? []);
+      });
+    return () => {
+      current = false;
+    };
   }, []);
 
   const resolveFolder = (productId: string) => {
@@ -91,8 +141,10 @@ const Media = () => {
 
   const allowedMimeTypes = form.type === "video" ? VIDEO_MIME_TYPES : IMAGE_MIME_TYPES;
 
-  const handleFiles = async (files: FileList | null) => {
-    if (!files || files.length === 0 || !canMutate) return;
+  const handleFiles = async (files: FileList | readonly File[] | null) => {
+    if (!files || files.length === 0 || !canMutate || uploading) return;
+    const session = dialogSession.current;
+    const isCurrent = () => mounted.current && dialogSession.current === session;
     setUploading(true);
     try {
       const folder = resolveFolder(form.product_id);
@@ -121,18 +173,8 @@ const Media = () => {
             continue;
           }
           const url = getMediaPublicUrl(path);
-          const insertRes = await insertProductMediaRow({
-            product_id: form.product_id,
-            file_url: url,
-            type: form.type,
-            angle: form.angle,
-            alt_text: form.alt_text || file.name,
-            status: form.status,
-          });
-          if (!insertRes.ok) {
-            toast.error(insertRes.message);
-            continue;
-          }
+          // A contributor must never mutate authoritative product_media before
+          // approval. Only the governed catalogue draft is submitted here.
           const res = await submitMediaCatalogueDraft(
             "create",
             {
@@ -150,9 +192,10 @@ const Media = () => {
           );
           if (res.ok) {
             submitted += 1;
+            if (!isCurrent()) continue;
             setPendingNotices((prev) => [
               ...prev,
-              `${file.name} — submitted for approval (visible in library)`,
+              `${file.name} — pending approval (not in live media library)`,
             ]);
           } else {
             toast.error(res.message);
@@ -163,7 +206,8 @@ const Media = () => {
             `${submitted} media submission${submitted === 1 ? "" : "s"} uploaded and submitted for approval.`,
           );
           load();
-          setOpen(false);
+          if (!isCurrent()) return;
+          changeDialogOpen(false);
           setForm({
             file_url: "",
             type: "raw_photo",
@@ -203,8 +247,10 @@ const Media = () => {
         load();
         return;
       }
+      load();
+      if (!isCurrent()) return;
       toast.success(`${uploaded} file(s) uploaded`);
-      setOpen(false);
+      changeDialogOpen(false);
       setForm({
         file_url: "",
         type: "raw_photo",
@@ -213,11 +259,10 @@ const Media = () => {
         product_id: "",
         status: "raw",
       });
-      load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
-      setUploading(false);
+      if (mounted.current) setUploading(false);
       if (galleryRef.current) galleryRef.current.value = "";
       if (cameraRef.current) cameraRef.current.value = "";
     }
@@ -227,6 +272,7 @@ const Media = () => {
     if (!canMutate || uploading) return;
     if (!form.file_url) return toast.error("URL required (or use upload buttons above)");
 
+    const session = dialogSession.current;
     if (writeMode === "draft") {
       if (!form.product_id) {
         toast.error("Select a product before submitting a URL for approval.");
@@ -234,18 +280,7 @@ const Media = () => {
       }
       setUploading(true);
       try {
-        const insertRes = await insertProductMediaRow({
-          product_id: form.product_id,
-          file_url: form.file_url,
-          type: form.type,
-          angle: form.angle,
-          alt_text: form.alt_text || "url_import",
-          status: form.status,
-        });
-        if (!insertRes.ok) {
-          toast.error(insertRes.message);
-          return;
-        }
+        // URL proposals are approval-only: no direct product_media insertion.
         const res = await submitMediaCatalogueDraft(
           "url_import",
           {
@@ -262,50 +297,80 @@ const Media = () => {
         );
         if (!res.ok) {
           toast.error(res.message);
-          load();
           return;
         }
+        if (!mounted.current) return;
+        load();
         setPendingNotices((prev) => [
           ...prev,
-          `URL import — submitted for approval (visible in library)`,
+          `URL import — submitted for approval (not live until review)`,
         ]);
         toast.success(MEDIA_DRAFT_SUCCESS);
-        setOpen(false);
-        setForm({
-          file_url: "",
-          type: "raw_photo",
-          angle: "front",
-          alt_text: "",
-          product_id: "",
-          status: "raw",
-        });
-        load();
+        if (dialogSession.current === session) changeDialogOpen(false);
+        setForm((current) =>
+          current === form
+            ? {
+                file_url: "",
+                type: "raw_photo",
+                angle: "front",
+                alt_text: "",
+                product_id: "",
+                status: "raw",
+              }
+            : current,
+        );
       } finally {
-        setUploading(false);
+        if (mounted.current) setUploading(false);
       }
       return;
     }
 
-    const insertRes = await insertProductMediaRow({
-      product_id: form.product_id || null,
-      file_url: form.file_url,
-      type: form.type,
-      angle: form.angle,
-      alt_text: form.alt_text || "url_import",
-      status: form.status,
-    });
-    if (!insertRes.ok) return toast.error(insertRes.message);
-    toast.success("Media added");
-    setOpen(false);
-    setForm({
-      file_url: "",
-      type: "raw_photo",
-      angle: "front",
-      alt_text: "",
-      product_id: "",
-      status: "raw",
-    });
-    load();
+    setUploading(true);
+    const controller = new AbortController();
+    const signal = controller.signal;
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    try {
+      const insertRes = await insertProductMediaRow(
+        {
+          product_id: form.product_id || null,
+          file_url: form.file_url,
+          type: form.type,
+          angle: form.angle,
+          alt_text: form.alt_text || "url_import",
+          status: form.status,
+        },
+        signal,
+      );
+      if (!mounted.current) return;
+      if (signal.aborted) {
+        load();
+        return toast.error("Save timed out. Check the media library before retrying.");
+      }
+      if (!insertRes.ok) return toast.error(insertRes.message);
+      toast.success("Media added");
+      load();
+      if (dialogSession.current !== session) return;
+      changeDialogOpen(false);
+      setForm({
+        file_url: "",
+        type: "raw_photo",
+        angle: "front",
+        alt_text: "",
+        product_id: "",
+        status: "raw",
+      });
+    } catch (error) {
+      if (!mounted.current) return;
+      if (signal.aborted) {
+        load();
+        toast.error("Save timed out. Check the media library before retrying.");
+      } else {
+        toast.error(error instanceof Error ? error.message : "Could not save media URL");
+      }
+    } finally {
+      clearTimeout(timeout);
+      if (mounted.current) setUploading(false);
+    }
   };
 
   return (
@@ -319,7 +384,7 @@ const Media = () => {
               <Link to="/media/review">Media Review</Link>
             </Button>
             {canMutate ? (
-              <Dialog open={open} onOpenChange={setOpen}>
+              <Dialog open={open} onOpenChange={changeDialogOpen}>
                 <DialogTrigger asChild>
                   <Button disabled={uploading}>
                     <Plus className="h-4 w-4 mr-1" />
@@ -333,8 +398,8 @@ const Media = () => {
                   <div className="space-y-3">
                     {writeMode === "draft" && (
                       <p className="text-xs text-muted-foreground leading-relaxed">
-                        Media changes are submitted for approval. Uploaded media remains visible as
-                        raw while approval is pending.
+                        Media changes are submitted for approval and are not published in the live
+                        media library until authorised review.
                       </p>
                     )}
                     <div className="grid grid-cols-2 gap-3">
@@ -344,7 +409,10 @@ const Media = () => {
                           className="w-full h-10 px-3 rounded-md border bg-background text-sm disabled:opacity-50"
                           value={form.type}
                           disabled={uploading}
-                          onChange={(e) => setForm({ ...form, type: e.target.value })}
+                          onChange={(e) => {
+                            if (e.target.value === "video") setCapturedPhoto(null);
+                            setForm({ ...form, type: e.target.value });
+                          }}
                         >
                           {[
                             "raw_photo",
@@ -433,7 +501,7 @@ const Media = () => {
                       <Button
                         type="button"
                         variant="outline"
-                        disabled={uploading}
+                        disabled={uploading || form.type === "video"}
                         onClick={() => cameraRef.current?.click()}
                       >
                         <Camera className="h-4 w-4 mr-2" />
@@ -454,8 +522,38 @@ const Media = () => {
                       accept="image/*"
                       capture="environment"
                       hidden
-                      onChange={(e) => handleFiles(e.target.files)}
+                      onChange={(e) => {
+                        previewCameraFile(e.currentTarget.files?.[0]);
+                        e.currentTarget.value = "";
+                      }}
                     />
+
+                    {capturedPhoto && form.type !== "video" && (
+                      <div className="space-y-2">
+                        <img
+                          src={capturedPhoto.url}
+                          alt="Camera capture preview"
+                          className="max-h-48 w-full rounded-md object-contain"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={uploading}
+                            onClick={() => setCapturedPhoto(null)}
+                          >
+                            Discard photo
+                          </Button>
+                          <Button
+                            type="button"
+                            disabled={uploading}
+                            onClick={() => handleFiles([capturedPhoto.file])}
+                          >
+                            Upload photo
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground">
