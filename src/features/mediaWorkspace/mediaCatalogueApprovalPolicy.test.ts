@@ -49,9 +49,7 @@ describe("mediaCatalogueApprovalPolicy", () => {
   });
 
   it("keeps a metadata-only draft available for Core's effective target URL validation", () => {
-    expect(isMediaDraftApprovalUiBlocked("media", { alt_text: "Corrected caption" })).toBe(
-      false,
-    );
+    expect(isMediaDraftApprovalUiBlocked("media", { alt_text: "x" })).toBe(false);
   });
 
   it("retains the existing durable URL approval path", () => {
