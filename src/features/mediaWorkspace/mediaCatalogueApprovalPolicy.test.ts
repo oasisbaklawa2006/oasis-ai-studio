@@ -27,6 +27,15 @@ describe("mediaCatalogueApprovalPolicy", () => {
     },
     { fileUrl: "https://fixture.supabase.co/storage/v1/object/%73ign/media/photo.jpg" },
     { file_url: "not a URL" },
+    { file_url: "javascript:alert(1)" },
+    { file_url: "https://fixture.supabase.co/storage/v1/object/authenticated/media/photo.jpg" },
+    { file_url: "https://fixture.supabase.co/storage/v1/object/public/../sign/media/photo.jpg" },
+    { file_url: "https://fixture.supabase.co/storage/v1/object/public/./photo.jpg" },
+    { file_url: "https://fixture.supabase.co\\\\storage\\\\v1\\\\object\\\\sign\\\\media\\\\photo.jpg" },
+    { file_url: "https://user:pass@fixture.supabase.co/published.jpg" },
+    { file_url: "https://fixture.supabase.co:invalid/photo.jpg" },
+    { file_url: "https://fixture.supabase.co/published%2Ejpg" },
+    { bucket_id: " Product-Media-Staging " },
   ])("blocks unpromoted media references: %j", (payload) => {
     expect(isMediaDraftApprovalUiBlocked("media", payload)).toBe(true);
     expect(isMediaDraftApprovalUiBlocked("product", payload)).toBe(false);
