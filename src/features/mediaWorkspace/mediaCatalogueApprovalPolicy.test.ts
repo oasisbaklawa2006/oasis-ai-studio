@@ -27,6 +27,10 @@ describe("mediaCatalogueApprovalPolicy", () => {
     },
     { fileUrl: "https://fixture.supabase.co/storage/v1/object/%73ign/media/photo.jpg" },
     { file_url: "not a URL" },
+    { file_url: "" },
+    { file_url: "  " },
+    { file_url: 123 },
+    { file_url: { signedUrl: "https://fixture.supabase.co/media.jpg" } },
     { file_url: "javascript:alert(1)" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/authenticated/media/photo.jpg" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/public/../sign/media/photo.jpg" },
@@ -42,6 +46,12 @@ describe("mediaCatalogueApprovalPolicy", () => {
   ])("blocks unpromoted media references: %j", (payload) => {
     expect(isMediaDraftApprovalUiBlocked("media", payload)).toBe(true);
     expect(isMediaDraftApprovalUiBlocked("product", payload)).toBe(false);
+  });
+
+  it("keeps a metadata-only draft available for Core's effective target URL validation", () => {
+    expect(isMediaDraftApprovalUiBlocked("media", { alt_text: "Corrected caption" })).toBe(
+      false,
+    );
   });
 
   it("retains the existing durable URL approval path", () => {
