@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fullEditorContentQuantity,
+  fullEditorDraftContentPacking,
   fullEditorQuantityPatch,
   fullEditorWeightPatch,
 } from "./fullEditorContentQuantity";
@@ -11,6 +12,8 @@ describe("Full Editor contributor content contract", () => {
     ["350.5", "grams", 350.5, "g"],
     ["350", "g", 350, "g"],
     ["0.5", "kg", 0.5, "kg"],
+    [".5", "kg", 0.5, "kg"],
+    [".5", "grams", 0.5, "g"],
   ])("preserves explicit %s %s", (raw, unit, value, expectedUnit) => {
     expect(fullEditorContentQuantity({ qty_per_pack: raw, qty_content_uom: unit })).toEqual({
       ok: true,
@@ -40,14 +43,25 @@ describe("Full Editor contributor content contract", () => {
   it.each(["", "tray", "carton", "ml", "litre"])("blocks unpersistable unit %s", (unit) => {
     expect(fullEditorContentQuantity({ qty_per_pack: "6", qty_content_uom: unit }).ok).toBe(false);
   });
-  it.each(["0", "-1", "1.5", "1e3", "0x10", "Infinity", "9007199254740992", false, {}, Number.NaN])(
-    "blocks invalid piece evidence %s",
-    (value) => {
-      expect(fullEditorContentQuantity({ qty_per_pack: value, qty_content_uom: "pcs" }).ok).toBe(
-        false,
-      );
-    },
-  );
+  it.each([
+    "0",
+    "-1",
+    "1.5",
+    ".5",
+    ".0",
+    ".",
+    "1e3",
+    "0x10",
+    "Infinity",
+    "9007199254740992",
+    false,
+    {},
+    Number.NaN,
+  ])("blocks invalid piece evidence %s", (value) => {
+    expect(fullEditorContentQuantity({ qty_per_pack: value, qty_content_uom: "pcs" }).ok).toBe(
+      false,
+    );
+  });
   it("rejects weight overflow", () => {
     expect(
       fullEditorContentQuantity({ qty_per_pack: Number.MAX_VALUE, qty_content_uom: "kg" }).ok,
@@ -85,5 +99,25 @@ it("kg quantity and gram controls stay synchronized with SI conversion only", ()
 it("editing grams preserves independent piece controls", () => {
   expect(fullEditorWeightPatch({ qty_content_uom: "pcs", qty_per_pack: 6 }, "750")).toEqual({
     net_weight_g: "750",
+  });
+});
+
+it.each(["kg", "g", "grams"])("omits absent %s content from both draft contracts", (unit) => {
+  const content = fullEditorContentQuantity({
+    qty_per_pack: "",
+    qty_content_uom: unit,
+    pcs_per_pack: 6,
+  });
+  expect(content.ok).toBe(true);
+  if (content.ok) expect(fullEditorDraftContentPacking(content.quantity)).toEqual({});
+});
+it.each([
+  { value: 0.5, unit: "kg" as const },
+  { value: 6, unit: "pcs" as const },
+])("keeps legacy and typed draft quantities consistent: %j", (quantity) => {
+  expect(fullEditorDraftContentPacking(quantity)).toEqual({
+    qty_per_pack: quantity.value,
+    qty_content_uom: quantity.unit,
+    content_quantity: quantity,
   });
 });

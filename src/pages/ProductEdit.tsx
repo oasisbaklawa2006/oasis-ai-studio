@@ -44,6 +44,7 @@ import {
 } from "@/features/productAuthority/catalogueReadyGate";
 import {
   fullEditorContentQuantity,
+  fullEditorDraftContentPacking,
   fullEditorQuantityPatch,
   fullEditorWeightPatch,
 } from "@/features/productAuthority/fullEditorContentQuantity";
@@ -98,13 +99,10 @@ import {
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertVariantHierarchySaveAllowed } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
-import {
-  releaseSingleFlight,
-  tryAcquireSingleFlight,
-} from "@/features/productAuthority/saveSingleFlight";
 import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
+import { useSaveRequestOwner } from "@/features/productAuthority/useSaveRequestOwner";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
 import { assertNoBlockingProductCollisions } from "@/features/productGovernance/productDuplicateContract";
@@ -774,7 +772,12 @@ const ProductEdit = () => {
   );
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
-  const saveInFlightRef = useRef(false);
+  const beginSaveRequest = useSaveRequestOwner(location.key);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset save UI for each navigation session, including return navigation.
+  useLayoutEffect(() => {
+    setLoading(false);
+    setSubmitError(null);
+  }, [location.key]);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
   const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
   const draftKey = fullEditorFormDraftKey(editorIdentity);
@@ -1187,11 +1190,12 @@ const ProductEdit = () => {
       .order("approved_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true });
 
-  const loadChannelAuthority = async (productId: string) => {
+  const loadChannelAuthority = async (productId: string, isCurrent = () => true) => {
     const [pricingRes, moqRes] = await Promise.all([
       orderedPricingRulesQuery(productId),
       supabase.from("product_moq_rules").select("*").eq("product_id", productId),
     ]);
+    if (!isCurrent()) return;
     if (pricingRes.error && import.meta.env.DEV) {
       console.error("[ProductEdit] pricing rules load failed:", pricingRes.error.message);
     }
@@ -1490,7 +1494,7 @@ const ProductEdit = () => {
     return m;
   }, [form, isContributorMode]);
 
-  const save = async () => {
+  const save = async (isCurrent: () => boolean) => {
     setSubmitError(null);
 
     if (missing.length > 0) {
@@ -1519,10 +1523,14 @@ const ProductEdit = () => {
       return;
     }
 
+    const canDirectWrite = await canWriteProductsDirectly(roles);
+    if (!isCurrent()) return;
+    const isContributor = isContributorMode || (await isCatalogueContributor());
+    if (!isCurrent()) return;
     const savePath = resolveFullEditorSavePath({
       identity: editorIdentity,
-      canDirectWrite: await canWriteProductsDirectly(roles),
-      isContributor: isContributorMode || (await isCatalogueContributor()),
+      canDirectWrite,
+      isContributor,
       fetchPending: productFetchPending,
       loadedId,
     });
@@ -1623,11 +1631,13 @@ const ProductEdit = () => {
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Product identity collision detected.";
+          if (!isCurrent()) return;
           setLoading(false);
           setSubmitError(message);
           toast.error(message);
           return;
         }
+        if (!isCurrent()) return;
       }
 
       // productRow is a dynamically-assembled Record<string, unknown> (built from the free-form
@@ -1645,7 +1655,7 @@ const ProductEdit = () => {
             .select()
             .single();
 
-      setLoading(false);
+      if (!isCurrent()) return;
 
       if (res.error) {
         const message = formatProductSaveError(res.error);
@@ -1656,13 +1666,15 @@ const ProductEdit = () => {
 
       const savedId = res.data.id as string;
       const pricingSync = await syncChannelPricingFromForm(safePayload, savedId);
+      if (!isCurrent()) return;
       if (pricingSync.ok !== true && pricingSync.message) {
         toast.warning(`Product saved; channel pricing sync failed: ${pricingSync.message}`);
       } else if (pricingSync.count > 0) {
         toast.message(
           `${pricingSync.count} channel price${pricingSync.count === 1 ? "" : "s"} submitted for approval.`,
         );
-        await loadChannelAuthority(savedId);
+        await loadChannelAuthority(savedId, isCurrent);
+        if (!isCurrent()) return;
       }
 
       const reloaded = dbProductToForm(res.data);
@@ -1746,9 +1758,7 @@ const ProductEdit = () => {
         packing: {
           primary_pack_type: payload.primary_pack_type || payload.packaging_code || "NA",
           pack_uom: payload.primary_pack_uom || payload.carton_uom,
-          qty_per_pack: payload.qty_per_pack || payload.pcs_per_pack,
-          qty_content_uom: payload.qty_content_uom,
-          ...(contentQuantity.quantity ? { content_quantity: contentQuantity.quantity } : {}),
+          ...fullEditorDraftContentPacking(contentQuantity.quantity),
           pack_preview: packPreview,
           pack_size: payload.pack_size,
           net_weight_g: payload.net_weight_g,
@@ -1835,7 +1845,7 @@ const ProductEdit = () => {
         targetRecordId: isNew ? null : (id as string),
       });
 
-      setLoading(false);
+      if (!isCurrent()) return;
 
       if (draftRes.ok !== true) {
         const message = `Draft submit failed: ${draftRes.message}`;
@@ -1859,12 +1869,22 @@ const ProductEdit = () => {
   };
 
   const handleSave = () => {
-    if (!tryAcquireSingleFlight(saveInFlightRef)) return;
+    const request = beginSaveRequest();
+    if (!request) return;
     setLoading(true);
-    void save().finally(() => {
-      releaseSingleFlight(saveInFlightRef);
-      setLoading(false);
-    });
+    void save(request.isCurrent)
+      .catch((error: unknown) => {
+        if (!request.isCurrent()) return;
+        const message =
+          error instanceof Error ? error.message : "Product save failed. Please retry.";
+        setSubmitError(message);
+        toast.error(message);
+      })
+      .finally(() => {
+        if (!request.isCurrent()) return;
+        request.release();
+        setLoading(false);
+      });
   };
 
   const saveShortcutRef = useRef(handleSave);

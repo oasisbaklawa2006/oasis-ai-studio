@@ -24,7 +24,7 @@ export function fullEditorContentQuantity(form: Record<string, unknown>): Quanti
   }
   const text = typeof raw === "string" ? raw.trim() : null;
   const numericInput =
-    typeof raw === "number" || (text != null && /^[0-9]+(?:\.[0-9]+)?$/.test(text));
+    typeof raw === "number" || (text != null && /^(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)$/.test(text));
   const value = numericInput ? Number(raw) : Number.NaN;
   if (
     !Number.isFinite(value) ||
@@ -72,4 +72,15 @@ export function fullEditorWeightPatch(
         : "";
   }
   return patch;
+}
+
+/** The legacy pair carries the same evidence as typed content, never a cross-unit fallback. */
+export function fullEditorDraftContentPacking(quantity: FullEditorContentQuantity | null) {
+  return quantity
+    ? {
+        qty_per_pack: quantity.value,
+        qty_content_uom: quantity.unit,
+        content_quantity: quantity,
+      }
+    : {};
 }

@@ -57,6 +57,7 @@ describe("typed Full Editor direct content persistence", () => {
   it.each([
     ["500", "grams"],
     ["0.5", "kg"],
+    [".5", "kg"],
   ])("writes %s %s as canonical grams without asserting a piece count", (quantity, unit) => {
     const row = productEditDirectProductsRow({
       qty_per_pack: quantity,
