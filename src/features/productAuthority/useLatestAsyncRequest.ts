@@ -27,7 +27,6 @@ export function useLatestAsyncRequest(sessionKey: string) {
     if (currentSession.current !== sessionIdentity) return () => false;
     const token = Symbol("authority-request");
     latestRequest.current = token;
-    return () =>
-      currentSession.current === sessionIdentity && latestRequest.current === token;
+    return () => currentSession.current === sessionIdentity && latestRequest.current === token;
   };
 }
