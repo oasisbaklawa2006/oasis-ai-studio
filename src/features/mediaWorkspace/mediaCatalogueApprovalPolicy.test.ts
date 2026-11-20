@@ -31,7 +31,10 @@ describe("mediaCatalogueApprovalPolicy", () => {
     { file_url: "https://fixture.supabase.co/storage/v1/object/authenticated/media/photo.jpg" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/public/../sign/media/photo.jpg" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/public/./photo.jpg" },
-    { file_url: "https://fixture.supabase.co\\\\storage\\\\v1\\\\object\\\\sign\\\\media\\\\photo.jpg" },
+    {
+      file_url:
+        "https://fixture.supabase.co\\\\storage\\\\v1\\\\object\\\\sign\\\\media\\\\photo.jpg",
+    },
     { file_url: "https://user:pass@fixture.supabase.co/published.jpg" },
     { file_url: "https://fixture.supabase.co:invalid/photo.jpg" },
     { file_url: "https://fixture.supabase.co/published%2Ejpg" },
