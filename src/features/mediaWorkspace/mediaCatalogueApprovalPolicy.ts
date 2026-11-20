@@ -28,14 +28,16 @@ export function isMediaDraftApprovalUiBlocked(
   if (typeof value !== "string") return false;
   // Stay aligned with Core's conservative containment until governed promotion exists.
   // URL() normalizes dot segments and backslashes; reject raw bypasses before parsing.
-  if (
-    value.includes("%") ||
-    value.includes("\\") ||
-    /(^|\/)\.{1,2}(\/|[?#]|$)/.test(value)
-  ) return true;
+  if (value.includes("%") || value.includes("\\") || /(^|\/)\.{1,2}(\/|[?#]|$)/.test(value))
+    return true;
   try {
     const url = new URL(value);
-    if (!["http:", "https:"].includes(url.protocol) || !url.hostname || url.username || url.password)
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      !url.hostname ||
+      url.username ||
+      url.password
+    )
       return true;
     const path = url.pathname.toLowerCase();
     return (
