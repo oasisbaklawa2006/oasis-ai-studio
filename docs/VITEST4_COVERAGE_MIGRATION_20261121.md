@@ -4,12 +4,12 @@
 
 AI Studio PR #296 upgrades Vite and Vitest, retaining the same full-source coverage `include` / `exclude` rules and the 180 existing test files. The application code on the comparison branches is unchanged; the migration's functional test suite passes all **1,597 tests** before and after the test-runner upgrade.
 
-Vitest documents coverage-report changes from v3 to v4 due to improved V8 coverage remapping: https://v4.vitest.dev/guide/migration.html
+Vitest documents coverage-report changes from v3 to v4 due to improved V8 coverage remapping: [Vitest 4 migration guide](https://v4.vitest.dev/guide/migration.html)
 
 ## Exact evidence
 
 | Metric | Pre-upgrade protected main `b54da43ac2868a1d465ec2a377154abb5348eda7` (Vitest 3) | PR #296 `760a21f4f53a66c347a20397a3841a0f8c1193cd` (Vitest 4) |
-|---|---:|---:|
+| --- | ---: | ---: |
 | Test files | 180 passing | 180 passing |
 | Tests | 1,597 passing | 1,597 passing |
 | Statements | 49.16% | 45.89% |
@@ -18,8 +18,8 @@ Vitest documents coverage-report changes from v3 to v4 due to improved V8 covera
 | Lines | 49.16% | 46.92% |
 
 GitHub Actions evidence:
-- Vitest 3: https://github.com/oasisbaklawa2006/oasis-ai-studio/actions/jobs/136544159688
-- Vitest 4: https://github.com/oasisbaklawa2006/oasis-ai-studio/actions/jobs/136621560272
+- Vitest 3: [baseline test job](https://github.com/oasisbaklawa2006/oasis-ai-studio/actions/jobs/136544159688)
+- Vitest 4: [migrated test job](https://github.com/oasisbaklawa2006/oasis-ai-studio/actions/jobs/136621560272)
 
 The Vitest 4 coverage reports are **not directly numerically comparable** to the old thresholds. Keeping the old floors caused an artificial red gate despite the same tests passing; reducing or excluding measured source files would be a misleading repair.
 
