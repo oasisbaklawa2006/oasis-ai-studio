@@ -25,7 +25,10 @@ export function isMediaDraftApprovalUiBlocked(
     typeof bucket === "string" && bucket.trim().toLowerCase() === "product-media-staging";
   if (inStaging(payload.bucket_id) || inStaging(payload.storage_bucket)) return true;
   const value = payload.file_url ?? payload.fileUrl;
-  if (typeof value !== "string") return false;
+  // A metadata-only update may inherit an existing durable URL from Core.
+  // An explicitly supplied malformed reference is never a publishable URL.
+  if (value == null) return false;
+  if (typeof value !== "string" || !value.trim()) return true;
   // Stay aligned with Core's conservative containment until governed promotion exists.
   // URL() normalizes dot segments and backslashes; reject raw bypasses before parsing.
   if (value.includes("%") || value.includes("\\") || /(^|\/)\.{1,2}(\/|[?#]|$)/.test(value))
