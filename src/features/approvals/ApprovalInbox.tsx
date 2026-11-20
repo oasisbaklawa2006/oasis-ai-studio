@@ -306,7 +306,7 @@ export default function ApprovalInbox() {
       toast.error("Pricing and MOQ approvals happen in Central, not AI Studio.");
       return;
     }
-    if (isMediaDraftApprovalUiBlocked(r.draftType)) {
+    if (isMediaDraftApprovalUiBlocked(r.draftType, r.payload)) {
       toast.warning(MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE);
       return;
     }
@@ -466,7 +466,7 @@ export default function ApprovalInbox() {
             const isRejected = r.status === "rejected";
             const reviewFlags = getDisplayReviewFlags(r.payload);
             const flagsFromPayload = getReviewFlags(r.payload).length > 0;
-            const mediaApprovalBlocked = isMediaDraftApprovalUiBlocked(r.draftType);
+            const mediaApprovalBlocked = isMediaDraftApprovalUiBlocked(r.draftType, r.payload);
 
             return (
               <div key={`${r.draftType}-${r.id}`} className="luxe-panel space-y-3">

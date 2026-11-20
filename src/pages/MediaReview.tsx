@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   isMediaCatalogueApprovalAvailable,
+  isMediaDraftApprovalUiBlocked,
   MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE,
 } from "@/features/mediaWorkspace/mediaCatalogueApprovalPolicy";
 import {
@@ -99,6 +100,10 @@ const MediaReview = () => {
   const rejectionReasonFor = (submissionId: string): string => reasons.get(submissionId) ?? "";
 
   const approve = async (row: MediaSubmissionRow) => {
+    if (isMediaDraftApprovalUiBlocked("media", row.payload)) {
+      toast.warning(MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE);
+      return;
+    }
     if (
       loading ||
       loadError ||
@@ -299,7 +304,8 @@ const MediaReview = () => {
 
                 {isPending && (
                   <div className="flex flex-col gap-2 pt-1">
-                    {!mediaApprovalAvailable && (
+                    {(!mediaApprovalAvailable ||
+                      isMediaDraftApprovalUiBlocked("media", row.payload)) && (
                       <div className="rounded-md border border-dashed bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                         {MEDIA_CATALOGUE_APPROVAL_BLOCKED_MESSAGE}
                       </div>
@@ -328,15 +334,16 @@ const MediaReview = () => {
                         >
                           Reject
                         </Button>
-                        {mediaApprovalAvailable && (
-                          <Button
-                            className="rounded-full"
-                            onClick={() => approve(row)}
-                            disabled={inFlight.has(row.id)}
-                          >
-                            Approve
-                          </Button>
-                        )}
+                        {mediaApprovalAvailable &&
+                          !isMediaDraftApprovalUiBlocked("media", row.payload) && (
+                            <Button
+                              className="rounded-full"
+                              onClick={() => approve(row)}
+                              disabled={inFlight.has(row.id)}
+                            >
+                              Approve
+                            </Button>
+                          )}
                       </div>
                     </div>
                   </div>
