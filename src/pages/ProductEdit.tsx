@@ -102,6 +102,7 @@ import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthor
 import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
+import { useLatestAsyncRequest } from "@/features/productAuthority/useLatestAsyncRequest";
 import { useSaveRequestOwner } from "@/features/productAuthority/useSaveRequestOwner";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
@@ -773,6 +774,11 @@ const ProductEdit = () => {
   const [dirty, setDirty] = useState(false);
   const restored = useRef(false);
   const beginSaveRequest = useSaveRequestOwner(location.key);
+  // Every channel-authority caller shares one latest-request-wins scope per navigation session.
+  // The request owner also guards stale callbacks captured before a route change.
+  const beginChannelAuthorityRequest = useLatestAsyncRequest(
+    JSON.stringify([location.key, id ?? null]),
+  );
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset save UI for each navigation session, including return navigation.
   useLayoutEffect(() => {
     setLoading(false);
@@ -1191,11 +1197,15 @@ const ProductEdit = () => {
       .order("id", { ascending: true });
 
   const loadChannelAuthority = async (productId: string, isCurrent = () => true) => {
+    const ownsLatestRequest = beginChannelAuthorityRequest();
+    // Guard *all* callers, including background authority reloads and rules-change
+    // callbacks that do not pass the save's own isCurrent predicate.
+    if (!ownsLatestRequest() || !isCurrent()) return;
     const [pricingRes, moqRes] = await Promise.all([
       orderedPricingRulesQuery(productId),
       supabase.from("product_moq_rules").select("*").eq("product_id", productId),
     ]);
-    if (!isCurrent()) return;
+    if (!ownsLatestRequest() || !isCurrent()) return;
     if (pricingRes.error && import.meta.env.DEV) {
       console.error("[ProductEdit] pricing rules load failed:", pricingRes.error.message);
     }
@@ -1655,9 +1665,8 @@ const ProductEdit = () => {
             .select()
             .single();
 
-      if (!isCurrent()) return;
-
       if (res.error) {
+        if (!isCurrent()) return;
         const message = formatProductSaveError(res.error);
         setSubmitError(message);
         toast.error(message);
