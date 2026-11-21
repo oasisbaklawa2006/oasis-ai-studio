@@ -4,6 +4,31 @@ type QuantityResult =
   | { ok: true; quantity: FullEditorContentQuantity | null }
   | { ok: false; message: string };
 
+/** Strict, linear-time decimal grammar without regex backtracking.
+ * Allow digits[.digits] and .digits; reject empty, exponent, signs and trailing dots.
+ * The length bound protects parsing/number conversion from oversized untrusted input.
+ */
+function isPlainDecimalQuantity(text: string): boolean {
+  if (text.length === 0 || text.length > 128) return false;
+  let seenDot = false;
+  let digitsBeforeDot = 0;
+  let digitsAfterDot = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text.charCodeAt(i);
+    if (char >= 48 && char <= 57) {
+      if (seenDot) digitsAfterDot++;
+      else digitsBeforeDot++;
+      continue;
+    }
+    if (char === 46 && !seenDot) {
+      seenDot = true;
+      continue;
+    }
+    return false;
+  }
+  return seenDot ? digitsAfterDot > 0 : digitsBeforeDot > 0;
+}
+
 /** Preserve explicit content on contributor drafts or retain input when Core cannot persist it. */
 export function fullEditorContentQuantity(form: Record<string, unknown>): QuantityResult {
   const hasValue = (value: unknown) => value != null && String(value).trim() !== "";
@@ -24,7 +49,7 @@ export function fullEditorContentQuantity(form: Record<string, unknown>): Quanti
   }
   const text = typeof raw === "string" ? raw.trim() : null;
   const numericInput =
-    typeof raw === "number" || (text != null && /^(?:[0-9]+(?:\.[0-9]+)?|\.[0-9]+)$/.test(text));
+    typeof raw === "number" || (text != null && isPlainDecimalQuantity(text));
   const value = numericInput ? Number(raw) : Number.NaN;
   if (
     !Number.isFinite(value) ||

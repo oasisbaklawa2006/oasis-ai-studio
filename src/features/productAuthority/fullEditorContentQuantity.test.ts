@@ -62,6 +62,36 @@ describe("Full Editor contributor content contract", () => {
       false,
     );
   });
+  it.each([
+    ["0006", "pcs", 6],
+    ["  .50  ", "kg", 0.5],
+    ["1.25", "grams", 1.25],
+  ])("parses valid bounded decimal %s %s", (raw, unit, expected) => {
+    expect(fullEditorContentQuantity({ qty_per_pack: raw, qty_content_uom: unit })).toEqual({
+      ok: true,
+      quantity: { value: expected, unit: unit === "grams" ? "g" : unit },
+    });
+  });
+  it.each([
+    "1.",
+    ".",
+    "1..2",
+    "1.2.3",
+    "++1",
+    "-.5",
+    "1e3",
+    "0x10",
+    "1_000",
+    "1/2",
+    "123abc",
+    "3\\u200b.5",
+    "9".repeat(129),
+    "1".repeat(120) + "x".repeat(20000),
+  ])("rejects malformed or oversized decimal %s", (raw) => {
+    expect(fullEditorContentQuantity({ qty_per_pack: raw, qty_content_uom: "kg" }).ok).toBe(
+      false,
+    );
+  });
   it("rejects weight overflow", () => {
     expect(
       fullEditorContentQuantity({ qty_per_pack: Number.MAX_VALUE, qty_content_uom: "kg" }).ok,
