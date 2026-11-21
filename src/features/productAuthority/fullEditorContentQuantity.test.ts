@@ -88,9 +88,7 @@ describe("Full Editor contributor content contract", () => {
     "9".repeat(129),
     "1".repeat(120) + "x".repeat(20000),
   ])("rejects malformed or oversized decimal %s", (raw) => {
-    expect(fullEditorContentQuantity({ qty_per_pack: raw, qty_content_uom: "kg" }).ok).toBe(
-      false,
-    );
+    expect(fullEditorContentQuantity({ qty_per_pack: raw, qty_content_uom: "kg" }).ok).toBe(false);
   });
   it("rejects weight overflow", () => {
     expect(

@@ -48,8 +48,7 @@ export function fullEditorContentQuantity(form: Record<string, unknown>): Quanti
     };
   }
   const text = typeof raw === "string" ? raw.trim() : null;
-  const numericInput =
-    typeof raw === "number" || (text != null && isPlainDecimalQuantity(text));
+  const numericInput = typeof raw === "number" || (text != null && isPlainDecimalQuantity(text));
   const value = numericInput ? Number(raw) : Number.NaN;
   if (
     !Number.isFinite(value) ||
