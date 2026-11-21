@@ -53,7 +53,9 @@ export function isMediaDraftApprovalUiBlocked(
     // an unrelated public CDN filename is not a Storage bucket segment.
     return (
       /storage\/v1\/(object|render\/image)\/(sign|authenticated)\//.test(path) ||
-      /storage\/v1\/(object|render\/image)\/(public|sign|authenticated)\/product-media-staging(\/|$)/.test(path)
+      /storage\/v1\/(object|render\/image)\/(public|sign|authenticated)\/product-media-staging(\/|$)/.test(
+        path,
+      )
     );
   } catch {
     // Invalid references cannot establish publication either.

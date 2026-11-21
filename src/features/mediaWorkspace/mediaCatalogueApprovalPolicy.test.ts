@@ -35,8 +35,13 @@ describe("mediaCatalogueApprovalPolicy", () => {
     { file_url: "javascript:alert(1)" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/authenticated/media/photo.jpg" },
     { file_url: "https://fixture.supabase.co/storage/v1/render/image/sign/media/photo.jpg" },
-    { file_url: "https://fixture.supabase.co/storage/v1/render/image/authenticated/media/photo.jpg" },
-    { file_url: "https://fixture.supabase.co/storage/v1/render/image/public/product-media-staging/photo.jpg" },
+    {
+      file_url: "https://fixture.supabase.co/storage/v1/render/image/authenticated/media/photo.jpg",
+    },
+    {
+      file_url:
+        "https://fixture.supabase.co/storage/v1/render/image/public/product-media-staging/photo.jpg",
+    },
     { file_url: "https://fixture.supabase.co/storage/v1/object/public/../sign/media/photo.jpg" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/public/./photo.jpg" },
     {
@@ -59,9 +64,12 @@ describe("mediaCatalogueApprovalPolicy", () => {
     "https://cdn.example.test/photo.jpg?note=storage/v1/render/image/authenticated/example",
     "https://cdn.example.test/photos/product-media-staging-guide.jpg",
     "https://cdn.example.test/storage/v1/render/image/public/product-media/photo.jpg",
-  ])("keeps durable public media eligible despite harmless query/fragment or filename: %s", (url) => {
-    expect(isMediaDraftApprovalUiBlocked("media", { file_url: url })).toBe(false);
-  });
+  ])(
+    "keeps durable public media eligible despite harmless query/fragment or filename: %s",
+    (url) => {
+      expect(isMediaDraftApprovalUiBlocked("media", { file_url: url })).toBe(false);
+    },
+  );
 
   it("keeps a metadata-only draft available for Core's effective target URL validation", () => {
     expect(isMediaDraftApprovalUiBlocked("media", { alt_text: "x" })).toBe(false);
