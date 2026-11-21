@@ -39,6 +39,7 @@ import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFro
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
+  gateCatalogueReadyByAuthority,
   type PackagingTaxonomyAuthority,
   packagingAuthorityFromRulesResult,
 } from "@/features/productAuthority/catalogueReadyGate";
@@ -1058,6 +1059,15 @@ const ProductEdit = () => {
     ],
   );
 
+  // Save/toggle must never consult another product's cached pricing/MOQ rows
+  // during a pending/failed authority load, even when the pure gate looks ready.
+  // Existing products require both current-session media and channel fetches;
+  // a newly created product is already initialized as hydrated.
+  const catalogueReadySaveGate = useMemo(
+    () => gateCatalogueReadyByAuthority(catalogueReadyGate, authorityLoaded),
+    [catalogueReadyGate, authorityLoaded],
+  );
+
   // Same evaluation, but with `ignorePendingPackagingAuthority: true` — used only by the
   // auto-clear effect below. A stalled/failed packaging taxonomy load must never block
   // clearing readiness for *other*, independently-confirmed blockers (bad SKU, missing
@@ -1524,14 +1534,12 @@ const ProductEdit = () => {
       return;
     }
 
-    // Unlike the auto-clear effect above, this hard save-time guard is NOT gated on
-    // authorityLoaded: "saving must not persist catalogue-ready=true while hard
-    // blockers exist" is an absolute requirement, not conditional on hydration timing.
-    // A false block during the brief hydration window just costs the user a retry;
-    // a false allow could persist a genuinely-blocked product (e.g. invalid SKU, read
-    // directly from form with no async dependency) as catalogue-ready.
-    if (form.is_catalogue_ready && catalogueReadyGate.allowed !== true) {
-      const message = catalogueReadyBlockedMessage(catalogueReadyGate);
+    // Fail closed both on hard readiness blockers AND pending/failed current-product
+    // authority hydration. Otherwise a previous product's cached pricing/MOQ can
+    // silently justify persisting this product as catalogue-ready.
+    // Non-ready draft saves do not require authority hydration.
+    if (form.is_catalogue_ready && catalogueReadySaveGate.allowed !== true) {
+      const message = catalogueReadyBlockedMessage(catalogueReadySaveGate);
       setSubmitError(message);
       toast.error(`Cannot save as catalogue-ready — ${message}`);
       return;
@@ -3154,17 +3162,17 @@ const ProductEdit = () => {
               <Switch
                 checked={!!form.is_catalogue_ready}
                 onCheckedChange={(v) => {
-                  if (v && catalogueReadyGate.allowed !== true) {
-                    toast.error(catalogueReadyBlockedMessage(catalogueReadyGate));
+                  if (v && catalogueReadySaveGate.allowed !== true) {
+                    toast.error(catalogueReadyBlockedMessage(catalogueReadySaveGate));
                     return;
                   }
                   set("is_catalogue_ready", v);
                 }}
               />
             </div>
-            {catalogueReadyGate.allowed !== true && (
+            {catalogueReadySaveGate.allowed !== true && (
               <ul className="text-[11px] text-amber-700 dark:text-amber-400 space-y-0.5 list-disc pl-4">
-                {catalogueReadyGate.blockers.map((b) => (
+                {catalogueReadySaveGate.blockers.map((b) => (
                   <li key={b}>{b}</li>
                 ))}
               </ul>
