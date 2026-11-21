@@ -53,7 +53,7 @@ export function isMediaDraftApprovalUiBlocked(
     return true;
   if (rawAuthority && !rawAuthority.startsWith("[")) {
     const rawHost = rawAuthority.split(":")[0];
-    const lastHostLabel = rawHost.replace(/\.$/, "");
+    const lastHostLabel = rawHost.replace(/\.+$/, "");
     if (/(^|\.)(0x[0-9a-z]*|[0-9]+)$/i.test(lastHostLabel)) {
       // The only accepted numeric-host spelling is canonical dotted-decimal
       // IPv4 with four octets in range, no leading zeros or trailing dot.
