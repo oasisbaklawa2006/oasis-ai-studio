@@ -372,7 +372,9 @@ describe("fresh build packaging", () => {
     expect(fn.includeFiles.startsWith("public/")).toBe(false);
 
     const rewrite = cfg.rewrites.find((r: { destination: string }) => r.destination === "/index.html");
-    const re = new RegExp(`^${rewrite.source}$`);
+    // Pin the exact source, then exercise an equivalent literal regex (no dynamic RegExp).
+    expect(rewrite.source).toBe("/((?!api/).*)");
+    const re = /^\/((?!api\/).*)$/;
     expect(re.test("/api/runtime-attestation")).toBe(false);
     expect(re.test("/api/anything/else")).toBe(false);
     expect(re.test("/")).toBe(true);
