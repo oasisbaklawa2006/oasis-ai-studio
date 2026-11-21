@@ -8,7 +8,13 @@ afterAll(() => vi.unstubAllGlobals());
 
 it("resets previous-product pricing/MOQ, media, ready flag and draft only on product identity change", async () => {
   const resetEvents: string[] = [];
-  let current!: { pricing: string[]; moq: string[]; media: string[]; ready: boolean; draft: string };
+  let current!: {
+    pricing: string[];
+    moq: string[];
+    media: string[];
+    ready: boolean;
+    draft: string;
+  };
   let updateDraft!: (value: string) => void;
   function Harness({ productIdentity }: { productIdentity: string }) {
     const [pricing, setPricing] = useState(["approved-product-A"]);
