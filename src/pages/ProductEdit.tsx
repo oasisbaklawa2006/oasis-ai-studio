@@ -104,6 +104,7 @@ import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions"
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
 import { useProductAuthorityHydration } from "@/features/productAuthority/useProductAuthorityHydration";
+import { useProductEditorIdentityReset } from "@/features/productAuthority/useProductEditorIdentityReset";
 import { useSaveRequestOwner } from "@/features/productAuthority/useSaveRequestOwner";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
@@ -790,6 +791,25 @@ const ProductEdit = () => {
   const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
   const draftKey = fullEditorFormDraftKey(editorIdentity);
 
+  // React Router can reuse this component across A -> B or A -> New.
+  // Do not carry product-specific pricing, MOQ, media or ready state into a
+  // different editor identity. Never reset on same-product tab navigation:
+  // that would discard genuine unsaved edits.
+  const editorProductIdentity = isNew ? "create" : `edit:${id ?? ""}`;
+  useProductEditorIdentityReset(editorProductIdentity, () => {
+    setLoadedId(null);
+    setProductMediaRows([]);
+    setPricingRuleRows([]);
+    setMoqRuleRows([]);
+    setChannelPrices([]);
+    setChannelMoqRules([]);
+    setForm(empty);
+    setComplianceMetaMap({});
+    complianceBaselineRef.current = {};
+    setDirty(false);
+    setSubmitError(null);
+  });
+
   const isContributorMode = authContextContributor || rpcContributorRole;
 
   const setComplianceField = (field: ComplianceSensitiveField, value: unknown) => {
@@ -824,17 +844,14 @@ const ProductEdit = () => {
   const moqUomMismatch =
     !!form.moq_uom && !!form.increment_uom && form.moq_uom !== form.increment_uom;
 
-  // Mount-once-per-new-product effect: reads `form` at its current (initial/empty) value only
-  // to seed creation-baseline defaults, not to react to every subsequent edit — including
-  // `form` in the deps would re-apply the baseline (and reset complianceBaselineRef) on every
-  // keystroke instead of once when `isNew` becomes true.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above.
+  // New Product must always seed from a blank identity, never from an edited
+  // product's form captured on the preceding render. The create baseline runs
+  // before duplicate-from and Fast Create draft handoff effects.
   useEffect(() => {
     if (!isNew) return;
-    const next = applyCreationBaselineDefaults(form);
+    const next = applyCreationBaselineDefaults(empty);
     complianceBaselineRef.current = pickComplianceBaseline(next);
     setForm(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
 
   useEffect(() => {
