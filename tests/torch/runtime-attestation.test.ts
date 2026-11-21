@@ -5,6 +5,7 @@
  * build-time generator, plus a fresh `vite build` for packaging/isolation checks.
  */
 import { execFileSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import {
   existsSync,
   readdirSync,
@@ -32,7 +33,10 @@ const manifestDir = path.join(root, ATTESTATION_MANIFEST_DIR);
 const manifestFile = path.join(root, ATTESTATION_MANIFEST_RELATIVE_PATH);
 const backupFile = `${manifestFile}.test-backup`;
 
-const TOKEN = "torch-test-token-value";
+// Generated per run so no credential-shaped literal lives in source.
+const TOKEN = randomBytes(24).toString("hex");
+const ROTATED_TOKEN = randomBytes(24).toString("hex");
+const FAKE_PUBLISHABLE_KEY = randomBytes(24).toString("hex");
 const SHA = "0123456789abcdef0123456789abcdef01234567";
 const SIX_KEYS = [
   "activeFeatureFlags",
@@ -44,7 +48,7 @@ const SIX_KEYS = [
 ];
 const LIVE_ENV = {
   VITE_SUPABASE_URL: "https://abcdefghij.supabase.co",
-  VITE_SUPABASE_PUBLISHABLE_KEY: "sb_publishable_SECRET_KEY_VALUE",
+  VITE_SUPABASE_PUBLISHABLE_KEY: FAKE_PUBLISHABLE_KEY,
 };
 const PROD_PROCESS_ENV = { VERCEL_ENV: "production", VERCEL_GIT_COMMIT_SHA: SHA };
 
@@ -293,15 +297,15 @@ describe("build-time isolation", () => {
     process.env.VERCEL_ENV = "development";
     process.env.VERCEL_GIT_COMMIT_SHA = "f".repeat(40);
     process.env.VITE_SUPABASE_URL = "https://zzzzzzzzzz.supabase.co";
-    process.env.VITE_SUPABASE_PUBLISHABLE_KEY = "other";
+    process.env.VITE_SUPABASE_PUBLISHABLE_KEY = randomBytes(8).toString("hex");
     process.env.VITE_CATALOGUE_AI_ENABLED = "true";
     const after = call("GET", TOKEN);
     expect(after.status).toBe(200);
     expect(after.body).toBe(baseline.body);
 
-    process.env.TORCH_ATTEST_TOKEN = "rotated-token";
+    process.env.TORCH_ATTEST_TOKEN = ROTATED_TOKEN;
     expect(call("GET", TOKEN).status).toBe(401);
-    expect(call("GET", "rotated-token").status).toBe(200);
+    expect(call("GET", ROTATED_TOKEN).status).toBe(200);
     process.env.TORCH_ATTEST_TOKEN = TOKEN;
     expect(call("GET", TOKEN).status).toBe(200);
   });
