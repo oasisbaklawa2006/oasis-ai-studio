@@ -20,7 +20,10 @@ export function isMediaDraftApprovalUiBlocked(
   // The current Core approval mapping ignores Storage provenance. Until its
   // publication contract is implemented, never submit these drafts as though
   // approval would promote the bytes or turn a bearer URL into a durable URL.
-  if (payload.storage_path || payload.storagePath) return true;
+  // PostgREST/Core treats any explicit nonempty storage path as private
+  // provenance, including values that happen to be falsy in JavaScript.
+  const hasStoragePath = (path: unknown) => path != null && String(path) !== "";
+  if (hasStoragePath(payload.storage_path) || hasStoragePath(payload.storagePath)) return true;
   const inStaging = (bucket: unknown) =>
     typeof bucket === "string" && bucket.trim().toLowerCase() === "product-media-staging";
   if (inStaging(payload.bucket_id) || inStaging(payload.storage_bucket)) return true;
@@ -29,9 +32,11 @@ export function isMediaDraftApprovalUiBlocked(
   // An explicitly supplied malformed reference is never a publishable URL.
   if (value == null) return false;
   if (typeof value !== "string" || !value.trim()) return true;
-  // Stay aligned with Core's conservative containment until governed promotion exists.
-  // URL() normalizes dot segments and backslashes; reject raw bypasses before parsing.
-  if (value.includes("%") || value.includes("\\") || /(^|\/)\.{1,2}(\/|[?#]|$)/.test(value))
+  // Core #588 checks the URL's *request path* only for raw dot segments.
+  // Query/fragment text is not a filesystem path and must not cause an
+  // over-block; URL() normalizes traversal, so inspect raw path first.
+  const rawPath = /^(?:https?):\/\/[^/?#]+([^?#]*)/i.exec(value)?.[1] ?? "";
+  if (value.includes("%") || value.includes("\\") || /(^|\/)\.{1,2}(\/|$)/.test(rawPath))
     return true;
   try {
     const url = new URL(value);
@@ -43,10 +48,12 @@ export function isMediaDraftApprovalUiBlocked(
     )
       return true;
     const path = url.pathname.toLowerCase();
+    // Keep parity with Core's effective-reference hold: signed/authenticated
+    // object AND image-transform routes are private. A staging-like word in
+    // an unrelated public CDN filename is not a Storage bucket segment.
     return (
-      path.includes("/storage/v1/object/sign/") ||
-      path.includes("/storage/v1/object/authenticated/") ||
-      path.includes("/product-media-staging/")
+      /storage\/v1\/(object|render\/image)\/(sign|authenticated)\//.test(path) ||
+      /storage\/v1\/(object|render\/image)\/(public|sign|authenticated)\/product-media-staging(\/|$)/.test(path)
     );
   } catch {
     // Invalid references cannot establish publication either.
