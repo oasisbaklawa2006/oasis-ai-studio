@@ -31,18 +31,23 @@ export function isMediaDraftApprovalUiBlocked(
   // A metadata-only update may inherit an existing durable URL from Core.
   // An explicitly supplied malformed reference is never a publishable URL.
   if (value == null) return false;
-  if (typeof value !== "string" || !value.trim()) return true;
+  if (typeof value !== "string") return true;
+  // PostgreSQL btrim() strips ordinary surrounding spaces, not arbitrary
+  // whitespace. URL() silently strips other ASCII whitespace and can mask a
+  // noncanonical host or traversing path, so only trim what Core trims.
+  const rawUrl = value.replace(/^ +| +$/g, "");
+  if (!rawUrl || /\s/.test(rawUrl)) return true;
   // Core #588 checks the URL's *request path* only for raw dot segments.
   // Query/fragment text is not a filesystem path and must not cause an
   // over-block; URL() normalizes traversal, so inspect raw path first.
-  const rawPath = /^(?:https?):\/\/[^/?#]+([^?#]*)/i.exec(value)?.[1] ?? "";
-  if (value.includes("%") || value.includes("\\") || /(^|\/)\.{1,2}(\/|$)/.test(rawPath))
+  const rawPath = /^(?:https?):\/\/[^/?#]+([^?#]*)/i.exec(rawUrl)?.[1] ?? "";
+  if (rawUrl.includes("%") || rawUrl.includes("\\") || /(^|\/)\.{1,2}(\/|$)/.test(rawPath))
     return true;
 
   // WHATWG URL() canonicalizes hex, octal, short and overflowing numeric
   // hostnames before returning hostname. Core #588 rejects the unnormalized
   // authority, so inspect it first rather than making its UI approval unsafe.
-  const rawAuthority = /^(?:https?):\/\/([^/?#]+)/i.exec(value)?.[1] ?? "";
+  const rawAuthority = /^(?:https?):\/\/([^/?#]+)/i.exec(rawUrl)?.[1] ?? "";
   const rawPort = /:([0-9]+)$/.exec(rawAuthority)?.[1];
   if (rawPort && (rawPort.length > 5 || Number(rawPort) < 1 || Number(rawPort) > 65535))
     return true;
@@ -60,7 +65,7 @@ export function isMediaDraftApprovalUiBlocked(
     }
   }
   try {
-    const url = new URL(value);
+    const url = new URL(rawUrl);
     if (
       !["http:", "https:"].includes(url.protocol) ||
       !url.hostname ||
