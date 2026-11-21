@@ -91,14 +91,24 @@ it("does not revive a superseded, same-product navigation or an unmounted reques
       root.render(<Harness session="route-a:product-a" />);
     });
     expect(gate.authorityLoaded).toBe(false); // A -> B -> A is a NEW session.
+    let activeMedia!: () => boolean;
+    let activeChannel!: () => boolean;
     await act(async () => {
       expect(gate.completeChannelRequest(oldChannel)).toBe(false);
       expect(gate.completeMediaRequest(oldMedia)).toBe(false);
+      activeMedia = gate.beginMediaRequest();
+      activeChannel = gate.beginChannelRequest();
+    });
+    expect(activeMedia()).toBe(true);
+    expect(activeChannel()).toBe(true);
+    expect(gate.isAuthorityHydratedNow()).toBe(false);
+    await act(async () => {
       root.unmount();
     });
     mounted = false;
-    expect(currentMedia()).toBe(false);
-    expect(currentChannel()).toBe(false);
+    expect(activeMedia()).toBe(false);
+    expect(activeChannel()).toBe(false);
+    expect(gate.isAuthorityHydratedNow()).toBe(false);
   } finally {
     if (mounted) {
       await act(async () => {
@@ -106,5 +116,41 @@ it("does not revive a superseded, same-product navigation or an unmounted reques
       });
     }
     host.remove();
+  }
+});
+
+it("closes synchronous save authority immediately on a superseding request, before React rerenders", async () => {
+  let gate!: ReturnType<typeof useProductAuthorityHydration>;
+  function Harness() {
+    gate = useProductAuthorityHydration("product-a-session", false);
+    return null;
+  }
+  const root = createRoot(document.createElement("div"));
+  try {
+    await act(async () => {
+      root.render(<Harness />);
+    });
+    let media!: () => boolean;
+    let channel!: () => boolean;
+    await act(async () => {
+      media = gate.beginMediaRequest();
+      channel = gate.beginChannelRequest();
+      gate.completeMediaRequest(media);
+      gate.completeChannelRequest(channel);
+    });
+    expect(gate.isAuthorityHydratedNow()).toBe(true);
+    expect(gate.authorityLoaded).toBe(true);
+    await act(async () => {
+      const newest = gate.beginChannelRequest();
+      // This guards an async save that started while the old authority was ready.
+      expect(gate.isAuthorityHydratedNow()).toBe(false);
+      expect(gate.completeChannelRequest(channel)).toBe(false);
+      gate.completeChannelRequest(newest);
+    });
+    expect(gate.isAuthorityHydratedNow()).toBe(true);
+  } finally {
+    await act(async () => {
+      root.unmount();
+    });
   }
 });

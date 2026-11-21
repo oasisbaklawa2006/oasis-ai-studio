@@ -159,7 +159,9 @@ export function gateCatalogueReadyByAuthority(
   if (authorityLoaded) return evaluation;
   return {
     allowed: false,
-    blockers: [CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE, ...evaluation.blockers],
+    blockers: evaluation.blockers.includes(CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE)
+      ? evaluation.blockers
+      : [CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE, ...evaluation.blockers],
   };
 }
 

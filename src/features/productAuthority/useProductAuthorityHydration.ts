@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLatestAsyncRequest } from "./useLatestAsyncRequest";
 
 /** A product may be catalog-ready only after BOTH current-session authorities hydrate.
@@ -11,13 +11,27 @@ export function useProductAuthorityHydration(sessionKey: string, isNew: boolean)
   const channelDone = useRef(false);
   const beginMedia = useLatestAsyncRequest(sessionKey);
   const beginChannel = useLatestAsyncRequest(sessionKey);
+  // A render-captured save callback must not reuse hydrated state across a
+  // new product/session (including A -> B -> A) or after unmount.
+  const sessionIdentity = useMemo(() => Symbol(sessionKey), [sessionKey]);
+  const activeSession = useRef<symbol | null>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a navigation-session change intentionally invalidates both hydration lanes, even though sessionKey is not read inside the effect.
   useLayoutEffect(() => {
+    activeSession.current = sessionIdentity;
     mediaDone.current = false;
     channelDone.current = false;
     setAuthorityLoaded(isNew);
-  }, [sessionKey, isNew]);
+    return () => {
+      if (activeSession.current === sessionIdentity) activeSession.current = null;
+    };
+  }, [sessionIdentity, isNew]);
+
+  /** Synchronous source of truth for the last check immediately before writes.
+   * Unlike render state, this closes instantly when a newer request starts.
+   */
+  const isAuthorityHydratedNow = () =>
+    activeSession.current === sessionIdentity &&
+    (isNew || (mediaDone.current && channelDone.current));
 
   const beginMediaRequest = () => {
     const owns = beginMedia();
@@ -53,6 +67,7 @@ export function useProductAuthorityHydration(sessionKey: string, isNew: boolean)
 
   return {
     authorityLoaded,
+    isAuthorityHydratedNow,
     beginMediaRequest,
     completeMediaRequest,
     beginChannelRequest,

@@ -775,6 +775,7 @@ const ProductEdit = () => {
   const authoritySessionKey = JSON.stringify([location.key, id ?? null]);
   const {
     authorityLoaded,
+    isAuthorityHydratedNow,
     beginMediaRequest,
     completeMediaRequest,
     beginChannelRequest,
@@ -1067,6 +1068,14 @@ const ProductEdit = () => {
     () => gateCatalogueReadyByAuthority(catalogueReadyGate, authorityLoaded),
     [catalogueReadyGate, authorityLoaded],
   );
+
+  // Read the most recent committed render's save gate after asynchronous permission
+  // and identity checks. The hook predicate closes synchronously on a new
+  // media/pricing/MOQ load, even before React commits another render.
+  const catalogueReadySaveGateRef = useRef(catalogueReadySaveGate);
+  useLayoutEffect(() => {
+    catalogueReadySaveGateRef.current = catalogueReadySaveGate;
+  }, [catalogueReadySaveGate]);
 
   // Same evaluation, but with `ignorePendingPackagingAuthority: true` — used only by the
   // auto-clear effect below. A stalled/failed packaging taxonomy load must never block
@@ -1518,6 +1527,19 @@ const ProductEdit = () => {
     return m;
   }, [form, isContributorMode]);
 
+  const ensureCatalogueReadyForPersistence = () => {
+    if (!form.is_catalogue_ready) return true;
+    const latestGate = gateCatalogueReadyByAuthority(
+      catalogueReadySaveGateRef.current,
+      isAuthorityHydratedNow(),
+    );
+    if (latestGate.allowed === true) return true;
+    const message = catalogueReadyBlockedMessage(latestGate);
+    setSubmitError(message);
+    toast.error(`Cannot save as catalogue-ready — ${message}`);
+    return false;
+  };
+
   const save = async (isCurrent: () => boolean) => {
     setSubmitError(null);
 
@@ -1534,16 +1556,9 @@ const ProductEdit = () => {
       return;
     }
 
-    // Fail closed both on hard readiness blockers AND pending/failed current-product
-    // authority hydration. Otherwise a previous product's cached pricing/MOQ can
-    // silently justify persisting this product as catalogue-ready.
-    // Non-ready draft saves do not require authority hydration.
-    if (form.is_catalogue_ready && catalogueReadySaveGate.allowed !== true) {
-      const message = catalogueReadyBlockedMessage(catalogueReadySaveGate);
-      setSubmitError(message);
-      toast.error(`Cannot save as catalogue-ready — ${message}`);
-      return;
-    }
+    // Validate before async permission probes, then *again* immediately before
+    // each persistence path; a newer authority request can start during awaits.
+    if (!ensureCatalogueReadyForPersistence()) return;
 
     const canDirectWrite = await canWriteProductsDirectly(roles);
     if (!isCurrent()) return;
@@ -1666,6 +1681,7 @@ const ProductEdit = () => {
       // form state via productEditDirectProductsRow/formToDbProductPayload), not the generated Insert/Update
       // row shape, so the generated client's excess-property check rejects it structurally even
       // though validateProductSavePayload() above already vetted its actual columns.
+      if (!isCurrent() || !ensureCatalogueReadyForPersistence()) return;
       const res = isNew
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase as any).from("products").insert(productRow).select().single()
@@ -1859,6 +1875,7 @@ const ProductEdit = () => {
         needs_admin_review_flags: optionalReviewFlags,
       };
 
+      if (!isCurrent() || !ensureCatalogueReadyForPersistence()) return;
       const draftRes = await submitCatalogueDraft({
         draftType: "product",
         operation: isNew ? "create" : "update",
