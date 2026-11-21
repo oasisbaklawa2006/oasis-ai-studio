@@ -1,4 +1,3 @@
-// @vitest-environment node
 /**
  * WO-TB-02 — runtime attestation contract tests.
  * Exercises api/runtime-attestation.ts against a manifest produced by the real
