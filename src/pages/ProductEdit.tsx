@@ -105,6 +105,7 @@ import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
 import { useProductAuthorityHydration } from "@/features/productAuthority/useProductAuthorityHydration";
 import { useProductEditorIdentityReset } from "@/features/productAuthority/useProductEditorIdentityReset";
+import { useProductEditorLocalDraft } from "@/features/productAuthority/useProductEditorLocalDraft";
 import { useSaveRequestOwner } from "@/features/productAuthority/useSaveRequestOwner";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
@@ -129,10 +130,6 @@ import {
   type ComplianceSensitiveField,
   stripUnapprovedComplianceFields,
 } from "@/lib/compliance/aiComplianceSafety";
-import {
-  mergeDraftOverAuthorityForm,
-  stripAuthorityFieldsFromDraft,
-} from "@/lib/formDraftAuthority";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { canApproveComplianceFields, createManualFieldMeta } from "@/shared/ai/complianceApproval";
 import {
@@ -769,7 +766,6 @@ const ProductEdit = () => {
     null,
   );
   const [dirty, setDirty] = useState(false);
-  const restored = useRef(false);
   const beginSaveRequest = useSaveRequestOwner(location.key);
   // Authority is ready only when this navigation's latest successful media AND
   // channel requests have completed. The hook protects same-product reload races.
@@ -1348,32 +1344,10 @@ const ProductEdit = () => {
     setForm((f: Record<string, unknown>) => ({ ...f, ...p }));
   };
 
-  useEffect(() => {
-    if (restored.current) return;
-
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (raw) {
-        const draft = JSON.parse(raw) as Record<string, unknown>;
-        setForm((f: Record<string, unknown>) => mergeDraftOverAuthorityForm(f, draft));
-      }
-    } catch {
-      // Ignore corrupt/unreadable draft storage — falls back to a fresh, non-restored form.
-    }
-
-    restored.current = true;
-  }, [draftKey]);
-
-  useEffect(() => {
-    if (!restored.current) return;
-
-    try {
-      localStorage.setItem(draftKey, JSON.stringify(stripAuthorityFieldsFromDraft(form)));
-    } catch {
-      // Ignore write failures (e.g. storage quota / private browsing) — draft autosave is
-      // best-effort only.
-    }
-  }, [draftKey, form]);
+  // Hydrate the destination draft key before autosave may write to that key.
+  // A single mounted ProductEdit can navigate A -> New -> B: a global boolean
+  // "restored" flag would skip New's draft and overwrite it with A's form.
+  useProductEditorLocalDraft(draftKey, form, setForm);
 
   useEffect(() => {
     const onUnload = (e: BeforeUnloadEvent) => {
