@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import {
   existsSync,
   mkdirSync,
+  mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
@@ -15,6 +16,7 @@ import {
   writeFileSync,
 } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -371,32 +373,38 @@ describe("fresh build packaging", () => {
   it(
     "writes the manifest outside dist/ and public/ and never copies it into them",
     () => {
-      rmSync(manifestDir, { recursive: true, force: true });
-      rmSync(path.join(root, "dist"), { recursive: true, force: true });
-      execFileSync("npx", ["vite", "build"], {
-        cwd: root,
-        stdio: "pipe",
-        env: {
-          ...process.env,
-          ...LIVE_ENV,
-          VERCEL_ENV: "preview",
-          VERCEL_GIT_COMMIT_SHA: SHA,
-        },
-      });
-      expect(existsSync(manifestFile)).toBe(true);
-      const built = JSON.parse(readFileSync(manifestFile, "utf8"));
-      expect(built).toMatchObject({ gitSha: SHA, environment: "preview", demoMode: false });
+      // Build into a temporary outDir so the workspace dist/ is never touched.
+      const outDir = mkdtempSync(path.join(os.tmpdir(), "torch-attest-dist-"));
+      try {
+        rmSync(manifestDir, { recursive: true, force: true });
+        execFileSync("npx", ["vite", "build", "--outDir", outDir, "--emptyOutDir"], {
+          cwd: root,
+          stdio: "pipe",
+          env: {
+            ...process.env,
+            ...LIVE_ENV,
+            VERCEL_ENV: "preview",
+            VERCEL_GIT_COMMIT_SHA: SHA,
+          },
+        });
+        expect(existsSync(path.join(outDir, "index.html"))).toBe(true);
+        expect(existsSync(manifestFile)).toBe(true);
+        const built = JSON.parse(readFileSync(manifestFile, "utf8"));
+        expect(built).toMatchObject({ gitSha: SHA, environment: "preview", demoMode: false });
 
-      for (const dir of ["dist", "public"]) {
-        const offenders = listFiles(path.join(root, dir)).filter(
-          (f) =>
-            f.includes(ATTESTATION_MANIFEST_DIR) ||
-            path.basename(f) === ATTESTATION_MANIFEST_FILE,
-        );
-        expect(offenders).toEqual([]);
+        for (const dir of [outDir, path.join(root, "public")]) {
+          const offenders = listFiles(dir).filter(
+            (f) =>
+              f.includes(ATTESTATION_MANIFEST_DIR) ||
+              path.basename(f) === ATTESTATION_MANIFEST_FILE,
+          );
+          expect(offenders).toEqual([]);
+        }
+        // The built manifest is what the handler serves.
+        expect(JSON.parse(call("GET", TOKEN).body)).toEqual(built);
+      } finally {
+        rmSync(outDir, { recursive: true, force: true });
       }
-      // The built manifest is what the handler serves.
-      expect(JSON.parse(call("GET", TOKEN).body)).toEqual(built);
     },
     180_000,
   );
