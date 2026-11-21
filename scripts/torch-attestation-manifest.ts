@@ -82,22 +82,25 @@ function resolveEnvironment(processEnv: AttestationInputs["processEnv"]): Attest
   return "development";
 }
 
+/**
+ * Mirrors src/shared/supabase/env.ts: the SPA throws at boot unless BOTH vars are
+ * present and the URL is a valid https://<ref>.supabase.co host. There is no
+ * non-throwing demo boot path, so any other state is unbootable and must not be
+ * attested (the manifest is not written and the endpoint returns 503).
+ */
 function resolveSupabase(viteEnv: Record<string, unknown>): {
-  supabaseProjectRef: string | null;
-  demoMode: boolean;
+  supabaseProjectRef: string;
+  demoMode: false;
 } {
   const url = str(viteEnv.VITE_SUPABASE_URL);
   const key = str(viteEnv.VITE_SUPABASE_PUBLISHABLE_KEY);
-  if (!url && !key) return { supabaseProjectRef: null, demoMode: true };
-  if (!url || !key) {
-    throw new Error(
-      "Supabase config is partial: VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY must both be set or both absent",
-    );
-  }
+  if (!url) throw new Error("Missing VITE_SUPABASE_URL: the SPA cannot boot");
+  if (!key) throw new Error("Missing VITE_SUPABASE_PUBLISHABLE_KEY: the SPA cannot boot");
   const match = SUPABASE_URL_PATTERN.exec(url);
-  if (!match || /lovable/i.test(url)) {
-    throw new Error("VITE_SUPABASE_URL is not a valid https://<project-ref>.supabase.co URL");
+  if (!match) {
+    throw new Error("VITE_SUPABASE_URL must be an https://<project-ref>.supabase.co URL");
   }
+  if (/lovable/i.test(url)) throw new Error("Lovable Cloud URLs are not allowed");
   return { supabaseProjectRef: match[1].toLowerCase(), demoMode: false };
 }
 

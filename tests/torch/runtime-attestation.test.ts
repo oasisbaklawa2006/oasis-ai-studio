@@ -90,6 +90,7 @@ function buildManifest(
 }
 
 function assertNoMetadata(r: Result) {
+  if (r.status === 503) expect(r.body).toBe("");
   for (const needle of [SHA, "abcdefghij", "ai-studio", "activeFeatureFlags", "supabase"]) {
     expect(r.body).not.toContain(needle);
   }
@@ -162,15 +163,48 @@ describe("live 200 contract", () => {
   });
 });
 
-describe("demo mode", () => {
-  it("returns 200 with null project ref and demoMode true", () => {
-    buildManifest({});
+describe("no demo boot path (SPA env.ts throws without Supabase config)", () => {
+  it("both Supabase settings absent -> no manifest, authenticated 503 with empty body", () => {
+    expect(writeAttestationManifest(root, { DEV: false }, PROD_PROCESS_ENV)).toBeNull();
+    expect(existsSync(manifestFile)).toBe(false);
     const r = call("GET", TOKEN);
-    expect(r.status).toBe(200);
-    const json = JSON.parse(r.body);
-    expect(Object.keys(json).sort()).toEqual(SIX_KEYS);
-    expect(json.supabaseProjectRef).toBeNull();
-    expect(json.demoMode).toBe(true);
+    expect(r.status).toBe(503);
+    expect(r.headers["cache-control"]).toBe("private, no-store");
+    expect(r.body).toBe("");
+  });
+
+  it("both settings blank/whitespace -> 503", () => {
+    expect(
+      writeAttestationManifest(
+        root,
+        { DEV: false, VITE_SUPABASE_URL: "  ", VITE_SUPABASE_PUBLISHABLE_KEY: "" },
+        PROD_PROCESS_ENV,
+      ),
+    ).toBeNull();
+    expect(call("GET", TOKEN).status).toBe(503);
+  });
+
+  it("a stale good manifest is removed when the next build has no Supabase config", () => {
+    buildManifest(LIVE_ENV);
+    expect(call("GET", TOKEN).status).toBe(200);
+    expect(writeAttestationManifest(root, { DEV: false }, PROD_PROCESS_ENV)).toBeNull();
+    expect(call("GET", TOKEN).status).toBe(503);
+  });
+
+  it("a hand-written demo manifest (null ref + demoMode true) is rejected with 503", () => {
+    buildManifest(LIVE_ENV);
+    const good = JSON.parse(readFileSync(manifestFile, "utf8"));
+    writeFileSync(manifestFile, JSON.stringify({ ...good, supabaseProjectRef: null, demoMode: true }));
+    const r = call("GET", TOKEN);
+    expect(r.status).toBe(503);
+    expect(r.headers["cache-control"]).toBe("private, no-store");
+    assertNoMetadata(r);
+  });
+
+  it("unauthenticated callers still get 401, never the 503 reason", () => {
+    expect(writeAttestationManifest(root, { DEV: false }, PROD_PROCESS_ENV)).toBeNull();
+    expect(call("GET").status).toBe(401);
+    expect(call("GET", "wrong").status).toBe(401);
   });
 });
 
@@ -251,6 +285,8 @@ describe("rejections carry no metadata and are never cached", () => {
       { ...good, demoMode: "false" },
       { ...good, demoMode: true },
       { ...good, supabaseProjectRef: null },
+      { ...good, supabaseProjectRef: null, demoMode: true },
+      { ...good, supabaseProjectRef: "", demoMode: false },
       { ...good, activeFeatureFlags: { ...good.activeFeatureFlags, rogue: true } },
       { ...good, activeFeatureFlags: { ...good.activeFeatureFlags, catalogue_ai_enabled: null } },
       {
@@ -275,6 +311,8 @@ describe("rejections carry no metadata and are never cached", () => {
 
 describe("generator fails closed", () => {
   const cases: Array<[string, Record<string, unknown>, Record<string, string | undefined>]> = [
+    ["no supabase config at all", {}, PROD_PROCESS_ENV],
+    ["only key set", { VITE_SUPABASE_PUBLISHABLE_KEY: LIVE_ENV.VITE_SUPABASE_PUBLISHABLE_KEY }, PROD_PROCESS_ENV],
     ["partial supabase config", { VITE_SUPABASE_URL: LIVE_ENV.VITE_SUPABASE_URL }, PROD_PROCESS_ENV],
     ["non-supabase url", { ...LIVE_ENV, VITE_SUPABASE_URL: "https://example.com" }, PROD_PROCESS_ENV],
     ["lovable url", { ...LIVE_ENV, VITE_SUPABASE_URL: "https://lovable.supabase.co" }, PROD_PROCESS_ENV],

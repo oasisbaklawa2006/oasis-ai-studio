@@ -62,14 +62,12 @@ function validateManifest(raw: unknown): Record<string, unknown> | null {
   if (app !== "ai-studio") return null;
   if (typeof gitSha !== "string" || !GIT_SHA_PATTERN.test(gitSha)) return null;
   if (typeof environment !== "string" || !ENVIRONMENTS.includes(environment)) return null;
-  if (supabaseProjectRef !== null && (typeof supabaseProjectRef !== "string" || !supabaseProjectRef)) {
-    return null;
-  }
-  if (typeof demoMode !== "boolean") return null;
+  // The SPA has no non-throwing demo boot path, so a bootable build always has a
+  // project ref and demoMode false. Anything else is treated as broken.
+  if (typeof supabaseProjectRef !== "string" || !supabaseProjectRef) return null;
+  if (demoMode !== false) return null;
   if (!isPlainObject(activeFeatureFlags) || !sameKeys(activeFeatureFlags, FLAGS)) return null;
   if (!FLAGS.every((f) => typeof activeFeatureFlags[f] === "boolean")) return null;
-  if (demoMode && supabaseProjectRef !== null) return null;
-  if (!demoMode && supabaseProjectRef === null) return null;
   return { app, gitSha, environment, supabaseProjectRef, activeFeatureFlags, demoMode };
 }
 
@@ -100,7 +98,7 @@ export default function handler(req: IncomingMessage, res: ServerResponse): void
 
   const expected = process.env.TORCH_ATTEST_TOKEN;
   if (!expected) {
-    send(res, 503, { error: "attestation_unavailable" });
+    send(res, 503);
     return;
   }
 
@@ -113,7 +111,7 @@ export default function handler(req: IncomingMessage, res: ServerResponse): void
 
   const manifest = loadManifest();
   if (!manifest) {
-    send(res, 503, { error: "attestation_unavailable" });
+    send(res, 503);
     return;
   }
   send(res, 200, manifest);
