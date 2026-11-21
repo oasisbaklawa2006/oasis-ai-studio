@@ -7,9 +7,9 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import {
   existsSync,
+  mkdirSync,
   readdirSync,
   readFileSync,
-  renameSync,
   rmSync,
   statSync,
   writeFileSync,
@@ -30,7 +30,6 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const manifestDir = path.join(root, ATTESTATION_MANIFEST_DIR);
 const manifestFile = path.join(root, ATTESTATION_MANIFEST_RELATIVE_PATH);
-const backupFile = `${manifestFile}.test-backup`;
 
 // Generated per run so no credential-shaped literal lives in source.
 const TOKEN = randomBytes(24).toString("hex");
@@ -105,16 +104,20 @@ const ENV_KEYS = [
   "VITE_CATALOGUE_AI_ENABLED",
 ] as const;
 const savedEnv: Record<string, string | undefined> = {};
-let hadManifest = false;
+// Held in memory: the fresh-build test deletes the whole manifest directory.
+let originalManifest: string | null = null;
 
 beforeAll(() => {
-  hadManifest = existsSync(manifestFile);
-  if (hadManifest) renameSync(manifestFile, backupFile);
+  originalManifest = existsSync(manifestFile) ? readFileSync(manifestFile, "utf8") : null;
+  rmSync(manifestFile, { force: true });
 });
 
 afterAll(() => {
   rmSync(manifestFile, { force: true });
-  if (hadManifest) renameSync(backupFile, manifestFile);
+  if (originalManifest !== null) {
+    mkdirSync(manifestDir, { recursive: true });
+    writeFileSync(manifestFile, originalManifest, "utf8");
+  }
 });
 
 beforeEach(() => {
