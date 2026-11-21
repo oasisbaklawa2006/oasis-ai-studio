@@ -53,6 +53,10 @@ describe("mediaCatalogueApprovalPolicy", () => {
     { file_url: "https://fixture.supabase.co:0/photo.jpg" },
     { file_url: "https://fixture.supabase.co:000080/photo.jpg" },
     { file_url: "https://0x7f000001/photo.jpg" },
+    { file_url: " https://0x7f000001/photo.jpg" },
+    { file_url: "  https://cdn.example.test/photos/../published.jpg" },
+    { file_url: "\\thttps://cdn.example.test/published.jpg" },
+    { file_url: "https://cdn.example.test/published.jpg\\n" },
     { file_url: "https://0x/photo.jpg" },
     { file_url: "https://127.1/photo.jpg" },
     { file_url: "https://0177.0.0.1/photo.jpg" },
@@ -73,6 +77,7 @@ describe("mediaCatalogueApprovalPolicy", () => {
     "https://cdn.example.test/photos/product-media-staging-guide.jpg",
     "https://cdn.example.test/storage/v1/render/image/public/product-media/photo.jpg",
     "https://203.0.113.10:8443/photo.jpg",
+    "  https://cdn.example.test/published.jpg  ",
   ])(
     "keeps durable public media eligible despite harmless query/fragment or filename: %s",
     (url) => {
