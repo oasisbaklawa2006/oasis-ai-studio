@@ -13,6 +13,7 @@ describe("mediaCatalogueApprovalPolicy", () => {
 
   it.each([
     { storage_path: "products/fixture/submissions/photo.jpg" },
+    { storage_path: 0 },
     { storagePath: "products/fixture/submissions/photo.jpg" },
     { bucket_id: "product-media-staging" },
     { storage_bucket: "product-media-staging" },
@@ -33,6 +34,9 @@ describe("mediaCatalogueApprovalPolicy", () => {
     { file_url: { signedUrl: "https://fixture.supabase.co/media.jpg" } },
     { file_url: "javascript:alert(1)" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/authenticated/media/photo.jpg" },
+    { file_url: "https://fixture.supabase.co/storage/v1/render/image/sign/media/photo.jpg" },
+    { file_url: "https://fixture.supabase.co/storage/v1/render/image/authenticated/media/photo.jpg" },
+    { file_url: "https://fixture.supabase.co/storage/v1/render/image/public/product-media-staging/photo.jpg" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/public/../sign/media/photo.jpg" },
     { file_url: "https://fixture.supabase.co/storage/v1/object/public/./photo.jpg" },
     {
@@ -46,6 +50,17 @@ describe("mediaCatalogueApprovalPolicy", () => {
   ])("blocks unpromoted media references: %j", (payload) => {
     expect(isMediaDraftApprovalUiBlocked("media", payload)).toBe(true);
     expect(isMediaDraftApprovalUiBlocked("product", payload)).toBe(false);
+  });
+
+  it.each([
+    "https://cdn.example.test/published.jpg#/./preview",
+    "https://cdn.example.test/published.jpg?view=/../preview",
+    "https://cdn.example.test/photo.jpg#storage/v1/object/sign/example",
+    "https://cdn.example.test/photo.jpg?note=storage/v1/render/image/authenticated/example",
+    "https://cdn.example.test/photos/product-media-staging-guide.jpg",
+    "https://cdn.example.test/storage/v1/render/image/public/product-media/photo.jpg",
+  ])("keeps durable public media eligible despite harmless query/fragment or filename: %s", (url) => {
+    expect(isMediaDraftApprovalUiBlocked("media", { file_url: url })).toBe(false);
   });
 
   it("keeps a metadata-only draft available for Core's effective target URL validation", () => {
