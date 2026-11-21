@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  catalogueReadyBlockedMessage,
   CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE,
+  catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
-  gateCatalogueReadyByAuthority,
   evaluatePackagingReadiness,
+  gateCatalogueReadyByAuthority,
   type PackagingTaxonomyAuthority,
   packagingAuthorityFromRulesResult,
 } from "./catalogueReadyGate";
