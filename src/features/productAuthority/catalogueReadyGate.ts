@@ -144,6 +144,27 @@ export function evaluateCatalogueReadyGate(
   return { allowed: blockers.length === 0, blockers };
 }
 
+export const CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE =
+  "Current product media and channel pricing/MOQ authority have not finished loading — retry before saving as catalogue-ready";
+
+/** Fail-closed commit/toggle gate. The evaluation above can only be trusted for
+ * the active product after its media and pricing/MOQ requests both succeed.
+ * Retaining stale rows for display/retry is safe only while publication stays blocked.
+ * Plain non-ready draft saves remain available.
+ */
+export function gateCatalogueReadyByAuthority(
+  evaluation: CatalogueReadyGateResult,
+  authorityLoaded: boolean,
+): CatalogueReadyGateResult {
+  if (authorityLoaded) return evaluation;
+  return {
+    allowed: false,
+    blockers: evaluation.blockers.includes(CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE)
+      ? evaluation.blockers
+      : [CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE, ...evaluation.blockers],
+  };
+}
+
 export function catalogueReadyBlockedMessage(result: CatalogueReadyGateResult): string {
   return `Cannot mark catalogue-ready. Missing: ${result.blockers.join(", ")}.`;
 }
