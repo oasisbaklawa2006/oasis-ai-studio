@@ -38,6 +38,27 @@ export function isMediaDraftApprovalUiBlocked(
   const rawPath = /^(?:https?):\/\/[^/?#]+([^?#]*)/i.exec(value)?.[1] ?? "";
   if (value.includes("%") || value.includes("\\") || /(^|\/)\.{1,2}(\/|$)/.test(rawPath))
     return true;
+
+  // WHATWG URL() canonicalizes hex, octal, short and overflowing numeric
+  // hostnames before returning hostname. Core #588 rejects the unnormalized
+  // authority, so inspect it first rather than making its UI approval unsafe.
+  const rawAuthority = /^(?:https?):\/\/([^/?#]+)/i.exec(value)?.[1] ?? "";
+  const rawPort = /:([0-9]+)$/.exec(rawAuthority)?.[1];
+  if (rawPort && (rawPort.length > 5 || Number(rawPort) < 1 || Number(rawPort) > 65535))
+    return true;
+  if (rawAuthority && !rawAuthority.startsWith("[")) {
+    const rawHost = rawAuthority.split(":")[0];
+    const lastHostLabel = rawHost.replace(/\.$/, "");
+    if (/(^|\.)(0x[0-9a-z]*|[0-9]+)$/i.test(lastHostLabel)) {
+      // The only accepted numeric-host spelling is canonical dotted-decimal
+      // IPv4 with four octets in range, no leading zeros or trailing dot.
+      if (
+        !/^(0|[1-9][0-9]{0,2})(\.(0|[1-9][0-9]{0,2})){3}$/.test(rawHost) ||
+        rawHost.split(".").some((octet) => Number(octet) > 255)
+      )
+        return true;
+    }
+  }
   try {
     const url = new URL(value);
     if (
