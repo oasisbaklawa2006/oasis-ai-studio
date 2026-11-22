@@ -1,5 +1,8 @@
-import { useEffect, useState, type Dispatch, type SetStateAction } from "react";
-import { mergeDraftOverAuthorityForm, stripAuthorityFieldsFromDraft } from "@/lib/formDraftAuthority";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
+import {
+  mergeDraftOverAuthorityForm,
+  stripAuthorityFieldsFromDraft,
+} from "@/lib/formDraftAuthority";
 
 /** Hydrate each product identity's local draft *before* allowing autosave.
  * The hydrated key is state (not a mutable boolean) so a same-commit hydrate

@@ -11,7 +11,10 @@ it("restores the new product draft before autosave may overwrite it with a prior
   const oldKey = "studio-unit-draft-existing-A";
   const newKey = "studio-unit-draft-create";
   localStorage.setItem(oldKey, JSON.stringify({ product_name: "Old persisted A" }));
-  localStorage.setItem(newKey, JSON.stringify({ product_name: "Existing New draft", sku: "NEW-001" }));
+  localStorage.setItem(
+    newKey,
+    JSON.stringify({ product_name: "Existing New draft", sku: "NEW-001" }),
+  );
   let current!: Record<string, unknown>;
   function Harness({ identity, draftKey }: { identity: string; draftKey: string }) {
     const [form, setForm] = useState<Record<string, unknown>>({
