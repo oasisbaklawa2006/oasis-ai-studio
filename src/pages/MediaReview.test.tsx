@@ -85,6 +85,23 @@ it("prevents duplicate actions before React rerenders", async () => {
   await act(async () => resolve({ ok: true }));
 });
 
+it("does not reload or update state after unmounting mid-rejection", async () => {
+  await render();
+  await reason();
+  let resolve!: (result: { ok: boolean }) => void;
+  desk.reject.mockImplementation(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  await act(async () => button("Reject")?.click());
+  expect(desk.fetch).toHaveBeenCalledTimes(1);
+  await act(async () => root.unmount());
+  await act(async () => resolve({ ok: true }));
+  expect(desk.fetch).toHaveBeenCalledTimes(1);
+});
+
 it("keeps private staging reviewable without offering unsupported approval", async () => {
   desk.fetch.mockResolvedValueOnce([
     {

@@ -44,6 +44,7 @@ const MediaReview = () => {
   const [inFlight, setInFlight] = useState<Set<string>>(() => new Set());
   const actionLocks = useRef(new Set<string>());
   const loadSequence = useRef(0);
+  const mounted = useRef(true);
   const mediaApprovalAvailable = isMediaCatalogueApprovalAvailable();
 
   const load = async () => {
@@ -74,6 +75,7 @@ const MediaReview = () => {
     void load();
     return () => {
       loadSequence.current += 1;
+      mounted.current = false;
     };
   }, []);
 
@@ -115,6 +117,7 @@ const MediaReview = () => {
     setInFlight((prev) => new Set(prev).add(row.id));
     try {
       const res = await approveMediaSubmission(row.id);
+      if (!mounted.current) return;
       if (!res.ok) {
         toast.error(res.message);
         await load();
@@ -124,11 +127,13 @@ const MediaReview = () => {
       await load();
     } finally {
       actionLocks.current.delete(row.id);
-      setInFlight((prev) => {
-        const next = new Set(prev);
-        next.delete(row.id);
-        return next;
-      });
+      if (mounted.current) {
+        setInFlight((prev) => {
+          const next = new Set(prev);
+          next.delete(row.id);
+          return next;
+        });
+      }
     }
   };
 
@@ -145,6 +150,7 @@ const MediaReview = () => {
     try {
       const reason = rejectionReasonFor(row.id);
       const res = await rejectMediaSubmission(row.id, reason);
+      if (!mounted.current) return;
       if (!res.ok) {
         toast.error(res.message);
         await load();
@@ -159,11 +165,13 @@ const MediaReview = () => {
       await load();
     } finally {
       actionLocks.current.delete(row.id);
-      setInFlight((prev) => {
-        const next = new Set(prev);
-        next.delete(row.id);
-        return next;
-      });
+      if (mounted.current) {
+        setInFlight((prev) => {
+          const next = new Set(prev);
+          next.delete(row.id);
+          return next;
+        });
+      }
     }
   };
 
