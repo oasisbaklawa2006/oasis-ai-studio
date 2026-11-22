@@ -67,6 +67,8 @@ describe("mediaCatalogueApprovalPolicy", () => {
     { file_url: "https://cdn.0x7f000001/photo.jpg" },
     { file_url: "https://fixture.supabase.co/published%2Ejpg" },
     { bucket_id: " Product-Media-Staging " },
+    { file_url: "https:example.org" },
+    { file_url: "https:/example.org/photo.jpg" },
   ])("blocks unpromoted media references: %j", (payload) => {
     expect(isMediaDraftApprovalUiBlocked("media", payload)).toBe(true);
     expect(isMediaDraftApprovalUiBlocked("product", payload)).toBe(false);

@@ -37,6 +37,11 @@ export function isMediaDraftApprovalUiBlocked(
   // noncanonical host or traversing path, so only trim what Core trims.
   const rawUrl = value.replace(/^ +| +$/g, "");
   if (!rawUrl || /\s/.test(rawUrl)) return true;
+  // Require an explicit authority before any of the raw-string checks below.
+  // URL() normalizes a special scheme without "//" (e.g. "https:example.org")
+  // into "https://example.org/", which would otherwise let such a value skip
+  // the raw-path/raw-authority checks entirely (they require literal "://").
+  if (!/^https?:\/\/[^/?#]/i.test(rawUrl)) return true;
   // Core #588 checks the URL's *request path* only for raw dot segments.
   // Query/fragment text is not a filesystem path and must not cause an
   // over-block; URL() normalizes traversal, so inspect raw path first.
