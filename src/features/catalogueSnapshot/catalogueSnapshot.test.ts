@@ -28,6 +28,7 @@ import {
   updateCatalogueVersionSnapshot,
 } from "./catalogueVersionStore";
 import {
+  buildApprovedCatalogueProductSnapshot,
   buildCentralSyncPreviewBundle,
   isStaleCatalogueVersion,
   LIVE_CENTRAL_WRITE_ENABLED,
@@ -503,5 +504,39 @@ describe("centralSyncPayload restricts the approved snapshot to approved-only pr
     ]);
     expect(bundle.approved_catalogue_product_snapshot.mrp).toBe(750);
     expect(bundle.approved_catalogue_product_snapshot.base_price).toBe(620);
+  });
+});
+
+describe("Central preview quantity semantics", () => {
+  const snapshot = (fields: Record<string, unknown> = {}) =>
+    generateCatalogueSnapshot({
+      form: { ...baseForm, qty_per_pack: 6, qty_content_uom: "pcs", net_weight_g: 350, ...fields },
+      productId: String(baseForm.id),
+      complianceApproved: true,
+      prices: approvedPrices,
+      moqRules,
+    });
+  it("uses sellable pack net grams, never grams per piece", () => {
+    const payload = buildApprovedCatalogueProductSnapshot(snapshot(), "v1");
+    expect(payload.net_weight_g).toBe(350);
+    expect(payload.pack_size).toBe("6 pcs · Box");
+    expect(LIVE_CENTRAL_WRITE_ENABLED).toBe(false);
+  });
+  it("keeps unknown pack mass unknown even when single-piece mass is known", () => {
+    const payload = buildApprovedCatalogueProductSnapshot(snapshot({ net_weight_g: "" }), "v1");
+    expect(payload.net_weight_g).toBeNull();
+  });
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "does not project invalid pack grams %s",
+    (value) => {
+      const snap = snapshot();
+      snap.packaging_hierarchy.primary_pack.weight_g = value;
+      expect(buildApprovedCatalogueProductSnapshot(snap, "v1").net_weight_g).toBeNull();
+    },
+  );
+  it("does not label content quantity as a number of packaging containers", () => {
+    expect(
+      buildApprovedCatalogueProductSnapshot(snapshot({ qty_content_uom: "" }), "v1").pack_size,
+    ).toBe("Box");
   });
 });
