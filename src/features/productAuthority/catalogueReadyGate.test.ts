@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE,
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
   evaluatePackagingReadiness,
+  gateCatalogueReadyByAuthority,
   type PackagingTaxonomyAuthority,
   packagingAuthorityFromRulesResult,
 } from "./catalogueReadyGate";
@@ -22,6 +24,34 @@ const READY_INPUT = {
   truthScore: 7,
   truthMaxScore: 8,
 };
+
+describe("gateCatalogueReadyByAuthority (latest product/session save protection)", () => {
+  const ready = evaluateCatalogueReadyGate(READY_INPUT);
+
+  it("rejects a catalogue-ready save even when stale previous-product pricing evaluated ready", () => {
+    expect(ready.allowed).toBe(true);
+    const pending = gateCatalogueReadyByAuthority(ready, false);
+    expect(pending.allowed).toBe(false);
+    expect(pending.blockers).toContain(CURRENT_PRODUCT_AUTHORITY_NOT_LOADED_MESSAGE);
+  });
+
+  it("keeps the gate closed after failed media or channel fetch (no empty fallback)", () => {
+    const failedAuthority = gateCatalogueReadyByAuthority(ready, false);
+    expect(failedAuthority.allowed).toBe(false);
+    expect(failedAuthority.blockers).toHaveLength(1);
+    // Ordinary non-ready drafts are still permitted by ProductEdit's conditional guard.
+  });
+
+  it("allows catalogue-ready only once both current-session authorities hydrate", () => {
+    expect(gateCatalogueReadyByAuthority(ready, true)).toEqual(ready);
+  });
+
+  it("retains independent invalid-SKU/pricing blockers after hydration completes", () => {
+    const invalid = evaluateCatalogueReadyGate({ ...READY_INPUT, pricing: resolvePricing({}) });
+    expect(gateCatalogueReadyByAuthority(invalid, true).allowed).toBe(false);
+    expect(gateCatalogueReadyByAuthority(invalid, false).blockers).toContain("MRP missing");
+  });
+});
 
 describe("evaluateCatalogueReadyGate", () => {
   it("allows a fully-ready retail pack", () => {

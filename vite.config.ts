@@ -1,6 +1,10 @@
 import path from "node:path";
 import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "vite";
+import { writeAttestationManifest } from "./scripts/torch-attestation-manifest.ts";
+
+let resolvedRoot = process.cwd();
+let resolvedEnv: Record<string, unknown> = {};
 
 // https://vitejs.dev/config/
 export default defineConfig(() => ({
@@ -13,6 +17,19 @@ export default defineConfig(() => ({
   },
   plugins: [
     react(),
+    {
+      name: "torch-runtime-attestation-manifest",
+      apply: "build" as const,
+      enforce: "post" as const,
+      writeBundle() {
+        // Runs once the bundle is written, using the resolved build env.
+        writeAttestationManifest(resolvedRoot, resolvedEnv);
+      },
+      configResolved(config: { root: string; env: Record<string, unknown> }) {
+        resolvedRoot = config.root;
+        resolvedEnv = config.env;
+      },
+    },
     {
       name: "oasis-build-identity",
       transformIndexHtml(html) {
