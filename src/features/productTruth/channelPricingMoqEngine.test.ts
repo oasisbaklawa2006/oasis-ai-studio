@@ -31,6 +31,54 @@ describe("channelPricingMoqEngine", () => {
     expect(r.valid).toBe(true);
   });
 
+  it.each([0, -1, Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    "rejects nonpositive or non-finite order quantity %s before retail/MOQ exemptions",
+    (qty) => {
+      expect(
+        validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid,
+      ).toBe(false);
+      expect(
+        validateOrderQtyAgainstChannelRules(
+          qty,
+          "kg",
+          "b2b",
+          { ...b2bRule, moqApplicable: false },
+          hierarchy,
+        ).valid,
+      ).toBe(false);
+    },
+  );
+
+  it.each([0.5, 1.5, 9007199254740992])(
+    "rejects non-whole or unsafe piece order quantity %s regardless of MOQ",
+    (qty) => {
+      expect(
+        validateOrderQtyAgainstChannelRules(qty, "pcs", "retail", undefined, hierarchy).valid,
+      ).toBe(false);
+      expect(
+        validateOrderQtyAgainstChannelRules(
+          qty,
+          "pcs",
+          "b2b",
+          { ...b2bRule, moqApplicable: false },
+          hierarchy,
+        ).valid,
+      ).toBe(false);
+    },
+  );
+
+  it("still permits a verified positive fractional kg quantity when no MOQ applies", () => {
+    expect(
+      validateOrderQtyAgainstChannelRules(
+        0.5,
+        "kg",
+        "b2b",
+        { ...b2bRule, moqApplicable: false },
+        hierarchy,
+      ).valid,
+    ).toBe(true);
+  });
+
   it("B2B 10 kg invalid when increment is 8 kg", () => {
     const msg = getInvalidQtyMessage(10, "kg", "b2b", b2bRule, hierarchy);
     expect(msg).toBeTruthy();
@@ -41,6 +89,26 @@ describe("channelPricingMoqEngine", () => {
   it("B2B 16 kg valid", () => {
     const r = validateOrderQtyAgainstChannelRules(16, "kg", "b2b", b2bRule, hierarchy);
     expect(r.valid).toBe(true);
+  });
+
+  it("blocks B2B master-carton MOQ when tray weight or tray count is not verified", () => {
+    const cartonRule: ChannelMoqRule = {
+      channel: "b2b",
+      moqApplicable: true,
+      moqValue: 1,
+      moqUom: "master_carton",
+      incrementValue: 1,
+      incrementUom: "master_carton",
+    };
+    const result = validateOrderQtyAgainstChannelRules(2, "master_carton", "b2b", cartonRule, {});
+    expect(result.valid).toBe(false);
+    expect(result.messages.join(" ")).toContain("Cannot compare MOQ");
+    expect(
+      validateOrderQtyAgainstChannelRules(2, "master_carton", "b2b", cartonRule, {
+        kgPerTray: 0.5,
+        traysPerMasterCarton: 6,
+      }).valid,
+    ).toBe(true);
   });
 
   it("pending price blocks publish", () => {

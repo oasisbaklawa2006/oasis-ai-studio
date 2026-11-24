@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formToDbProductPayload } from "@/features/productAuthority/productSchemaAdapter";
+import {
+  dbRowToProductForm,
+  formToDbProductPayload,
+} from "@/features/productAuthority/productSchemaAdapter";
 import {
   assertFactualCompositionValidForProductsWrite,
   PRODUCT_EDIT_SHELF_LIFE_NUMERIC_FIELDS,
@@ -49,3 +52,56 @@ describe("productEditFactualCompositionPersistence", () => {
     ]);
   });
 });
+
+describe("typed Full Editor direct content persistence", () => {
+  it.each([
+    ["500", "grams"],
+    ["0.5", "kg"],
+    [".5", "kg"],
+  ])("writes %s %s as canonical grams without asserting a piece count", (quantity, unit) => {
+    const row = productEditDirectProductsRow({
+      qty_per_pack: quantity,
+      qty_content_uom: unit,
+      pcs_per_pack: quantity,
+      net_weight_g: "300",
+      description: "Preserve this description",
+    });
+    expect(row.net_weight_grams).toBe(500);
+    expect(row.net_weight_g).toBe(500);
+    expect(row).not.toHaveProperty("pcs_per_pack");
+    expect(row.description).toBe("Preserve this description");
+  });
+  it("writes the current explicit whole-piece quantity over a stale form mirror", () => {
+    expect(
+      productEditDirectProductsRow({ qty_per_pack: "8", qty_content_uom: "pcs", pcs_per_pack: "6" })
+        .pcs_per_pack,
+    ).toBe(8);
+  });
+  it.each([
+    ["1.5", "pcs"],
+    ["6", "ml"],
+    ["0", "kg"],
+  ])("blocks invalid or unsupported direct content %s %s", (quantity, unit) => {
+    expect(() =>
+      productEditDirectProductsRow({ qty_per_pack: quantity, qty_content_uom: unit }),
+    ).toThrow(/Cannot save pack content/);
+  });
+  it("reloads Core-approved canonical grams ahead of a stale legacy alias", () => {
+    expect(dbRowToProductForm({ net_weight_grams: 500, net_weight_g: 300 }, {}).net_weight_g).toBe(
+      "500",
+    );
+  });
+});
+
+it.each([
+  ["600", 600],
+  ["", null],
+])(
+  "keeps a manually edited legacy gram field synchronized with Core authority: %s",
+  (input, expected) => {
+    const row = productEditDirectProductsRow({ net_weight_g: input, pcs_per_pack: 6 });
+    expect(row.net_weight_g).toBe(expected);
+    expect(row.net_weight_grams).toBe(expected);
+    expect(row.pcs_per_pack).toBe(6);
+  },
+);

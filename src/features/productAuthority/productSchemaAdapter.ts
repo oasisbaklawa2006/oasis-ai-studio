@@ -500,7 +500,7 @@ export function dbRowToProductForm(
     hero_image_url: toBlank(hero),
     main_department: toBlank(data.main_department ?? data.department),
     production_department: toBlank(data.production_department),
-    net_weight_g: toBlank(data.net_weight_g ?? data.net_weight_grams),
+    net_weight_g: toBlank(data.net_weight_grams ?? data.net_weight_g),
     gross_weight_g: toBlank(data.gross_weight_g ?? data.gross_weight_grams),
     lead_time_days: toBlank(data.lead_time_days),
     fssai_licence_number: toBlank(data.fssai_licence_number),

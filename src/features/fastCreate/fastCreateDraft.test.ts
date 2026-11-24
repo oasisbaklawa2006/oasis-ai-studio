@@ -8,6 +8,7 @@ import {
   fastCreateReadinessScore,
   heroPreviewFromDraft,
   loadFastCreateDraft,
+  validFastCreatePieceCount,
 } from "./fastCreateDraft";
 
 function misr15Draft(): FastCreateDraftSnapshot {
@@ -31,6 +32,39 @@ describe("fastCreateReadinessCategories — adaptive required fields", () => {
     const keys = fastCreateReadinessCategories(misr15Draft()).map((c) => c.key);
     expect(keys).toEqual(expect.arrayContaining(["packaging", "qty_per_pack", "mrp", "hero"]));
     expect(keys).not.toContain("b2b_price");
+  });
+
+  it("requires a positive whole piece count, never a fractional or mass value", () => {
+    for (const invalid of [
+      "",
+      "0",
+      "-1",
+      "0.5",
+      "6.25",
+      "Infinity",
+      "9007199254740992",
+      "1e3",
+      "0x10",
+      "0b11",
+      "6.0",
+    ]) {
+      expect(validFastCreatePieceCount(invalid)).toBe(false);
+      const categories = fastCreateReadinessCategories({
+        ...misr15Draft(),
+        qtyPerPack: invalid,
+      });
+      expect(categories.find((c) => c.key === "qty_per_pack")?.state).toBe("missing");
+    }
+    expect(validFastCreatePieceCount(null)).toBe(false);
+    expect(validFastCreatePieceCount(500)).toBe(false);
+    expect(validFastCreatePieceCount({ value: 6 })).toBe(false);
+    const malformed = fastCreateReadinessCategories({
+      ...misr15Draft(),
+      qtyPerPack: null as unknown as string,
+    });
+    expect(malformed.find((c) => c.key === "qty_per_pack")?.state).toBe("missing");
+    expect(validFastCreatePieceCount("6")).toBe(true);
+    expect(validFastCreatePieceCount("12")).toBe(true);
   });
 
   it("adds B2B price requirement when B2B is enabled", () => {
@@ -80,6 +114,60 @@ describe("fastCreateFormPatchFromDraft — Full Editor handoff", () => {
     expect(patch.pcs_per_pack).toBe("6");
     expect(patch.mrp).toBe("450");
     expect(patch.hero_image_url).toBe("https://x/hero.jpg");
+  });
+
+  it("does not transfer a stale hidden piece count after changing sale type", () => {
+    const switched = {
+      ...misr15Draft(),
+      saleType: "b2b_horeca" as const,
+      qtyPerPack: "500",
+    };
+    // An earlier retail piece count remains in session but is now hidden.
+    const patch = fastCreateFormPatchFromDraft(switched);
+    expect(patch).not.toHaveProperty("pcs_per_pack");
+    expect(String(patch.pack_size ?? "")).not.toContain("500 pcs");
+
+    const suggestedValue = fastCreateFormPatchFromDraft({
+      ...switched,
+      suggestions: {
+        formPatch: { pcs_per_pack: 500 },
+      } as unknown as FastCreateDraftSnapshot["suggestions"],
+    });
+    expect(suggestedValue).not.toHaveProperty("pcs_per_pack");
+  });
+
+  it("removes an unrelated suggested piece label after a sale-type switch", () => {
+    const patch = fastCreateFormPatchFromDraft({
+      ...misr15Draft(),
+      saleType: "b2b_horeca",
+      qtyPerPack: "500",
+      packagingLabel: null,
+      suggestions: {
+        formPatch: { pack_size: "6 pcs box", pcs_per_pack: 6 },
+      } as unknown as FastCreateDraftSnapshot["suggestions"],
+    });
+    expect(patch).not.toHaveProperty("pcs_per_pack");
+    expect(patch).not.toHaveProperty("pack_size");
+  });
+
+  it("does not discard unrelated weight labels without a verified piece count", () => {
+    const patch = fastCreateFormPatchFromDraft({
+      ...misr15Draft(),
+      saleType: "b2b_horeca",
+      qtyPerPack: "",
+      packagingLabel: null,
+      suggestions: {
+        formPatch: { pack_size: "500 g pouch" },
+      } as unknown as FastCreateDraftSnapshot["suggestions"],
+    });
+    expect(patch).not.toHaveProperty("pcs_per_pack");
+    expect(patch.pack_size).toBe("500 g pouch");
+  });
+
+  it("never hands off a fractional piece quantity or fractional label", () => {
+    const patch = fastCreateFormPatchFromDraft({ ...misr15Draft(), qtyPerPack: "0.5" });
+    expect(patch).not.toHaveProperty("pcs_per_pack");
+    expect(String(patch.pack_size ?? "")).not.toContain("0.5 pcs");
   });
 
   it("derives the label starter from pack data", () => {

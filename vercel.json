@@ -1,7 +1,12 @@
 {
+  "functions": {
+    "api/runtime-attestation.ts": {
+      "includeFiles": ".torch-attestation/runtime-attestation.json"
+    }
+  },
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]

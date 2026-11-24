@@ -39,9 +39,16 @@ import { mediaAssetsFromSources } from "@/features/mediaReadiness/mediaAssetsFro
 import {
   catalogueReadyBlockedMessage,
   evaluateCatalogueReadyGate,
+  gateCatalogueReadyByAuthority,
   type PackagingTaxonomyAuthority,
   packagingAuthorityFromRulesResult,
 } from "@/features/productAuthority/catalogueReadyGate";
+import {
+  fullEditorContentQuantity,
+  fullEditorDraftContentPacking,
+  fullEditorQuantityPatch,
+  fullEditorWeightPatch,
+} from "@/features/productAuthority/fullEditorContentQuantity";
 import { computeLabelReadiness } from "@/features/productAuthority/labelReadiness";
 import { evaluatePackagingLabelReadiness } from "@/features/productAuthority/packagingLabelReadinessCanonical";
 import { resolvePricing } from "@/features/productAuthority/pricingAuthority";
@@ -97,13 +104,13 @@ import {
 } from "@/features/productAuthority/productSchemaAdapter";
 import { assertVariantHierarchySaveAllowed } from "@/features/productAuthority/productVariantHierarchyCanonical";
 import { isCurrentAsyncRequest, shouldFetchById } from "@/features/productAuthority/requestRace";
-import {
-  releaseSingleFlight,
-  tryAcquireSingleFlight,
-} from "@/features/productAuthority/saveSingleFlight";
 import { deriveCbmFromCm } from "@/features/productAuthority/shippingDimensions";
 import { assertStructuredSkuForSave } from "@/features/productAuthority/skuGuard";
 import { syncChannelPricingFromForm } from "@/features/productAuthority/syncChannelPricingFromForm";
+import { useProductAuthorityHydration } from "@/features/productAuthority/useProductAuthorityHydration";
+import { useProductEditorIdentityReset } from "@/features/productAuthority/useProductEditorIdentityReset";
+import { useProductEditorLocalDraft } from "@/features/productAuthority/useProductEditorLocalDraft";
+import { useSaveRequestOwner } from "@/features/productAuthority/useSaveRequestOwner";
 import { applyCreationBaselineDefaults } from "@/features/productDefaults/applyDefaults";
 import { ProductActionsMenu } from "@/features/productGovernance/ProductActionsMenu";
 import { assertNoBlockingProductCollisions } from "@/features/productGovernance/productDuplicateContract";
@@ -127,10 +134,6 @@ import {
   type ComplianceSensitiveField,
   stripUnapprovedComplianceFields,
 } from "@/lib/compliance/aiComplianceSafety";
-import {
-  mergeDraftOverAuthorityForm,
-  stripAuthorityFieldsFromDraft,
-} from "@/lib/formDraftAuthority";
 import { resolveProductHeroUrl } from "@/lib/productImage";
 import { canApproveComplianceFields, createManualFieldMeta } from "@/shared/ai/complianceApproval";
 import {
@@ -765,11 +768,6 @@ const ProductEdit = () => {
   const [moqRuleRows, setMoqRuleRows] = useState<MoqRuleRow[]>([]);
   const [channelPrices, setChannelPrices] = useState<ChannelPriceRecord[]>([]);
   const [channelMoqRules, setChannelMoqRules] = useState<ChannelMoqRule[]>([]);
-  // A new product has no channel pricing/media rows to hydrate, so authority is
-  // trivially "loaded" already; an existing product isn't until reloadProductAuthority
-  // resolves — the catalogue-ready gate must not judge a product on the empty
-  // placeholder channelPrices/productMediaRows it starts render with.
-  const [authorityLoaded, setAuthorityLoaded] = useState(isNew);
   // `null` = the active packaging taxonomy (sku_code_rules where code_type = 'packaging')
   // hasn't loaded yet — the catalogue-ready gate must never treat that as "packaging
   // present" just because a form field is non-empty (Defect 1).
@@ -777,12 +775,46 @@ const ProductEdit = () => {
     null,
   );
   const [dirty, setDirty] = useState(false);
-  const restored = useRef(false);
-  const saveInFlightRef = useRef(false);
+  const beginSaveRequest = useSaveRequestOwner(location.key);
+  // Authority is ready only when this navigation's latest successful media AND
+  // channel requests have completed. The hook protects same-product reload races.
+  const authoritySessionKey = JSON.stringify([location.key, id ?? null]);
+  const {
+    authorityLoaded,
+    isAuthorityHydratedNow,
+    beginMediaRequest,
+    completeMediaRequest,
+    beginChannelRequest,
+    completeChannelRequest,
+  } = useProductAuthorityHydration(authoritySessionKey, isNew);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset save UI for each navigation session, including return navigation.
+  useLayoutEffect(() => {
+    setLoading(false);
+    setSubmitError(null);
+  }, [location.key]);
   const complianceBaselineRef = useRef<Record<string, unknown>>({});
   const palletBaselineRef = useRef<{ id: string; form: Record<string, unknown> } | null>(null);
   const [complianceMetaMap, setComplianceMetaMap] = useState<ComplianceFieldMetaMap>({});
   const draftKey = fullEditorFormDraftKey(editorIdentity);
+
+  // React Router can reuse this component across A -> B or A -> New.
+  // Do not carry product-specific pricing, MOQ, media or ready state into a
+  // different editor identity. Never reset on same-product tab navigation:
+  // that would discard genuine unsaved edits.
+  const editorProductIdentity = isNew ? "create" : `edit:${id ?? ""}`;
+  useProductEditorIdentityReset(editorProductIdentity, () => {
+    setLoadedId(null);
+    setProductMediaRows([]);
+    setPricingRuleRows([]);
+    setMoqRuleRows([]);
+    setChannelPrices([]);
+    setChannelMoqRules([]);
+    setForm(empty);
+    setComplianceMetaMap({});
+    complianceBaselineRef.current = {};
+    setDirty(false);
+    setSubmitError(null);
+  });
 
   const isContributorMode = authContextContributor || rpcContributorRole;
 
@@ -818,17 +850,14 @@ const ProductEdit = () => {
   const moqUomMismatch =
     !!form.moq_uom && !!form.increment_uom && form.moq_uom !== form.increment_uom;
 
-  // Mount-once-per-new-product effect: reads `form` at its current (initial/empty) value only
-  // to seed creation-baseline defaults, not to react to every subsequent edit — including
-  // `form` in the deps would re-apply the baseline (and reset complianceBaselineRef) on every
-  // keystroke instead of once when `isNew` becomes true.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above.
+  // New Product must always seed from a blank identity, never from an edited
+  // product's form captured on the preceding render. The create baseline runs
+  // before duplicate-from and Fast Create draft handoff effects.
   useEffect(() => {
     if (!isNew) return;
-    const next = applyCreationBaselineDefaults(form);
+    const next = applyCreationBaselineDefaults(empty);
     complianceBaselineRef.current = pickComplianceBaseline(next);
     setForm(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isNew]);
 
   useEffect(() => {
@@ -1054,6 +1083,23 @@ const ProductEdit = () => {
     ],
   );
 
+  // Save/toggle must never consult another product's cached pricing/MOQ rows
+  // during a pending/failed authority load, even when the pure gate looks ready.
+  // Existing products require both current-session media and channel fetches;
+  // a newly created product is already initialized as hydrated.
+  const catalogueReadySaveGate = useMemo(
+    () => gateCatalogueReadyByAuthority(catalogueReadyGate, authorityLoaded),
+    [catalogueReadyGate, authorityLoaded],
+  );
+
+  // Read the most recent committed render's save gate after asynchronous permission
+  // and identity checks. The hook predicate closes synchronously on a new
+  // media/pricing/MOQ load, even before React commits another render.
+  const catalogueReadySaveGateRef = useRef(catalogueReadySaveGate);
+  useLayoutEffect(() => {
+    catalogueReadySaveGateRef.current = catalogueReadySaveGate;
+  }, [catalogueReadySaveGate]);
+
   // Same evaluation, but with `ignorePendingPackagingAuthority: true` — used only by the
   // auto-clear effect below. A stalled/failed packaging taxonomy load must never block
   // clearing readiness for *other*, independently-confirmed blockers (bad SKU, missing
@@ -1137,15 +1183,19 @@ const ProductEdit = () => {
   const applyMediaAuthority = async (
     productId: string,
     rows: ProductMediaRow[],
-    opts?: { fallbackHeroUrl?: string | null },
+    opts?: { fallbackHeroUrl?: string | null; isCurrent?: () => boolean },
   ) => {
+    if (opts?.isCurrent && !opts.isCurrent()) return;
     let authoritative = rows;
     if (await canWriteProductsDirectly(roles)) {
+      if (opts?.isCurrent && !opts.isCurrent()) return;
       authoritative = await repairDirectMasterMediaRows(productId, rows);
+      if (opts?.isCurrent && !opts.isCurrent()) return;
       try {
         const synced = await syncProductMediaAuthority(productId, authoritative, {
           fallbackHeroUrl: opts?.fallbackHeroUrl ?? resolveProductHeroUrl(form),
         });
+        if (opts?.isCurrent && !opts.isCurrent()) return;
         setForm((f: Record<string, unknown>) => ({
           ...f,
           media_status: synced.media_status,
@@ -1158,6 +1208,7 @@ const ProductEdit = () => {
         }
       }
     }
+    if (opts?.isCurrent && !opts.isCurrent()) return;
     setProductMediaRows(authoritative);
   };
 
@@ -1165,18 +1216,22 @@ const ProductEdit = () => {
     productId: string,
     opts?: { fallbackHeroUrl?: string | null },
   ) => {
+    const ownsMediaRequest = beginMediaRequest();
+    if (!ownsMediaRequest()) return;
     const { data, error } = await supabase
       .from("product_media")
       .select("*")
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
+    if (!ownsMediaRequest()) return;
     if (error) {
       if (import.meta.env.DEV) {
         console.error("[ProductEdit] product_media load failed:", error.message);
       }
-      return;
+      return; // Do not report complete hydration after a failed media fetch.
     }
-    await applyMediaAuthority(productId, data ?? [], opts);
+    await applyMediaAuthority(productId, data ?? [], { ...opts, isCurrent: ownsMediaRequest });
+    completeMediaRequest(ownsMediaRequest);
   };
 
   // Explicit ordering isn't load-bearing for correctness anymore — resolvePricing() /
@@ -1192,31 +1247,33 @@ const ProductEdit = () => {
       .order("approved_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true });
 
-  const loadChannelAuthority = async (productId: string) => {
+  const loadChannelAuthority = async (productId: string, isCurrent = () => true) => {
+    const ownsLatestRequest = beginChannelRequest();
+    // Guard *all* callers, including background reloads and newer same-product fetches.
+    if (!ownsLatestRequest() || !isCurrent()) return;
     const [pricingRes, moqRes] = await Promise.all([
       orderedPricingRulesQuery(productId),
       supabase.from("product_moq_rules").select("*").eq("product_id", productId),
     ]);
+    if (!ownsLatestRequest() || !isCurrent()) return;
     if (pricingRes.error && import.meta.env.DEV) {
       console.error("[ProductEdit] pricing rules load failed:", pricingRes.error.message);
     }
     if (moqRes.error && import.meta.env.DEV) {
       console.error("[ProductEdit] moq rules load failed:", moqRes.error.message);
     }
+    // Failed authority must remain pending, never replace it with empty fallback rows.
+    if (pricingRes.error || moqRes.error) return;
     setChannelPrices(mapPricingRules((pricingRes.data ?? []) as PricingRuleRow[]));
     setPricingRuleRows((pricingRes.data ?? []) as PricingRuleRow[]);
     setChannelMoqRules(mapMoqRules((moqRes.data ?? []) as MoqRuleRow[]));
     setMoqRuleRows((moqRes.data ?? []) as MoqRuleRow[]);
+    completeChannelRequest(() => ownsLatestRequest() && isCurrent());
   };
 
   const reloadProductAuthority = async (productId: string) => {
     await Promise.all([loadProductMedia(productId), loadChannelAuthority(productId)]);
   };
-
-  // Tracks which product's authority load is the current, non-superseded one — a slower
-  // reload for a product the user has since navigated away from must not mark
-  // authorityLoaded true against the newer product's form (Bugbot-flagged regression).
-  const authorityRequestIdRef = useRef<string | null>(null);
 
   // Tracks which product id's initial row fetch is the current, non-superseded one — a
   // slower fetch for a product the user has since navigated away from must not populate
@@ -1224,18 +1281,19 @@ const ProductEdit = () => {
   // loading state (Defect 2).
   const productFetchRequestIdRef = useRef<string | null>(null);
 
-  // reloadProductAuthority is a plain closure recreated every render (it depends on
-  // loadProductMedia/loadChannelAuthority, which close over `form`/`roles`); adding it to this
-  // effect's deps would re-run the fetch on every render instead of only when the product
-  // identity (id/isNew/loadedId) actually changes.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above — reloadProductAuthority is an unstable closure, only id/isNew/loadedId should retrigger this fetch.
+  // A navigation to the SAME product must rehydrate media and channel authority:
+  // id===loadedId prevents a redundant product-row fetch but must not skip hydration.
+  // reloadProductAuthority is an unstable render closure; rerun only for a changed
+  // product identity, loaded row or browser-navigation session.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: see comment above.
   useEffect(() => {
-    if (!id || !shouldFetchById(isNew, id, loadedId)) {
-      // No fetch will start on this effect run. Force-clear pending rather than leaving it
-      // as whatever a previous, now-abandoned effect instance (for a different id) last set
-      // it to — that abandoned fetch's own .then() will never run (it's superseded) or
-      // isn't guaranteed to resolve, so nothing else is guaranteed to clear the flag here.
+    if (!id || isNew) {
       setProductFetchPending(false);
+      return;
+    }
+    if (!shouldFetchById(isNew, id, loadedId)) {
+      setProductFetchPending(false);
+      void reloadProductAuthority(id);
       return;
     }
 
@@ -1264,11 +1322,8 @@ const ProductEdit = () => {
           setComplianceMetaMap(buildComplianceMetaFromSavedProduct(loaded));
           setLoadedId(id);
           setForm(loaded);
-          setAuthorityLoaded(false);
-          authorityRequestIdRef.current = id;
-          void reloadProductAuthority(id).then(() => {
-            if (authorityRequestIdRef.current === id) setAuthorityLoaded(true);
-          });
+          // loadedId triggers the authority-hydration effect above; an older
+          // product fetch must not mark hydrated before the latest requests finish.
         }
         setProductFetchPending(false);
       });
@@ -1277,7 +1332,7 @@ const ProductEdit = () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, isNew, loadedId]);
+  }, [id, isNew, loadedId, location.key]);
 
   const set = (k: string, v: unknown) => {
     setDirty(true);
@@ -1300,32 +1355,10 @@ const ProductEdit = () => {
     setForm((f: Record<string, unknown>) => ({ ...f, ...p }));
   };
 
-  useEffect(() => {
-    if (restored.current) return;
-
-    try {
-      const raw = localStorage.getItem(draftKey);
-      if (raw) {
-        const draft = JSON.parse(raw) as Record<string, unknown>;
-        setForm((f: Record<string, unknown>) => mergeDraftOverAuthorityForm(f, draft));
-      }
-    } catch {
-      // Ignore corrupt/unreadable draft storage — falls back to a fresh, non-restored form.
-    }
-
-    restored.current = true;
-  }, [draftKey]);
-
-  useEffect(() => {
-    if (!restored.current) return;
-
-    try {
-      localStorage.setItem(draftKey, JSON.stringify(stripAuthorityFieldsFromDraft(form)));
-    } catch {
-      // Ignore write failures (e.g. storage quota / private browsing) — draft autosave is
-      // best-effort only.
-    }
-  }, [draftKey, form]);
+  // Hydrate the destination draft key before autosave may write to that key.
+  // A single mounted ProductEdit can navigate A -> New -> B: a global boolean
+  // "restored" flag would skip New's draft and overwrite it with A's form.
+  useProductEditorLocalDraft(draftKey, form, setForm);
 
   useEffect(() => {
     const onUnload = (e: BeforeUnloadEvent) => {
@@ -1496,7 +1529,20 @@ const ProductEdit = () => {
     return m;
   }, [form, isContributorMode]);
 
-  const save = async () => {
+  const ensureCatalogueReadyForPersistence = () => {
+    if (!form.is_catalogue_ready) return true;
+    const latestGate = gateCatalogueReadyByAuthority(
+      catalogueReadySaveGateRef.current,
+      isAuthorityHydratedNow(),
+    );
+    if (latestGate.allowed === true) return true;
+    const message = catalogueReadyBlockedMessage(latestGate);
+    setSubmitError(message);
+    toast.error(`Cannot save as catalogue-ready — ${message}`);
+    return false;
+  };
+
+  const save = async (isCurrent: () => boolean) => {
     setSubmitError(null);
 
     // Pallet quantities are optional, but never silently coerced or inferred.
@@ -1522,23 +1568,18 @@ const ProductEdit = () => {
       return;
     }
 
-    // Unlike the auto-clear effect above, this hard save-time guard is NOT gated on
-    // authorityLoaded: "saving must not persist catalogue-ready=true while hard
-    // blockers exist" is an absolute requirement, not conditional on hydration timing.
-    // A false block during the brief hydration window just costs the user a retry;
-    // a false allow could persist a genuinely-blocked product (e.g. invalid SKU, read
-    // directly from form with no async dependency) as catalogue-ready.
-    if (form.is_catalogue_ready && catalogueReadyGate.allowed !== true) {
-      const message = catalogueReadyBlockedMessage(catalogueReadyGate);
-      setSubmitError(message);
-      toast.error(`Cannot save as catalogue-ready — ${message}`);
-      return;
-    }
+    // Validate before async permission probes, then *again* immediately before
+    // each persistence path; a newer authority request can start during awaits.
+    if (!ensureCatalogueReadyForPersistence()) return;
 
+    const canDirectWrite = await canWriteProductsDirectly(roles);
+    if (!isCurrent()) return;
+    const isContributor = isContributorMode || (await isCatalogueContributor());
+    if (!isCurrent()) return;
     const savePath = resolveFullEditorSavePath({
       identity: editorIdentity,
-      canDirectWrite: await canWriteProductsDirectly(roles),
-      isContributor: isContributorMode || (await isCatalogueContributor()),
+      canDirectWrite,
+      isContributor,
       fetchPending: productFetchPending,
       loadedId,
     });
@@ -1650,17 +1691,20 @@ const ProductEdit = () => {
         } catch (error) {
           const message =
             error instanceof Error ? error.message : "Product identity collision detected.";
+          if (!isCurrent()) return;
           setLoading(false);
           setSubmitError(message);
           toast.error(message);
           return;
         }
+        if (!isCurrent()) return;
       }
 
       // productRow is a dynamically-assembled Record<string, unknown> (built from the free-form
       // form state via productEditDirectProductsRow/formToDbProductPayload), not the generated Insert/Update
       // row shape, so the generated client's excess-property check rejects it structurally even
       // though validateProductSavePayload() above already vetted its actual columns.
+      if (!isCurrent() || !ensureCatalogueReadyForPersistence()) return;
       const res = isNew
         ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase as any).from("products").insert(productRow).select().single()
@@ -1672,9 +1716,8 @@ const ProductEdit = () => {
             .select()
             .single();
 
-      setLoading(false);
-
       if (res.error) {
+        if (!isCurrent()) return;
         const message = formatProductSaveError(res.error);
         setSubmitError(message);
         toast.error(message);
@@ -1683,13 +1726,15 @@ const ProductEdit = () => {
 
       const savedId = res.data.id as string;
       const pricingSync = await syncChannelPricingFromForm(safePayload, savedId);
+      if (!isCurrent()) return;
       if (pricingSync.ok !== true && pricingSync.message) {
         toast.warning(`Product saved; channel pricing sync failed: ${pricingSync.message}`);
       } else if (pricingSync.count > 0) {
         toast.message(
           `${pricingSync.count} channel price${pricingSync.count === 1 ? "" : "s"} submitted for approval.`,
         );
-        await loadChannelAuthority(savedId);
+        await loadChannelAuthority(savedId, isCurrent);
+        if (!isCurrent()) return;
       }
 
       const reloaded = dbProductToForm(res.data);
@@ -1713,6 +1758,12 @@ const ProductEdit = () => {
     }
 
     if (savePath.kind === "contributor_draft") {
+      const contentQuantity = fullEditorContentQuantity(form);
+      if (!contentQuantity.ok) {
+        setSubmitError(contentQuantity.message);
+        toast.error(contentQuantity.message);
+        return;
+      }
       const packPreview = getPrimaryPackPreview(payload);
 
       const optionalReviewFlags = {
@@ -1767,8 +1818,7 @@ const ProductEdit = () => {
         packing: {
           primary_pack_type: payload.primary_pack_type || payload.packaging_code || "NA",
           pack_uom: payload.primary_pack_uom || payload.carton_uom,
-          qty_per_pack: payload.qty_per_pack || payload.pcs_per_pack,
-          qty_content_uom: payload.qty_content_uom,
+          ...fullEditorDraftContentPacking(contentQuantity.quantity),
           pack_preview: packPreview,
           pack_size: payload.pack_size,
           net_weight_g: payload.net_weight_g,
@@ -1848,6 +1898,7 @@ const ProductEdit = () => {
         needs_admin_review_flags: optionalReviewFlags,
       };
 
+      if (!isCurrent() || !ensureCatalogueReadyForPersistence()) return;
       const draftRes = await submitCatalogueDraft({
         draftType: "product",
         operation: isNew ? "create" : "update",
@@ -1855,7 +1906,7 @@ const ProductEdit = () => {
         targetRecordId: isNew ? null : (id as string),
       });
 
-      setLoading(false);
+      if (!isCurrent()) return;
 
       if (draftRes.ok !== true) {
         const message = `Draft submit failed: ${draftRes.message}`;
@@ -1879,12 +1930,22 @@ const ProductEdit = () => {
   };
 
   const handleSave = () => {
-    if (!tryAcquireSingleFlight(saveInFlightRef)) return;
+    const request = beginSaveRequest();
+    if (!request) return;
     setLoading(true);
-    void save().finally(() => {
-      releaseSingleFlight(saveInFlightRef);
-      setLoading(false);
-    });
+    void save(request.isCurrent)
+      .catch((error: unknown) => {
+        if (!request.isCurrent()) return;
+        const message =
+          error instanceof Error ? error.message : "Product save failed. Please retry.";
+        setSubmitError(message);
+        toast.error(message);
+      })
+      .finally(() => {
+        if (!request.isCurrent()) return;
+        request.release();
+        setLoading(false);
+      });
   };
 
   const saveShortcutRef = useRef(handleSave);
@@ -2365,10 +2426,7 @@ const ProductEdit = () => {
                     <Input
                       type="number"
                       value={form.qty_per_pack ?? ""}
-                      onChange={(e) => {
-                        set("qty_per_pack", e.target.value);
-                        set("pcs_per_pack", e.target.value);
-                      }}
+                      onChange={(e) => patch(fullEditorQuantityPatch(form, e.target.value))}
                       placeholder="6"
                     />
                   </Field>
@@ -2376,7 +2434,17 @@ const ProductEdit = () => {
                   <Field label="Qty Content UOM">
                     <Select
                       value={form.qty_content_uom}
-                      onChange={(v: string) => set("qty_content_uom", v)}
+                      onChange={(v: string) =>
+                        patch({
+                          qty_content_uom: v,
+                          ...(String(form.qty_per_pack ?? "").trim()
+                            ? fullEditorQuantityPatch(
+                                { ...form, qty_content_uom: v },
+                                String(form.qty_per_pack),
+                              )
+                            : {}),
+                        })
+                      }
                       options={CONTENT_UOM_OPTIONS}
                     />
                   </Field>
@@ -2954,7 +3022,7 @@ const ProductEdit = () => {
                     <Input
                       type="number"
                       value={form.net_weight_g ?? ""}
-                      onChange={(e) => set("net_weight_g", e.target.value)}
+                      onChange={(e) => patch(fullEditorWeightPatch(form, e.target.value))}
                     />
                   </Field>
                   <Field label="Gross weight (g)">
@@ -3171,17 +3239,17 @@ const ProductEdit = () => {
               <Switch
                 checked={!!form.is_catalogue_ready}
                 onCheckedChange={(v) => {
-                  if (v && catalogueReadyGate.allowed !== true) {
-                    toast.error(catalogueReadyBlockedMessage(catalogueReadyGate));
+                  if (v && catalogueReadySaveGate.allowed !== true) {
+                    toast.error(catalogueReadyBlockedMessage(catalogueReadySaveGate));
                     return;
                   }
                   set("is_catalogue_ready", v);
                 }}
               />
             </div>
-            {catalogueReadyGate.allowed !== true && (
+            {catalogueReadySaveGate.allowed !== true && (
               <ul className="text-[11px] text-amber-700 dark:text-amber-400 space-y-0.5 list-disc pl-4">
-                {catalogueReadyGate.blockers.map((b) => (
+                {catalogueReadySaveGate.blockers.map((b) => (
                   <li key={b}>{b}</li>
                 ))}
               </ul>
