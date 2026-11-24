@@ -1,5 +1,5 @@
 import { ArrowRight, ImagePlus, Loader2, Plus, Sparkles, Trash2, Zap } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
@@ -20,6 +20,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { sanitizeAiFragments } from "@/features/fastCreate/aiOutputSanitizer";
+import {
+  completeOwnedSave,
+  createDraftSaveOwnership,
+} from "@/features/fastCreate/draftSaveOwnership";
 import {
   clearFastCreateDraft,
   emptyFastCreateDraft,
@@ -73,6 +77,9 @@ const FastCreateProduct = () => {
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Which in-flight save (if any) still owns the active draft. Invalidated on discard,
+  // draft replacement and unmount so a stale save can never clear or leave a new draft.
+  const saveOwnership = useRef(createDraftSaveOwnership()).current;
   const [skuError, setSkuError] = useState<string | null>(null);
   const [bucketStatus, setBucketStatus] = useState<string | null>(null);
   const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
@@ -104,14 +111,18 @@ const FastCreateProduct = () => {
     void loadPackagingOptions();
   }, [loadPackagingOptions]);
 
+  // Unmounting abandons any in-flight save's claim on the draft.
+  useEffect(() => () => saveOwnership.invalidate(), [saveOwnership]);
+
   // Restore a preserved Fast Create draft (e.g. after an accidental navigation) once on mount.
   useEffect(() => {
     const stored = loadFastCreateDraft();
     if (!stored) return;
+    saveOwnership.invalidate();
     setDraft(stored);
     setHeroPreview(heroPreviewFromDraft(stored));
     setRestoredFromDraft(true);
-  }, []);
+  }, [saveOwnership]);
 
   const hasUnsavedWork = !!draft.productName.trim() || !!draft.suggestions || !!draft.heroUrl;
 
@@ -155,6 +166,8 @@ const FastCreateProduct = () => {
   };
 
   const discardDraft = () => {
+    saveOwnership.invalidate();
+    setSaving(false);
     clearFastCreateDraft();
     setDraft(emptyFastCreateDraft());
     setHeroPreview(null);
@@ -266,6 +279,7 @@ const FastCreateProduct = () => {
       toast.error(`Cannot create yet. Missing: ${missingRequired.join(", ")}`);
       return;
     }
+    const token = saveOwnership.begin();
     setSaving(true);
     try {
       const skuResult = await requireFastCreateSku(
@@ -273,6 +287,9 @@ const FastCreateProduct = () => {
         draft.resolvedSku,
         draft.packagingCode,
       );
+      // The draft was discarded or replaced while the SKU was resolving: do not write the
+      // SKU into the new draft and do not create a product for a draft that no longer exists.
+      if (!saveOwnership.owns(token)) return;
       patchDraft({ resolvedSku: skuResult.sku });
 
       const payload =
@@ -289,17 +306,40 @@ const FastCreateProduct = () => {
       });
 
       const receipt = resolveFastCreateSubmitReceipt(result);
-      if (receipt.clearDraft) clearFastCreateDraft();
-      if (receipt.tone === "warning") {
-        toast.warning(receipt.message, { duration: 12000 });
-      } else {
-        toast.success(receipt.message);
-      }
-      if (receipt.navigateTo) nav(receipt.navigateTo);
+      completeOwnedSave(
+        saveOwnership,
+        token,
+        {
+          clearDraft: clearFastCreateDraft,
+          notify: () => {
+            if (receipt.tone === "warning") {
+              toast.warning(receipt.message, { duration: 12000 });
+            } else {
+              toast.success(receipt.message);
+            }
+          },
+          navigate: () => {
+            if (receipt.navigateTo) nav(receipt.navigateTo);
+          },
+          // The save finished after the draft was discarded or replaced. The product may
+          // already exist, so say so without touching the current draft or navigating.
+          notifyDetached: () => {
+            toast.info(
+              `A save that was in progress finished after the draft changed: ${receipt.message}`,
+              { duration: 12000 },
+            );
+          },
+        },
+        { clearDraft: receipt.clearDraft, hasNavigateTarget: !!receipt.navigateTo },
+      );
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Create failed");
+      // A stale request's failure is irrelevant to the draft the operator is now working on.
+      if (saveOwnership.owns(token)) {
+        toast.error(e instanceof Error ? e.message : "Create failed");
+      }
     } finally {
-      setSaving(false);
+      // Only the owning request resets the button; discard already did for stale ones.
+      if (saveOwnership.owns(token)) setSaving(false);
     }
   };
 

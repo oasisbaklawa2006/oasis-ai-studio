@@ -1,0 +1,67 @@
+/**
+ * Draft-session ownership for in-flight Fast Create saves.
+ *
+ * A save request is only allowed to touch the active draft (write its SKU, clear session
+ * storage, navigate away) while it still *owns* that draft. Discarding the draft, replacing
+ * it, or leaving the page invalidates every outstanding request, so a slow save that
+ * resolves afterwards cannot clear or navigate away from a replacement draft.
+ *
+ * Note: invalidation cannot cancel the server write. A stale request may still have created
+ * the product; the caller reports that with a neutral message instead of acting on the draft.
+ */
+
+export type DraftSaveToken = number;
+
+export type DraftSaveOwnership = {
+  /** Start a new save request; every earlier request stops owning the draft. */
+  begin: () => DraftSaveToken;
+  /** Drop ownership: discard, draft replacement, unmount. */
+  invalidate: () => void;
+  /** True only while `token` is the latest request and nothing has invalidated it. */
+  owns: (token: DraftSaveToken) => boolean;
+};
+
+export function createDraftSaveOwnership(): DraftSaveOwnership {
+  let latest = 0;
+  let active: DraftSaveToken | null = null;
+  return {
+    begin: () => {
+      latest += 1;
+      active = latest;
+      return latest;
+    },
+    invalidate: () => {
+      active = null;
+    },
+    owns: (token) => active !== null && token === active,
+  };
+}
+
+export type FastCreateCompletionEffects = {
+  clearDraft: () => void;
+  /** Completion feedback tied to the active draft. */
+  notify: () => void;
+  navigate: () => void;
+  /** Neutral notice when the request no longer owns the draft (no draft side effects). */
+  notifyDetached: () => void;
+};
+
+/**
+ * Apply a finished save to the draft only when `token` still owns it. Returns whether the
+ * draft was touched. A detached request never clears storage, shows draft feedback, or navigates.
+ */
+export function completeOwnedSave(
+  ownership: DraftSaveOwnership,
+  token: DraftSaveToken,
+  effects: FastCreateCompletionEffects,
+  options: { clearDraft: boolean; hasNavigateTarget: boolean },
+): boolean {
+  if (!ownership.owns(token)) {
+    effects.notifyDetached();
+    return false;
+  }
+  if (options.clearDraft) effects.clearDraft();
+  effects.notify();
+  if (options.hasNavigateTarget) effects.navigate();
+  return true;
+}
