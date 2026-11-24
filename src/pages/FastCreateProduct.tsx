@@ -463,6 +463,9 @@ const FastCreateProduct = () => {
           <FastCreateIntakePanel
             draft={draft}
             onApply={(next) => {
+              // Intake replaces the draft: any in-flight save no longer owns it.
+              saveOwnership.invalidate();
+              setSaving(false);
               setDraft(next);
               setRestoredFromDraft(false);
             }}
