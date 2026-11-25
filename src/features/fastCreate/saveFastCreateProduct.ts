@@ -95,7 +95,13 @@ export function resolveFastCreateSubmitReceipt(result: FastCreateSaveResult): {
   navigateTo: string | null;
   tone: "success" | "warning";
   message: string;
+  /**
+   * Used when the save finishes after the draft it was started from was discarded or
+   * replaced. It must not promise navigation or claim anything about the current draft.
+   */
+  detachedMessage: string;
 } {
+  const untouched = "The draft you are working on now was not changed.";
   if ("draft" in result) {
     if (result.alreadyPending) {
       return {
@@ -104,6 +110,7 @@ export function resolveFastCreateSubmitReceipt(result: FastCreateSaveResult): {
         tone: "warning",
         message:
           "This SKU already has a pending draft. Your new changes were NOT submitted or saved to that draft. Inputs remain here; review the existing draft in Approval Inbox.",
+        detachedMessage: `A save that was in progress finished after the draft changed. Its SKU already had a pending draft, so nothing new was submitted (see Approval Inbox). ${untouched}`,
       };
     }
     return {
@@ -111,6 +118,7 @@ export function resolveFastCreateSubmitReceipt(result: FastCreateSaveResult): {
       navigateTo: "/approvals",
       tone: "success",
       message: "Product draft submitted for approval.",
+      detachedMessage: `A save that was in progress finished after the draft changed: its product draft was submitted for approval (see Approval Inbox). ${untouched}`,
     };
   }
   return {
@@ -118,6 +126,7 @@ export function resolveFastCreateSubmitReceipt(result: FastCreateSaveResult): {
     navigateTo: `/products/${result.id}`,
     tone: "success",
     message: `Product draft created (${result.sku}) — opening full editor.`,
+    detachedMessage: `A save that was in progress finished after the draft changed: product draft ${result.sku} was created and is available in Products. ${untouched}`,
   };
 }
 

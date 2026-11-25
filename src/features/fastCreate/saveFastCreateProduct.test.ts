@@ -89,6 +89,24 @@ describe("Fast Create Core submission receipts", () => {
     });
   });
 
+  it("never promises navigation or retained inputs in the detached notice", () => {
+    const results = [
+      { draft: true, draftId: "d1", alreadyPending: true },
+      { draft: true, draftId: "d2", alreadyPending: false },
+      { id: "product-123", sku: "OAS-TEST-0001" },
+    ] as const;
+    for (const result of results) {
+      const { detachedMessage } = resolveFastCreateSubmitReceipt(result);
+      expect(detachedMessage).not.toMatch(/opening|inputs remain here/i);
+      expect(detachedMessage).toContain("finished after the draft changed");
+      expect(detachedMessage).toContain("was not changed");
+    }
+    const pending = resolveFastCreateSubmitReceipt(results[0]).detachedMessage;
+    expect(pending).toContain("nothing new was submitted");
+    const created = resolveFastCreateSubmitReceipt(results[2]).detachedMessage;
+    expect(created).toContain("OAS-TEST-0001");
+  });
+
   it("preserves the legacy direct-create compatibility receipt", () => {
     const receipt = resolveFastCreateSubmitReceipt({
       id: "product-123",

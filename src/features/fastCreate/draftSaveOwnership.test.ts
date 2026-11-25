@@ -42,6 +42,29 @@ describe("createDraftSaveOwnership", () => {
   });
 });
 
+describe("draft session", () => {
+  it("is stable until the draft is invalidated, and starting a save does not change it", () => {
+    const o = createDraftSaveOwnership();
+    const session = o.session();
+    expect(o.isCurrentSession(session)).toBe(true);
+    o.begin();
+    o.begin();
+    expect(o.isCurrentSession(session)).toBe(true);
+  });
+
+  it("every invalidate (discard, replacement, unmount) ends the previous session for good", () => {
+    const o = createDraftSaveOwnership();
+    const first = o.session();
+    o.invalidate();
+    const second = o.session();
+    expect(o.isCurrentSession(first)).toBe(false);
+    expect(o.isCurrentSession(second)).toBe(true);
+    o.invalidate();
+    expect(o.isCurrentSession(second)).toBe(false);
+    expect(o.isCurrentSession(first)).toBe(false);
+  });
+});
+
 describe("completeOwnedSave", () => {
   it("keeps the normal clear, notify and navigate behaviour when the request still owns the draft", () => {
     const o = createDraftSaveOwnership();

@@ -12,6 +12,9 @@
 
 export type DraftSaveToken = number;
 
+/** Identifies one lifetime of the active draft; changes whenever the draft is invalidated. */
+export type DraftSession = number;
+
 export type DraftSaveOwnership = {
   /** Start a new save request; every earlier request stops owning the draft. */
   begin: () => DraftSaveToken;
@@ -19,11 +22,21 @@ export type DraftSaveOwnership = {
   invalidate: () => void;
   /** True only while `token` is the latest request and nothing has invalidated it. */
   owns: (token: DraftSaveToken) => boolean;
+  /**
+   * The active draft's session. Any async handler that later writes into the draft (generate,
+   * SKU refresh, image upload, adding a packaging option) captures it when it starts and
+   * checks `isCurrentSession` before writing, so results for a discarded or replaced draft
+   * are dropped instead of landing on the new one. Unlike `begin`, capturing a session does
+   * not displace other in-flight work.
+   */
+  session: () => DraftSession;
+  isCurrentSession: (session: DraftSession) => boolean;
 };
 
 export function createDraftSaveOwnership(): DraftSaveOwnership {
   let latest = 0;
   let active: DraftSaveToken | null = null;
+  let session = 0;
   return {
     begin: () => {
       latest += 1;
@@ -32,8 +45,11 @@ export function createDraftSaveOwnership(): DraftSaveOwnership {
     },
     invalidate: () => {
       active = null;
+      session += 1;
     },
     owns: (token) => active !== null && token === active,
+    session: () => session,
+    isCurrentSession: (captured) => captured === session,
   };
 }
 
