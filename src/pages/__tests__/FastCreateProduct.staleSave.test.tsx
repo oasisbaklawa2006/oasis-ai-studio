@@ -505,3 +505,263 @@ describe("detached save notice", () => {
     expect(notice).toMatch(/draft you are working on now was not changed/i);
   });
 });
+
+function setSelectValue(select: HTMLSelectElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value")?.set;
+  setter?.call(select, value);
+  select.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function selectContaining(optionText: string): HTMLSelectElement {
+  const found = Array.from(host.querySelectorAll("select")).find((sel) =>
+    Array.from(sel.options).some((o) => o.textContent?.includes(optionText)),
+  );
+  if (!found) throw new Error(`select with option "${optionText}" not rendered`);
+  return found;
+}
+
+function productNameInput(): HTMLInputElement {
+  return host.querySelector('input[placeholder^="Misr 15"]') as HTMLInputElement;
+}
+
+const PACKAGING_RULES = [
+  { code: "PAPERBOX", label: "Printed Paper Box", code_type: "packaging" },
+  { code: "SLEEVE", label: "Sleeve", code_type: "packaging" },
+] as never[];
+
+describe("FastCreateProduct async results vs. input changes (same draft)", () => {
+  it("a SKU request that finishes after the category changed cannot write its SKU", async () => {
+    await mountPageWithOriginalDraft();
+    const sku = deferred<{ sku: string }>();
+    h.requireSku.mockReturnValue(sku.promise);
+
+    await act(async () => {
+      buttonByText("Refresh SKU", host).click();
+    });
+    await flush();
+    await act(async () => {
+      setSelectValue(selectContaining("Baklawa"), "baklawa");
+    });
+    await flush();
+    await act(async () => {
+      sku.resolve({ sku: "SKU-STALE-CATEGORY" });
+    });
+    await flush();
+
+    const kept = loadFastCreateDraft();
+    expect(kept?.categoryKey).toBe("baklawa");
+    expect(kept?.resolvedSku).toBeNull(); // the category change cleared it; the stale one must not return
+  });
+
+  it("a SKU request that finishes after the packaging changed cannot write its SKU", async () => {
+    h.fetchRules.mockResolvedValue({ rules: PACKAGING_RULES, error: null });
+    await mountPageWithOriginalDraft();
+    const sku = deferred<{ sku: string }>();
+    h.requireSku.mockReturnValue(sku.promise);
+
+    await act(async () => {
+      buttonByText("Refresh SKU", host).click();
+    });
+    await flush();
+    await act(async () => {
+      setSelectValue(selectContaining("Select packaging"), "SLEEVE");
+    });
+    await flush();
+    await act(async () => {
+      sku.resolve({ sku: "SKU-STALE-PACKAGING" });
+    });
+    await flush();
+
+    const kept = loadFastCreateDraft();
+    expect(kept?.packagingCode).toBe("SLEEVE");
+    expect(kept?.resolvedSku).toBeNull();
+  });
+
+  it("an outdated SKU failure cannot clear a newer valid SKU or show its error", async () => {
+    await mountPageWithOriginalDraft();
+    const stale = deferred<{ sku: string }>();
+    h.requireSku.mockReturnValueOnce(stale.promise).mockResolvedValueOnce({ sku: "SKU-NEWER" });
+
+    await act(async () => {
+      buttonByText("Refresh SKU", host).click();
+    });
+    await flush();
+    await act(async () => {
+      setSelectValue(selectContaining("Baklawa"), "baklawa");
+    });
+    await flush();
+    await act(async () => {
+      buttonByText("Refresh SKU", host).click();
+    });
+    await flush();
+    expect(loadFastCreateDraft()?.resolvedSku).toBe("SKU-NEWER");
+
+    await act(async () => {
+      stale.reject(new Error("outdated SKU failure"));
+    });
+    await flush();
+
+    expect(loadFastCreateDraft()?.resolvedSku).toBe("SKU-NEWER");
+    expect(host.textContent).not.toContain("outdated SKU failure");
+  });
+
+  it("Create does not write its SKU back after the category changed mid-request, and still saves what it started with", async () => {
+    await mountPageWithOriginalDraft();
+    const sku = deferred<{ sku: string }>();
+    h.requireSku.mockReturnValue(sku.promise);
+
+    await act(async () => {
+      createButton().click();
+    });
+    await flush();
+    await act(async () => {
+      setSelectValue(selectContaining("Baklawa"), "baklawa");
+    });
+    await flush();
+    await act(async () => {
+      sku.resolve({ sku: "SKU-ORIGINAL-CATEGORY" });
+    });
+    await flush();
+
+    // The save proceeds with the category and SKU it started with ...
+    expect(h.save).toHaveBeenCalledTimes(1);
+    expect(h.save.mock.calls[0][0]).toMatchObject({
+      categoryKey: "ready_packs",
+      resolvedSku: "SKU-ORIGINAL-CATEGORY",
+    });
+    await act(async () => {
+      finishSave({ draft: true, draftId: "d1", alreadyPending: true });
+    });
+    await flush();
+    // ... but that SKU is not left behind on the draft whose category is now different.
+    const kept = loadFastCreateDraft();
+    expect(kept?.categoryKey).toBe("baklawa");
+    expect(kept?.resolvedSku).toBeNull();
+  });
+
+  it("Generate drops suggestions when the product name changed while they were generating", async () => {
+    await mountPageWithOriginalDraft();
+    const enrich = deferred<ReturnType<typeof buildHeuristicSuggestions>>();
+    h.enrich.mockReturnValue(enrich.promise);
+
+    await act(async () => {
+      buttonByText("Generate suggestions", host).click();
+    });
+    await flush();
+    await act(async () => {
+      setInputValue(productNameInput(), "Edited product name");
+    });
+    await flush();
+    await act(async () => {
+      enrich.resolve(buildHeuristicSuggestions("Original draft", "ready_packs"));
+    });
+    await flush();
+
+    const kept = loadFastCreateDraft();
+    expect(kept?.productName).toBe("Edited product name");
+    expect(kept?.suggestions).toBeNull();
+    expect(h.requireSku).not.toHaveBeenCalled();
+    expect(h.toast.success).not.toHaveBeenCalled();
+    expect(h.toast.info).toHaveBeenCalledWith(expect.stringMatching(/discarded/i));
+    expect(buttonByText("Generate suggestions", host).disabled).toBe(false);
+  });
+
+  it("Generate drops suggestions when the category changed while they were generating", async () => {
+    await mountPageWithOriginalDraft();
+    const enrich = deferred<ReturnType<typeof buildHeuristicSuggestions>>();
+    h.enrich.mockReturnValue(enrich.promise);
+
+    await act(async () => {
+      buttonByText("Generate suggestions", host).click();
+    });
+    await flush();
+    await act(async () => {
+      setSelectValue(selectContaining("Baklawa"), "baklawa");
+    });
+    await flush();
+    await act(async () => {
+      enrich.resolve(buildHeuristicSuggestions("Original draft", "ready_packs"));
+    });
+    await flush();
+
+    expect(loadFastCreateDraft()?.suggestions).toBeNull();
+    expect(h.toast.success).not.toHaveBeenCalled();
+  });
+
+  it("Generate announces nothing for stale work when the name changes during its SKU step", async () => {
+    await mountPageWithOriginalDraft();
+    h.enrich.mockResolvedValue(buildHeuristicSuggestions("Original draft", "ready_packs"));
+    const sku = deferred<{ sku: string }>();
+    h.requireSku.mockReturnValue(sku.promise);
+
+    await act(async () => {
+      buttonByText("Generate suggestions", host).click();
+    });
+    await flush();
+    expect(h.requireSku).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      setInputValue(productNameInput(), "Edited during SKU step");
+    });
+    await flush();
+    await act(async () => {
+      sku.resolve({ sku: "SKU-GENERATE-STALE" });
+    });
+    await flush();
+
+    expect(h.toast.success).not.toHaveBeenCalled();
+    expect(buttonByText("Generate suggestions", host).disabled).toBe(false);
+    expect(loadFastCreateDraft()?.productName).toBe("Edited during SKU step");
+  });
+
+  it("a slow packaging-option insert does not close or clear a dialog that was reopened meanwhile", async () => {
+    await mountPageWithOriginalDraft();
+    const insert = deferred<{ error: null }>();
+    h.insert.mockReturnValue(insert.promise);
+
+    await act(async () => {
+      buttonByText("Add option", host).click();
+    });
+    await flush();
+    let dialog = document.body.querySelector('[role="dialog"]') as HTMLElement;
+    let inputs = Array.from(dialog.querySelectorAll("input"));
+    await act(async () => {
+      setInputValue(inputs[0], "FIRSTBOX");
+      setInputValue(inputs[1], "First Box");
+    });
+    await act(async () => {
+      buttonByText("Add option", dialog).click();
+    });
+    await flush();
+    expect(h.insert).toHaveBeenCalledTimes(1);
+
+    // Close the dialog while the insert is pending, then reopen it and start typing again.
+    await act(async () => {
+      buttonByText("Cancel", dialog).click();
+    });
+    await flush();
+    await act(async () => {
+      buttonByText("Add option", host).click();
+    });
+    await flush();
+    dialog = document.body.querySelector('[role="dialog"]') as HTMLElement;
+    inputs = Array.from(dialog.querySelectorAll("input"));
+    await act(async () => {
+      setInputValue(inputs[0], "SECONDBOX");
+      setInputValue(inputs[1], "Second Box");
+    });
+
+    await act(async () => {
+      insert.resolve({ error: null });
+    });
+    await flush();
+    await flush();
+
+    // The first insert is reported, but the reopened dialog and what was typed survive.
+    expect(h.toast.success).toHaveBeenCalledWith('Packaging option "First Box" added.');
+    dialog = document.body.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog).not.toBeNull();
+    const [code, label] = Array.from(dialog.querySelectorAll("input"));
+    expect(code.value).toBe("SECONDBOX");
+    expect(label.value).toBe("Second Box");
+  });
+});

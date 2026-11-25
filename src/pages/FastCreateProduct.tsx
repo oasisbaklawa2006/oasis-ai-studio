@@ -1,5 +1,5 @@
 import { ArrowRight, ImagePlus, Loader2, Plus, Sparkles, Trash2, Zap } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { BuildMeterBar } from "@/components/BuildMeterBar";
@@ -73,6 +73,10 @@ const FastCreateProduct = () => {
   const nav = useNavigate();
   const { roles } = useAuth();
   const [draft, setDraft] = useState<FastCreateDraftSnapshot>(emptyFastCreateDraft());
+  // Always the latest draft, so an async handler can tell whether the inputs it started with
+  // changed while it was waiting (a render closure would still show the old values).
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const [heroPreview, setHeroPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -91,6 +95,9 @@ const FastCreateProduct = () => {
   const [newOptionCode, setNewOptionCode] = useState("");
   const [newOptionLabel, setNewOptionLabel] = useState("");
   const [addingOption, setAddingOption] = useState(false);
+  // Bumped each time the add-packaging dialog opens, so a slow insert only closes/clears the
+  // dialog instance it was started from and never a reopened one.
+  const addOptionDialogInstance = useRef(0);
 
   const patchDraft = (patch: Partial<FastCreateDraftSnapshot>) =>
     setDraft((prev) => ({ ...prev, ...patch }));
@@ -165,6 +172,14 @@ const FastCreateProduct = () => {
     nav(path);
   };
 
+  /** True while the draft still has the category and packaging a SKU request started with. */
+  const skuInputsUnchanged = (started: {
+    categoryKey: FastCreateCategoryKey;
+    packagingCode: string | null;
+  }) =>
+    draftRef.current.categoryKey === started.categoryKey &&
+    draftRef.current.packagingCode === started.packagingCode;
+
   /**
    * The active draft is being discarded or replaced: drop every in-flight save, generate,
    * SKU refresh and upload so none can write into the new draft, and release their busy flags.
@@ -215,24 +230,39 @@ const FastCreateProduct = () => {
   };
 
   const resolveSkuPreview = async (session = saveOwnership.session()) => {
+    // Read the latest inputs, not a render closure: when this runs as part of Generate the
+    // closure can be several renders old.
+    const started = {
+      categoryKey: draftRef.current.categoryKey,
+      packagingCode: draftRef.current.packagingCode,
+      resolvedSku: draftRef.current.resolvedSku,
+    };
+    // A result is only valid for the draft session AND the category/packaging it was asked for.
+    const stillCurrent = () =>
+      saveOwnership.isCurrentSession(session) && skuInputsUnchanged(started);
     setSkuError(null);
-    if (packagingBlocked) {
+    const needsPackaging = getSaleTypeRequirements(draftRef.current.saleType, {
+      b2bEnabled: draftRef.current.b2bEnabled,
+    }).requiresPackaging;
+    if (needsPackaging && !started.packagingCode) {
       setSkuError("SKU blocked — select a valid packaging type first.");
       patchDraft({ resolvedSku: null });
       return null;
     }
     try {
       const result = await requireFastCreateSku(
-        draft.categoryKey,
-        draft.resolvedSku,
-        draft.packagingCode,
+        started.categoryKey,
+        started.resolvedSku,
+        started.packagingCode,
       );
-      // The draft was discarded or replaced while the SKU resolved: drop the result.
-      if (!saveOwnership.isCurrentSession(session)) return null;
+      // Discarded, replaced, or the category/packaging changed while the SKU resolved: a SKU
+      // for the old inputs must not land on the draft (it would be reused on save).
+      if (!stillCurrent()) return null;
       patchDraft({ resolvedSku: result.sku });
       return result.sku;
     } catch (e) {
-      if (!saveOwnership.isCurrentSession(session)) return null;
+      // An outdated failure must not clear a valid SKU or show an error for old inputs.
+      if (!stillCurrent()) return null;
       const msg = e instanceof Error ? e.message : FAST_CREATE_SKU_BLOCK_MESSAGE;
       setSkuError(msg);
       patchDraft({ resolvedSku: null });
@@ -246,17 +276,28 @@ const FastCreateProduct = () => {
       return;
     }
     const session = saveOwnership.session();
+    const started = { name: draft.productName.trim(), categoryKey: draft.categoryKey };
+    // Suggestions are built from the product name and category: only apply them while both
+    // are unchanged and the draft is the one Generate was started for.
+    const inputsUnchanged = () =>
+      saveOwnership.isCurrentSession(session) &&
+      draftRef.current.productName.trim() === started.name &&
+      draftRef.current.categoryKey === started.categoryKey;
     setGenerating(true);
     try {
-      const base = buildHeuristicSuggestions(draft.productName.trim(), draft.categoryKey);
+      const base = buildHeuristicSuggestions(started.name, started.categoryKey);
       const enriched = await enrichSuggestionsWithAi(
         base,
-        draft.productName.trim(),
+        started.name,
         String(base.formPatch.category ?? categoryLabel),
       );
-      // Suggestions belong to the draft they were generated for: drop them (and never
-      // allocate a SKU) if it was discarded or replaced meanwhile.
       if (!saveOwnership.isCurrentSession(session)) return;
+      if (!inputsUnchanged()) {
+        toast.info(
+          "The product name or category changed while suggestions were generating, so they were discarded. Generate again.",
+        );
+        return;
+      }
       patchDraft({
         suggestions: enriched,
         editedDescription: null,
@@ -264,10 +305,10 @@ const FastCreateProduct = () => {
         editedWhatsappKeywords: null,
       });
       await resolveSkuPreview(session);
-      if (!saveOwnership.isCurrentSession(session)) return;
+      if (!inputsUnchanged()) return;
       toast.success("Suggestions ready — review, edit, and create.");
     } catch (e) {
-      if (!saveOwnership.isCurrentSession(session)) return;
+      if (!inputsUnchanged()) return;
       toast.error(e instanceof Error ? e.message : "Could not generate suggestions");
     } finally {
       if (saveOwnership.isCurrentSession(session)) setGenerating(false);
@@ -305,6 +346,7 @@ const FastCreateProduct = () => {
       return;
     }
     const token = saveOwnership.begin();
+    const skuStarted = { categoryKey: draft.categoryKey, packagingCode: draft.packagingCode };
     setSaving(true);
     try {
       const skuResult = await requireFastCreateSku(
@@ -315,7 +357,9 @@ const FastCreateProduct = () => {
       // The draft was discarded or replaced while the SKU was resolving: do not write the
       // SKU into the new draft and do not create a product for a draft that no longer exists.
       if (!saveOwnership.owns(token)) return;
-      patchDraft({ resolvedSku: skuResult.sku });
+      // The save itself proceeds with the values it started with; only skip writing that SKU
+      // back if the operator changed category/packaging meanwhile (it would not match).
+      if (skuInputsUnchanged(skuStarted)) patchDraft({ resolvedSku: skuResult.sku });
 
       const payload =
         effectiveSuggestions() ??
@@ -365,6 +409,11 @@ const FastCreateProduct = () => {
     }
   };
 
+  const openAddOptionDialog = () => {
+    addOptionDialogInstance.current += 1;
+    setAddOptionOpen(true);
+  };
+
   const addPackagingOption = async () => {
     const code = newOptionCode
       .trim()
@@ -376,6 +425,7 @@ const FastCreateProduct = () => {
       return;
     }
     const session = saveOwnership.session();
+    const dialogInstance = addOptionDialogInstance.current;
     setAddingOption(true);
     try {
       const { error } = await supabase.from("sku_code_rules").insert({
@@ -386,9 +436,13 @@ const FastCreateProduct = () => {
       });
       if (error) throw new Error(error.message);
       toast.success(`Packaging option "${label}" added.`);
-      setAddOptionOpen(false);
-      setNewOptionCode("");
-      setNewOptionLabel("");
+      // Close and clear only the dialog this insert was started from; if it was closed and
+      // reopened meanwhile, that newer dialog (and what the operator typed) is left alone.
+      if (addOptionDialogInstance.current === dialogInstance) {
+        setAddOptionOpen(false);
+        setNewOptionCode("");
+        setNewOptionLabel("");
+      }
       await loadPackagingOptions();
       // The option now exists for everyone, but only select it on the draft it was added for.
       if (!saveOwnership.isCurrentSession(session)) return;
@@ -530,12 +584,7 @@ const FastCreateProduct = () => {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label>Packaging type</Label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setAddOptionOpen(true)}
-                >
+                <Button type="button" size="sm" variant="ghost" onClick={openAddOptionDialog}>
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add option
                 </Button>
               </div>
