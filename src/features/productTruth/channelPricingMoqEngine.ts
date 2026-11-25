@@ -117,6 +117,15 @@ export function validateOrderQtyAgainstChannelRules(
   const messages: string[] = [];
   const u = normalizeUom(orderUom);
 
+  // Validate the order itself before MOQ exemptions; neither retail bypasses
+  // nor non-applicable MOQ rules can authorize negative or fractional pieces.
+  if (!Number.isFinite(orderQty) || orderQty <= 0) {
+    return { valid: false, messages: ["Order quantity must be positive and finite."] };
+  }
+  if (u === "pcs" && !Number.isSafeInteger(orderQty)) {
+    return { valid: false, messages: ["Piece quantity must be a positive safe whole number."] };
+  }
+
   if (channel === "retail" && u === "pcs" && orderQty >= 1) {
     return { valid: true, messages: [] };
   }
