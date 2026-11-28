@@ -6,7 +6,11 @@ import {
 } from "@/features/fastCreate/fastCreateIntakeBarcode";
 import { getPersistableFastCreateAliases } from "@/features/governedAiExtraction/fastCreateEnrichment";
 import { assertMobileProductCreateSaveAllowed } from "@/features/mobileProductCreate";
-import { productClassForSaleType, type SaleType } from "@/features/productAuthority/saleType";
+import {
+  getSaleTypeRequirements,
+  productClassForSaleType,
+  type SaleType,
+} from "@/features/productAuthority/saleType";
 import {
   assertStructuredSkuForSave,
   skuPackagingSegment,
@@ -16,6 +20,7 @@ import { assertNoBlockingProductCollisions } from "@/features/productGovernance/
 import { factualCompositionDraftPayload } from "@/features/productTruth/productFactualCompositionCanonical";
 import { stripUnapprovedComplianceFields } from "@/lib/compliance/aiComplianceSafety";
 import { canWriteProductsDirectly, isCatalogueContributor } from "@/shared/auth/centralPermissions";
+import { validFastCreatePieceCount } from "./fastCreateDraft";
 import { type FastCreateSkuCodeSet, resolveFastCreateSkuCodes } from "./fastCreateSkuCodes";
 import { type FastCreateSuggestions, generateFastCreateSku } from "./fastCreateSuggestions";
 
@@ -85,12 +90,77 @@ export type FastCreateSaveResult =
       sku: string;
     };
 
+/**
+ * A reviewed pack-content quantity is an explicit piece count, never a weight,
+ * tray, carton, MOQ or conversion factor. This is draft-only evidence; Core
+ * #486 must separately authorize final Product Master persistence.
+ */
+export type FastCreateContentQuantity = Readonly<{ value: number; unit: "pcs" }>;
+
+export function verifiedFastCreatePieceQuantity(
+  saleType: SaleType | undefined,
+  operatorValue: unknown,
+): FastCreateContentQuantity | null {
+  // Any quantity hidden by the current sale type must be discarded.
+  if (!saleType || !getSaleTypeRequirements(saleType).requiresQtyPerPack) return null;
+  if (!validFastCreatePieceCount(operatorValue)) {
+    throw new Error("Enter a positive whole number of pieces per pack before submitting.");
+  }
+  return { value: Number(operatorValue), unit: "pcs" };
+}
+
+/**
+ * Map Core's submission receipt to truthful UI behavior. A duplicate pending
+ * SKU is an idempotent no-op, NOT a new submission or an update to the earlier
+ * payload. Retain all unsaved operator inputs on that path.
+ */
+export function resolveFastCreateSubmitReceipt(result: FastCreateSaveResult): {
+  clearDraft: boolean;
+  navigateTo: string | null;
+  tone: "success" | "warning";
+  message: string;
+  /**
+   * Used when the save finishes after the draft it was started from was discarded or
+   * replaced. It must not promise navigation or claim anything about the current draft.
+   */
+  detachedMessage: string;
+} {
+  const untouched = "The draft you are working on now was not changed.";
+  if ("draft" in result) {
+    if (result.alreadyPending) {
+      return {
+        clearDraft: false,
+        navigateTo: null,
+        tone: "warning",
+        message:
+          "This SKU already has a pending draft. Your new changes were NOT submitted or saved to that draft. Inputs remain here; review the existing draft in Approval Inbox.",
+        detachedMessage: `A save that was in progress finished after the draft changed. Its SKU already had a pending draft, so nothing new was submitted (see Approval Inbox). ${untouched}`,
+      };
+    }
+    return {
+      clearDraft: true,
+      navigateTo: "/approvals",
+      tone: "success",
+      message: "Product draft submitted for approval.",
+      detachedMessage: `A save that was in progress finished after the draft changed: its product draft was submitted for approval (see Approval Inbox). ${untouched}`,
+    };
+  }
+  return {
+    clearDraft: true,
+    navigateTo: `/products/${result.id}`,
+    tone: "success",
+    message: `Product draft created (${result.sku}) — opening full editor.`,
+    detachedMessage: `A save that was in progress finished after the draft changed: product draft ${result.sku} was created and is available in Products. ${untouched}`,
+  };
+}
+
 /** Build the grouped catalogue_product_drafts payload for Fast Create. */
 export function buildFastCreateGroupedDraftPayload(
   form: Record<string, unknown>,
   heroUrl: string | null,
   suggestions: FastCreateSuggestions,
   skuResult: { sku: string; codes: FastCreateSkuCodeSet },
+  contentQuantity: FastCreateContentQuantity | null = null,
 ): Record<string, unknown> {
   const persistableAliases = getPersistableFastCreateAliases(suggestions);
   return {
@@ -117,6 +187,7 @@ export function buildFastCreateGroupedDraftPayload(
     media: {
       hero_image_url: heroUrl,
     },
+    ...(contentQuantity ? { packing: { content_quantity: contentQuantity } } : {}),
     search: {
       suggested_aliases: persistableAliases.aliases.map((a) => a.alias),
       whatsapp_keywords: persistableAliases.whatsappKeywords,
@@ -145,6 +216,10 @@ export function buildFastCreateGroupedDraftPayload(
 export async function saveFastCreateProduct(
   input: FastCreateSaveInput,
 ): Promise<FastCreateSaveResult> {
+  const contentQuantity = verifiedFastCreatePieceQuantity(
+    input.saleType,
+    input.extraFormPatch?.pcs_per_pack,
+  );
   const form: Record<string, unknown> = {
     ...input.suggestions.formPatch,
     ...(input.extraFormPatch ?? {}),
@@ -200,7 +275,13 @@ export async function saveFastCreateProduct(
   });
 
   const groupedPayload = withReviewedIntakeBarcode(
-    buildFastCreateGroupedDraftPayload(safeForm, input.heroUrl, input.suggestions, skuResult),
+    buildFastCreateGroupedDraftPayload(
+      safeForm,
+      input.heroUrl,
+      input.suggestions,
+      skuResult,
+      contentQuantity,
+    ),
     intakeBarcode,
   );
 

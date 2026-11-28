@@ -35,8 +35,10 @@ vi.mock("@/shared/auth/centralPermissions", () => ({
 const {
   buildFastCreateGroupedDraftPayload,
   requireFastCreateSku,
+  resolveFastCreateSubmitReceipt,
   saveFastCreateProduct,
   FAST_CREATE_UNSUPPORTED_CLASS_MESSAGE_PREFIX,
+  verifiedFastCreatePieceQuantity,
 } = await import("./saveFastCreateProduct");
 
 const minimalSuggestions: FastCreateSuggestions = {
@@ -57,6 +59,67 @@ const minimalSuggestions: FastCreateSuggestions = {
   productTruthStarters: { piecesPerKg: null, traysPerMasterCarton: null, primaryPackSummary: null },
   sources: { defaults: true, heuristicAliases: false, aiCompliance: false, aiAliases: false },
 };
+
+describe("Fast Create Core submission receipts", () => {
+  it("retains the operator draft on idempotent already-pending results", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      draft: true,
+      draftId: "existing-draft",
+      alreadyPending: true,
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: false,
+      navigateTo: null,
+      tone: "warning",
+    });
+    expect(receipt.message).toContain("NOT submitted");
+    expect(receipt.message).toContain("Inputs remain here");
+  });
+
+  it("clears the draft and opens approvals only when a new draft was submitted", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      draft: true,
+      draftId: "new-draft",
+      alreadyPending: false,
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: true,
+      navigateTo: "/approvals",
+      tone: "success",
+      message: "Product draft submitted for approval.",
+    });
+  });
+
+  it("never promises navigation or retained inputs in the detached notice", () => {
+    const results = [
+      { draft: true, draftId: "d1", alreadyPending: true },
+      { draft: true, draftId: "d2", alreadyPending: false },
+      { id: "product-123", sku: "OAS-TEST-0001" },
+    ] as const;
+    for (const result of results) {
+      const { detachedMessage } = resolveFastCreateSubmitReceipt(result);
+      expect(detachedMessage).not.toMatch(/opening|inputs remain here/i);
+      expect(detachedMessage).toContain("finished after the draft changed");
+      expect(detachedMessage).toContain("was not changed");
+    }
+    const pending = resolveFastCreateSubmitReceipt(results[0]).detachedMessage;
+    expect(pending).toContain("nothing new was submitted");
+    const created = resolveFastCreateSubmitReceipt(results[2]).detachedMessage;
+    expect(created).toContain("OAS-TEST-0001");
+  });
+
+  it("preserves the legacy direct-create compatibility receipt", () => {
+    const receipt = resolveFastCreateSubmitReceipt({
+      id: "product-123",
+      sku: "OAS-AS-BKL-ASS-PAPERBOX-0001",
+    });
+    expect(receipt).toMatchObject({
+      clearDraft: true,
+      navigateTo: "/products/product-123",
+      tone: "success",
+    });
+  });
+});
 
 describe("requireFastCreateSku — packaging authority", () => {
   beforeEach(() => {
@@ -160,6 +223,43 @@ describe("saveFastCreateProduct — governed draft only", () => {
       "submit_catalogue_product_draft_v1",
       expect.objectContaining({ p_operation: "create" }),
     );
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("propagates Core already_pending without overwriting the prior product draft", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [{ draft_id: "prior-draft", already_pending: true }],
+      error: null,
+    });
+
+    const result = await saveFastCreateProduct({
+      suggestions: minimalSuggestions,
+      heroUrl: null,
+      roles: ["owner"],
+      categoryKey: "other",
+      resolvedSku: "OAS-AS-BKL-ASS-LOOSE-0001",
+    });
+
+    expect(result).toEqual({ draft: true, draftId: "prior-draft", alreadyPending: true });
+    expect(resolveFastCreateSubmitReceipt(result).clearDraft).toBe(false);
+    expect(fromMock).not.toHaveBeenCalled();
+  });
+
+  it("does not claim success when Core omits the idempotency receipt field", async () => {
+    rpcMock.mockResolvedValueOnce({
+      data: [{ draft_id: "unverified-draft", already_pending: undefined as unknown as boolean }],
+      error: null,
+    });
+
+    await expect(
+      saveFastCreateProduct({
+        suggestions: minimalSuggestions,
+        heroUrl: null,
+        roles: ["owner"],
+        categoryKey: "other",
+        resolvedSku: "OAS-AS-BKL-ASS-LOOSE-0001",
+      }),
+    ).rejects.toThrow(/Core draft receipt is incomplete/i);
     expect(fromMock).not.toHaveBeenCalled();
   });
 
@@ -272,5 +372,87 @@ describe("saveFastCreateProduct — governed draft only", () => {
     expect(rpcMock.mock.calls.some(([fn]) => fn === "submit_catalogue_product_draft_v1")).toBe(
       false,
     );
+  });
+});
+
+describe("Fast Create typed content quantity — Core #486 draft evidence", () => {
+  const skuResult = {
+    sku: "OAS-AS-BKL-ASS-PAPERBOX-0001",
+    codes: {
+      division_code: "AS",
+      category_code: "BKL",
+      subcategory_code: "ASS",
+      packaging_code: "PAPERBOX",
+    },
+  };
+
+  it("preserves only an operator-confirmed positive integer as pieces, not weight", () => {
+    expect(verifiedFastCreatePieceQuantity("retail_ready_pack", "6")).toEqual({
+      value: 6,
+      unit: "pcs",
+    });
+    for (const malformed of [undefined, null, 0, 6, "", "0", "-3", "2.5", "1e3", "0x6", "6 pcs"]) {
+      expect(() => verifiedFastCreatePieceQuantity("retail_ready_pack", malformed)).toThrow(
+        /positive whole number of pieces/i,
+      );
+    }
+  });
+
+  it("drops stale counts for sale types that do not ask for a piece count", () => {
+    expect(verifiedFastCreatePieceQuantity("b2b_horeca", "6")).toBeNull();
+    expect(verifiedFastCreatePieceQuantity("internal_bom", "6")).toBeNull();
+    expect(verifiedFastCreatePieceQuantity(undefined, "6")).toBeNull();
+  });
+
+  it("puts a verified content quantity in the governed draft only", () => {
+    const payload = buildFastCreateGroupedDraftPayload(
+      { product_name: "Pack of Six", category: "Baklawa", pcs_per_pack: "6" },
+      null,
+      minimalSuggestions,
+      skuResult,
+      verifiedFastCreatePieceQuantity("retail_ready_pack", "6"),
+    );
+    expect(payload.packing).toEqual({ content_quantity: { value: 6, unit: "pcs" } });
+    expect(payload).not.toHaveProperty("pricing");
+    expect(payload).not.toHaveProperty("uom");
+    const hidden = buildFastCreateGroupedDraftPayload(
+      { product_name: "Bulk", category: "Baklawa", pcs_per_pack: "6" },
+      null,
+      minimalSuggestions,
+      skuResult,
+      verifiedFastCreatePieceQuantity("b2b_horeca", "6"),
+    );
+    expect(hidden).not.toHaveProperty("packing");
+  });
+
+  it("rejects a retail draft with unverified quantity before calling Core", async () => {
+    rpcMock.mockClear();
+    await expect(
+      saveFastCreateProduct({
+        suggestions: minimalSuggestions,
+        heroUrl: null,
+        roles: ["owner"],
+        categoryKey: "ready_packs",
+        saleType: "retail_ready_pack",
+        extraFormPatch: { pcs_per_pack: "3.5" },
+      }),
+    ).rejects.toThrow(/positive whole number of pieces/i);
+    expect(rpcMock).not.toHaveBeenCalled();
+  });
+
+  it("does not serialize a hidden stale count in a valid non-retail draft", async () => {
+    rpcMock.mockClear();
+    await saveFastCreateProduct({
+      suggestions: minimalSuggestions,
+      heroUrl: null,
+      roles: ["owner"],
+      categoryKey: "other",
+      saleType: "b2b_horeca",
+      extraFormPatch: { pcs_per_pack: "6" },
+    });
+    const args = rpcMock.mock.calls.find(
+      ([fn]) => fn === "submit_catalogue_product_draft_v1",
+    )?.[1] as { p_payload?: Record<string, unknown> } | undefined;
+    expect(args?.p_payload).not.toHaveProperty("packing");
   });
 });
