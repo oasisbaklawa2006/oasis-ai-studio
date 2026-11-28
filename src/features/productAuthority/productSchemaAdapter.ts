@@ -17,6 +17,7 @@ import {
   resolveProductDimensionsCmText,
 } from "@/features/productAuthority/shippingDimensions";
 import { enrichPackFormFromDbRow } from "@/features/productTruth/packagingHierarchyCanonical";
+import { palletMetadataProductsPayload } from "@/features/productTruth/palletMetadataAuthority";
 import {
   factualCompositionFromDbRow,
   factualCompositionToDbPayload,
@@ -424,6 +425,7 @@ export function formToDbProductPayload(form: Record<string, unknown>): Record<st
     carton_uom: form.carton_uom ?? null,
     master_carton_qty: toNum(form.master_carton_qty),
     master_carton_uom: form.master_carton_uom ?? null,
+    ...palletMetadataProductsPayload(form),
     dimension_l_cm: toNum(form.dimension_l_cm),
     dimension_w_cm: toNum(form.dimension_w_cm),
     dimension_h_cm: toNum(form.dimension_h_cm),
